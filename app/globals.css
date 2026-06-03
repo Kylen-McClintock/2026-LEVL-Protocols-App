@@ -1,26 +1,38 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-levl-bg: #0a0a0f;
+  --color-levl-card: rgba(20, 20, 28, 0.6);
+  --color-levl-card-hover: rgba(30, 30, 42, 0.8);
+  --color-levl-accent: #10b981;
+  --color-levl-accent-dark: #059669;
+  --color-levl-purple: #8b5cf6;
+  --color-levl-text-primary: #ffffff;
+  --color-levl-text-secondary: #9ca3af;
+  --color-levl-border: rgba(255, 255, 255, 0.05);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    background-color: var(--color-levl-bg);
+    color: var(--color-levl-text-primary);
+    -webkit-font-smoothing: antialiased;
+    /* Subtle dark gradient background */
+    background-image: radial-gradient(circle at 50% 0%, rgba(20, 20, 40, 0.5) 0%, transparent 60%);
+    background-attachment: fixed;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .glass-card {
+    background: var(--color-levl-card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--color-levl-border);
+  }
+  
+  .glass-card-hover:hover {
+    background: var(--color-levl-card-hover);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
