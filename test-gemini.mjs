@@ -2,7 +2,7 @@ import { generateText } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 const google = createGoogleGenerativeAI({
-  apiKey: "AIzaSyBQ9GS4gTZrBC1eQoQ8yzJNrZMyM0QVQMU"
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY
 });
 
 async function main() {
