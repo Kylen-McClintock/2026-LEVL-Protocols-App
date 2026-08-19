@@ -92,6 +92,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           localStorage.setItem(LOCAL_USER_ID_KEY, newSession.user.id)
           setLocalUserId(newSession.user.id)
+
+          // If a passkey exists on this device, update its identity to the real email account
+          const stored = getStoredPasskey()
+          if (stored) {
+            localStorage.setItem('levl_passkey_data', JSON.stringify({
+              ...stored,
+              userId: newSession.user.id,
+              userEmail: newSession.user.email || stored.userEmail,
+              userName: (newSession.user as any)?.user_metadata?.full_name || stored.userName
+            }))
+            setHasRegisteredPasskey(true)
+          }
         }
       }
     )
