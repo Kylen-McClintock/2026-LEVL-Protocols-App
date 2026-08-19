@@ -1,14 +1,22 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { updateUserProfile, createDailyTask, getOrCreateUserProfile } from '@/lib/data'
 import { format } from 'date-fns'
 import { 
   Sparkles, Check, ArrowRight, ShieldCheck, Zap, Moon, 
-  Brain, Dna, Dumbbell, Clock, Flame, Droplets, Watch, Pill, CheckCircle2 
+  Brain, Dna, Dumbbell, Flame, Droplets, Watch, Pill, CheckCircle2, RefreshCw 
 } from 'lucide-react'
+
+interface ModalityOption {
+  id: string
+  name: string
+  dose: string
+  timing: string
+  requiredHardware?: string // e.g. 'cold_plunge', 'sauna', 'gym', 'supplements'
+}
 
 interface GoalArchetype {
   id: string
@@ -18,12 +26,7 @@ interface GoalArchetype {
   color: string
   borderColor: string
   bgGlow: string
-  modalities: {
-    name: string
-    dose: string
-    timing: string
-    defaultChecked: boolean
-  }[]
+  modalities: ModalityOption[]
 }
 
 const GOAL_ARCHETYPES: GoalArchetype[] = [
@@ -36,9 +39,10 @@ const GOAL_ARCHETYPES: GoalArchetype[] = [
     borderColor: 'border-indigo-500/40',
     bgGlow: 'bg-indigo-500/10',
     modalities: [
-      { name: 'Morning Sunlight & Circadian Anchor', dose: '10–15 mins within 60m of waking', timing: 'waking', defaultChecked: true },
-      { name: '4-7-8 Relaxing Wind-Down Breathwork', dose: '4 cycles (5 mins before bed)', timing: 'evening', defaultChecked: true },
-      { name: 'Magnesium Glycinate + L-Theanine', dose: '400mg Magnesium + 200mg Theanine', timing: 'evening', defaultChecked: true }
+      { id: 'morning_sunlight', name: 'Morning Sunlight & Circadian Anchor', dose: '10–15 mins within 60m of waking', timing: 'waking' },
+      { id: 'breathing_4_7_8', name: '4-7-8 Relaxing Wind-Down Breathwork', dose: '4 cycles (5 mins before bed)', timing: 'evening' },
+      { id: 'magnesium_glycinate', name: 'Magnesium Bisglycinate (Sleep Quality)', dose: '400mg with water 60m pre-bed', timing: 'evening', requiredHardware: 'supplements' },
+      { id: 'sauna_exposure', name: 'Evening Hyperthermic Sauna (Thermal Drop)', dose: '15–20 mins @ 174°F+ (90m pre-bed)', timing: 'evening', requiredHardware: 'sauna' }
     ]
   },
   {
@@ -50,9 +54,9 @@ const GOAL_ARCHETYPES: GoalArchetype[] = [
     borderColor: 'border-amber-500/40',
     bgGlow: 'bg-amber-500/10',
     modalities: [
-      { name: 'Cold Plunge / Cold Shower', dose: '2–3 mins @ 50°F–55°F (Søberg reheat)', timing: 'morning_routine', defaultChecked: true },
-      { name: 'Cyclic Sighing (Physiological Sigh)', dose: '5 mins (2 quick inhales, 1 long exhale)', timing: 'morning_routine', defaultChecked: true },
-      { name: 'Delayed Caffeine Protocol', dose: 'Wait 90–120m post-waking to clear adenosine', timing: 'morning_routine', defaultChecked: true }
+      { id: 'cyclic_sighing', name: 'Cyclic Sighing (Physiological Sigh)', dose: '5 mins (2 quick inhales, 1 long exhale)', timing: 'morning_routine' },
+      { id: 'cold_water_immersion', name: 'Cold Plunge / Cold Water Immersion', dose: '2–3 mins @ 50°F–55°F (Søberg reheat)', timing: 'morning_routine', requiredHardware: 'cold_plunge' },
+      { id: 'creatine_monohydrate', name: 'Creatine Monohydrate (Cellular ATP)', dose: '5g with water in morning', timing: 'morning_routine', requiredHardware: 'supplements' }
     ]
   },
   {
@@ -64,9 +68,9 @@ const GOAL_ARCHETYPES: GoalArchetype[] = [
     borderColor: 'border-emerald-500/40',
     bgGlow: 'bg-emerald-500/10',
     modalities: [
-      { name: '16:8 Time-Restricted Feeding (TRF)', dose: '16h Fast / 8h Eating window', timing: 'afternoon', defaultChecked: true },
-      { name: 'Post-Meal Glucose Walk', dose: '15–20 mins brisk walk after largest meal', timing: 'evening', defaultChecked: true },
-      { name: 'High-Polyphenol Extra Virgin Olive Oil', dose: '1–2 tbsp (EVOO >500mg/kg polyphenols)', timing: 'morning_routine', defaultChecked: true }
+      { id: 'intermittent_fasting_16_8', name: '16:8 Time-Restricted Feeding (TRF)', dose: '16h Fast / 8h Eating window', timing: 'afternoon' },
+      { id: 'post_meal_glucose_walk', name: 'Post-Meal Glucose Walk', dose: '15–20 mins brisk walk after largest meal', timing: 'evening' },
+      { id: 'extra-virgin-olive-oil', name: 'High-Polyphenol Extra Virgin Olive Oil', dose: '1–2 tbsp (>500mg/kg polyphenols)', timing: 'morning_routine', requiredHardware: 'supplements' }
     ]
   },
   {
@@ -78,9 +82,9 @@ const GOAL_ARCHETYPES: GoalArchetype[] = [
     borderColor: 'border-sky-500/40',
     bgGlow: 'bg-sky-500/10',
     modalities: [
-      { name: 'Box Breathing (Navy SEAL Focus)', dose: '4 mins (4s in, 4s hold, 4s out, 4s hold)', timing: 'morning_routine', defaultChecked: true },
-      { name: 'Creatine Monohydrate (Brain ATP)', dose: '5g with water in morning', timing: 'morning_routine', defaultChecked: true },
-      { name: 'Optic Flow & Horizon Viewing', dose: '5 mins expansive visual panorama', timing: 'afternoon', defaultChecked: true }
+      { id: 'box_breathing', name: 'Box Breathing (Navy SEAL Focus)', dose: '4 mins (4s in, 4s hold, 4s out, 4s hold)', timing: 'morning_routine' },
+      { id: 'morning_sunlight', name: 'Optic Flow & Horizon Morning Light', dose: '10–15 mins expansive visual field', timing: 'waking' },
+      { id: 'creatine_monohydrate', name: 'Creatine Monohydrate (Brain ATP)', dose: '5g with water in morning', timing: 'morning_routine', requiredHardware: 'supplements' }
     ]
   },
   {
@@ -92,9 +96,9 @@ const GOAL_ARCHETYPES: GoalArchetype[] = [
     borderColor: 'border-rose-500/40',
     bgGlow: 'bg-rose-500/10',
     modalities: [
-      { name: 'Push / Pull / Legs Resistance Session', dose: '45–60 mins (RPE 7-9, 2-3 RIR)', timing: 'afternoon', defaultChecked: true },
-      { name: 'Protein Distribution (Leucine Threshold)', dose: '30–40g high-quality protein per meal', timing: 'afternoon', defaultChecked: true },
-      { name: 'Electrolyte & Hydration Priming', dose: '500ml water + 500mg Sodium/Potassium', timing: 'waking', defaultChecked: true }
+      { id: 'ppl_push_day', name: 'Push / Resistance Hypertrophy Session', dose: '45–60 mins (RPE 7-9, 2-3 RIR)', timing: 'afternoon', requiredHardware: 'gym' },
+      { id: 'creatine_monohydrate', name: 'Creatine Monohydrate (Strength & Recovery)', dose: '5g daily with water', timing: 'morning_routine', requiredHardware: 'supplements' },
+      { id: 'post_meal_glucose_walk', name: 'Post-Meal Glycemic Walk', dose: '15 mins brisk walk post-nutrition', timing: 'evening' }
     ]
   }
 ]
@@ -112,17 +116,17 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Step 1 State
+  // Step 1: Goals & Name
   const [displayName, setDisplayName] = useState('')
   const [selectedGoals, setSelectedGoals] = useState<string[]>(['longevity', 'energy'])
 
-  // Step 2 State (Recommended Modalities selection)
-  const [selectedModalities, setSelectedModalities] = useState<Record<string, boolean>>({})
-
-  // Step 3 State (Equipment)
+  // Step 2: Equipment / Hardware
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>(['wearable', 'supplements'])
 
-  // Initialize selected modalities when goals change
+  // Step 3: Selected Modalities
+  const [selectedModalities, setSelectedModalities] = useState<Record<string, boolean>>({})
+
+  // Toggle Goal
   const handleToggleGoal = (goalId: string) => {
     setSelectedGoals(prev => {
       const next = prev.includes(goalId) 
@@ -132,52 +136,61 @@ export default function OnboardingPage() {
     })
   }
 
-  // Get all modalities recommended from selected goals
-  const recommendedModalities = React.useMemo(() => {
-    const map = new Map<string, { name: string; dose: string; timing: string; goalTitle: string }>()
-    selectedGoals.forEach(gId => {
-      const archetype = GOAL_ARCHETYPES.find(a => a.id === gId)
-      if (archetype) {
-        archetype.modalities.forEach(m => {
-          if (!map.has(m.name)) {
-            map.set(m.name, { ...m, goalTitle: archetype.title })
-          }
-        })
-      }
-    })
-    return Array.from(map.values())
-  }, [selectedGoals])
-
-  // Toggle modality checkbox in Step 2
-  const toggleModality = (modalityName: string) => {
-    setSelectedModalities(prev => ({
-      ...prev,
-      [modalityName]: prev[modalityName] === undefined ? false : !prev[modalityName]
-    }))
-  }
-
-  const isModalityChecked = (modalityName: string) => {
-    return selectedModalities[modalityName] !== false
-  }
-
-  // Equipment toggle
+  // Toggle Equipment
   const toggleEquipment = (id: string) => {
     setSelectedEquipment(prev => 
       prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
     )
   }
 
-  // Complete and Launch Today Screen
+  // Filter recommended modalities based on goals AND selected equipment
+  const recommendedModalities = useMemo(() => {
+    const map = new Map<string, ModalityOption & { goalTitle: string }>()
+    
+    selectedGoals.forEach(gId => {
+      const archetype = GOAL_ARCHETYPES.find(a => a.id === gId)
+      if (archetype) {
+        archetype.modalities.forEach(m => {
+          // If modality requires specific hardware, only include if user has that hardware
+          if (m.requiredHardware && !selectedEquipment.includes(m.requiredHardware)) {
+            return
+          }
+          if (!map.has(m.id)) {
+            map.set(m.id, { ...m, goalTitle: archetype.title })
+          }
+        })
+      }
+    })
+
+    return Array.from(map.values())
+  }, [selectedGoals, selectedEquipment])
+
+  // Toggle Modality Check
+  const toggleModality = (modalityId: string) => {
+    setSelectedModalities(prev => ({
+      ...prev,
+      [modalityId]: prev[modalityId] === undefined ? false : !prev[modalityId]
+    }))
+  }
+
+  const isModalityChecked = (modalityId: string) => {
+    return selectedModalities[modalityId] !== false
+  }
+
+  // Complete Onboarding and Launch Today
   const handleComplete = async () => {
+    if (isSubmitting) return
     setIsSubmitting(true)
+
     try {
       const localUserId = getLocalUserId()
       const todayStr = format(new Date(), 'yyyy-MM-dd')
+      const nameToSave = displayName.trim() || 'Protocol Optimizer'
 
-      // 1. Ensure user profile exists and update with preferences
+      // 1. Ensure profile exists and save preferences
       await getOrCreateUserProfile(localUserId)
       await updateUserProfile(localUserId, {
-        display_name: displayName.trim() || 'Protocol Optimizer',
+        display_name: nameToSave,
         primary_goals: selectedGoals,
         hardware_access: selectedEquipment,
         outcome_preference_scores: {
@@ -188,41 +201,40 @@ export default function OnboardingPage() {
         }
       })
 
-      // 2. Pre-populate user's Today timeline with their selected starter modalities
-      const activeModalities = recommendedModalities.filter(m => isModalityChecked(m.name))
-
-      for (const mod of activeModalities) {
+      // 2. Insert recommended starter tasks
+      const activeMods = recommendedModalities.filter(m => isModalityChecked(m.id))
+      for (const mod of activeMods) {
         try {
-          await createDailyTask(localUserId, todayStr, mod.name, mod.dose)
+          await createDailyTask(localUserId, todayStr, mod.id)
         } catch (taskErr) {
-          console.warn('Task creation note for modality:', mod.name, taskErr)
+          console.warn('Error scheduling task for:', mod.id, taskErr)
         }
       }
 
-      // 3. Launch directly into Today
-      router.push('/today')
+      // 3. Smooth navigation to Today view
+      window.location.href = '/today'
     } catch (err) {
       console.error('Error completing onboarding:', err)
-      router.push('/today')
-    } finally {
-      setIsSubmitting(false)
+      window.location.href = '/today'
     }
   }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
-      {/* Background Ambient Orbs */}
+      {/* Background Ambient Glows */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px]" />
         <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-emerald-600/15 rounded-full blur-[120px]" />
       </div>
 
       <div className="w-full max-w-xl space-y-6">
-        {/* Progress Bar & Header */}
+        {/* Step Indicator */}
         <div className="space-y-3 text-center">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-extrabold uppercase tracking-wider">
             <Sparkles size={12} className="text-emerald-400" />
-            <span>Step {step} of 3 • Quick Personalization</span>
+            <span>
+              {step === 1 ? 'Step 1 of 3: Goals & Focus' : step === 2 ? 'Step 2 of 3: Equipment & Tools' : 'Step 3 of 3: Starter Stack'}
+            </span>
           </div>
 
           <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
@@ -233,7 +245,7 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {/* STEP 1: Focus Archetype & Name */}
+        {/* STEP 1: Name & Goals */}
         {step === 1 && (
           <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
             <div className="space-y-1">
@@ -241,7 +253,7 @@ export default function OnboardingPage() {
                 What is your primary focus?
               </h1>
               <p className="text-xs sm:text-sm text-slate-400">
-                Choose 1–3 goals to calibrate your personalized starter protocol.
+                Select 1–3 targets to customize your precision protocol stack.
               </p>
             </div>
 
@@ -259,7 +271,7 @@ export default function OnboardingPage() {
               />
             </div>
 
-            {/* Goal Archetype Cards */}
+            {/* Goal Archetypes */}
             <div className="space-y-2.5">
               <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
                 Select Your Optimization Targets
@@ -309,96 +321,26 @@ export default function OnboardingPage() {
               onClick={() => setStep(2)}
               className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Build My Recommended Stack</span>
+              <span>Next: Equipment &amp; Tools</span>
               <ArrowRight size={16} />
             </button>
           </div>
         )}
 
-        {/* STEP 2: Recommended Protocols & Starter Stack */}
+        {/* STEP 2: Equipment / Hardware (BEFORE stack recommendations!) */}
         {step === 2 && (
           <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
-                  Precision Match
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 uppercase">
+                  Hardware Filter
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Your Starter Protocol Stack
+                What equipment do you have?
               </h1>
               <p className="text-xs sm:text-sm text-slate-400">
-                We curated evidence-based modalities based on your focus. Toggle any item you wish to include in your daily routine:
-              </p>
-            </div>
-
-            {/* Modalities Checklist */}
-            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-              {recommendedModalities.map((mod) => {
-                const checked = isModalityChecked(mod.name)
-                return (
-                  <div
-                    key={mod.name}
-                    onClick={() => toggleModality(mod.name)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
-                      checked 
-                        ? 'bg-slate-950/80 border-emerald-500/40 shadow-sm' 
-                        : 'bg-black/40 border-white/5 opacity-60'
-                    }`}
-                  >
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-bold text-white">
-                          {mod.name}
-                        </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10">
-                          {mod.timing}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-emerald-300/90 font-medium">
-                        🎯 {mod.dose}
-                      </p>
-                    </div>
-
-                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center border shrink-0 mt-0.5 transition-colors ${
-                      checked ? 'bg-emerald-500 border-emerald-400 text-black' : 'border-white/20 bg-transparent'
-                    }`}>
-                      {checked && <Check size={13} strokeWidth={3} />}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="w-1/3 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
-              >
-                ← Back
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep(3)}
-                className="w-2/3 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>Continue to Hardware</span>
-                <ArrowRight size={15} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: Available Hardware / Tools */}
-        {step === 3 && (
-          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
-            <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Available Equipment &amp; Tools
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-400">
-                Tap the tools you have access to so LEVL tailors your daily routines accordingly:
+                We will only recommend protocols and modalities that match your setup:
               </p>
             </div>
 
@@ -435,9 +377,90 @@ export default function OnboardingPage() {
               })}
             </div>
 
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2.5">
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="w-1/3 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                className="w-2/3 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Curate My Protocol Stack</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Curated Starter Protocols Stack (Filtered by Goals & Hardware) */}
+        {step === 3 && (
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
+                  Hardware &amp; Goal Calibrated
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                Your Starter Protocol Stack
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400">
+                Evidence-based habits tailored to your goals and equipment. Toggle any you want in today&apos;s routine:
+              </p>
+            </div>
+
+            {/* Modalities Checklist */}
+            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+              {recommendedModalities.length === 0 ? (
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-400 text-center">
+                  No modalities matched your specific filter. Go back to adjust goals or equipment.
+                </div>
+              ) : (
+                recommendedModalities.map((mod) => {
+                  const checked = isModalityChecked(mod.id)
+                  return (
+                    <div
+                      key={mod.id}
+                      onClick={() => toggleModality(mod.id)}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                        checked 
+                          ? 'bg-slate-950/80 border-emerald-500/40 shadow-sm' 
+                          : 'bg-black/40 border-white/5 opacity-60'
+                      }`}
+                    >
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-white">
+                            {mod.name}
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10">
+                            {mod.timing}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-300/90 font-medium">
+                          🎯 {mod.dose}
+                        </p>
+                      </div>
+
+                      <div className={`w-5 h-5 rounded-lg flex items-center justify-center border shrink-0 mt-0.5 transition-colors ${
+                        checked ? 'bg-emerald-500 border-emerald-400 text-black' : 'border-white/20 bg-transparent'
+                      }`}>
+                        {checked && <Check size={13} strokeWidth={3} />}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2.5">
               <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
-              <span>Ready to launch! Your daily protocol stack will be live and ready to track immediately.</span>
+              <span>Ready to launch! These will appear on your Today timeline immediately.</span>
             </div>
 
             <div className="flex items-center gap-3 pt-2">
@@ -455,7 +478,10 @@ export default function OnboardingPage() {
                 className="w-2/3 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isSubmitting ? (
-                  <span>Generating Stack...</span>
+                  <div className="flex items-center justify-center gap-2">
+                    <RefreshCw size={15} className="animate-spin" />
+                    <span>Launching Stack...</span>
+                  </div>
                 ) : (
                   <>
                     <span>Launch My Stack 🚀</span>

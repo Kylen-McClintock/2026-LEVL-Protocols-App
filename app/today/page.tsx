@@ -254,9 +254,12 @@ function TodayPageContent() {
         setLoading(true)
         const localUserId = getLocalUserId()
         const userProfile = await getOrCreateUserProfile(localUserId)
-        if (!userProfile || !userProfile.display_name) {
+        if (!userProfile) {
           router.push('/onboarding')
           return
+        }
+        if (!userProfile.display_name) {
+          userProfile.display_name = 'Protocol Optimizer'
         }
         setProfile(userProfile)
 
