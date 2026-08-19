@@ -86,7 +86,6 @@ def generate_icons():
         ('public/apple-touch-icon-precomposed.png', 180, False),
 
         # Root Fallbacks & App Router metadata icons
-        ('public/logo.png', 512, False),
         ('app/icon.png', 512, False),
         ('app/apple-icon.png', 180, False),
     ]

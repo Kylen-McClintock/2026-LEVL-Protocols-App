@@ -73,7 +73,7 @@ export default function InstallAppBanner() {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <img 
-              src="/logo.png" 
+              src="/icons/icon-192x192.png" 
               alt="LEVL App Icon" 
               className="w-10 h-10 rounded-xl border border-white/10 shadow-md object-contain shrink-0 bg-black/50" 
             />
