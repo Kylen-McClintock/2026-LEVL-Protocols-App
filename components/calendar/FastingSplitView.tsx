@@ -120,16 +120,38 @@ export default function FastingSplitView({
 
     // Distinct plant species across the week
     const plantSet = new Set<string>()
+    const NON_PLANT_KEYWORDS = [
+      'egg', 'chicken', 'steak', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'turkey', 'bacon',
+      'whey', 'casein', 'cheese', 'yogurt', 'milk', 'butter', 'ghee', 'cream', 'gelatin', 'collagen',
+      'protein bar', 'shake', 'powder', 'water', 'salt', 'oil fraction', 'isolate'
+    ]
+
     weekMeals.forEach(m => {
-      (m.ingredients || []).forEach(ing => plantSet.add(ing.toLowerCase().trim()))
+      (m.ingredients || []).forEach(ing => {
+        const raw = ing.toLowerCase().trim()
+        const isNonPlant = NON_PLANT_KEYWORDS.some(k => raw.includes(k))
+        if (!isNonPlant && raw.length > 2) {
+          plantSet.add(raw)
+        }
+      })
     })
+
+    // Plant diversity count: strictly real plant ingredients or 0 for animal-only meals
+    const distinctPlants = plantSet.size > 0
+      ? Math.min(30, plantSet.size)
+      : weekMeals.reduce((acc, m) => {
+          if ((m.veggie_servings || 0) > 0 || (m.fruit_servings || 0) > 0) {
+            return acc + (m.plant_diversity_count || 1)
+          }
+          return acc
+        }, 0)
 
     return {
       avgCalories: Math.round(totalCals / daysWithMeals),
       avgProtein: Math.round(totalProt / daysWithMeals),
       avgVeggies: Math.round((totalVeggies / daysWithMeals) * 10) / 10,
       avgFruits: Math.round((totalFruits / daysWithMeals) * 10) / 10,
-      distinctPlantsCount: Math.max(plantSet.size, weekMeals.reduce((acc, m) => acc + (m.plant_diversity_count || 0), 0)),
+      distinctPlantsCount: Math.min(30, distinctPlants),
       totalMealsLogged: weekMeals.length
     }
   }, [weekMeals])

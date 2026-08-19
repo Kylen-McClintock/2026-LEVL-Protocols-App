@@ -1,5 +1,6 @@
 'use client'
 
+import { format } from 'date-fns'
 import { DailyMealLogEntry, UserNutritionTargets, CircadianFastingState, UserProfile } from '../types'
 import { saveQuickLogEntry, deleteQuickLogEntry, loadQuickLogsForDate } from './quickLogsStorage'
 
@@ -155,14 +156,73 @@ export async function saveNutritionTargets(localUserId: string, targets: UserNut
   }
 }
 
+const FASTING_OVERRIDES_KEY_PREFIX = 'levl_fasting_override_'
+
+export interface DailyFastingOverride {
+  first_meal_time?: string // HH:mm
+  last_meal_time?: string // HH:mm
+}
+
+export function getDailyFastingOverride(localUserId: string, date: string): DailyFastingOverride | null {
+  if (typeof window === 'undefined' || !localUserId) return null
+  try {
+    const raw = localStorage.getItem(`${FASTING_OVERRIDES_KEY_PREFIX}${localUserId}_${date}`)
+    return raw ? JSON.parse(raw) : null
+  } catch (err) {
+    return null
+  }
+}
+
+export function saveDailyFastingOverride(localUserId: string, date: string, override: DailyFastingOverride): void {
+  if (typeof window === 'undefined' || !localUserId) return
+  try {
+    localStorage.setItem(`${FASTING_OVERRIDES_KEY_PREFIX}${localUserId}_${date}`, JSON.stringify(override))
+    window.dispatchEvent(new CustomEvent('levl_nutrition_updated', { detail: { date } }))
+  } catch (err) {
+    console.error('Error saving fasting override:', err)
+  }
+}
+
 /**
- * Calculate dynamic Circadian Fasting & Eating Window state from logged meals
+ * Calculate dynamic Circadian Fasting & Eating Window state from logged meals and optional overrides
  */
 export function calculateCircadianFastingState(
   meals: DailyMealLogEntry[],
-  targetFastingHours: number = 16
+  targetFastingHours: number = 16,
+  override?: DailyFastingOverride | null,
+  date?: string
 ): CircadianFastingState {
-  if (!meals || meals.length === 0) {
+  const targetDateStr = date || format(new Date(), 'yyyy-MM-dd')
+
+  let firstMealDate: Date | null = null
+  let lastMealDate: Date | null = null
+
+  if (override?.first_meal_time) {
+    const [h, m] = override.first_meal_time.split(':').map(Number)
+    firstMealDate = new Date(`${targetDateStr}T12:00:00`)
+    firstMealDate.setHours(h || 12, m || 0, 0, 0)
+  }
+
+  if (override?.last_meal_time) {
+    const [h, m] = override.last_meal_time.split(':').map(Number)
+    lastMealDate = new Date(`${targetDateStr}T12:00:00`)
+    lastMealDate.setHours(h || 20, m || 0, 0, 0)
+  }
+
+  if (meals && meals.length > 0) {
+    const sorted = [...meals].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    const mealFirst = new Date(sorted[0].timestamp)
+    const mealLast = new Date(sorted[sorted.length - 1].timestamp)
+
+    if (!firstMealDate || mealFirst.getTime() < firstMealDate.getTime()) {
+      firstMealDate = mealFirst
+    }
+    if (!lastMealDate || mealLast.getTime() > lastMealDate.getTime()) {
+      lastMealDate = mealLast
+    }
+  }
+
+  if (!firstMealDate) {
     return {
       first_meal_time: null,
       last_meal_time: null,
@@ -173,21 +233,16 @@ export function calculateCircadianFastingState(
     }
   }
 
-  const sorted = [...meals].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-  const firstMealDate = new Date(sorted[0].timestamp)
-  const lastMealDate = new Date(sorted[sorted.length - 1].timestamp)
+  if (!lastMealDate) {
+    lastMealDate = firstMealDate
+  }
+
   const now = new Date()
-
-  // Calculate eating window span (between first meal and last meal)
   const windowDiffMs = Math.max(0, lastMealDate.getTime() - firstMealDate.getTime())
-  // If only 1 meal logged, assume an initial 45-minute feeding window
-  const eatingWindowHours = sorted.length === 1 ? 0.75 : Math.round((windowDiffMs / (1000 * 60 * 60)) * 10) / 10
+  const eatingWindowHours = windowDiffMs === 0 ? 0.75 : Math.round((windowDiffMs / (1000 * 60 * 60)) * 10) / 10
 
-  // Calculate ongoing fast duration since the last meal
   const fastDiffMs = Math.max(0, now.getTime() - lastMealDate.getTime())
   const currentFastHours = Math.round((fastDiffMs / (1000 * 60 * 60)) * 10) / 10
-
-  // Is currently fasting if more than 30 mins since the last meal
   const isCurrentlyFasting = fastDiffMs > 30 * 60 * 1000
 
   return {

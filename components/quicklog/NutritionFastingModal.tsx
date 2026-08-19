@@ -22,6 +22,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Zap,
+  Edit3,
   Image as ImageIcon
 } from 'lucide-react'
 import { DailyMealLogEntry, UserNutritionTargets, CircadianFastingState, MealScanResult, UserProfile } from '@/lib/types'
@@ -31,7 +32,10 @@ import {
   deleteDailyMealLog,
   getNutritionTargets,
   saveNutritionTargets,
-  calculateCircadianFastingState
+  calculateCircadianFastingState,
+  getDailyFastingOverride,
+  saveDailyFastingOverride,
+  DailyFastingOverride
 } from '@/lib/storage/nutritionStorage'
 
 interface NutritionFastingModalProps {
@@ -53,6 +57,7 @@ export default function NutritionFastingModal({
 }: NutritionFastingModalProps) {
   const [meals, setMeals] = useState<DailyMealLogEntry[]>([])
   const [targets, setTargets] = useState<UserNutritionTargets | null>(null)
+  const [fastingOverride, setFastingOverride] = useState<DailyFastingOverride | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   
   // Scanning & Form State
@@ -75,6 +80,11 @@ export default function NutritionFastingModal({
   const [fruitServings, setFruitServings] = useState<number>(0)
   const [mealTime, setMealTime] = useState<string>(format(new Date(), 'HH:mm'))
 
+  // Fasting Time Override Editor State
+  const [isEditingFastingTimes, setIsEditingFastingTimes] = useState(false)
+  const [overrideFirstBite, setOverrideFirstBite] = useState<string>('12:00')
+  const [overrideLastBite, setOverrideLastBite] = useState<string>('20:00')
+
   // Targets Config Drawer
   const [showTargetsDrawer, setShowTargetsDrawer] = useState(false)
   const [editTargets, setEditTargets] = useState<UserNutritionTargets | null>(null)
@@ -91,9 +101,13 @@ export default function NutritionFastingModal({
       loadDailyMealLogs(localUserId, date),
       getNutritionTargets(localUserId, userProfile)
     ])
+    const ov = getDailyFastingOverride(localUserId, date)
     setMeals(fetchedMeals)
     setTargets(fetchedTargets)
     setEditTargets(fetchedTargets)
+    setFastingOverride(ov)
+    if (ov?.first_meal_time) setOverrideFirstBite(ov.first_meal_time)
+    if (ov?.last_meal_time) setOverrideLastBite(ov.last_meal_time)
     setIsLoading(false)
   }
 
@@ -120,8 +134,8 @@ export default function NutritionFastingModal({
 
   // Circadian Fasting Calculations
   const fastingState = useMemo(() => {
-    return calculateCircadianFastingState(meals, targets?.target_fasting_hours || 16)
-  }, [meals, targets])
+    return calculateCircadianFastingState(meals, targets?.target_fasting_hours || 16, fastingOverride, date)
+  }, [meals, targets, fastingOverride, date])
 
   // Handle Photo Selected
   const handlePhotoSelected = async (file: File) => {
@@ -193,12 +207,12 @@ export default function NutritionFastingModal({
     setScanResult(null)
     setCapturedImageBase64(null)
     setMealName('')
-    setCalories(500)
-    setProtein(35)
-    setCarbs(45)
+    setCalories(450)
+    setProtein(30)
+    setCarbs(35)
     setFat(15)
-    setFiber(6)
-    setVeggieServings(1.5)
+    setFiber(5)
+    setVeggieServings(1.0)
     setFruitServings(0)
     setMealTime(format(new Date(), 'HH:mm'))
     setKeepPhotoInJournal(false)
@@ -233,7 +247,7 @@ export default function NutritionFastingModal({
         fiber_g: Number(fiber) || 0,
         veggie_servings: Number(veggieServings) || 0,
         fruit_servings: Number(fruitServings) || 0,
-        plant_diversity_count: scanResult?.plant_diversity_count,
+        plant_diversity_count: scanResult?.plant_diversity_count || 0,
         ingredients: scanResult?.ingredients,
         image_url: keepPhotoInJournal && capturedImageBase64 ? capturedImageBase64 : undefined,
         notes: scanResult?.summary
@@ -257,6 +271,20 @@ export default function NutritionFastingModal({
   const handleDeleteMeal = async (mealId: string) => {
     await deleteDailyMealLog(localUserId, mealId)
     await reloadData()
+    onLogsChanged?.()
+  }
+
+  // Save Fasting Time Overrides
+  const handleSaveFastingTimesOverride = () => {
+    saveDailyFastingOverride(localUserId, date, {
+      first_meal_time: overrideFirstBite,
+      last_meal_time: overrideLastBite
+    })
+    setFastingOverride({
+      first_meal_time: overrideFirstBite,
+      last_meal_time: overrideLastBite
+    })
+    setIsEditingFastingTimes(false)
     onLogsChanged?.()
   }
 
@@ -331,7 +359,295 @@ export default function NutritionFastingModal({
             </div>
           )}
 
-          {/* 1. CIRCADIAN FASTING & EATING WINDOW CARD */}
+          {/* 1. TOP PROMINENT ACTION BAR: TAKE PLATE PHOTO / UPLOAD / MANUAL */}
+          {step === 'idle' && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-900/90 to-purple-950/40 border border-emerald-500/40 shadow-xl space-y-3.5">
+              {/* Hidden Inputs */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handlePhotoSelected(e.target.files[0])
+                }}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handlePhotoSelected(e.target.files[0])
+                }}
+              />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Camera size={16} className="text-emerald-400" />
+                  <h3 className="text-sm font-black text-white">Log Plate with AI Vision</h3>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded-full">
+                  Instant Macro &amp; Plant Counts
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* Take Photo Button */}
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.98] text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg cursor-pointer transition-all min-h-[46px]"
+                >
+                  <Camera size={18} />
+                  <span>Take Plate Photo</span>
+                </button>
+
+                {/* Upload from Library */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-3.5 rounded-xl bg-white/5 hover:bg-white/10 active:scale-[0.98] border border-white/10 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all min-h-[46px]"
+                >
+                  <Upload size={16} />
+                  <span>Upload Image</span>
+                </button>
+
+                {/* Manual Add with Custom Time */}
+                <button
+                  type="button"
+                  onClick={handleOpenManualEntry}
+                  className="p-3.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 active:scale-[0.98] border border-purple-500/30 text-purple-300 hover:text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all min-h-[46px]"
+                >
+                  <Plus size={16} />
+                  <span>Manual with Time</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* SCANNING IN PROGRESS ANIMATION */}
+          {step === 'scanning' && (
+            <div className="py-12 text-center space-y-4 p-5 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 animate-in fade-in">
+              <div className="relative w-16 h-16 mx-auto">
+                <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20 border-t-emerald-400 animate-spin" />
+                <div className="absolute inset-2 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                  <Sparkles size={24} className="animate-pulse" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-extrabold text-white">Analyzing Plate with Gemini Vision...</h4>
+                <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                  Calculating portion sizes, protein density, net carbs, and fruit/veggie servings.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* REVIEW OR MANUAL ENTRY FORM */}
+          {(step === 'review' || step === 'manual') && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-black/60 border border-emerald-500/40 space-y-5 animate-in fade-in">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <Utensils size={16} className="text-emerald-400" />
+                  <h3 className="text-sm font-extrabold text-white">
+                    {step === 'review' ? 'Review & Calibrate Scanned Meal' : 'Log Meal Manually with Custom Time'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep('idle')}
+                  className="text-xs text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {/* Portion Multiplier Slider/Buttons (for Scanned Meals) */}
+              {step === 'review' && scanResult && (
+                <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-300">Portion Scaling:</span>
+                    <span className="font-mono font-bold text-emerald-300">{portionMultiplier}x Portion</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[0.75, 1.0, 1.25, 1.5].map((mult) => (
+                      <button
+                        key={mult}
+                        type="button"
+                        onClick={() => handleMultiplierChange(mult)}
+                        className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          portionMultiplier === mult
+                            ? 'bg-emerald-500 text-black shadow-md'
+                            : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                        }`}
+                      >
+                        {mult}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Meal Name & Time */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Meal / Dish Description</label>
+                  <input
+                    type="text"
+                    value={mealName}
+                    onChange={(e) => setMealName(e.target.value)}
+                    placeholder="e.g. Scrambled Eggs with Avocado & Sourdough"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">
+                    <Clock size={11} /> Time Consumed
+                  </label>
+                  <input
+                    type="time"
+                    value={mealTime}
+                    onChange={(e) => setMealTime(e.target.value)}
+                    className="w-full bg-black/60 border border-emerald-500/40 rounded-xl p-2.5 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Macro Inputs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Calories (kcal)</label>
+                  <input
+                    type="number"
+                    value={calories || ''}
+                    onChange={(e) => setCalories(Number(e.target.value))}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Protein (g)</label>
+                  <input
+                    type="number"
+                    value={protein || ''}
+                    onChange={(e) => setProtein(Number(e.target.value))}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Carbs (g)</label>
+                  <input
+                    type="number"
+                    value={carbs || ''}
+                    onChange={(e) => setCarbs(Number(e.target.value))}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Fat (g)</label>
+                  <input
+                    type="number"
+                    value={fat || ''}
+                    onChange={(e) => setFat(Number(e.target.value))}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Plant / Veggie Servings */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-emerald-400">🥦 Veggie Servings</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={veggieServings}
+                    onChange={(e) => setVeggieServings(Number(e.target.value))}
+                    className="w-full bg-black/60 border border-emerald-500/30 rounded-xl p-2.5 text-xs text-emerald-300 font-bold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-purple-400">🫐 Fruit Servings</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={fruitServings}
+                    onChange={(e) => setFruitServings(Number(e.target.value))}
+                    className="w-full bg-black/60 border border-purple-500/30 rounded-xl p-2.5 text-xs text-purple-300 font-bold focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              {/* Ingredients Badges if scanned */}
+              {scanResult?.ingredients && scanResult.ingredients.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Constituent Ingredients</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {scanResult.ingredients.map((ing, idx) => (
+                      <span key={idx} className="text-[11px] bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg text-slate-300">
+                        {ing}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Photo Retention Toggle: Discard by Default */}
+              {capturedImageBase64 && (
+                <label className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={keepPhotoInJournal}
+                    onChange={(e) => setKeepPhotoInJournal(e.target.checked)}
+                    className="w-4 h-4 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 accent-emerald-500 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold text-white flex items-center gap-1.5">
+                      <ImageIcon size={13} className="text-emerald-400" />
+                      <span>Keep photo in Meal Journal</span>
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {keepPhotoInJournal
+                        ? 'Photo will be stored in your meal log.'
+                        : 'Discarded by default to optimize device storage & cloud sync.'}
+                    </span>
+                  </div>
+                </label>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStep('idle')}
+                  className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs rounded-xl border border-white/10 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={handleSaveMeal}
+                  className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 min-h-[46px]"
+                >
+                  {isSaving ? (
+                    <>
+                      <RefreshCw size={15} className="animate-spin" />
+                      <span>Saving Meal Log...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} />
+                      <span>Save Meal &amp; Update Fasting Window</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 2. CIRCADIAN FASTING & EATING WINDOW CARD (WITH EDITABLE TIMES) */}
           <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-900/90 to-slate-950/90 border border-white/10 shadow-lg space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -340,11 +656,60 @@ export default function NutritionFastingModal({
                   Circadian Eating &amp; Fasting Window
                 </span>
               </div>
-              <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                {targets?.target_fasting_hours || 16}:{24 - (targets?.target_fasting_hours || 16)} Protocol
-              </span>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingFastingTimes(!isEditingFastingTimes)}
+                  className="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-slate-300 hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit3 size={11} />
+                  <span>{isEditingFastingTimes ? 'Cancel' : 'Edit Times'}</span>
+                </button>
+                <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  {targets?.target_fasting_hours || 16}:{24 - (targets?.target_fasting_hours || 16)} Protocol
+                </span>
+              </div>
             </div>
 
+            {/* Editable Fasting Override Form */}
+            {isEditingFastingTimes && (
+              <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-3 animate-in fade-in">
+                <div className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                  <Info size={13} />
+                  <span>Adjust Day&apos;s Eating Window Start &amp; Cutoff</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-300">Fast Break (First Bite)</label>
+                    <input
+                      type="time"
+                      value={overrideFirstBite}
+                      onChange={(e) => setOverrideFirstBite(e.target.value)}
+                      className="w-full bg-black/60 border border-white/10 rounded-xl p-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-300">Cutoff (Last Bite)</label>
+                    <input
+                      type="time"
+                      value={overrideLastBite}
+                      onChange={(e) => setOverrideLastBite(e.target.value)}
+                      className="w-full bg-black/60 border border-white/10 rounded-xl p-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveFastingTimesOverride}
+                  className="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  Apply Custom Fasting Times
+                </button>
+              </div>
+            )}
+
+            {/* 3 Status KPI Boxes */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
               <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">First Meal (Fast Break)</span>
@@ -379,7 +744,7 @@ export default function NutritionFastingModal({
             </div>
           </div>
 
-          {/* 2. DAILY MACROS & PHYTOCHEMICAL PROGRESS */}
+          {/* 3. DAILY MACROS & PHYTOCHEMICAL PROGRESS */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -493,284 +858,6 @@ export default function NutritionFastingModal({
               </div>
             </div>
           </div>
-
-          {/* 3. AI MEAL SCANNER ACTION SECTION */}
-          {step === 'idle' && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-purple-950/30 to-slate-900/80 border border-purple-500/30 space-y-4">
-              {/* Hidden Inputs */}
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files?.[0]) handlePhotoSelected(e.target.files[0])
-                }}
-              />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files?.[0]) handlePhotoSelected(e.target.files[0])
-                }}
-              />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-black text-white">Log Meal with AI Vision</h3>
-                  <p className="text-[11px] text-slate-400">Snap plate photo for instant macros &amp; plant serving breakdown</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleOpenManualEntry}
-                  className="text-xs text-purple-300 hover:text-white underline decoration-dotted cursor-pointer font-bold"
-                >
-                  Manual Entry
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => cameraInputRef.current?.click()}
-                  className="p-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-lg cursor-pointer transition-all min-h-[46px]"
-                >
-                  <Camera size={18} />
-                  <span>Take Plate Photo</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-4 rounded-xl bg-white/5 hover:bg-white/10 active:scale-[0.98] border border-white/10 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all min-h-[46px]"
-                >
-                  <Upload size={16} />
-                  <span>Upload from Gallery</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* SCANNING IN PROGRESS ANIMATION */}
-          {step === 'scanning' && (
-            <div className="py-12 text-center space-y-4 p-5 rounded-2xl bg-purple-950/20 border border-purple-500/30 animate-in fade-in">
-              <div className="relative w-16 h-16 mx-auto">
-                <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20 border-t-emerald-400 animate-spin" />
-                <div className="absolute inset-2 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                  <Sparkles size={24} className="animate-pulse" />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-sm font-extrabold text-white">Analyzing Plate with Gemini Vision...</h4>
-                <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                  Calculating portion sizes, protein density, net carbs, and fruit/veggie servings.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* REVIEW OR MANUAL ENTRY FORM */}
-          {(step === 'review' || step === 'manual') && (
-            <div className="p-4 sm:p-5 rounded-2xl bg-black/60 border border-emerald-500/40 space-y-5 animate-in fade-in">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2">
-                  <Utensils size={16} className="text-emerald-400" />
-                  <h3 className="text-sm font-extrabold text-white">
-                    {step === 'review' ? 'Review & Calibrate Scanned Meal' : 'Log Meal Manually'}
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setStep('idle')}
-                  className="text-xs text-slate-400 hover:text-white cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-
-              {/* Portion Multiplier Slider/Buttons (for Scanned Meals) */}
-              {step === 'review' && scanResult && (
-                <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-slate-300">Portion Scaling:</span>
-                    <span className="font-mono font-bold text-emerald-300">{portionMultiplier}x Portion</span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[0.75, 1.0, 1.25, 1.5].map((mult) => (
-                      <button
-                        key={mult}
-                        type="button"
-                        onClick={() => handleMultiplierChange(mult)}
-                        className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          portionMultiplier === mult
-                            ? 'bg-emerald-500 text-black shadow-md'
-                            : 'bg-white/5 hover:bg-white/10 text-slate-300'
-                        }`}
-                      >
-                        {mult}x
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Meal Name & Time */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Meal / Dish Name</label>
-                  <input
-                    type="text"
-                    value={mealName}
-                    onChange={(e) => setMealName(e.target.value)}
-                    placeholder="e.g. Salmon Bowl with Quinoa & Broccoli"
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Meal Time</label>
-                  <input
-                    type="time"
-                    value={mealTime}
-                    onChange={(e) => setMealTime(e.target.value)}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* Macro Inputs */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Calories (kcal)</label>
-                  <input
-                    type="number"
-                    value={calories || ''}
-                    onChange={(e) => setCalories(Number(e.target.value))}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Protein (g)</label>
-                  <input
-                    type="number"
-                    value={protein || ''}
-                    onChange={(e) => setProtein(Number(e.target.value))}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Carbs (g)</label>
-                  <input
-                    type="number"
-                    value={carbs || ''}
-                    onChange={(e) => setCarbs(Number(e.target.value))}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Fat (g)</label>
-                  <input
-                    type="number"
-                    value={fat || ''}
-                    onChange={(e) => setFat(Number(e.target.value))}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* Plant / Veggie Servings */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-emerald-400">🥦 Veggie Servings</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={veggieServings}
-                    onChange={(e) => setVeggieServings(Number(e.target.value))}
-                    className="w-full bg-black/60 border border-emerald-500/30 rounded-xl p-2.5 text-xs text-emerald-300 font-bold focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-purple-400">🫐 Fruit Servings</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={fruitServings}
-                    onChange={(e) => setFruitServings(Number(e.target.value))}
-                    className="w-full bg-black/60 border border-purple-500/30 rounded-xl p-2.5 text-xs text-purple-300 font-bold focus:outline-none focus:border-purple-500"
-                  />
-                </div>
-              </div>
-
-              {/* Ingredients Badges if scanned */}
-              {scanResult?.ingredients && scanResult.ingredients.length > 0 && (
-                <div className="space-y-1.5">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Identified Constituents</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {scanResult.ingredients.map((ing, idx) => (
-                      <span key={idx} className="text-[11px] bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg text-slate-300">
-                        {ing}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Photo Retention Toggle: Discard by Default */}
-              {capturedImageBase64 && (
-                <label className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={keepPhotoInJournal}
-                    onChange={(e) => setKeepPhotoInJournal(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 accent-emerald-500 cursor-pointer"
-                  />
-                  <div className="text-xs">
-                    <span className="font-bold text-white flex items-center gap-1.5">
-                      <ImageIcon size={13} className="text-emerald-400" />
-                      <span>Keep photo in Meal Journal</span>
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      {keepPhotoInJournal
-                        ? 'Photo will be stored in your meal log.'
-                        : 'Discarded by default to optimize device storage & cloud sync.'}
-                    </span>
-                  </div>
-                </label>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setStep('idle')}
-                  className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs rounded-xl border border-white/10 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  onClick={handleSaveMeal}
-                  className="flex-1 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 min-h-[46px]"
-                >
-                  {isSaving ? (
-                    <>
-                      <RefreshCw size={15} className="animate-spin" />
-                      <span>Saving Meal Log...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={16} />
-                      <span>Save Meal &amp; Update Fasting Window</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* 4. TODAY'S MEALS TIMELINE JOURNAL */}
           <div className="space-y-3 pt-2">
