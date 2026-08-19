@@ -8,6 +8,7 @@ import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getOrCreateUserProfile, getOutcomeDimensions } from '@/lib/data'
 import { UserProfile, OutcomeDimension } from '@/lib/types'
 import ProfileEditor from '@/components/profile/ProfileEditor'
+import FunctionalOutcomesRankingCard from '@/components/profile/FunctionalOutcomesRankingCard'
 import QuickHotkeysProfileCard from '@/components/profile/QuickHotkeysProfileCard'
 import CircadianAnchorsCard from '@/components/profile/CircadianAnchorsCard'
 import FastingFeedingCard from '@/components/profile/FastingFeedingCard'
@@ -150,6 +151,14 @@ export default function SettingsPage() {
         </div>
 
         {profile && <ProfileEditor profile={profile} outcomes={outcomes} />}
+
+        {profile && (
+          <FunctionalOutcomesRankingCard 
+            profile={profile} 
+            outcomes={outcomes} 
+            onUpdated={(updated) => setProfile(updated)} 
+          />
+        )}
 
         {profile && (
           <QuickHotkeysProfileCard 

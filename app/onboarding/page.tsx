@@ -7,7 +7,8 @@ import { updateUserProfile, createDailyTask, getOrCreateUserProfile } from '@/li
 import { format } from 'date-fns'
 import { 
   Sparkles, Check, ArrowRight, ShieldCheck, Zap, Moon, 
-  Brain, Dna, Dumbbell, Flame, Droplets, Watch, Pill, CheckCircle2, RefreshCw 
+  Brain, Dna, Dumbbell, Flame, Droplets, Watch, Pill, CheckCircle2, RefreshCw, 
+  Heart, Shield, Activity 
 } from 'lucide-react'
 
 interface ModalityOption {
@@ -15,7 +16,7 @@ interface ModalityOption {
   name: string
   dose: string
   timing: string
-  requiredHardware?: string // e.g. 'cold_plunge', 'sauna', 'gym', 'supplements'
+  requiredHardware?: string
 }
 
 interface GoalArchetype {
@@ -27,6 +28,15 @@ interface GoalArchetype {
   borderColor: string
   bgGlow: string
   modalities: ModalityOption[]
+}
+
+interface FunctionalOutcomeOption {
+  id: string
+  name: string
+  description: string
+  icon: React.ReactNode
+  color: string
+  matchedGoals: string[]
 }
 
 const GOAL_ARCHETYPES: GoalArchetype[] = [
@@ -103,6 +113,18 @@ const GOAL_ARCHETYPES: GoalArchetype[] = [
   }
 ]
 
+const FUNCTIONAL_OUTCOMES: FunctionalOutcomeOption[] = [
+  { id: 'energy', name: 'Sustained Daily Energy', description: 'Eliminate afternoon brain fog & maximize cellular ATP generation', icon: <Zap size={18} className="text-amber-400" />, color: 'border-amber-500/30 bg-amber-500/10', matchedGoals: ['energy', 'longevity'] },
+  { id: 'sleep_quality', name: 'Deep Sleep Quality & Latency', description: 'Maximize restorative deep/REM sleep architecture & recovery', icon: <Moon size={18} className="text-indigo-400" />, color: 'border-indigo-500/30 bg-indigo-500/10', matchedGoals: ['sleep'] },
+  { id: 'focus', name: 'Mental Focus & Flow State', description: 'Laser cognitive clarity, drive & sustained attention span', icon: <Brain size={18} className="text-sky-400" />, color: 'border-sky-500/30 bg-sky-500/10', matchedGoals: ['focus'] },
+  { id: 'stress', name: 'Stress & Autonomic Regulation', description: 'High vagal tone, parasympathetic recovery & emotional calm', icon: <Heart size={18} className="text-emerald-400" />, color: 'border-emerald-500/30 bg-emerald-500/10', matchedGoals: ['sleep', 'focus'] },
+  { id: 'soreness', name: 'Physical Recovery & Soreness', description: 'Muscular repair, joint comfort & fast systemic recovery', icon: <Shield size={18} className="text-purple-400" />, color: 'border-purple-500/30 bg-purple-500/10', matchedGoals: ['strength', 'energy'] },
+  { id: 'strength', name: 'Strength & Muscular Power', description: 'Progressive overload retention & lean tissue synthesis', icon: <Dumbbell size={18} className="text-rose-400" />, color: 'border-rose-500/30 bg-rose-500/10', matchedGoals: ['strength'] },
+  { id: 'waking_restedness', name: 'Morning Waking Restedness', description: 'Wake up fully refreshed with optimal circadian cortisol timing', icon: <Sparkles size={18} className="text-cyan-400" />, color: 'border-cyan-500/30 bg-cyan-500/10', matchedGoals: ['sleep', 'energy'] },
+  { id: 'brain_fog', name: 'Brain Fog Reduction', description: 'Crisp neural processing speed & cerebral metabolic clearance', icon: <Activity size={18} className="text-teal-400" />, color: 'border-teal-500/30 bg-teal-500/10', matchedGoals: ['focus', 'energy', 'longevity'] },
+  { id: 'digestive_comfort', name: 'Metabolic & Gut Comfort', description: 'Stable post-meal glycemic response, satiety & digestion', icon: <Flame size={18} className="text-orange-400" />, color: 'border-orange-500/30 bg-orange-500/10', matchedGoals: ['longevity'] }
+]
+
 const EQUIPMENT_OPTIONS = [
   { id: 'cold_plunge', label: 'Cold Plunge / Tub', icon: <Droplets size={16} className="text-cyan-400" /> },
   { id: 'sauna', label: 'Sauna / Infrared', icon: <Flame size={16} className="text-amber-400" /> },
@@ -113,30 +135,56 @@ const EQUIPMENT_OPTIONS = [
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Step 1: Goals & Name
   const [displayName, setDisplayName] = useState('')
   const [selectedGoals, setSelectedGoals] = useState<string[]>(['longevity', 'energy'])
 
-  // Step 2: Equipment / Hardware
+  // Step 2: Functional Outcomes to Track
+  const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>(['energy', 'sleep_quality', 'focus'])
+
+  // Step 3: Equipment / Hardware
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>(['wearable', 'supplements'])
 
-  // Step 3: Selected Modalities
+  // Step 4: Starter Stack Modalities
   const [selectedModalities, setSelectedModalities] = useState<Record<string, boolean>>({})
 
-  // Toggle Goal
+  // Toggle Goal in Step 1
   const handleToggleGoal = (goalId: string) => {
     setSelectedGoals(prev => {
       const next = prev.includes(goalId) 
         ? prev.filter(g => g !== goalId) 
         : [...prev, goalId]
-      return next.length === 0 ? [goalId] : next
+      const finalGoals = next.length === 0 ? [goalId] : next
+
+      // Auto-update default functional outcomes matching these goals
+      const autoOutcomes = new Set<string>()
+      finalGoals.forEach(g => {
+        FUNCTIONAL_OUTCOMES.forEach(o => {
+          if (o.matchedGoals.includes(g)) autoOutcomes.add(o.id)
+        })
+      })
+      if (autoOutcomes.size > 0) {
+        setSelectedOutcomes(Array.from(autoOutcomes))
+      }
+
+      return finalGoals
     })
   }
 
-  // Toggle Equipment
+  // Toggle Functional Outcome in Step 2
+  const toggleOutcome = (outcomeId: string) => {
+    setSelectedOutcomes(prev => {
+      const next = prev.includes(outcomeId)
+        ? prev.filter(id => id !== outcomeId)
+        : [...prev, outcomeId]
+      return next.length === 0 ? [outcomeId] : next
+    })
+  }
+
+  // Toggle Equipment in Step 3
   const toggleEquipment = (id: string) => {
     setSelectedEquipment(prev => 
       prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
@@ -151,7 +199,6 @@ export default function OnboardingPage() {
       const archetype = GOAL_ARCHETYPES.find(a => a.id === gId)
       if (archetype) {
         archetype.modalities.forEach(m => {
-          // If modality requires specific hardware, only include if user has that hardware
           if (m.requiredHardware && !selectedEquipment.includes(m.requiredHardware)) {
             return
           }
@@ -165,7 +212,7 @@ export default function OnboardingPage() {
     return Array.from(map.values())
   }, [selectedGoals, selectedEquipment])
 
-  // Toggle Modality Check
+  // Toggle Modality Check in Step 4
   const toggleModality = (modalityId: string) => {
     setSelectedModalities(prev => ({
       ...prev,
@@ -187,18 +234,19 @@ export default function OnboardingPage() {
       const todayStr = format(new Date(), 'yyyy-MM-dd')
       const nameToSave = displayName.trim() || 'Protocol Optimizer'
 
+      // Initialize outcome preference scores for all selected functional outcomes
+      const outcomeScores: Record<string, number> = {}
+      selectedOutcomes.forEach(id => {
+        outcomeScores[id] = 7 // Default balanced high priority
+      })
+
       // 1. Ensure profile exists and save preferences
       await getOrCreateUserProfile(localUserId)
       await updateUserProfile(localUserId, {
         display_name: nameToSave,
         primary_goals: selectedGoals,
         hardware_access: selectedEquipment,
-        outcome_preference_scores: {
-          energy: 7,
-          sleep_quality: 7,
-          recovery: 7,
-          focus: 7
-        }
+        outcome_preference_scores: outcomeScores
       })
 
       // 2. Insert recommended starter tasks
@@ -233,14 +281,17 @@ export default function OnboardingPage() {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-extrabold uppercase tracking-wider">
             <Sparkles size={12} className="text-emerald-400" />
             <span>
-              {step === 1 ? 'Step 1 of 3: Goals & Focus' : step === 2 ? 'Step 2 of 3: Equipment & Tools' : 'Step 3 of 3: Starter Stack'}
+              {step === 1 ? 'Step 1 of 4: Primary Targets' 
+                : step === 2 ? 'Step 2 of 4: Functional Outcomes' 
+                : step === 3 ? 'Step 3 of 4: Equipment & Tools' 
+                : 'Step 4 of 4: Starter Stack'}
             </span>
           </div>
 
           <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-purple-500 to-emerald-400 transition-all duration-500 ease-out"
-              style={{ width: `${(step / 3) * 100}%` }}
+              style={{ width: `${(step / 4) * 100}%` }}
             />
           </div>
         </div>
@@ -321,14 +372,91 @@ export default function OnboardingPage() {
               onClick={() => setStep(2)}
               className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Next: Equipment &amp; Tools</span>
+              <span>Next: Select Outcomes to Track</span>
               <ArrowRight size={16} />
             </button>
           </div>
         )}
 
-        {/* STEP 2: Equipment / Hardware (BEFORE stack recommendations!) */}
+        {/* STEP 2: Functional Outcomes to Track (Clean Multi-Select, No Sliders!) */}
         {step === 2 && (
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
+                  Biomarker Telemetry
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                Which outcomes do you want tracked?
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400">
+                Tap to toggle the physiological dimensions you want measured across your habits. (You can fine-tune 1–10 importance rankings in your profile later).
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+              {FUNCTIONAL_OUTCOMES.map((outcome) => {
+                const isSelected = selectedOutcomes.includes(outcome.id)
+                return (
+                  <button
+                    key={outcome.id}
+                    type="button"
+                    onClick={() => toggleOutcome(outcome.id)}
+                    className={`p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                      isSelected 
+                        ? 'border-purple-500/50 bg-slate-950/80 shadow-md ring-1 ring-purple-500/30' 
+                        : 'border-white/5 bg-black/40 hover:bg-white/5 text-slate-400'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                        isSelected ? 'bg-purple-500/10 border-purple-500/30' : 'bg-black/50 border-white/10'
+                      }`}>
+                        {outcome.icon}
+                      </div>
+                      <div className="min-w-0">
+                        <span className={`text-xs font-bold block ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                          {outcome.name}
+                        </span>
+                        <span className="text-[11px] text-slate-400 block truncate max-w-[280px] sm:max-w-sm mt-0.5">
+                          {outcome.description}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border shrink-0 transition-colors ${
+                      isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-white/20 bg-transparent'
+                    }`}>
+                      {isSelected && <Check size={12} strokeWidth={3} />}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="w-1/3 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                className="w-2/3 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Next: Equipment &amp; Tools</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Equipment / Hardware */}
+        {step === 3 && (
           <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -340,7 +468,7 @@ export default function OnboardingPage() {
                 What equipment do you have?
               </h1>
               <p className="text-xs sm:text-sm text-slate-400">
-                We will only recommend protocols and modalities that match your setup:
+                We will only recommend protocols that match your physical setup:
               </p>
             </div>
 
@@ -380,14 +508,14 @@ export default function OnboardingPage() {
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 className="w-1/3 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
               >
                 ← Back
               </button>
               <button
                 type="button"
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 className="w-2/3 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Curate My Protocol Stack</span>
@@ -397,8 +525,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* STEP 3: Curated Starter Protocols Stack (Filtered by Goals & Hardware) */}
-        {step === 3 && (
+        {/* STEP 4: Curated Starter Protocols Stack */}
+        {step === 4 && (
           <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -415,7 +543,7 @@ export default function OnboardingPage() {
             </div>
 
             {/* Modalities Checklist */}
-            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
               {recommendedModalities.length === 0 ? (
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-400 text-center">
                   No modalities matched your specific filter. Go back to adjust goals or equipment.
@@ -466,7 +594,7 @@ export default function OnboardingPage() {
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setStep(2)}
+                onClick={() => setStep(3)}
                 className="w-1/3 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
               >
                 ← Back
