@@ -333,6 +333,23 @@ function TodayPageContent() {
     targetUuids.push(baseId)
     uuidSet.add(baseId)
 
+    // Anchor completion timestamp to selected historical day if backfilling past days
+    let effectiveCompletedAt = completedAt
+    if (status === 'completed' && !effectiveCompletedAt) {
+      const todayStr = format(new Date(), 'yyyy-MM-dd')
+      const targetDateStr = dateStr || todayStr
+      if (targetDateStr === todayStr) {
+        effectiveCompletedAt = new Date().toISOString()
+      } else {
+        const now = new Date()
+        const [y, m, d] = targetDateStr.split('-').map(Number)
+        const histDate = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds())
+        effectiveCompletedAt = histDate.toISOString()
+      }
+    } else if (status !== 'completed' && !completedAt) {
+      effectiveCompletedAt = undefined
+    }
+
     // Optimistic UI update
     setTasks(prev => prev.map(t => {
       if (t.id === id || uuidSet.has(t.id)) {
@@ -341,7 +358,7 @@ function TodayPageContent() {
           ...t, 
           status: status as any, 
           status_reason: reason, 
-          completed_at: completedAt || new Date().toISOString(), 
+          completed_at: effectiveCompletedAt || (status === 'completed' ? new Date().toISOString() : undefined), 
           execution_metrics: executionMetrics || t.execution_metrics, 
           execution_details: finalDetails 
         }
@@ -352,7 +369,7 @@ function TodayPageContent() {
     for (const uuid of targetUuids) {
       const existingTask = tasks.find(t => t.id === uuid)
       const finalDetails = executionDetails !== undefined ? executionDetails : existingTask?.execution_details
-      await updateDailyTaskStatus(uuid, status, reason, undefined, completedAt, executionMetrics, finalDetails)
+      await updateDailyTaskStatus(uuid, status, reason, undefined, effectiveCompletedAt, executionMetrics, finalDetails)
     }
 
     if (status === 'completed') {

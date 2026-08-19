@@ -439,10 +439,20 @@ export default function ProtocolTaskCard({
 
   const handleExplicitComplete = (useNow: boolean = false) => {
     setIsProcessing(true)
-    const logDate = new Date()
-    if (!useNow) {
+    const baseDateStr = task.scheduled_date
+    let logDate = new Date()
+    if (baseDateStr) {
+      const [y, m, d] = baseDateStr.split('-').map(Number)
+      if (y && m && d) {
+        logDate = new Date(y, m - 1, d)
+      }
+    }
+    if (!useNow && completedTime) {
       const [hours, minutes] = completedTime.split(':')
       logDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0)
+    } else if (useNow) {
+      const now = new Date()
+      logDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0)
     }
     
     let metrics: any = undefined
@@ -1213,8 +1223,13 @@ export default function ProtocolTaskCard({
                 )}
               </div>
               {formattedCompletedTime && (
-                <p className="text-[10px] text-emerald-400/70 font-mono mt-0.5">
-                  Logged at {formattedCompletedTime}
+                <p className="text-[10px] text-emerald-400/70 font-mono mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <span>Logged at {formattedCompletedTime}</span>
+                  {task.scheduled_date && task.scheduled_date !== format(new Date(), 'yyyy-MM-dd') && (
+                    <span className="text-[9px] bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded text-emerald-300 font-semibold">
+                      for {format(new Date(task.scheduled_date.replace(/-/g, '/')), 'EEE, MMM d')}
+                    </span>
+                  )}
                 </p>
               )}
             </div>
@@ -1763,10 +1778,19 @@ export default function ProtocolTaskCard({
                       <button
                         type="button"
                         onClick={() => {
-                          const d = new Date()
-                          const hh = String(d.getHours()).padStart(2, '0')
-                          const mm = String(d.getMinutes()).padStart(2, '0')
+                          const now = new Date()
+                          const hh = String(now.getHours()).padStart(2, '0')
+                          const mm = String(now.getMinutes()).padStart(2, '0')
                           const nowTime = `${hh}:${mm}`
+                          const baseDateStr = task.scheduled_date
+                          let d = new Date()
+                          if (baseDateStr) {
+                            const [y, mon, day] = baseDateStr.split('-').map(Number)
+                            if (y && mon && day) {
+                              d = new Date(y, mon - 1, day)
+                            }
+                          }
+                          d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0)
                           setCompletedTime(nowTime)
                           if (task.status === 'completed') {
                             onStatusChange(task.id, 'completed', undefined, d.toISOString(), undefined, executionDetails)
@@ -1785,7 +1809,14 @@ export default function ProtocolTaskCard({
                         onCommit={(new24) => {
                           if (task.status === 'completed' && new24) {
                             const [h, m] = new24.split(':')
-                            const d = new Date()
+                            const baseDateStr = task.scheduled_date
+                            let d = new Date()
+                            if (baseDateStr) {
+                              const [y, mon, day] = baseDateStr.split('-').map(Number)
+                              if (y && mon && day) {
+                                d = new Date(y, mon - 1, day)
+                              }
+                            }
                             d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0)
                             onStatusChange(task.id, 'completed', undefined, d.toISOString(), undefined, executionDetails)
                           }
@@ -2005,10 +2036,19 @@ export default function ProtocolTaskCard({
                     <button
                       type="button"
                       onClick={() => {
-                        const d = new Date()
-                        const hh = String(d.getHours()).padStart(2, '0')
-                        const mm = String(d.getMinutes()).padStart(2, '0')
+                        const now = new Date()
+                        const hh = String(now.getHours()).padStart(2, '0')
+                        const mm = String(now.getMinutes()).padStart(2, '0')
                         const nowTime = `${hh}:${mm}`
+                        const baseDateStr = task.scheduled_date
+                        let d = new Date()
+                        if (baseDateStr) {
+                          const [y, mon, day] = baseDateStr.split('-').map(Number)
+                          if (y && mon && day) {
+                            d = new Date(y, mon - 1, day)
+                          }
+                        }
+                        d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0)
                         setCompletedTime(nowTime)
                         if (task.status === 'completed') {
                           onStatusChange(task.id, 'completed', undefined, d.toISOString(), undefined, executionDetails)
@@ -2027,7 +2067,14 @@ export default function ProtocolTaskCard({
                       onCommit={(new24) => {
                         if (task.status === 'completed' && new24) {
                           const [h, m] = new24.split(':')
-                          const d = new Date()
+                          const baseDateStr = task.scheduled_date
+                          let d = new Date()
+                          if (baseDateStr) {
+                            const [y, mon, day] = baseDateStr.split('-').map(Number)
+                            if (y && mon && day) {
+                              d = new Date(y, mon - 1, day)
+                            }
+                          }
                           d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0)
                           onStatusChange(task.id, 'completed', undefined, d.toISOString(), undefined, executionDetails)
                         }
@@ -2608,7 +2655,16 @@ export default function ProtocolTaskCard({
                         type="button"
                         onClick={async (e) => {
                           e.stopPropagation()
-                          const logDate = new Date()
+                          const baseDateStr = task.scheduled_date
+                          let logDate = new Date()
+                          if (baseDateStr) {
+                            const [y, m, d] = baseDateStr.split('-').map(Number)
+                            if (y && m && d) {
+                              logDate = new Date(y, m - 1, d)
+                            }
+                          }
+                          const now = new Date()
+                          logDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0)
                           let metrics: any = undefined
                           if (executionDetails.duration || executionDetails.distance) {
                             metrics = {}

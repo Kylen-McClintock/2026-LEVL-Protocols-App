@@ -182,7 +182,15 @@ export function getProtocolSourceDetails(protoName?: string, modality?: Modality
 
 function parseDoseFromText(text: string, isPeptideOrHighRisk: boolean = false) {
   if (!text) return null
-  const numbers = (text.match(/\d+([.,]\d+)?/g) || []).map(n => parseFloat(n.replace(',', '.')))
+
+  // Strip non-dosage illuminance (lux), wavelength (nm), angles (°), temperatures (°F, °C), percentages (%) so they aren't parsed as duration/dose
+  const cleanedText = text
+    .replace(/[<>]?\s*\d+([.,]\d+)?\s*(lux|lx)\b/gi, '')
+    .replace(/\d+([.,]\d+)?\s*(nm|nanometer|nanometre)\b/gi, '')
+    .replace(/\d+([.,]\d+)?\s*(°|deg|degrees)\s*[fc]?\b/gi, '')
+    .replace(/\d+([.,]\d+)?\s*%/g, '')
+
+  const numbers = (cleanedText.match(/\d+([.,]\d+)?/g) || []).map(n => parseFloat(n.replace(',', '.')))
   if (numbers.length === 0) return null
 
   let unit = 'mg'
@@ -238,35 +246,23 @@ export function resolveRecommendedDose(
     catLower.includes('senolytic') ||
     catLower.includes('secretagogue') ||
     nameLower.includes('bpc') ||
-    nameLower.includes('tb-500') ||
-    nameLower.includes('tb500') ||
-    nameLower.includes('mots-c') ||
     nameLower.includes('cjc') ||
-    nameLower.includes('ipamorelin') ||
-    nameLower.includes('epithalon') ||
-    nameLower.includes('ghk-cu') ||
+    nameLower.includes('ipam') ||
+    nameLower.includes('tb-500') ||
     nameLower.includes('semaglutide') ||
     nameLower.includes('tirzepatide') ||
     nameLower.includes('rapamycin') ||
     nameLower.includes('metformin') ||
-    nameLower.includes('fisetin') ||
-    nameLower.includes('retatrutide') ||
-    nameLower.includes('kpv') ||
-    nameLower.includes('thymosin') ||
-    nameLower.includes('tesamorelin') ||
-    nameLower.includes('sermorelin') ||
-    nameLower.includes('aod-9604') ||
-    nameLower.includes('subq')
+    nameLower.includes('acarbose')
 
   const profile = (modality.relationships?.dosage_profile || (modality as any).dosages) || null
   const parsedFallback = !profile ? parseDoseFromText(modality.dose_or_exposure || '', isPeptideOrHighRisk) : null
   const defaultText = modality.dose_or_exposure || 'Standard dose'
 
-  // Extract array of active protocol contexts
-  const activeProtocolsList: ProtocolDoseContext[] = Array.isArray(protocolContext)
-    ? protocolContext
-    : protocolContext
-    ? [protocolContext]
+  const activeProtocolsList: ProtocolDoseContext[] = protocolContext
+    ? Array.isArray(protocolContext)
+      ? protocolContext
+      : [protocolContext]
     : []
 
   let unit = profile?.unit || parsedFallback?.unit || 'mg'
@@ -280,10 +276,12 @@ export function resolveRecommendedDose(
 
   const isHoursBeforeBed = 
     nameLower.includes('blue light') ||
+    nameLower.includes('blue-light') ||
+    nameLower.includes('dimming') ||
+    nameLower.includes('dim light') ||
     nameLower.includes('glasses') ||
     nameLower.includes('screen cutoff') ||
     nameLower.includes('digital sunset') ||
-    nameLower.includes('dim light') ||
     nameLower.includes('evening darkness') ||
     nameLower.includes('food cutoff') ||
     nameLower.includes('caffeine cutoff')
@@ -303,10 +301,10 @@ export function resolveRecommendedDose(
   let litRange = profile?.literature_range ? { ...profile.literature_range, unit } : parsedFallback?.litRange
 
   if (isHoursBeforeBed) {
-    if (!starter || starter.value === 0) starter = { value: 1, unit: 'hours before bed', notes: '1 hour prior to sleep lead time.' }
-    if (!target || target.value === 0) target = { value: 2, unit: 'hours before bed', notes: '2 hours prior to sleep for natural melatonin secretion.' }
-    if (!blueprint || blueprint.value === 0) blueprint = { value: 2, unit: 'hours before bed', notes: '2 hours prior to sleep.' }
-    if (!litRange) litRange = { min: 1, max: 3, unit: 'hours before bed' }
+    if (!starter || starter.value === 0 || starter.value > 8) starter = { value: 1, unit: 'hours before bed', notes: '1 hour prior to sleep lead time.' }
+    if (!target || target.value === 0 || target.value > 8) target = { value: 2, unit: 'hours before bed', notes: '2 hours prior to sleep for natural melatonin secretion.' }
+    if (!blueprint || blueprint.value === 0 || blueprint.value > 8) blueprint = { value: 2, unit: 'hours before bed', notes: '2 hours prior to sleep.' }
+    if (!litRange || litRange.max > 8) litRange = { min: 1, max: 3, unit: 'hours before bed' }
   }
 
   // Build list of active protocol presets
