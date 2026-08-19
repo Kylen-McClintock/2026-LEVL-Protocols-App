@@ -19,7 +19,14 @@ import NegativeLongevityFactorsCard from '@/components/profile/NegativeLongevity
 import TemperatureUnitSettingsCard from '@/components/profile/TemperatureUnitSettingsCard'
 
 export default function SettingsPage() {
-  const { user, signOut, openAuthModal } = useAuth()
+  const { 
+    user, 
+    signOut, 
+    openAuthModal, 
+    registerCurrentDevicePasskey, 
+    hasRegisteredPasskey, 
+    isPasskeyAvailable 
+  } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [outcomes, setOutcomes] = useState<OutcomeDimension[]>([])
   const [loading, setLoading] = useState(true)
@@ -107,8 +114,8 @@ export default function SettingsPage() {
 
       <div className="space-y-6">
         {/* Cloud Sync & Account Status Card */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-purple-500/30 shadow-xl space-y-3 backdrop-blur-md">
-          <div className="flex items-center justify-between">
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-purple-500/30 shadow-xl space-y-4 backdrop-blur-md">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${user ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-purple-500/10 border border-purple-500/30 text-purple-400'}`}>
                 <Cloud size={20} />
@@ -130,24 +137,59 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {user ? (
-              <button
-                type="button"
-                onClick={signOut}
-                className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <LogOut size={13} /> Sign Out
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={openAuthModal}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs transition-all shadow-lg flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <Sparkles size={13} /> Sync to Cloud
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {user ? (
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <LogOut size={13} /> Sign Out
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openAuthModal}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs transition-all shadow-lg flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <Sparkles size={13} /> Sync to Cloud
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Passkey / Biometric Fast Login Toggle */}
+          {isPasskeyAvailable && (
+            <div className="pt-3 border-t border-white/5 flex items-center justify-between flex-wrap gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-purple-400 font-extrabold">🔐 Face ID / Touch ID:</span>
+                <span className="text-slate-400">
+                  {hasRegisteredPasskey 
+                    ? 'Active on this device' 
+                    : 'Enable 1-tap biometric unlock'}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await registerCurrentDevicePasskey()
+                  if (res.success) {
+                    alert('✓ Face ID / Passkey registered successfully for this device!')
+                  } else if (res.error) {
+                    alert(res.error)
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                  hasRegisteredPasskey 
+                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30' 
+                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                }`}
+              >
+                {hasRegisteredPasskey ? '✓ Re-register Passkey' : 'Enable Face ID / Passkey'}
+              </button>
+            </div>
+          )}
         </div>
 
         {profile && <ProfileEditor profile={profile} outcomes={outcomes} />}

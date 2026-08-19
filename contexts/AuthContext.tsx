@@ -5,6 +5,13 @@ import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 import { v4 as uuidv4 } from 'uuid'
 import { linkGuestDataToAuthUser } from '@/lib/auth/linkGuestData'
+import { 
+  isPasskeySupported, 
+  getStoredPasskey, 
+  registerBiometricPasskey, 
+  authenticateWithBiometrics, 
+  StoredPasskeyData 
+} from '@/lib/auth/passkeyEngine'
 
 const LOCAL_USER_ID_KEY = 'levl_local_user_id'
 
@@ -17,6 +24,10 @@ interface AuthContextType {
   signInWithOtp: (email: string) => Promise<{ error: AuthError | null }>
   verifyOtp: (email: string, token: string) => Promise<{ error: AuthError | null }>
   signInWithGoogle: () => Promise<{ error: AuthError | null }>
+  signInWithPasskey: () => Promise<{ success: boolean; error?: string }>
+  registerCurrentDevicePasskey: () => Promise<{ success: boolean; error?: string }>
+  hasRegisteredPasskey: boolean
+  isPasskeyAvailable: boolean
   signOut: () => Promise<void>
   openAuthModal: () => void
   closeAuthModal: () => void
@@ -31,9 +42,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [localUserId, setLocalUserId] = useState<string>('')
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [hasRegisteredPasskey, setHasRegisteredPasskey] = useState(false)
+  const [isPasskeyAvailable, setIsPasskeyAvailable] = useState(false)
 
   // Initialize or fetch current active user
   useEffect(() => {
+    // Check WebAuthn biometric passkey availability
+    isPasskeySupported().then(avail => {
+      setIsPasskeyAvailable(avail)
+      setHasRegisteredPasskey(!!getStoredPasskey())
+    })
+
     if (!supabase) {
       setLoading(false)
       return
@@ -96,16 +115,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyOtp = useCallback(async (email: string, token: string) => {
     if (!supabase) return { error: null }
-    const { data, error } = await supabase.auth.verifyOtp({
+    
+    // First attempt standard email verification
+    let { data, error } = await supabase.auth.verifyOtp({
       email,
       token,
       type: 'email'
     })
-    if (!error && data.user) {
+
+    // Fallback: try signup verification type if email type rejected token
+    if (error) {
+      const retry = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'signup'
+      })
+      if (!retry.error && retry.data?.user) {
+        data = retry.data
+        error = null
+      }
+    }
+
+    if (!error && data?.user) {
       setUser(data.user)
       setSession(data.session)
       setIsAuthModalOpen(false)
     }
+
     return { error }
   }, [])
 
@@ -119,6 +155,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     return { error }
   }, [])
+
+  // Biometric Passkey Login (Face ID / Touch ID)
+  const signInWithPasskey = useCallback(async () => {
+    const res = await authenticateWithBiometrics()
+    if (res.success && res.passkey) {
+      // Reconnect session with verified passkey account
+      localStorage.setItem(LOCAL_USER_ID_KEY, res.passkey.userId)
+      setLocalUserId(res.passkey.userId)
+
+      // Create a virtual user representation if Supabase session is offline
+      if (!user) {
+        setUser({
+          id: res.passkey.userId,
+          email: res.passkey.userEmail,
+          user_metadata: { name: res.passkey.userName }
+        } as any)
+      }
+
+      setIsAuthModalOpen(false)
+      return { success: true }
+    }
+    return { success: false, error: res.error }
+  }, [user])
+
+  // Register Passkey for current logged in user
+  const registerCurrentDevicePasskey = useCallback(async () => {
+    const activeId = user?.id || localUserId
+    const activeEmail = user?.email || 'member@levl.app'
+    const activeName = (user as any)?.user_metadata?.full_name || 'LEVL Member'
+
+    const res = await registerBiometricPasskey(activeId, activeEmail, activeName)
+    if (res.success) {
+      setHasRegisteredPasskey(true)
+    }
+    return res
+  }, [user, localUserId])
 
   const signOut = useCallback(async () => {
     if (!supabase) return
@@ -147,6 +219,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithOtp,
         verifyOtp,
         signInWithGoogle,
+        signInWithPasskey,
+        registerCurrentDevicePasskey,
+        hasRegisteredPasskey,
+        isPasskeyAvailable,
         signOut,
         openAuthModal,
         closeAuthModal,

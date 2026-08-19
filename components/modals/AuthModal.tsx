@@ -2,10 +2,22 @@
 
 import React, { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { X, Mail, ArrowRight, ShieldCheck, CheckCircle2, Sparkles, AlertCircle, RefreshCw } from 'lucide-react'
+import { 
+  X, Mail, ArrowRight, ShieldCheck, CheckCircle2, Sparkles, 
+  AlertCircle, RefreshCw, Fingerprint, Lock 
+} from 'lucide-react'
 
 export default function AuthModal() {
-  const { isAuthModalOpen, closeAuthModal, signInWithOtp, verifyOtp, signInWithGoogle } = useAuth()
+  const { 
+    isAuthModalOpen, 
+    closeAuthModal, 
+    signInWithOtp, 
+    verifyOtp, 
+    signInWithGoogle, 
+    signInWithPasskey,
+    isPasskeyAvailable,
+    hasRegisteredPasskey 
+  } = useAuth()
   
   const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
@@ -15,6 +27,16 @@ export default function AuthModal() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   if (!isAuthModalOpen) return null
+
+  const handlePasskeySignIn = async () => {
+    setLoading(true)
+    setErrorMsg(null)
+    const res = await signInWithPasskey()
+    setLoading(false)
+    if (!res.success) {
+      setErrorMsg(res.error || 'Biometric verification failed.')
+    }
+  }
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,7 +52,7 @@ export default function AuthModal() {
     setLoading(false)
 
     if (error) {
-      setErrorMsg(error.message || 'Failed to send login code. Please try again.')
+      setErrorMsg(error.message || 'Failed to send login code. If you reached the hourly limit, try Google Sign-In or Face ID.')
     } else {
       setStep('otp')
       setSuccessMsg(`We sent a 6-digit login code and magic link to ${email}`)
@@ -51,7 +73,7 @@ export default function AuthModal() {
     setLoading(false)
 
     if (error) {
-      setErrorMsg(error.message || 'Invalid or expired code. Please try again or request a new code.')
+      setErrorMsg(error.message || 'Invalid or expired code. Please try again or sign in with Google.')
     }
   }
 
@@ -88,12 +110,12 @@ export default function AuthModal() {
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              {step === 'email' ? 'Sync Your Protocol Data' : 'Enter 6-Digit Code'}
+              {step === 'email' ? 'Sign In & Cloud Sync' : 'Enter 6-Digit Code'}
             </h2>
             <p className="text-xs text-slate-400">
               {step === 'email' 
                 ? 'Save streaks, custom stacks, and biomarkers across all your devices.' 
-                : `We sent an instant verification code to ${email}`}
+                : `Enter the code sent to ${email}`}
             </p>
           </div>
 
@@ -124,6 +146,19 @@ export default function AuthModal() {
 
         {step === 'email' ? (
           <div className="space-y-4">
+            {/* Biometric Passkey Login (Face ID / Touch ID) */}
+            {isPasskeyAvailable && (
+              <button
+                type="button"
+                onClick={handlePasskeySignIn}
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer disabled:opacity-50 border border-purple-400/30"
+              >
+                <Fingerprint size={17} className="text-purple-200" />
+                <span>Sign in with Face ID / Touch ID</span>
+              </button>
+            )}
+
             {/* Google Sign In */}
             <button
               type="button"
@@ -154,7 +189,7 @@ export default function AuthModal() {
 
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-white/10" />
-              <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">or with email</span>
+              <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">or email code</span>
               <div className="flex-1 h-px bg-white/10" />
             </div>
 
@@ -175,7 +210,7 @@ export default function AuthModal() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-3 bg-white/10 hover:bg-white/15 text-white font-bold text-xs rounded-xl transition-all shadow flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 border border-white/10"
               >
                 {loading ? (
                   <RefreshCw size={14} className="animate-spin" />
@@ -199,53 +234,40 @@ export default function AuthModal() {
                 type="text"
                 maxLength={6}
                 value={token}
-                onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setToken(e.target.value)}
                 placeholder="123456"
                 autoFocus
                 required
-                className="w-full bg-black/60 border border-purple-500/40 rounded-xl py-3 text-center text-xl font-mono font-black tracking-widest text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-500/30 transition-all"
+                className="w-full bg-black/50 border border-purple-500/40 rounded-xl py-3 px-4 text-center font-mono text-xl tracking-widest text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 transition-all"
               />
             </div>
 
             <button
               type="submit"
-              disabled={loading || token.length < 6}
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
+              disabled={loading}
+              className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {loading ? (
-                <RefreshCw size={14} className="animate-spin" />
+                <RefreshCw size={15} className="animate-spin" />
               ) : (
-                <>
-                  <CheckCircle2 size={15} />
-                  <span>Verify &amp; Enter</span>
-                </>
+                <span>Verify &amp; Sync Stack</span>
               )}
             </button>
 
-            <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
-              <button
-                type="button"
-                onClick={() => setStep('email')}
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
-              >
-                ← Change Email
-              </button>
-              <button
-                type="button"
-                onClick={handleSendOtp}
-                disabled={loading}
-                className="text-purple-400 hover:text-purple-300 font-semibold cursor-pointer"
-              >
-                Resend Code
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setStep('email')}
+              className="w-full text-center text-xs text-slate-400 hover:text-white transition-colors cursor-pointer py-1"
+            >
+              ← Use a different email
+            </button>
           </form>
         )}
 
-        {/* Footer Security Note */}
-        <div className="pt-2 text-[10px] text-slate-500 flex items-center justify-center gap-1.5 border-t border-white/5">
+        {/* Footer Security Badge */}
+        <div className="pt-2 border-t border-white/5 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
           <ShieldCheck size={13} className="text-emerald-400" />
-          <span>No passwords needed. Encrypted &amp; private.</span>
+          <span>FIDO2 WebAuthn &amp; Supabase Encrypted Cloud Sync</span>
         </div>
       </div>
     </div>
