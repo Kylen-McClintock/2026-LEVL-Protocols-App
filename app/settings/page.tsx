@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { User, RefreshCw, Activity, Target, Bookmark, ChevronRight, Cloud, LogOut, Sparkles } from 'lucide-react'
+import { User, RefreshCw, Activity, Target, Bookmark, ChevronRight, Cloud, LogOut, Sparkles, Camera } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
-import { getOrCreateUserProfile, getOutcomeDimensions } from '@/lib/data'
-import { UserProfile, OutcomeDimension } from '@/lib/types'
+import { getOrCreateUserProfile, getOutcomeDimensions, getModalities } from '@/lib/data'
+import { UserProfile, OutcomeDimension, Modality } from '@/lib/types'
 import ProfileEditor from '@/components/profile/ProfileEditor'
 import FunctionalOutcomesRankingCard from '@/components/profile/FunctionalOutcomesRankingCard'
 import QuickHotkeysProfileCard from '@/components/profile/QuickHotkeysProfileCard'
@@ -17,6 +17,7 @@ import HardwareAccessCard from '@/components/profile/HardwareAccessCard'
 import BloodworkProfileCard from '@/components/profile/BloodworkProfileCard'
 import NegativeLongevityFactorsCard from '@/components/profile/NegativeLongevityFactorsCard'
 import TemperatureUnitSettingsCard from '@/components/profile/TemperatureUnitSettingsCard'
+import SupplementScannerModal from '@/components/modals/SupplementScannerModal'
 
 export default function SettingsPage() {
   const { 
@@ -29,16 +30,20 @@ export default function SettingsPage() {
   } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [outcomes, setOutcomes] = useState<OutcomeDimension[]>([])
+  const [catalogModalities, setCatalogModalities] = useState<Modality[]>([])
+  const [showSupplementScanner, setShowSupplementScanner] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
     const localUserId = getLocalUserId()
-    const [data, outcomeData] = await Promise.all([
+    const [data, outcomeData, modsData] = await Promise.all([
       getOrCreateUserProfile(localUserId),
-      getOutcomeDimensions()
+      getOutcomeDimensions(),
+      getModalities()
     ])
     setProfile(data)
     setOutcomes(outcomeData)
+    setCatalogModalities(modsData || [])
     setLoading(false)
   }
 
@@ -173,14 +178,13 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={async () => {
-                  const res = await registerCurrentDevicePasskey()
-                  if (res.success) {
-                    alert('✓ Face ID / Touch ID registered successfully for this device!')
-                  } else if (res.error) {
-                    alert(res.error)
+                  try {
+                    await registerCurrentDevicePasskey()
+                  } catch (e) {
+                    console.error('Passkey registration error:', e)
                   }
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                className={`px-3 py-1.5 rounded-lg border font-bold transition-colors ${
                   hasRegisteredPasskey 
                     ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30' 
                     : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
@@ -190,6 +194,39 @@ export default function SettingsPage() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* AI Supplement Facts Scanner Banner Card */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 via-slate-900 to-indigo-950/30 border border-purple-500/30 shadow-xl space-y-4 backdrop-blur-md">
+          <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-300 flex items-center justify-center shrink-0 shadow-sm">
+                <Camera size={20} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white tracking-tight">
+                    AI Supplement Label Scanner
+                  </h3>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    Gemini Vision
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Snap any supplement bottle facts to auto-match modalities, calibrate exact dosages, or generate complex blends.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowSupplementScanner(true)}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-extrabold text-xs transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer shrink-0"
+            >
+              <Camera size={14} />
+              <span>Scan Supplement</span>
+            </button>
+          </div>
         </div>
 
         {profile && <ProfileEditor profile={profile} outcomes={outcomes} />}
@@ -259,6 +296,16 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* AI Supplement Scanner Modal */}
+      <SupplementScannerModal
+        isOpen={showSupplementScanner}
+        onClose={() => setShowSupplementScanner(false)}
+        catalogModalities={catalogModalities}
+        onIngestSuccess={() => {
+          load()
+        }}
+      />
     </div>
   )
 }
