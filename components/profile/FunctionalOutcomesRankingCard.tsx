@@ -53,7 +53,6 @@ export default function FunctionalOutcomesRankingCard({
   const [preferences, setPreferences] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [selectedToAdd, setSelectedToAdd] = useState('')
 
   useEffect(() => {
     if (profile?.outcome_preference_scores) {
@@ -85,7 +84,6 @@ export default function FunctionalOutcomesRankingCard({
     if (!id || preferences[id] !== undefined) return
     const updated = { ...preferences, [id]: 7 } // Default to 7/10
     setPreferences(updated)
-    setSelectedToAdd('')
     await persistPreferences(updated)
   }
 
@@ -159,12 +157,74 @@ export default function FunctionalOutcomesRankingCard({
       </div>
 
       {isOpen && (
-        <div className="space-y-4 pt-3 border-t border-white/5 animate-in fade-in duration-200">
-          {/* Active Outcome Sliders */}
+        <div className="space-y-5 pt-3 border-t border-white/5 animate-in fade-in duration-200">
+          {/* Outcome Selection Chips Grid */}
+          <div className="space-y-2.5 bg-black/40 p-4 rounded-2xl border border-white/5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles size={13} className="text-purple-400" />
+                <span>Select Outcomes to Track</span>
+              </label>
+              <span className="text-[10px] text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full font-mono font-bold">
+                {trackedOutcomeIds.length} Active
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Tap any outcome to add or remove it from your tracking stack. Fine-tune importance sliders below.
+            </p>
+
+            <div className="flex flex-wrap gap-2 pt-1.5">
+              {outcomes.map((outcome) => {
+                const isTracked = trackedOutcomeIds.includes(outcome.id)
+                const visual = getOutcomeVisual(outcome.id)
+
+                return (
+                  <button
+                    key={outcome.id}
+                    type="button"
+                    onClick={() => {
+                      if (isTracked) {
+                        handleRemove(outcome.id)
+                      } else {
+                        handleAddOutcome(outcome.id)
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${
+                      isTracked
+                        ? 'bg-purple-600/30 border-purple-500/80 text-white shadow-[0_0_12px_rgba(168,85,247,0.25)] ring-1 ring-purple-400/40'
+                        : 'bg-black/50 border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    <span className="shrink-0">{visual.icon}</span>
+                    <span>{outcome.name}</span>
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center border text-[9px] shrink-0 transition-colors ${
+                      isTracked 
+                        ? 'bg-emerald-500 border-emerald-400 text-black font-black' 
+                        : 'border-white/20 text-slate-400'
+                    }`}>
+                      {isTracked ? '✓' : '+'}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Active Outcome Sliders (1–10 Importance Weighting) */}
           <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Importance Weighting (1–10)
+              </label>
+              <span className="text-[10px] text-slate-500 font-mono">
+                Calibrates Protocol Scoring Engine
+              </span>
+            </div>
+
             {trackedOutcomeIds.length === 0 ? (
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-center text-xs text-slate-400">
-                You have no functional outcomes selected. Add outcomes below to calibrate your protocol engine.
+              <div className="p-5 rounded-2xl bg-white/5 border border-white/10 text-center text-xs text-slate-400 space-y-1">
+                <p className="font-bold text-slate-300">No outcomes currently tracked.</p>
+                <p>Tap any of the pills above to add them to your tracking profile.</p>
               </div>
             ) : (
               trackedOutcomeIds.map((id) => {
@@ -228,36 +288,6 @@ export default function FunctionalOutcomesRankingCard({
               })
             )}
           </div>
-
-          {/* Add More Outcomes Selector */}
-          {availableOutcomes.length > 0 && (
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3">
-              <div className="flex-1">
-                <select
-                  value={selectedToAdd}
-                  onChange={(e) => setSelectedToAdd(e.target.value)}
-                  className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 cursor-pointer"
-                >
-                  <option value="">-- Add another outcome to rank --</option>
-                  {availableOutcomes.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      + {o.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="button"
-                disabled={!selectedToAdd}
-                onClick={() => handleAddOutcome(selectedToAdd)}
-                className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <Plus size={14} />
-                <span>Add</span>
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
