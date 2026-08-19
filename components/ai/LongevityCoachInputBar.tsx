@@ -1,23 +1,41 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Sparkles,
   Send,
   Loader2,
-  ChevronDown,
-  ChevronUp,
   X,
   Plus,
-  Bookmark,
   ArrowRight,
   Zap,
-  Activity,
   Check
 } from 'lucide-react'
 import { UserProfile, DailyProtocolTask } from '@/lib/types'
-import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
+
+export const LONGEVITY_COACH_PROMPTS = [
+  "How should I sequence today's protocol stack for maximum absorption?",
+  "What is the optimal meal composition to break my fast today?",
+  "What timing adjustments will maximize my deep sleep tonight?",
+  "Which biomarkers should I prioritize on my next blood test?",
+  "When is the optimal time for cold plunge vs sauna today?",
+  "Are there any absorption conflicts in my morning supplement stack?",
+  "How can I improve my HRV and recovery based on recent check-ins?",
+  "What is the optimal weekly Zone 2 cardio volume for my profile?",
+  "How do I safely titrate Fisetin and Quercetin senolytic dosing?",
+  "What foods will help me hit my 30+ weekly plant diversity goal?",
+  "How can I lower my biological age score and PhenoAge gap?",
+  "What is my latest caffeine cutoff time for optimal sleep architecture?",
+  "How does Glycine + NAC (GlyNAC) support cellular glutathione pools?",
+  "When should I take Creatine and electrolytes around workouts?",
+  "What protocol is most effective for lowering elevated ApoB?",
+  "How do I adapt Bryan Johnson's Blueprint stack to my daily routine?",
+  "What should I do today if my morning energy or mood is low?",
+  "How do I optimize post-meal walking to blunt glucose spikes?",
+  "What is the optimal morning sunlight viewing window to set circadian rhythm?",
+  "How can I safely combine NAD+ boosters with Sirtuin activators?"
+]
 
 interface LongevityCoachInputBarProps {
   userProfile?: UserProfile | null
@@ -36,6 +54,7 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
   const [query, setQuery] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [placeholderIndex, setPlaceholderIndex] = useState<number>(0)
   const [response, setResponse] = useState<{
     advice: string
     suggestedAdditions?: string[]
@@ -44,15 +63,22 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
   } | null>(null)
   const [addedItems, setAddedItems] = useState<Record<string, boolean>>({})
 
-  const quickPrompts = [
-    { label: "Optimize Today's Stack", prompt: "How should I sequence and time today's protocol modalities for maximum synergy and recovery?" },
-    { label: 'Break Fast Meal', prompt: 'What is the optimal meal composition to break my fast today without spiking glucose?' },
-    { label: 'Deep Sleep Optimization', prompt: 'What specific timing adjustments can I make today to maximize NREM deep sleep tonight?' },
-    { label: 'Biomarker Priorities', prompt: 'Based on my health profile and goals, which biomarkers should I prioritize optimizing next?' }
-  ]
+  // On initial mount / reload, pick a random prompt from the 20 curated examples and rotate every 8 seconds
+  useEffect(() => {
+    const initialRandom = Math.floor(Math.random() * LONGEVITY_COACH_PROMPTS.length)
+    setPlaceholderIndex(initialRandom)
+
+    const interval = setInterval(() => {
+      setPlaceholderIndex(prev => (prev + 1) % LONGEVITY_COACH_PROMPTS.length)
+    }, 8000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const currentPlaceholder = LONGEVITY_COACH_PROMPTS[placeholderIndex]
 
   const handleAsk = async (questionText?: string) => {
-    const textToSend = questionText || query
+    const textToSend = questionText || query || currentPlaceholder
     if (!textToSend.trim() || isLoading) return
 
     setIsLoading(true)
@@ -92,102 +118,63 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
   }
 
   return (
-    <div className="w-full bg-gradient-to-r from-slate-900 via-purple-950/25 to-slate-900 border border-purple-500/35 hover:border-purple-500/50 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xl backdrop-blur-md space-y-3 relative overflow-hidden transition-all duration-300">
-      {/* Background ambient flare */}
-      <div className="absolute -top-12 -right-12 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
-
-      {/* Top Banner Row */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center font-bold shrink-0 shadow-[0_0_12px_rgba(168,85,247,0.3)]">
-            <Sparkles size={14} className="text-purple-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-black text-white tracking-wide uppercase">
-                AI Longevity Coach
-              </span>
-              <span className="text-[10px] bg-purple-950/80 border border-purple-800/60 text-purple-300 px-2 py-0.5 rounded-full font-mono font-bold">
-                Context-Aware
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 hidden sm:block">
-              Ask about today&apos;s routine, biomarker optimization, fasting window, or stack synergies.
-            </p>
-          </div>
+    <div className="w-full space-y-1.5">
+      {/* Small Header Text Above Input */}
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-1.5">
+          <Sparkles size={12} className="text-purple-400" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300">
+            AI Longevity Coach
+          </span>
         </div>
-
-        {/* View Full Coach Link */}
         <button
           type="button"
           onClick={() => router.push('/coach')}
-          className="text-xs font-bold text-purple-300 hover:text-white bg-purple-950/50 hover:bg-purple-900/60 border border-purple-700/40 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+          className="text-[11px] font-medium text-slate-400 hover:text-purple-300 transition-colors flex items-center gap-1 cursor-pointer"
         >
-          <span>Open Full Coach</span>
-          <ArrowRight size={13} />
+          <span>Open Coach</span>
+          <ArrowRight size={11} />
         </button>
       </div>
 
-      {/* Full-Width Search Input Form */}
+      {/* Single-Line Full-Width Input Row */}
       <form
         onSubmit={(e) => {
           e.preventDefault()
           handleAsk()
         }}
-        className="relative flex items-center gap-2"
+        className="relative flex items-center w-full"
       >
-        <div className="relative flex-1">
+        <div className="relative flex-1 flex items-center">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ask your AI Longevity Coach about today's routine, biological age, fasting, or biomarkers..."
-            className="w-full bg-slate-950/90 border border-slate-700/80 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 rounded-xl sm:rounded-2xl px-4 py-3 text-xs sm:text-sm text-white placeholder-slate-400 outline-none transition-all pr-12 shadow-inner"
+            placeholder={`Ask: "${currentPlaceholder}"`}
+            className="w-full bg-slate-900/90 hover:bg-slate-900 border border-purple-500/30 hover:border-purple-500/50 focus:border-purple-400 focus:ring-1 focus:ring-purple-400/40 rounded-xl sm:rounded-2xl px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white placeholder-slate-400 outline-none transition-all pr-11 shadow-lg backdrop-blur-md"
           />
           {isLoading ? (
-            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-purple-400">
-              <Loader2 size={18} className="animate-spin" />
+            <div className="absolute right-3.5 text-purple-400">
+              <Loader2 size={16} className="animate-spin" />
             </div>
           ) : (
             <button
               type="submit"
-              disabled={!query.trim()}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-30 disabled:hover:bg-purple-600 text-white transition-all cursor-pointer disabled:cursor-not-allowed shadow-md shadow-purple-900/30"
+              className="absolute right-2 p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-purple-600 hover:bg-purple-500 text-white transition-all cursor-pointer shadow-md shadow-purple-900/30 active:scale-95"
               title="Ask AI Longevity Coach"
             >
-              <Send size={14} />
+              <Send size={13} />
             </button>
           )}
         </div>
       </form>
 
-      {/* Quick Prompt Pills */}
-      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 hidden md:inline">
-          Quick Questions:
-        </span>
-        {quickPrompts.map((qp, idx) => (
-          <button
-            key={idx}
-            type="button"
-            onClick={() => {
-              setQuery(qp.prompt)
-              handleAsk(qp.prompt)
-            }}
-            disabled={isLoading}
-            className="text-[11px] font-medium px-2.5 py-1 rounded-xl bg-slate-950/80 hover:bg-purple-950/60 border border-slate-800 hover:border-purple-500/40 text-purple-300 hover:text-purple-200 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-          >
-            ⚡ {qp.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Inline AI Response Card */}
+      {/* Inline AI Response Card (Appears when asked) */}
       {response && isExpanded && (
-        <div className="pt-3 border-t border-purple-500/20 space-y-3 animate-in fade-in slide-in-from-top-3">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-purple-400">
-              <Zap size={13} /> Coach Biological Assessment
+        <div className="pt-2 space-y-2 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+            <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-purple-400 text-[10px]">
+              <Zap size={12} /> Coach Assessment
             </span>
             <button
               type="button"
@@ -195,18 +182,18 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
               className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               title="Close answer"
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           </div>
 
-          <div className="bg-slate-950/90 border border-purple-500/30 rounded-2xl p-4 text-xs sm:text-sm text-slate-200 leading-relaxed space-y-3 shadow-inner">
-            <div className="whitespace-pre-line text-slate-300 text-xs sm:text-sm">
+          <div className="bg-slate-950/95 border border-purple-500/30 rounded-2xl p-4 text-xs sm:text-sm text-slate-200 leading-relaxed space-y-3 shadow-xl backdrop-blur-md">
+            <div className="whitespace-pre-line text-slate-300 text-xs sm:text-sm leading-relaxed">
               {response.advice}
             </div>
 
             {response.synergyHighlight && (
-              <div className="p-3 rounded-xl bg-purple-950/50 border border-purple-700/50 text-xs text-purple-200 flex items-start gap-2">
-                <Sparkles size={14} className="text-purple-400 shrink-0 mt-0.5" />
+              <div className="p-2.5 rounded-xl bg-purple-950/50 border border-purple-700/50 text-xs text-purple-200 flex items-start gap-2">
+                <Sparkles size={13} className="text-purple-400 shrink-0 mt-0.5" />
                 <div>
                   <strong className="text-purple-300">Actionable Synergy:</strong> {response.synergyHighlight}
                 </div>
@@ -216,7 +203,7 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
             {/* Suggested Modalities to Add */}
             {response.suggestedAdditions && response.suggestedAdditions.length > 0 && onAddToToday && (
               <div className="pt-2 border-t border-slate-800/80 space-y-2">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   Suggested Modality Additions:
                 </span>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -227,7 +214,6 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
                         key={idx}
                         type="button"
                         onClick={async () => {
-                          // Format slug or search
                           const slug = modalityName.toLowerCase().replace(/[^a-z0-9]+/g, '_')
                           await onAddToToday(slug)
                           setAddedItems(prev => ({ ...prev, [modalityName]: true }))
@@ -239,7 +225,7 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
                             : 'bg-purple-600/20 hover:bg-purple-600/30 border-purple-500/50 text-purple-200 hover:text-white'
                         }`}
                       >
-                        {isAdded ? <Check size={13} /> : <Plus size={13} />}
+                        {isAdded ? <Check size={12} /> : <Plus size={12} />}
                         <span>{isAdded ? 'Added to Today' : `Add ${modalityName} to Today`}</span>
                       </button>
                     )
