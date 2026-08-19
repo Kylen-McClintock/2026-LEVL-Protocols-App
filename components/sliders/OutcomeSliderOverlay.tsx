@@ -1,19 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { OutcomeDimension } from '@/lib/types'
-import { X } from 'lucide-react'
+import { OutcomeDimension, Modality } from '@/lib/types'
+import { X, Clock } from 'lucide-react'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { isPreLoggableOutcome, hasAnyPreLoggableOutcome, getOutcomePhaseType } from '@/lib/utils/outcomePhaseRules'
+import { getPeakOnsetGuidance } from '@/lib/utils/peakOnsetGuidance'
 
 type OutcomeSliderOverlayProps = {
   outcomes: OutcomeDimension[]
+  modality?: Modality | null
   onSave: (values: Record<string, number>, phase: string) => void
   onClose: () => void
   defaultPhase?: 'pre' | 'post' | 'next_day'
 }
 
-export default function OutcomeSliderOverlay({ outcomes, onSave, onClose, defaultPhase = 'post' }: OutcomeSliderOverlayProps) {
+export default function OutcomeSliderOverlay({ outcomes, modality, onSave, onClose, defaultPhase = 'post' }: OutcomeSliderOverlayProps) {
   const [isSaving, setIsSaving] = useState(false)
   const hasPreLoggable = hasAnyPreLoggableOutcome(outcomes)
   const effectiveDefaultPhase = (!hasPreLoggable && defaultPhase === 'pre') ? 'post' : defaultPhase
@@ -76,6 +78,29 @@ export default function OutcomeSliderOverlay({ outcomes, onSave, onClose, defaul
             </button>
           </div>
         )}
+
+        {/* Peak Onset & Optimal Recording Time Banner */}
+        {(() => {
+          const guidance = getPeakOnsetGuidance(modality)
+          return (
+            <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-start gap-2.5 text-xs text-slate-300 backdrop-blur-sm mb-4">
+              <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <Clock size={13} />
+              </div>
+              <div className="space-y-0.5 flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-extrabold text-white">Best time to record:</span>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30">
+                    {guidance.bestTimeToLog}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  {guidance.subtitle}
+                </p>
+              </div>
+            </div>
+          )
+        })()}
 
         <div className="space-y-6">
           {visibleOutcomes.map(outcome => {
