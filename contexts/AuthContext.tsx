@@ -8,6 +8,7 @@ import { linkGuestDataToAuthUser } from '@/lib/auth/linkGuestData'
 import { 
   isPasskeySupported, 
   getStoredPasskey, 
+  getRegisteredAccountPasskey,
   registerBiometricPasskey, 
   authenticateWithBiometrics, 
   StoredPasskeyData 
@@ -170,11 +171,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Biometric Passkey Login (Face ID / Touch ID / Android Biometrics)
   const signInWithPasskey = useCallback(async () => {
-    const activeId = user?.id || localUserId
-    const activeEmail = user?.email || 'member@levl.app'
-    const activeName = (user as any)?.user_metadata?.full_name || 'LEVL Member'
+    const registered = getRegisteredAccountPasskey()
+    if (!registered) {
+      return { 
+        success: false, 
+        error: 'Please sign in with Google or Email first to register biometric unlock on this device.' 
+      }
+    }
 
-    const res = await authenticateWithBiometrics(activeId, activeEmail, activeName)
+    const res = await authenticateWithBiometrics(registered)
     if (res.success && res.passkey) {
       // Reconnect session with verified passkey account
       localStorage.setItem(LOCAL_USER_ID_KEY, res.passkey.userId)
@@ -186,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser({
           id: res.passkey.userId,
           email: res.passkey.userEmail,
-          user_metadata: { name: res.passkey.userName }
+          user_metadata: { full_name: res.passkey.userName }
         } as any)
       }
 
@@ -194,26 +199,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true }
     }
     return { success: false, error: res.error }
-  }, [user, localUserId])
+  }, [user])
 
   // Register Passkey for current logged in user
   const registerCurrentDevicePasskey = useCallback(async () => {
-    const activeId = user?.id || localUserId
-    const activeEmail = user?.email || 'member@levl.app'
-    const activeName = (user as any)?.user_metadata?.full_name || 'LEVL Member'
+    if (!user || !user.email) {
+      return { success: false, error: 'Please sign in with Google or your email first.' }
+    }
+
+    const activeId = user.id
+    const activeEmail = user.email
+    const activeName = (user as any)?.user_metadata?.full_name || user.email.split('@')[0] || 'LEVL Member'
 
     const res = await registerBiometricPasskey(activeId, activeEmail, activeName)
     if (res.success) {
       setHasRegisteredPasskey(true)
     }
     return res
-  }, [user, localUserId])
+  }, [user])
 
   const signOut = useCallback(async () => {
-    if (!supabase) return
-    await supabase.auth.signOut()
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
     setUser(null)
     setSession(null)
+    setHasRegisteredPasskey(false)
+    localStorage.removeItem('levl_passkey_data')
     // Generate new guest ID for a clean guest slate
     const newGuestId = uuidv4()
     localStorage.setItem(LOCAL_USER_ID_KEY, newGuestId)

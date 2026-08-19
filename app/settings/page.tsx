@@ -123,16 +123,16 @@ export default function SettingsPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-white">
-                    {user ? 'Cloud Account Synced' : 'Guest Account (Local Only)'}
+                    {user ? 'Cloud Account Synced' : 'Guest Account (This Device Only)'}
                   </h3>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${user ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'}`}>
-                    {user ? 'Online' : 'Local Storage'}
+                    {user ? 'Online' : 'Local Only'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {user 
-                    ? `Connected as ${user.email || 'Authenticated User'}. Streaks & data backed up.`
-                    : 'Your protocol data is currently stored only on this browser.'}
+                    ? `Connected as ${user.email}. Streaks and stacks are synced across all devices.`
+                    : 'Sign in to sync your stacks, logs, and biomarkers across your phone and computer.'}
                 </p>
               </div>
             </div>
@@ -150,23 +150,23 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={openAuthModal}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs transition-all shadow-lg flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-bold text-xs transition-all shadow-lg flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
-                  <Sparkles size={13} /> Sync to Cloud
+                  <Sparkles size={13} /> Sync Across Devices
                 </button>
               )}
             </div>
           </div>
 
-          {/* Passkey / Biometric Fast Login Toggle */}
-          {isPasskeyAvailable && (
+          {/* Passkey / Biometric Fast Login Toggle - ONLY for authenticated users */}
+          {user && isPasskeyAvailable && (
             <div className="pt-3 border-t border-white/5 flex items-center justify-between flex-wrap gap-2 text-xs">
               <div className="flex items-center gap-2">
                 <span className="text-purple-400 font-extrabold">🔐 Face ID / Touch ID:</span>
                 <span className="text-slate-400">
                   {hasRegisteredPasskey 
-                    ? 'Active on this device' 
-                    : 'Enable 1-tap biometric unlock'}
+                    ? `Active on this device for ${user.email}` 
+                    : 'Enable 1-tap unlock on this device'}
                 </span>
               </div>
 
@@ -175,7 +175,7 @@ export default function SettingsPage() {
                 onClick={async () => {
                   const res = await registerCurrentDevicePasskey()
                   if (res.success) {
-                    alert('✓ Face ID / Passkey registered successfully for this device!')
+                    alert('✓ Face ID / Touch ID registered successfully for this device!')
                   } else if (res.error) {
                     alert(res.error)
                   }
@@ -186,7 +186,7 @@ export default function SettingsPage() {
                     : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
                 }`}
               >
-                {hasRegisteredPasskey ? '✓ Re-register Passkey' : 'Enable Face ID / Passkey'}
+                {hasRegisteredPasskey ? '✓ Re-register Device' : 'Enable 1-Tap Unlock'}
               </button>
             </div>
           )}

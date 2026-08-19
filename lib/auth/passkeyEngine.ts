@@ -44,10 +44,20 @@ export function getStoredPasskey(): StoredPasskeyData | null {
   }
 }
 
-// 3. Register a new Passkey with Face ID / Touch ID
+// 3. Returns the registered passkey ONLY if it is tied to a real user email account
+export function getRegisteredAccountPasskey(): StoredPasskeyData | null {
+  const stored = getStoredPasskey()
+  if (!stored) return null
+  if (stored.userEmail && stored.userEmail.includes('@') && stored.userEmail !== 'member@levl.app') {
+    return stored
+  }
+  return null
+}
+
+// 4. Register a new Passkey with Face ID / Touch ID for an authenticated user
 export async function registerBiometricPasskey(
   userId: string,
-  userEmail: string = 'member@levl.app',
+  userEmail: string,
   userName: string = 'LEVL Member'
 ): Promise<{ success: boolean; passkey?: StoredPasskeyData; error?: string }> {
   if (typeof window === 'undefined' || !navigator.credentials) {
@@ -114,11 +124,9 @@ export async function registerBiometricPasskey(
   }
 }
 
-// 4. Authenticate using Face ID / Touch ID (Auto-enrolls seamlessly if first time on this device)
+// 5. Authenticate using Face ID / Touch ID
 export async function authenticateWithBiometrics(
-  fallbackUserId?: string,
-  fallbackUserEmail?: string,
-  fallbackUserName?: string
+  targetPasskey?: StoredPasskeyData | null
 ): Promise<{
   success: boolean
   passkey?: StoredPasskeyData
@@ -128,57 +136,48 @@ export async function authenticateWithBiometrics(
     return { success: false, error: 'Biometrics are not supported on this device.' }
   }
 
-  const stored = getStoredPasskey()
-
-  // Case A: A passkey exists in storage -> verify with platform authenticator
-  if (stored) {
-    try {
-      const challenge = new Uint8Array(32)
-      window.crypto.getRandomValues(challenge)
-
-      const rawId = Uint8Array.from(atob(stored.credentialId), c => c.charCodeAt(0))
-
-      const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-        challenge,
-        rpId: window.location.hostname,
-        allowCredentials: [
-          {
-            id: rawId,
-            type: 'public-key',
-            transports: ['internal']
-          }
-        ],
-        userVerification: 'preferred',
-        timeout: 60000
-      }
-
-      const assertion = await navigator.credentials.get({
-        publicKey: publicKeyCredentialRequestOptions
-      })
-
-      if (assertion) {
-        return { success: true, passkey: stored }
-      }
-    } catch (err: any) {
-      if (err.name === 'NotAllowedError') {
-        return { success: false, error: 'Biometric verification was cancelled.' }
-      }
-      // If credential not found on hardware (e.g. wiped or changed device), fall through to re-register on demand
+  const stored = targetPasskey || getStoredPasskey()
+  if (!stored) {
+    return {
+      success: false,
+      error: 'Please sign in with Google or your Email first to register your device.'
     }
   }
 
-  // Case B: First time on this device / browser -> Seamlessly trigger biometric setup prompt!
-  const effectiveUserId = fallbackUserId || localStorage.getItem('levl_local_user_id') || ('user_' + Math.random().toString(36).substring(2, 10))
-  const effectiveEmail = fallbackUserEmail || 'member@levl.app'
-  const effectiveName = fallbackUserName || 'LEVL Member'
+  try {
+    const challenge = new Uint8Array(32)
+    window.crypto.getRandomValues(challenge)
 
-  const regResult = await registerBiometricPasskey(effectiveUserId, effectiveEmail, effectiveName)
-  if (regResult.success && regResult.passkey) {
-    return { success: true, passkey: regResult.passkey }
-  }
+    const rawId = Uint8Array.from(atob(stored.credentialId), c => c.charCodeAt(0))
 
-  return { 
-    success: false, 
-    error: regResult.error || 'Biometric authorization was declined.' 
+    const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
+      challenge,
+      rpId: window.location.hostname,
+      allowCredentials: [
+        {
+          id: rawId,
+          type: 'public-key',
+          transports: ['internal']
+        }
+      ],
+      userVerification: 'preferred',
+      timeout: 60000
+    }
+
+    const assertion = await navigator.credentials.get({
+      publicKey: publicKeyCredentialRequestOptions
+    })
+
+    if (assertion) {
+      return { success: true, passkey: stored }
+    }
+
+    return { success: false, error: 'Biometric verification was not completed.' }
+  } catch (err: any) {
+    if (err.name === 'NotAllowedError') {
+      return { success: false, error: 'Biometric verification was cancelled.' }
+    }
+    console.error('Passkey authentication error:', err)
+    return { success: false, error: err.message || 'Failed to authenticate with biometrics.' }
   }
 }

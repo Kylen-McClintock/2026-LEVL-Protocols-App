@@ -141,29 +141,36 @@ export default function AuthModal() {
 
         {step === 'email' ? (
           <div className="space-y-4">
-            {/* Biometric Passkey Login (Face ID / Touch ID / Android Biometrics) */}
-            {isPasskeyAvailable && (
-              <button
-                type="button"
-                onClick={handlePasskeySignIn}
-                disabled={loading}
-                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer disabled:opacity-50 border border-purple-400/30"
-              >
-                {loading ? (
-                  <RefreshCw size={17} className="animate-spin text-purple-200" />
-                ) : (
-                  <Fingerprint size={17} className="text-purple-200" />
-                )}
-                <span>Sign in with Face ID / Touch ID</span>
-              </button>
+            {/* If a real user account passkey is already active on this device */}
+            {hasRegisteredPasskey && isPasskeyAvailable && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={handlePasskeySignIn}
+                  disabled={loading}
+                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer disabled:opacity-50 border border-purple-400/30"
+                >
+                  {loading ? (
+                    <RefreshCw size={17} className="animate-spin text-purple-200" />
+                  ) : (
+                    <Fingerprint size={17} className="text-purple-200" />
+                  )}
+                  <span>1-Tap Unlock with Face ID / Touch ID</span>
+                </button>
+                <div className="flex items-center gap-3 py-1">
+                  <div className="flex-1 h-px bg-white/10" />
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">or sign in with another account</span>
+                  <div className="flex-1 h-px bg-white/10" />
+                </div>
+              </div>
             )}
 
-            {/* Google Sign In */}
+            {/* Google Sign In - Primary cross-device 1-tap option */}
             <button
               type="button"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center justify-center gap-2.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
+              className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-slate-100 active:scale-[0.98] text-slate-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all shadow-md cursor-pointer disabled:opacity-50"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -188,7 +195,7 @@ export default function AuthModal() {
 
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-white/10" />
-              <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">or email code</span>
+              <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">or sign in with email</span>
               <div className="flex-1 h-px bg-white/10" />
             </div>
 
@@ -200,7 +207,7 @@ export default function AuthModal() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder="Enter your email address"
                   required
                   className="w-full bg-black/50 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all"
                 />
@@ -215,7 +222,7 @@ export default function AuthModal() {
                   <RefreshCw size={14} className="animate-spin" />
                 ) : (
                   <>
-                    <span>Send Login Code</span>
+                    <span>Send 6-Digit Login Code</span>
                     <ArrowRight size={14} />
                   </>
                 )}
