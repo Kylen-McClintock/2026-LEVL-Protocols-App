@@ -1,0 +1,1190 @@
+[
+  {
+    "id": "apigenin",
+    "name": "Apigenin (50mg)",
+    "old_effort": "very_low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "bfr_training",
+    "name": "BFR Training",
+    "old_effort": "medium",
+    "new_effort": "level_4"
+  },
+  {
+    "id": "continuous_glucose_monitor",
+    "name": "Continuous Glucose Monitor (CGM)",
+    "old_effort": "low",
+    "new_effort": "level_4"
+  },
+  {
+    "id": "red_light_photobiomodulation_therapy",
+    "name": "Red Light / Photobiomodulation Therapy",
+    "old_effort": "medium",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "tibialis_raises",
+    "name": "Tibialis Raises (Ankle & Knee Resilience)",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "l_citrulline",
+    "name": "L-Citrulline",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "walker_sleep_triad_supplement",
+    "name": "Matthew Walker Sleep Triad (Mag L-Threonate + Apigenin + L-Theanine)",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "slant_board_squats",
+    "name": "Slant Board Squats (VMO Quad Strengthening)",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "sports-nutrition",
+    "name": "Sports Nutrition",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "means_acetic_acid_premeal",
+    "name": "Acetic Acid / Apple Cider Vinegar Pre-Meal Load",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "lions_mane",
+    "name": "Lion's Mane Mushroom",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "6f188626-3382-4cb1-ab77-5af3ba44bd49",
+    "name": "Deep Water Pharyngeal Gargling",
+    "old_effort": "very_low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "vitamin-k1",
+    "name": "Vitamin K1 (Phylloquinone)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "whole_body_mri",
+    "name": "Whole Body MRI",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "mindfulness-meditation",
+    "name": "Mindfulness Meditation",
+    "old_effort": null,
+    "new_effort": "level_2"
+  },
+  {
+    "id": "nordic_hamstring_curls",
+    "name": "Nordic Hamstring Curls",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "acarbose",
+    "name": "Acarbose (With Meals)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "l_theanine",
+    "name": "L-Theanine (100-200mg)",
+    "old_effort": "very_low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "plasmapheresis_therapeutic_plasma_exchange",
+    "name": "Plasmapheresis / Therapeutic Plasma Exchange",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "thoracic_spine_extension_rotation",
+    "name": "Thoracic Spine Extension & Rotation (Foam Roller)",
+    "old_effort": null,
+    "new_effort": "level_3"
+  },
+  {
+    "id": "longo_5day_fasting_mimicking_diet",
+    "name": "5-Day Fasting Mimicking Diet (FMD)",
+    "old_effort": "high",
+    "new_effort": "level_5"
+  },
+  {
+    "id": "post_meal_glucose_walk",
+    "name": "Post-Meal Glucose Walk",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "poliquin_step_ups",
+    "name": "Poliquin Step-Ups (Patellar Tendon Conditioning)",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "cac-calcium-scan",
+    "name": "Coronary Artery Calcium (CAC) CT Scan",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "sinclair_nmn_tmg",
+    "name": "Sublingual Micronized NMN (1g) + TMG (500mg)",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "ashwagandha_ksm_66",
+    "name": "Ashwagandha (KSM-66)",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "apob-lipid-panel",
+    "name": "ApoB & Advanced Lipid Panel",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "mental-fortitude-training",
+    "name": "Mental Fortitude Training",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "box_breathing",
+    "name": "Box Breathing (Navy SEAL Method)",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "vo2-max-cpet-assessment",
+    "name": "VO₂ Max & Metabolic Gas Exchange Test",
+    "old_effort": "high",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "time-blocking",
+    "name": "Time Blocking",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "magnesium_threonate",
+    "name": "Magnesium Threonate",
+    "old_effort": "medium",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "cyclic_sighing",
+    "name": "Cyclic Sighing (Physiological Sigh)",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "abpm-24h-blood-pressure-monitor",
+    "name": "24-Hour Ambulatory Blood Pressure Monitor",
+    "old_effort": "moderate",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "heavy-metals-environmental-toxin-panel",
+    "name": "Heavy Metals & Environmental Toxin Panel",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "fisetin",
+    "name": "Fisetin",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "blood_donation_phlebotomy",
+    "name": "Blood Donation (Phlebotomy)",
+    "old_effort": "medium",
+    "new_effort": "level_5"
+  },
+  {
+    "id": "zone_2_cardio",
+    "name": "Zone 2 Cardiovascular Training",
+    "old_effort": "high",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "glycine_supplementation",
+    "name": "Glycine Supplementation",
+    "old_effort": "medium",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "recovery-techniques",
+    "name": "Recovery Techniques",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "grail-cancer-screen",
+    "name": "GRAIL Galleri Multi-Cancer Screen",
+    "old_effort": "low",
+    "new_effort": "level_5"
+  },
+  {
+    "id": "brecka_pemf_grounding",
+    "name": "PEMF Earth-Frequency Mat (Pulsed Electromagnetic Field)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "lifespan_plus_deepcell",
+    "name": "LIFESPAN+ DeepCell (from LEVL)",
+    "old_effort": "very_low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "intermittent_fasting_18_6",
+    "name": "Time-Restricted Eating (18:6)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "full-body-mri-scan",
+    "name": "Full-Body MRI Screening (Prenuvo/Ezra)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "low-dose-aspirin",
+    "name": "Low-Dose Aspirin (81mg)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "breathing_4_7_8",
+    "name": "4-7-8 Relaxing Breathwork",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "rhonda_omega3_phospholipids",
+    "name": "High-Dose Phospholipid Omega-3 (EPA/DHA)",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "oral-microbiome-pathogen-screen",
+    "name": "Oral Microbiome & Periodontal Pathogen Screen",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "sinclair_trans_resveratrol",
+    "name": "Micronized Trans-Resveratrol (1,000mg) with Dietary Fat",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "longo_post_fmd_stem_cell_refeed",
+    "name": "Post-FMD High-Leucine Refeed & Stem Cell Renewal",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "hyperbaric_oxygen_therapy_hbot",
+    "name": "Hyperbaric Oxygen Therapy (HBOT)",
+    "old_effort": "medium",
+    "new_effort": "level_5"
+  },
+  {
+    "id": "lifespan_plus_activate",
+    "name": "LIFESPAN+ Activate (from LEVL)",
+    "old_effort": "very_low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "glp_1_receptor_agonists",
+    "name": "GLP-1 Receptor Agonists",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "vilpa_micro_bursts",
+    "name": "VILPA Micro-Bursts",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "collagen_peptides",
+    "name": "Collagen Peptides",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "curcumin",
+    "name": "Curcumin (Bio-Enhanced Turmeric Extract)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "f0dba777-57ed-4070-8c2e-038e40a0cf6a",
+    "name": "Solar Noon Sunlight Exposure",
+    "old_effort": "very_low",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "dexa-body-composition-scan",
+    "name": "DEXA Whole-Body Composition Scan",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "creatine_monohydrate",
+    "name": "Creatine Monohydrate",
+    "old_effort": "very_low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "monk_fast_36h",
+    "name": "36-Hour Monk Fast (Alternate Day Fasting)",
+    "old_effort": "high",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "sinclair_metformin_berberine",
+    "name": "Metformin (850mg) or Berberine (1,000mg) AMPK Pulse",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "cold_water_immersion",
+    "name": "Cold Water Immersion",
+    "old_effort": "high",
+    "new_effort": "level_4"
+  },
+  {
+    "id": "dunedinpace-epigenetic-clock",
+    "name": "DunedinPACE Epigenetic Aging Rate Clock",
+    "old_effort": "low",
+    "new_effort": "level_5"
+  },
+  {
+    "id": "extended_fast_48h",
+    "name": "48-Hour Extended Fasting",
+    "old_effort": "high",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "soberg_reheating_principle",
+    "name": "Søberg Principle Natural Reheating",
+    "old_effort": null,
+    "new_effort": "level_4"
+  },
+  {
+    "id": "fat_fasting",
+    "name": "Fat Fasting (Keto Mimicking)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "nmn",
+    "name": "NMN",
+    "old_effort": "medium",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "coq10",
+    "name": "CoQ10",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "bone_broth_fast",
+    "name": "Bone Broth Fasting",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "handstand",
+    "name": "Handstand",
+    "old_effort": null,
+    "new_effort": "level_3"
+  },
+  {
+    "id": "l_carnosine",
+    "name": "L-Carnosine",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "fisetin_quercetin_senolytic_pulse",
+    "name": "Fisetin & Quercetin Senolytic Pulse",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "strength-training",
+    "name": "Strength Training",
+    "old_effort": null,
+    "new_effort": "level_4"
+  },
+  {
+    "id": "walker_melatonin_dimming",
+    "name": "2-Hour Melatonin Onset Blue-Light Dimming",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "dayspring_isometric_handgrip_protocol",
+    "name": "Isometric Handgrip Training (4x 2-Min Holds @ 30% MVC)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "aged-garlic-extract",
+    "name": "Aged Garlic Extract (Kyolic / S-Allyl-Cysteine)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "hyaluronic_acid_oral",
+    "name": "Oral Hyaluronic Acid",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "nad_precursors",
+    "name": "NAD+ Precursors (NMN / NR)",
+    "old_effort": "very_low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "brecka_ewot_exercise_oxygen",
+    "name": "EWOT (Exercise With Oxygen Therapy)",
+    "old_effort": "medium",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "genistein",
+    "name": "Genistein (Soy Isoflavone Extract)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "ndga",
+    "name": "NDGA (Nordihydroguaiaretic Acid)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "rhodiola_rosea",
+    "name": "Rhodiola Rosea (3% Salidroside)",
+    "old_effort": "very_low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "glynac_glutathione_pulse",
+    "name": "GlyNAC Glutathione Precursor Pulse",
+    "old_effort": null,
+    "new_effort": "level_2"
+  },
+  {
+    "id": "taurine",
+    "name": "Taurine",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "vitamin_k2_mk7",
+    "name": "Vitamin K2 (MK-7)",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "means_macro_sequencing",
+    "name": "Macro Meal Sequencing (Fiber First, Carbs Last)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "walker_65f_thermal_drop",
+    "name": "65°F (18.3°C) Core Thermal Drop Sleep Environment",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "l-lysine",
+    "name": "L-Lysine",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "coherent_breathing",
+    "name": "Coherent 5.5s Breathing (Max HRV)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "bacopa_monnieri",
+    "name": "Bacopa Monnieri",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "water_fast_24h",
+    "name": "24-Hour Water Fast (Dinner-to-Dinner)",
+    "old_effort": "medium",
+    "new_effort": "level_5"
+  },
+  {
+    "id": "gaba",
+    "name": "GABA",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "methylene_blue",
+    "name": "Methylene Blue (Low-Dose)",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "phosphatidylserine",
+    "name": "Phosphatidylserine",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "prolonged_autophagy_fast_72h",
+    "name": "72-Hour Prolonged Autophagy Fast",
+    "old_effort": "high",
+    "new_effort": "level_5"
+  },
+  {
+    "id": "hm_zone2_run",
+    "name": "Half Marathon: Zone 2 Aerobic Base Run",
+    "old_effort": null,
+    "new_effort": "level_3"
+  },
+  {
+    "id": "resistance_training",
+    "name": "Resistance Training / Hypertrophy",
+    "old_effort": "high",
+    "new_effort": "level_4"
+  },
+  {
+    "id": "hm_threshold_intervals",
+    "name": "Half Marathon: Lactate Threshold & Speed Intervals",
+    "old_effort": null,
+    "new_effort": "level_4"
+  },
+  {
+    "id": "hm_runner_stability",
+    "name": "Half Marathon: Single-Leg Stability & Prehab",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "hm_progressive_longrun",
+    "name": "Half Marathon: Progressive Weekend Long Run",
+    "old_effort": null,
+    "new_effort": "level_2"
+  },
+  {
+    "id": "42cd4dd2-312d-49bc-a843-5c34e510178c",
+    "name": "Single-Leg Balance Training",
+    "old_effort": "very_low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "magnesium_glycinate",
+    "name": "Magnesium Bisglycinate",
+    "old_effort": "very_low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "blue_light_blocking",
+    "name": "Blue Light Blocking Glasses (Evening)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "quercetin",
+    "name": "Quercetin",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "ppl_push_day",
+    "name": "Push Day: Chest, Shoulders & Triceps",
+    "old_effort": null,
+    "new_effort": "level_4"
+  },
+  {
+    "id": "ppl_pull_day",
+    "name": "Pull Day: Back, Rear Delts & Biceps",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "ppl_leg_day",
+    "name": "Leg Day: Quads, Hamstrings & Calves",
+    "old_effort": null,
+    "new_effort": "level_4"
+  },
+  {
+    "id": "melatonin",
+    "name": "Melatonin",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "ppl_recovery_day",
+    "name": "Active Recovery & Growth Day",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "ghk_cu_subq",
+    "name": "GHK-Cu (Copper Tripeptide-1)",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "morning-sunlight-exposure",
+    "name": "Morning Sunlight Exposure",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "glycine_3g",
+    "name": "Glycine (3g)",
+    "old_effort": "very_low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "morning_sunlight",
+    "name": "Morning Light Exposure",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "bpc157_subq",
+    "name": "BPC-157 (Body Protection Compound-157)",
+    "old_effort": null,
+    "new_effort": "level_5"
+  },
+  {
+    "id": "tb500_subq",
+    "name": "TB-500 (Thymosin Beta-4 / Ac-LKKTETQ)",
+    "old_effort": null,
+    "new_effort": "level_5"
+  },
+  {
+    "id": "kpv_subq",
+    "name": "KPV (Alpha-MSH 11-13 Tripeptide)",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "sleep_consistency",
+    "name": "Sleep Consistency",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "rhonda_hiit_sprints",
+    "name": "Vascular Shear Stress High-Intensity Sprints",
+    "old_effort": "high",
+    "new_effort": "level_4"
+  },
+  {
+    "id": "tudca",
+    "name": "TUDCA",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "tirzepatide_subq",
+    "name": "Tirzepatide (Dual GIP/GLP-1 Receptor Agonist)",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "aod9604_subq",
+    "name": "AOD-9604 (Lipolytic hGH Fragment 177-191)",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "cjc1295_no_dac_subq",
+    "name": "CJC-1295 (No DAC / Mod GRF 1-29)",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "ipamorelin_subq",
+    "name": "Ipamorelin (Selective GHS-R1a Agonist)",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "cyclic_hyperventilation",
+    "name": "Cyclic Hyperventilation (Wim Hof Method)",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "biological_age_testing",
+    "name": "Biological Age Testing",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "means_soleus_pushups_postmeal_walk",
+    "name": "Post-Meal Soleus Pushups & 10-Minute Glycemic Walk",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "3005e947-07b3-4d85-9469-094857f39d5f",
+    "name": "Flossing & Tongue Scraping",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "blueprint_60m_exercise_routine",
+    "name": "Blueprint 60-Min Structural Resilience & Exercise Routine",
+    "old_effort": "high",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "blueprint_sleep_architecture",
+    "name": "Blueprint 8:30 PM Sleep Architecture & Environment",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "lithium_orotate",
+    "name": "Lithium Orotate (Micro-dose)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "attia_protein_distribution",
+    "name": "Peter Attia's High-Leucine Protein Distribution Protocol",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "tongkat_ali",
+    "name": "Tongkat Ali",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "vo2_max_hiit_training",
+    "name": "VO2 Max / HIIT Training",
+    "old_effort": "medium",
+    "new_effort": "level_4"
+  },
+  {
+    "id": "wim_hof_cold_shock_immersion",
+    "name": "Wim Hof Cold Shock Water Immersion (50°F / 10°C)",
+    "old_effort": "high",
+    "new_effort": "level_4"
+  },
+  {
+    "id": "sulforaphane",
+    "name": "Sulforaphane",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "longo_fisetin_quercetin_senolytic_pulse",
+    "name": "Mayo Clinic Pulsed High-Dose Fisetin (20mg/kg) & Quercetin",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "continuous_ketone_monitors",
+    "name": "Continuous Ketone Monitors",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "dayspring_inorganic_nitrate_citrulline",
+    "name": "Dietary Inorganic Nitrate (500mg) + L-Citrulline Malate (6g)",
+    "old_effort": "low",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "walker_caffeine_cutoff",
+    "name": "10-Hour Adenosine-Preserving Caffeine Cutoff",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "berberine",
+    "name": "Berberine (500mg)",
+    "old_effort": "very_low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "astaxanthin",
+    "name": "Astaxanthin",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "dayspring_viscous_fiber_phytosterols",
+    "name": "Viscous Soluble Fiber (10g Psyllium) & Plant Phytosterols (2g)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "resveratrol_pterostilbene",
+    "name": "Resveratrol / Pterostilbene",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "4ab59fd5-aabc-42e6-ac08-8d0efd7bb2a6",
+    "name": "Resonant Humming & Voiced Exhales",
+    "old_effort": "very_low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "walker_metabolic_alcohol_cutoff",
+    "name": "3-Hour Metabolic & Alcohol Sleep-Protection Cutoff",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "blueprint_super_veggie",
+    "name": "Bryan Johnson's Super Veggie Meal",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "rhonda_hyperthermic_sauna",
+    "name": "Dr. Rhonda Patrick's Hyperthermic Sauna Protocol",
+    "old_effort": "medium",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "attia_apob_lipid_management",
+    "name": "Peter Attia's ApoB & Lipid Risk Reduction Protocol",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "vo2_max_4x4_hiit",
+    "name": "VO2 Max 4x4 Interval Protocol",
+    "old_effort": null,
+    "new_effort": "level_4"
+  },
+  {
+    "id": "urolithin_a_mitophagy",
+    "name": "Urolithin A Mitophagy Protocol",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "dark-cool-sleep-environment",
+    "name": "Dark & Cool Sleep Environment",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "evening-screen-time-reduction",
+    "name": "Evening Screen Time Reduction",
+    "old_effort": null,
+    "new_effort": "level_1"
+  },
+  {
+    "id": "spermidine_supplement",
+    "name": "Spermidine Supplementation",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "wim_hof_cyclic_retention_breathwork",
+    "name": "Wim Hof Method Cyclic Hyperventilation & Retention Breathwork",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "zinc",
+    "name": "Zinc Picolinate / Bisglycinate",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "vitamin-k2-mk4",
+    "name": "Vitamin K2-MK4 (Menatetrenone)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "glucosamine-sulfate",
+    "name": "Glucosamine Sulfate 2KCl",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "vitamin_d3",
+    "name": "Vitamin D3 (Cholecalciferol)",
+    "old_effort": "very_low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "running",
+    "name": "Running",
+    "old_effort": null,
+    "new_effort": "level_3"
+  },
+  {
+    "id": "extra-virgin-olive-oil",
+    "name": "High-Polyphenol Extra Virgin Olive Oil (EVOO)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "myo_inositol",
+    "name": "Myo-Inositol",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "sauna_exposure",
+    "name": "Hyperthermic Conditioning (Sauna)",
+    "old_effort": "medium",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "brecka_mthfr_methylation_support",
+    "name": "MTHFR Optimized Methylation Complex (L-5-MTHF + Methyl-B12 + P5P)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "alpha_gpc",
+    "name": "Alpha-GPC",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "intermittent_fasting_16_8",
+    "name": "Time-Restricted Eating (16:8)",
+    "old_effort": "medium",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "nad_iv_therapy",
+    "name": "NAD+ IV Therapy",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "ashwagandha_ksm66",
+    "name": "Ashwagandha (KSM-66)",
+    "old_effort": "very_low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "delay_caffeine",
+    "name": "Delay Caffeine 90-120 Minutes",
+    "old_effort": "high",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "vitamin-c",
+    "name": "Vitamin C (Ascorbic Acid / Liposomal)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "epa_dha_omega3",
+    "name": "EPA/DHA Omega-3 Fatty Acids",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "intermittent_fasting_20_4",
+    "name": "Warrior Diet Fasting (20:4)",
+    "old_effort": "medium",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "optic_flow",
+    "name": "Optic Flow / Forward Ambulation",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "l_tyrosine",
+    "name": "L-Tyrosine",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "wim_hof_horse_stance_thermogenesis",
+    "name": "Post-Cold Horse Stance Active Thermogenesis",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "d546b638-20cc-4134-b79d-ff6d530c6761",
+    "name": "Seated Soleus Push-Ups",
+    "old_effort": "very_low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "rapamycin_weekly",
+    "name": "Rapamycin (Sirolimus) Weekly",
+    "old_effort": "low",
+    "new_effort": "level_5"
+  },
+  {
+    "id": "dexa_scan",
+    "name": "Dual-Energy X-ray Absorptiometry (DEXA)",
+    "old_effort": "very_low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "omad_fasting",
+    "name": "OMAD (One Meal A Day Fasting)",
+    "old_effort": "medium",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "iodine",
+    "name": "Iodine (as Potassium Iodide)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "rhonda_vitamin_d3_k2",
+    "name": "Vitamin D3 (5,000 IU) + K2-MK7 Protocol",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "blueprint_nut_pudding",
+    "name": "Bryan Johnson's Nut Pudding & Longevity Berries",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "urolithin_a",
+    "name": "Urolithin A",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "metformin_daily",
+    "name": "Metformin",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "alpha_lipoic_acid",
+    "name": "Alpha-Lipoic Acid (ALA)",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "attia_centenarian_strength",
+    "name": "Peter Attia's Centenarian Strength & Stability",
+    "old_effort": "high",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "heme-iron",
+    "name": "Heme Iron (Proferrin / Polypeptide Heme)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "blueprint_red_light_therapy",
+    "name": "Blueprint Whole-Body Red & Near-Infrared Light Therapy",
+    "old_effort": "low",
+    "new_effort": "level_3"
+  },
+  {
+    "id": "alpha_ketoglutarate_akg",
+    "name": "Alpha-Ketoglutarate (AKG)",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "shilajit",
+    "name": "Shilajit",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "vitamin-e",
+    "name": "Vitamin E (Mixed Tocopherols & Tocotrienols)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "lycopene",
+    "name": "Lycopene (Standardized Tomato Extract)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "3115a2bc-af3f-427f-bffa-473cb9173ab1",
+    "name": "Postprandial 10-Minute Walk",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "ginger-root",
+    "name": "Ginger Root Extract (Zingiber officinale)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "n_acetyl_cysteine_nac",
+    "name": "N-Acetyl Cysteine (NAC)",
+    "old_effort": "medium",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "mouth_taping",
+    "name": "Sleep Mouth Taping",
+    "old_effort": "low",
+    "new_effort": "level_1"
+  },
+  {
+    "id": "means_berberine_gda",
+    "name": "Berberine HCl (500mg) Glucose Disposal Agent (GDA)",
+    "old_effort": "low",
+    "new_effort": "level_2"
+  },
+  {
+    "id": "cocoa-flavanols",
+    "name": "Cocoa Flavanols (High-Flavanol Extract)",
+    "old_effort": "Minimal",
+    "new_effort": "level_2"
+  }
+]
