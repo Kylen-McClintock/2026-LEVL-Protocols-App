@@ -29,7 +29,14 @@ import {
   Coffee,
   Sun,
   Layers,
-  HelpCircle
+  HelpCircle,
+  Dumbbell,
+  Microscope,
+  HeartPulse,
+  Settings,
+  Plus,
+  Compass,
+  FileText
 } from 'lucide-react'
 
 interface Chapter {
@@ -39,72 +46,99 @@ interface Chapter {
   icon: React.ReactNode
   badge: string
   color: string
+  destinationRoute: string
 }
 
 const CHAPTERS: Chapter[] = [
   {
     id: 'today',
     title: "1. Today's Protocol Timeline",
-    subtitle: 'Circadian execution, multi-day views & outcome tracking',
+    subtitle: 'Circadian execution, multi-day views & daily check-ins',
     icon: <Calendar className="w-4 h-4 text-emerald-400" />,
-    badge: 'Core Daily Routine',
-    color: 'emerald'
+    badge: 'Core Routine',
+    color: 'emerald',
+    destinationRoute: '/today'
   },
   {
-    id: 'quicklog',
-    title: '2. Quick-Log Hotkeys & Vision AI',
-    subtitle: 'Meal plate photo AI scans, 30+ plant diversity & hydration',
-    icon: <Camera className="w-4 h-4 text-purple-400" />,
-    badge: 'Instant Logging',
-    color: 'purple'
+    id: 'outcomes',
+    title: '2. Before, After & During Outcome Tracking',
+    subtitle: 'Pre-session baseline vs post-session shift & intra-session performance',
+    icon: <HeartPulse className="w-4 h-4 text-teal-400" />,
+    badge: 'Biometric Feedback',
+    color: 'teal',
+    destinationRoute: '/today'
+  },
+  {
+    id: 'precision',
+    title: '3. Precision Complete & Execution Logging',
+    subtitle: 'Thermal exposure temps, heart rate zones, weights, sets & wavelengths',
+    icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
+    badge: 'Execution Details',
+    color: 'emerald',
+    destinationRoute: '/today'
   },
   {
     id: 'studio',
-    title: '3. Modality Personalization Studio',
-    subtitle: 'Cadence rotations, skip policies, dosage spectrum & titration',
+    title: '4. Modality Studio, Geek Mode & Titration',
+    subtitle: 'Biological mechanisms, PubMed links, dosage sliders & skip policies',
     icon: <Sliders className="w-4 h-4 text-cyan-400" />,
-    badge: 'Customization',
-    color: 'cyan'
+    badge: 'Deep Customization',
+    color: 'cyan',
+    destinationRoute: '/today'
+  },
+  {
+    id: 'quicklog',
+    title: '5. Quick-Log Hotkeys: 1-Tap & Custom Creation',
+    subtitle: 'Left vertical gradient fill bars, custom hotkey builder & meal AI',
+    icon: <Camera className="w-4 h-4 text-purple-400" />,
+    badge: 'Instant Logging',
+    color: 'purple',
+    destinationRoute: '/today'
   },
   {
     id: 'schedule',
-    title: '4. Unified Fasting & Schedule Hub',
-    subtitle: 'Fasting window targets, macro goals & calendar rescheduling',
+    title: '6. Unified Fasting & Schedule Hub',
+    subtitle: 'Fasting window targets, circadian eating times & macro targets',
     icon: <Clock className="w-4 h-4 text-sky-400" />,
     badge: 'Fasting & Timing',
-    color: 'sky'
+    color: 'sky',
+    destinationRoute: '/schedule'
   },
   {
     id: 'bloodwork',
-    title: '5. Bloodwork & Lab Biomarkers AI',
-    subtitle: 'PDF lab uploads, PhenoAge biological age & longevity ranges',
+    title: '7. Bloodwork, Lab Panels & BioAge Testing',
+    subtitle: 'PDF lab uploads, PhenoAge biological age gap & longevity ranges',
     icon: <Activity className="w-4 h-4 text-rose-400" />,
     badge: 'Biological Age & Labs',
-    color: 'rose'
+    color: 'rose',
+    destinationRoute: '/physiological-age'
   },
   {
     id: 'explore',
-    title: '6. Explore Protocols Catalog',
-    subtitle: '100+ clinical protocols (Blueprint, Attia, Sinclair, FMD)',
+    title: '8. Explore Clinical Protocols Catalog',
+    subtitle: '100+ verified stacks (Blueprint, Attia, Sinclair, Longo FMD)',
     icon: <Search className="w-4 h-4 text-amber-400" />,
     badge: 'Protocol Library',
-    color: 'amber'
+    color: 'amber',
+    destinationRoute: '/explore'
   },
   {
     id: 'bench',
-    title: '7. The Bench & Protocol Backlog',
-    subtitle: 'Saving modalities to experiment with before going live',
+    title: '9. The Bench & Staging Sandbox',
+    subtitle: 'Saving modalities to customize and experiment before going live',
     icon: <Bookmark className="w-4 h-4 text-indigo-400" />,
     badge: 'Sandbox & Backlog',
-    color: 'indigo'
+    color: 'indigo',
+    destinationRoute: '/bench'
   },
   {
     id: 'coach',
-    title: '8. AI Longevity Coach & In-App Guide',
-    subtitle: 'Evidence-based synergy advice & in-app feature navigation',
+    title: '10. AI Longevity Coach & In-App Guide',
+    subtitle: 'Circadian sequencing advice, synergy checks & 1-click stack enrollment',
     icon: <Sparkles className="w-4 h-4 text-purple-400" />,
     badge: 'AI Assistant',
-    color: 'purple'
+    color: 'purple',
+    destinationRoute: '/coach'
   }
 ]
 
@@ -119,9 +153,7 @@ export default function GuidePage() {
       if (hash && CHAPTERS.some(c => c.id === hash)) {
         setActiveChapter(hash)
         const el = document.getElementById(hash)
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
     }
   }, [])
@@ -129,7 +161,7 @@ export default function GuidePage() {
   const scrollToChapter = (id: string) => {
     setActiveChapter(id)
     if (typeof window !== 'undefined') {
-      window.location.hash = id
+      window.history.pushState(null, '', `#${id}`)
       const el = document.getElementById(id)
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -138,30 +170,28 @@ export default function GuidePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-28">
-      {/* Top Sticky Header */}
-      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3.5 sm:px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-slate-950 text-slate-100 pb-28 selection:bg-purple-500/30">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-white/10 px-4 py-3 sm:py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => router.back()}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
               title="Go Back"
             >
               <ArrowLeft size={16} />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <BookOpen size={16} className="text-purple-400" />
+                <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
                 <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight">
-                  LEVL Visual Playbook &amp; App Tour
+                  LEVL Protocols Playbook &amp; App Tour
                 </h1>
-                <span className="text-[10px] bg-purple-950/80 border border-purple-800/60 text-purple-300 px-2 py-0.5 rounded-full font-mono font-bold hidden sm:inline-block">
-                  Master User Guide
-                </span>
               </div>
               <p className="text-[11px] text-slate-400 hidden sm:block">
-                Everything you need to master your daily longevity routine, fasting hub, and biomarker AI.
+                Comprehensive visual guide to protocol tracking, biometric outcomes, fasting, lab uploads, and AI coaching.
               </p>
             </div>
           </div>
@@ -169,885 +199,919 @@ export default function GuidePage() {
           <div className="flex items-center gap-2">
             <Link
               href="/today"
-              className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all shadow-md shadow-purple-900/40 flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-900/30 flex items-center gap-1.5"
             >
-              <span>Go to Today</span>
+              <span>Launch App</span>
               <ArrowRight size={13} />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Main Container with Sticky Sidebar + Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Sticky Sidebar (Desktop) / Horizontal Chapter Bar (Mobile) */}
-        <aside className="lg:col-span-4 space-y-3">
-          <div className="lg:sticky lg:top-20 space-y-4">
-            <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-md space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Layers size={13} className="text-purple-400" /> Chapter Directory
-                </span>
-                <span className="text-[10px] font-mono text-purple-300 font-bold bg-purple-950/80 border border-purple-800/60 px-2 py-0.5 rounded-full">
-                  8 Chapters
-                </span>
-              </div>
-
-              {/* Chapter Buttons */}
-              <div className="flex flex-row lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 custom-scrollbar">
-                {CHAPTERS.map((ch) => {
-                  const isActive = activeChapter === ch.id
-                  return (
-                    <button
-                      key={ch.id}
-                      onClick={() => scrollToChapter(ch.id)}
-                      className={`text-left p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-between gap-2 shrink-0 lg:shrink w-auto lg:w-full border ${
-                        isActive
-                          ? 'bg-purple-950/60 border-purple-500/50 text-white font-bold shadow-sm'
-                          : 'bg-slate-950/60 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="shrink-0">{ch.icon}</div>
-                        <span className="text-xs font-semibold truncate">{ch.title}</span>
-                      </div>
-                      <ChevronRight size={13} className={`shrink-0 transition-transform ${isActive ? 'text-purple-400 translate-x-0.5' : 'text-slate-600'}`} />
-                    </button>
-                  )
-                })}
-              </div>
+      {/* Main Container */}
+      <main className="max-w-6xl mx-auto px-4 pt-6 space-y-8">
+        {/* Hero Banner */}
+        <section className="rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-purple-950/70 via-slate-900 to-indigo-950/50 border border-purple-500/30 shadow-2xl relative overflow-hidden backdrop-blur-md">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 max-w-3xl space-y-3">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-mono font-bold">
+              <Sparkles size={12} className="text-purple-400" />
+              <span>Interactive Clinical Longevity Playbook</span>
             </div>
-
-            {/* Quick Support Card */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-950/30 to-slate-900 border border-purple-500/20 text-xs text-slate-300 space-y-2 hidden lg:block">
-              <div className="flex items-center gap-2 font-bold text-white">
-                <Sparkles size={14} className="text-purple-400" />
-                <span>Have a question?</span>
-              </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                You can ask the AI Longevity Coach on any screen for direct step-by-step help and instant navigation shortcuts.
-              </p>
-              <Link
-                href="/coach"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-300 hover:text-purple-200 pt-1"
-              >
-                <span>Ask AI Coach</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-          </div>
-        </aside>
-
-        {/* Right Content Area: 8 Detailed Annotated Visual Chapters */}
-        <main className="lg:col-span-8 space-y-12">
-          
-          {/* ========================================================================= */}
-          {/* CHAPTER 1: TODAY'S PROTOCOL TIMELINE */}
-          {/* ========================================================================= */}
-          <section id="today" className="scroll-mt-24 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xs">
-                  1
-                </span>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white">
-                    Today&apos;s Protocol Timeline &amp; Circadian Execution
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    How daily tasks are grouped by circadian time blocks and tracked with outcome ratings.
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/today"
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-600/50 text-emerald-300 hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <span>Open Today</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            {/* Visual Annotated Mock Card */}
-            <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-5 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              {/* Annotated Mock UI Component */}
-              <div className="space-y-3 bg-slate-950/90 border border-slate-800/80 rounded-2xl p-4">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-800/80 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="font-extrabold text-white">🌅 Morning Stack (6:00 AM – 9:00 AM)</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-2 py-0.5 rounded-full font-bold">
-                    3 of 4 Completed
-                  </span>
-                </div>
-
-                {/* Mock Task 1 with Callout Pointer */}
-                <div className="relative p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center">
-                      <Check size={14} className="stroke-[3]" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-white">Cold Plunge Therapy (50°F / 10°C)</h4>
-                      <p className="text-[10px] text-slate-400">3 mins • Søberg Principle warm-up • +250% dopamine</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-mono bg-emerald-950 border border-emerald-800/80 text-emerald-300 px-2 py-0.5 rounded-md font-bold">
-                      Mood: 9/10
-                    </span>
-                  </div>
-                </div>
-
-                {/* Mock Task 2 with Personalize Gear */}
-                <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 flex items-center justify-center font-bold text-xs">
-                      ○
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-white">NMN + Resveratrol Epigenetic Stack</h4>
-                      <p className="text-[10px] text-slate-400">1,000mg NMN + 500mg Resveratrol • With EVOO</p>
-                    </div>
-                  </div>
-                  <button className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 flex items-center gap-1">
-                    <Sliders size={11} />
-                    <span>Personalize</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 3 Step Key Takeaways */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
-                    <Clock size={13} />
-                    <span>1. Circadian Blocks</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Protocols are ordered chronologically (Morning, Midday, Evening, Pre-Bed) for optimal nutrient synergy and biological absorption.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
-                    <CheckCircle2 size={13} />
-                    <span>2. Outcome Logging</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Tap any task to log energy, mood, or sleep quality ratings, which automatically computes efficacy correlations over time.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
-                    <Calendar size={13} />
-                    <span>3. Multi-Day Views</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Use the top view selector to switch between <strong>Today</strong>, <strong>3-Day Split</strong>, <strong>7-Day Week</strong>, and <strong>Month Matrix</strong>.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ========================================================================= */}
-          {/* CHAPTER 2: QUICK-LOG HOTKEYS & VISION AI */}
-          {/* ========================================================================= */}
-          <section id="quicklog" className="scroll-mt-24 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold text-xs">
-                  2
-                </span>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white">
-                    Quick-Log Hotkeys &amp; Meal Vision AI
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Snap meal plate photos for instant macro analysis and track botanical plant diversity.
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/today"
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <span>Try Hotkeys in Today</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            {/* Visual Annotated Mock Card */}
-            <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-5 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              {/* Annotated Hotkey Grid Preview */}
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Quick Log Hotkeys Bar (Pinned at top of Today)
-                </span>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-950/60 to-slate-900 border border-purple-500/40 text-center space-y-1 shadow-sm">
-                    <Camera size={16} className="text-purple-400 mx-auto" />
-                    <span className="text-[10px] font-extrabold text-white block">Log Meal AI</span>
-                    <span className="text-[9px] text-purple-300 block font-mono">Photo / Fast</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center space-y-1">
-                    <Droplets size={16} className="text-sky-400 mx-auto" />
-                    <span className="text-[10px] font-bold text-white block">Water</span>
-                    <span className="text-[9px] text-slate-400 block">+16 oz</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center space-y-1">
-                    <Coffee size={16} className="text-amber-400 mx-auto" />
-                    <span className="text-[10px] font-bold text-white block">Caffeine</span>
-                    <span className="text-[9px] text-slate-400 block">Cutoff Track</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center space-y-1">
-                    <Sun size={16} className="text-yellow-400 mx-auto" />
-                    <span className="text-[10px] font-bold text-white block">Sunlight</span>
-                    <span className="text-[9px] text-slate-400 block">Circadian</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center space-y-1">
-                    <Flame size={16} className="text-orange-400 mx-auto" />
-                    <span className="text-[10px] font-bold text-white block">Sauna</span>
-                    <span className="text-[9px] text-slate-400 block">174°F+</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center space-y-1">
-                    <Snowflake size={16} className="text-cyan-400 mx-auto" />
-                    <span className="text-[10px] font-bold text-white block">Cold Plunge</span>
-                    <span className="text-[9px] text-slate-400 block">50°F</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3 Step Key Takeaways */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-purple-400 font-bold text-xs">
-                    <Camera size={13} />
-                    <span>1. Meal Photo Vision AI</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Snap any plate of food — Multimodal AI estimates Calories, Protein, Net Carbs, Prebiotic Fiber, and Healthy Fats automatically.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-purple-400 font-bold text-xs">
-                    <Target size={13} />
-                    <span>2. 30+ Plant Diversity</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Vision AI filters out animal products and tallies botanical plant species to optimize your gut microbiome and microbial richness.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-purple-400 font-bold text-xs">
-                    <Zap size={13} />
-                    <span>3. Instant Hotkeys</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Log water (+8oz/+16oz), caffeine cutoff, morning sunlight, sauna, and cold plunge in 1 tap without opening complicated menus.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ========================================================================= */}
-          {/* CHAPTER 3: MODALITY PERSONALIZATION & SCHEDULING STUDIO */}
-          {/* ========================================================================= */}
-          <section id="studio" className="scroll-mt-24 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center font-bold text-xs">
-                  3
-                </span>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white">
-                    Modality Personalization &amp; Scheduling Studio
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Fine-tune cadences, skip policies, dosage spectrums, and peptide titration cycles.
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/today"
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-600/50 text-cyan-300 hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <span>Customize a Modality</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            {/* Visual Annotated Mock Card */}
-            <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-5 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              {/* Annotated 2-Column Studio Preview */}
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-extrabold text-white flex items-center gap-1.5">
-                    <Sliders size={13} className="text-cyan-400" /> Modality Personalize &amp; Schedule Studio (2-Column Desktop)
-                  </span>
-                  <span className="text-[10px] font-mono text-cyan-300 bg-cyan-950 border border-cyan-800/80 px-2 py-0.5 rounded-full font-bold">
-                    Scroll Safe Viewport
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {/* Left Column Mock */}
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block">
-                      Left Column: Cadence &amp; Rotation
-                    </span>
-                    <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-                      <span className="text-[11px] font-bold text-white block">Days of Week vs Rest Interval</span>
-                      <p className="text-[10px] text-slate-400">e.g. Every 2 days (1 day on, 1 day rest) • Rolling cycle preview</p>
-                    </div>
-                    <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-                      <span className="text-[11px] font-bold text-white block">Real-World Adaptation Policy</span>
-                      <p className="text-[10px] text-slate-400">If skipped: Roll Forward to next day, Fixed, or Cascade Shift</p>
-                    </div>
-                  </div>
-
-                  {/* Right Column Mock */}
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 block">
-                      Right Column: Dosage &amp; Evidence
-                    </span>
-                    <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-                      <span className="text-[11px] font-bold text-white block">Literature Dosing Slider</span>
-                      <p className="text-[10px] text-slate-400">Sensitivity Starter vs Personal Target vs Blueprint preset</p>
-                    </div>
-                    <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-                      <span className="text-[11px] font-bold text-white block">Peptide Titration Step-Up</span>
-                      <p className="text-[10px] text-slate-400">Week 1-4 ramp up schedules &amp; PubMed evidence dossier</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3 Step Key Takeaways */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-cyan-400 font-bold text-xs">
-                    <Calendar size={13} />
-                    <span>1. Flexible Cadences</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Set specific days of the week, or recovery rest intervals (e.g. 1 day on, 1 day off) with rolling rotation previews.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-cyan-400 font-bold text-xs">
-                    <ShieldCheck size={13} />
-                    <span>2. Skip Handling</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Choose whether missed sessions roll forward automatically, stay locked to calendar days, or cascade shift future intervals.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-cyan-400 font-bold text-xs">
-                    <Scale size={13} />
-                    <span>3. Multi-Parameter Target</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Calibrate secondary parameters like sauna temperature (174°F+), cold plunge temp (50°F), or administration vehicles (with EVOO).
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ========================================================================= */}
-          {/* CHAPTER 4: UNIFIED FASTING & SCHEDULE HUB */}
-          {/* ========================================================================= */}
-          <section id="schedule" className="scroll-mt-24 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-sky-500/20 border border-sky-500/40 text-sky-400 flex items-center justify-center font-bold text-xs">
-                  4
-                </span>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white">
-                    Unified Fasting &amp; Schedule Hub
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Sync your fasting window with nutrition targets and calendar rescheduling.
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/schedule"
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-sky-950/60 hover:bg-sky-900/80 border border-sky-600/50 text-sky-300 hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <span>Open Fasting Hub</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            {/* Visual Annotated Mock Card */}
-            <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-5 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              {/* 4 Interactive Headline KPI Cards */}
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-extrabold text-white">
-                    Interactive Headline Target Cards (Click [Edit] to Adjust)
-                  </span>
-                  <span className="text-[10px] font-mono text-sky-300 bg-sky-950 border border-sky-800 px-2 py-0.5 rounded-full font-bold">
-                    Targets Drawer
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div className="p-3 rounded-xl bg-slate-900 border border-sky-500/30 space-y-1">
-                    <span className="text-[10px] text-slate-400 block font-bold">Fasting Target</span>
-                    <span className="text-base font-extrabold text-sky-300 block">16:8 Window</span>
-                    <span className="text-[9px] text-slate-500 block">Fast Break: 12:00 PM</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 block font-bold">Calories / Macros</span>
-                    <span className="text-base font-extrabold text-white block">2,150 kcal</span>
-                    <span className="text-[9px] text-slate-500 block">165g Protein • 45g Fiber</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 block font-bold">Daily Plant Servings</span>
-                    <span className="text-base font-extrabold text-emerald-400 block">8.5 Servings</span>
-                    <span className="text-[9px] text-slate-500 block">Target: 7+ daily</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 block font-bold">Plant Diversity Count</span>
-                    <span className="text-base font-extrabold text-purple-300 block">34 Species</span>
-                    <span className="text-[9px] text-slate-500 block">Goal: 30+ weekly</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3 Step Key Takeaways */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-sky-400 font-bold text-xs">
-                    <Clock size={13} />
-                    <span>1. Tap [Edit] on Cards</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Tap any headline card to open the Targets Drawer to change fasting hours (16:8, 18:6, OMAD) and macro targets.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-sky-400 font-bold text-xs">
-                    <Target size={13} />
-                    <span>2. Net Carbs vs Fiber</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Carbohydrates and prebiotic fiber are tracked separately so you can optimize microbiome gut health while managing glycemic spikes.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-sky-400 font-bold text-xs">
-                    <Calendar size={13} />
-                    <span>3. Drag &amp; Reschedule</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Easily drag and drop modalities across the calendar grid to adapt your routine to travel or schedule changes.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ========================================================================= */}
-          {/* CHAPTER 5: BLOODWORK & LAB BIOMARKERS VISION AI */}
-          {/* ========================================================================= */}
-          <section id="bloodwork" className="scroll-mt-24 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center font-bold text-xs">
-                  5
-                </span>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white">
-                    Bloodwork &amp; Lab Biomarkers Vision AI
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Upload Quest, Labcorp, or Function Health blood tests for automatic PhenoAge parsing.
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/physiological-age"
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-600/50 text-rose-300 hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <span>Upload Lab Panel</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            {/* Visual Annotated Mock Card */}
-            <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-5 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              {/* Annotated Lab Parser & BioAge Preview */}
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <Activity size={14} className="text-rose-400" />
-                    <span className="font-extrabold text-white">PhenoAge Biological Age Calculation</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                    Age Gap: -4.2 Years Younger
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 block font-bold">ApoB (Vascular)</span>
-                    <span className="text-sm font-extrabold text-emerald-400 block">58 mg/dL</span>
-                    <span className="text-[9px] text-slate-500 block">Optimal: &lt;65 mg/dL</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 block font-bold">hs-CRP (Inflammation)</span>
-                    <span className="text-sm font-extrabold text-emerald-400 block">0.32 mg/L</span>
-                    <span className="text-[9px] text-slate-500 block">Optimal: &lt;0.5 mg/L</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 block font-bold">HbA1c (Glycemic)</span>
-                    <span className="text-sm font-extrabold text-emerald-400 block">5.0%</span>
-                    <span className="text-[9px] text-slate-500 block">Optimal: &lt;5.2%</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3 Step Key Takeaways */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-rose-400 font-bold text-xs">
-                    <Camera size={13} />
-                    <span>1. Multimodal Lab Upload</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Upload any PDF or photo of lab results — Vision AI automatically normalizes and graphs every measured biomarker.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-rose-400 font-bold text-xs">
-                    <Activity size={13} />
-                    <span>2. Biological Age Scores</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Computes your Phenotypic Age, KDM Biological Age, and Homeostatic Dysregulation scores to measure your rate of aging.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-rose-400 font-bold text-xs">
-                    <ShieldCheck size={13} />
-                    <span>3. Longevity Ranges</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Biomarkers are compared against strict longevity reference ranges (e.g. Dayspring ApoB targets) rather than standard pathology ranges.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ========================================================================= */}
-          {/* CHAPTER 6: EXPLORE PROTOCOLS CATALOG */}
-          {/* ========================================================================= */}
-          <section id="explore" className="scroll-mt-24 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold text-xs">
-                  6
-                </span>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white">
-                    Explore Protocols Catalog
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Browse 100+ clinical protocols and 1-click enroll stacks.
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/explore"
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/80 border border-amber-600/50 text-amber-300 hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <span>Browse Explore Catalog</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            {/* Visual Annotated Mock Card */}
-            <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-5 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-3 text-xs">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Featured Master Protocol Presets
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div className="p-3 rounded-xl bg-slate-900 border border-amber-500/30 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-white">Bryan Johnson Blueprint v2.0</span>
-                      <span className="text-[9px] bg-amber-950 border border-amber-800 text-amber-300 px-2 py-0.5 rounded-full font-bold">Speed of Aging</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400">Full 2026 stack • 30+ biomarkers • 1-click enroll</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-white">Peter Attia Centenarian Decathlon</span>
-                      <span className="text-[9px] bg-blue-950 border border-blue-800 text-blue-300 px-2 py-0.5 rounded-full font-bold">Cardiorespiratory</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400">Zone 2 cardio • 4x4 HIIT • Grip strength &amp; stability</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3 Step Key Takeaways */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
-                    <Search size={13} />
-                    <span>1. Category Filters</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Filter by Supplements, Nutrition, Sleep, Thermal &amp; Light Hormesis, Fitness, Peptides, or Diagnostics.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
-                    <BookOpen size={13} />
-                    <span>2. Evidence Dossiers</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Every modality includes verified PubMed study links, biological mechanisms, and researcher guidelines.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
-                    <Zap size={13} />
-                    <span>3. 1-Click Enrollment</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Enroll in whole protocols with 1 click, or add individual modalities to your live Today timeline or Bench.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ========================================================================= */}
-          {/* CHAPTER 7: THE BENCH & BACKLOG */}
-          {/* ========================================================================= */}
-          <section id="bench" className="scroll-mt-24 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center font-bold text-xs">
-                  7
-                </span>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white">
-                    The Bench &amp; Protocol Backlog
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Store and calibrate modalities before activating them to your live Today timeline.
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/bench"
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-600/50 text-indigo-300 hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <span>Open My Bench</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            {/* Visual Annotated Mock Card */}
-            <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-5 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-2 text-xs">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Bench Holding Sandbox Preview
-                </span>
-                <div className="p-3 rounded-xl bg-slate-900 border border-indigo-500/30 flex items-center justify-between gap-3">
-                  <div>
-                    <h4 className="font-extrabold text-white text-xs">Fisetin Senolytic Pulse Protocol</h4>
-                    <p className="text-[10px] text-slate-400">20mg/kg • 2 consecutive days per month • Mayo Clinic Trial</p>
-                  </div>
-                  <button className="text-[10px] font-extrabold px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md">
-                    Activate to Today
-                  </button>
-                </div>
-              </div>
-
-              {/* 3 Step Key Takeaways */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs">
-                    <Bookmark size={13} />
-                    <span>1. Research Sandbox</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Save interesting supplements or therapies from Explore without crowding your current daily routine.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs">
-                    <Sliders size={13} />
-                    <span>2. Pre-Configuration</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Set up your target dosages, cadences, and notes on the bench so they are ready to go when you cycle them in.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs">
-                    <Zap size={13} />
-                    <span>3. 1-Tap Activation</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    When you are ready to start a bench protocol, tap &quot;Activate to Today&quot; to instantly schedule it into your routine.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ========================================================================= */}
-          {/* CHAPTER 8: AI LONGEVITY COACH & IN-APP GUIDE */}
-          {/* ========================================================================= */}
-          <section id="coach" className="scroll-mt-24 space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold text-xs">
-                  8
-                </span>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white">
-                    AI Longevity Coach &amp; In-App Assistant
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Your 24/7 personal longevity expert and navigation copilot.
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/coach"
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <span>Open Full AI Coach</span>
-                <ArrowRight size={12} />
-              </Link>
-            </div>
-
-            {/* Visual Annotated Mock Card */}
-            <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 sm:p-6 space-y-5 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
-
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-purple-400 font-bold text-xs">
-                  <Sparkles size={14} />
-                  <span>Ask AI Longevity Coach Anything</span>
-                </div>
-                <div className="p-3 rounded-xl bg-slate-900 border border-purple-500/30 text-slate-300 space-y-1">
-                  <p className="text-[11px] text-purple-300 font-bold">User: &quot;Where do I go to upload my bloodwork?&quot;</p>
-                  <p className="text-[11px] text-slate-300">
-                    AI Coach: &quot;Go to Physiological Age (/physiological-age), tap &apos;Upload Lab Panel&apos;, and Vision AI will parse your biomarkers and PhenoAge gap.&quot;
-                  </p>
-                  <div className="pt-1">
-                    <span className="text-[10px] font-bold bg-purple-950 border border-purple-700/60 text-purple-200 px-2 py-0.5 rounded-lg inline-flex items-center gap-1">
-                      🩸 [Open Bloodwork &amp; BioAge →]
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3 Step Key Takeaways */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-purple-400 font-bold text-xs">
-                    <Sparkles size={13} />
-                    <span>1. Rotating Prompts</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    The single-line bar under the Daily Tip cycles through 20 clinical questions to inspire high-impact optimizations.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-purple-400 font-bold text-xs">
-                    <Sliders size={13} />
-                    <span>2. In-Modal Dosing Coach</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Ask questions inside the Modality Studio with 1-click buttons to apply recommended doses and timing windows.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <div className="flex items-center gap-1.5 text-purple-400 font-bold text-xs">
-                    <ExternalLink size={13} />
-                    <span>3. In-App Navigation</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Ask the AI how to do anything in the app, and it provides step-by-step instructions and direct route jump buttons.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Bottom Call to Action */}
-          <div className="p-6 rounded-3xl bg-gradient-to-r from-purple-950/40 via-slate-900 to-cyan-950/40 border border-purple-500/30 text-center space-y-3 shadow-2xl">
-            <h3 className="text-lg font-extrabold text-white">
-              Ready to start your longevity routine?
-            </h3>
-            <p className="text-xs text-slate-400 max-w-lg mx-auto leading-relaxed">
-              Explore 100+ clinical protocols, track your circadian stack on Today, and monitor your PhenoAge biological age gap.
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Master Every Dimension of Your Protocol Stack
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Explore step-by-step walkthroughs for logging before/after outcomes, unlocking specialized Precision Complete data, configuring custom 1-tap hotkeys, running PhenoAge blood tests, and dialing in your circadian fasting schedule.
             </p>
-            <div className="flex items-center justify-center gap-3 pt-1">
-              <Link
-                href="/today"
-                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-900/40 transition-all cursor-pointer"
+          </div>
+        </section>
+
+        {/* Directory Navigator (Horizontal pill scroller) */}
+        <nav className="sticky top-16 z-30 bg-slate-950/95 backdrop-blur-md py-2.5 -mx-4 px-4 border-b border-white/5 overflow-x-auto scrollbar-hide flex items-center gap-2">
+          {CHAPTERS.map(ch => {
+            const isSelected = activeChapter === ch.id
+            return (
+              <button
+                key={ch.id}
+                type="button"
+                onClick={() => scrollToChapter(ch.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer border shrink-0 ${
+                  isSelected
+                    ? 'bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-900/40 scale-105'
+                    : 'bg-slate-900/80 hover:bg-slate-800 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
               >
-                Go to Today Timeline
-              </Link>
-              <Link
-                href="/explore"
-                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs transition-all cursor-pointer"
-              >
-                Explore Protocols
-              </Link>
+                {ch.icon}
+                <span>{ch.title.split('. ')[1] || ch.title}</span>
+              </button>
+            )
+          })}
+        </nav>
+
+        {/* ========================================================================= */}
+        {/* CHAPTER 1: TODAY TIMELINE */}
+        {/* ========================================================================= */}
+        <section id="today" className="scroll-mt-32 space-y-4 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-emerald-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold">
+                <Calendar size={16} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  1. Today&apos;s Protocol Timeline &amp; Circadian Execution
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Organizing modalities into biologically aligned circadian windows.
+                </p>
+              </div>
             </div>
+            <Link
+              href="/today"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+            >
+              <span>Open Today Timeline</span>
+              <ExternalLink size={12} />
+            </Link>
           </div>
 
-        </main>
-      </div>
+          {/* Visual Showcase Card */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Mockup Left: Circadian Buckets */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2.5">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                  <Clock size={11} /> Circadian Buckets Preview
+                </span>
+                <div className="space-y-2">
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-amber-500/20 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <Sun size={14} className="text-amber-400" />
+                      <span className="font-bold text-slate-200">Morning Sunlight Viewing</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/40">Within 30m waking</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-purple-500/20 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <Layers size={14} className="text-purple-400" />
+                      <span className="font-bold text-slate-200">Morning Longevity Stack (6 pills)</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/40">With EVOO</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-emerald-500/20 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <Flame size={14} className="text-orange-400" />
+                      <span className="font-bold text-slate-200">Sauna Hyperthermia</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/40">174°F / 20m</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mockup Right: View Selector & Wellbeing */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2.5">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1">
+                  <Activity size={11} /> Multi-Day Planning &amp; Daily Check-in
+                </span>
+                <div className="space-y-2 text-xs">
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-300">View Modes:</span>
+                    <div className="flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded bg-purple-600 text-white font-bold text-[10px]">Today</span>
+                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px]">3-Day</span>
+                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px]">7-Day</span>
+                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px]">Month</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900/90 border border-emerald-500/20 space-y-1">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-emerald-300">Daily Wellbeing Check-in:</span>
+                      <span className="font-mono text-slate-400">8.4 / 10 Avg</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1 text-[10px] text-center font-mono">
+                      <div className="bg-slate-950 p-1 rounded border border-white/5">Mood: 8</div>
+                      <div className="bg-slate-950 p-1 rounded border border-white/5">Energy: 9</div>
+                      <div className="bg-slate-950 p-1 rounded border border-white/5">Stress: 2</div>
+                      <div className="bg-slate-950 p-1 rounded border border-white/5">Sleep: 8.5</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Step-by-Step Guidance */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-extrabold text-emerald-400 font-mono">STEP 1: Circadian Slots</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Interventions automatically group by biological timing (Morning Sun, Morning Stack, Midday Meal, Afternoon Training, Evening Recovery, Pre-Bed).
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-extrabold text-emerald-400 font-mono">STEP 2: Multi-Day Views</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Switch seamlessly between Single-Day, 3-Day Rolling Split, 7-Day Week, and Month Matrix to visualize your adherence and rest intervals.
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-extrabold text-emerald-400 font-mono">STEP 3: Daily Wellbeing</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Log your morning wellbeing check-in banner (0-10 on mood, energy, stress, sleep) to power your longitudinal efficacy correlations.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* CHAPTER 2: OUTCOMES (BEFORE, AFTER & DURING) */}
+        {/* ========================================================================= */}
+        <section id="outcomes" className="scroll-mt-32 space-y-4 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-teal-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-400 flex items-center justify-center font-bold">
+                <HeartPulse size={16} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  2. Outcome Tracking: Before, After &amp; During (Intra-Session)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Measuring acute bio-signals, therapeutic shifts, and understanding execution-only metrics.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/today"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-teal-950/60 hover:bg-teal-900 border border-teal-500/40 text-teal-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+            >
+              <span>Try in Today</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Left: Pre -> Post Delta Comparison */}
+              <div className="rounded-xl border border-teal-500/30 bg-slate-950 p-4 space-y-3">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-300 flex items-center gap-1.5">
+                  <Activity size={12} /> Acute Pre → Post Shift (e.g. Cold Plunge / Sauna)
+                </span>
+                <div className="space-y-2 text-xs">
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-purple-500/30 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-purple-300">1. Baseline (Before Plunge):</span>
+                      <span className="text-[10px] font-mono bg-purple-950 px-1.5 py-0.5 rounded text-purple-200">Pre-Session</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-300 font-mono text-[11px]">
+                      <span>Stress: 8 / 10 (Elevated)</span>
+                      <span>Alertness: 3 / 10 (Groggy)</span>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-emerald-500/30 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-emerald-300">2. Outcome (After Plunge):</span>
+                      <span className="text-[10px] font-mono bg-emerald-950 px-1.5 py-0.5 rounded text-emerald-200">Post-Session</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-200 font-mono text-[11px]">
+                      <span className="text-emerald-400 font-bold">Stress: 2 / 10 (-75% Drop)</span>
+                      <span className="text-emerald-400 font-bold">Alertness: 9 / 10 (+200%)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Why Some Are During-Only */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Dumbbell size={12} /> Intra-Session / During-Only (Strength &amp; Endurance)
+                </span>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Why don&apos;t strength workouts or Zone 2 cardio have a &ldquo;Before Strength&rdquo; slider?
+                </p>
+                <div className="p-3 rounded-lg bg-slate-900/80 border border-amber-500/20 text-xs text-slate-300 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 font-bold">•</span>
+                    <span><strong>Physical Capacity is Delivered During Execution:</strong> You cannot rate workout strength before lifting; it measures actual capacity delivered (sets, reps, watts, active HR).</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 font-bold">•</span>
+                    <span><strong>Morning Sleep Quality:</strong> Evaluated upon waking based on cumulative overnight sleep architecture.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Deep Step-by-Step */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-extrabold text-teal-400 font-mono">1. Log Baseline (Before)</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  On reactive modalities, tap <span className="text-purple-300 font-bold">Log Baseline (Before)</span> to record acute pre-state (Stress, Alertness, Mood, Joint Pain, Satiety).
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-extrabold text-teal-400 font-mono">2. How Do You Feel? (After)</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Upon marking the task complete, adjust post-session sliders. LEVL calculates your exact therapeutic delta shift and logs the observation.
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-extrabold text-teal-400 font-mono">3. Customize Sliders</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Tap <span className="text-cyan-300 font-bold">Customize Tracked Outcomes</span> on any card to add or remove bio-signal sliders tailored to your health goals.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* CHAPTER 3: PRECISION COMPLETE */}
+        {/* ========================================================================= */}
+        <section id="precision" className="scroll-mt-32 space-y-4 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-emerald-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold">
+                <CheckCircle2 size={16} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  3. Precision Complete &amp; Specialized Execution Logging
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Granular bio-mechanical parameters: Thermal exposure, HR zones, sets, reps &amp; wavelengths.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/today"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+            >
+              <span>View Modality Cards</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+            <div className="rounded-xl border border-emerald-500/30 bg-slate-950 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-lg bg-emerald-500 text-black font-extrabold text-xs flex items-center gap-1 shadow-md">
+                    <CheckCircle2 size={13} /> Precision Complete
+                  </span>
+                  <span className="text-xs text-slate-300 font-bold">Specialized Execution Modals</span>
+                </div>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">Clinical Grade</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-1 text-xs">
+                <div className="p-3 rounded-lg bg-slate-900 border border-orange-500/20 space-y-1">
+                  <div className="font-bold text-orange-300 flex items-center gap-1">
+                    <Flame size={12} /> Thermal Exposure
+                  </div>
+                  <p className="text-[11px] text-slate-400">Sauna 174°F / 20 mins; Cold plunge 50°F / 3 mins; Søberg natural re-warm notes.</p>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-900 border border-sky-500/20 space-y-1">
+                  <div className="font-bold text-sky-300 flex items-center gap-1">
+                    <Activity size={12} /> Cardio &amp; Zones
+                  </div>
+                  <p className="text-[11px] text-slate-400">Zone 2 duration, active 135 bpm HR, VO2 Max intervals, average watts &amp; distance.</p>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-900 border border-purple-500/20 space-y-1">
+                  <div className="font-bold text-purple-300 flex items-center gap-1">
+                    <Dumbbell size={12} /> Strength &amp; Load
+                  </div>
+                  <p className="text-[11px] text-slate-400">Multi-set execution, weight load (lbs/kg), reps completed, RPE fatigue score.</p>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-900 border border-rose-500/20 space-y-1">
+                  <div className="font-bold text-rose-300 flex items-center gap-1">
+                    <Sun size={12} /> Photobiomodulation
+                  </div>
+                  <p className="text-[11px] text-slate-400">Red/NIR 660nm &amp; 850nm wavelengths, panel distance, irradiance duration.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-emerald-400">1-Click Fast Log vs Precision Log</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Mark complete with standard 1-click button for rapid compliance, or tap <span className="text-emerald-300 font-bold">Precision Complete</span> when you want to track exact bio-mechanical telemetry.
+                </p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-emerald-400">Longitudinal Efficacy Mapping</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Every precision metric links into your historical debrief reports, establishing dose-response curves against your biological age score and wellbeing.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* CHAPTER 4: MODALITY STUDIO & GEEK MODE */}
+        {/* ========================================================================= */}
+        <section id="studio" className="scroll-mt-32 space-y-4 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-cyan-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center font-bold">
+                <Sliders size={16} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  4. Modality Personalization Studio, Geek Mode &amp; Titration
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Deep biological mechanisms, PubMed citations, dose spectrum sliders &amp; skip policies.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/today"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+            >
+              <span>Personalize a Modality</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Studio Left: Dosing Spectrum & Cadence */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                  <Sliders size={12} /> Modality Studio Dosing &amp; Cadence
+                </span>
+                <div className="space-y-2 text-xs">
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                    <span className="font-bold text-slate-200">Dosage Spectrum Slider:</span>
+                    <div className="flex items-center justify-between font-mono text-[11px] text-slate-400 pt-1">
+                      <span>Starter: 100mg</span>
+                      <span className="text-cyan-300 font-bold bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">Target: 500mg</span>
+                      <span>Clinical: 1,000mg</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                    <span className="font-bold text-slate-200">Secondary Vehicle Synergy:</span>
+                    <p className="text-[11px] text-slate-300 italic">&ldquo;Take with 1 tbsp Extra Virgin Olive Oil for fat-soluble bioavailability.&rdquo;</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+                    <span className="font-bold text-slate-200">Missed Dose Policy:</span>
+                    <span className="text-cyan-300 font-mono text-[11px] font-bold">Roll Forward (Next Day)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Studio Right: Geek Mode */}
+              <div className="rounded-xl border border-cyan-500/30 bg-slate-950 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                    <Microscope size={12} /> 🔬 Geek Mode Science
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800/40">Evidence Grade A</span>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                    <span className="font-bold text-slate-200">Primary Biological Mechanism:</span>
+                    <p className="text-[11px] text-slate-300">SIRT1 deacetylation, NAD+ salvage pathway conservation, and mTORC1 inhibition.</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                    <span className="font-bold text-slate-200">Hallmarks of Aging Impacted:</span>
+                    <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                      <span className="text-[10px] bg-purple-950/80 text-purple-300 px-2 py-0.5 rounded border border-purple-800">Cellular Senescence</span>
+                      <span className="text-[10px] bg-teal-950/80 text-teal-300 px-2 py-0.5 rounded border border-teal-800">Mitochondrial Dysfunction</span>
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-cyan-500/30 flex items-center justify-between text-cyan-300">
+                    <span className="font-bold">PubMed Paper Link:</span>
+                    <span className="font-mono text-[10px] underline">PMID: 34567890 ↗</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Studio Summary Steps */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-cyan-400">1. Open Modality Studio</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Click the gear or <span className="text-cyan-300 font-bold">Personalize</span> button on any modality card to access cadence settings, rest intervals, and dose sliders.
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-cyan-400">2. Titrate Dosages</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Slide between starter, personal target, and clinical study maximum doses with automatic unit conversions.
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-cyan-400">3. Inspect Geek Mode</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Expand Geek Mode on any card to read molecular mechanisms, evidence effect sizes, and tap direct verified PubMed study URLs.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* CHAPTER 5: QUICK-LOG HOTKEYS */}
+        {/* ========================================================================= */}
+        <section id="quicklog" className="scroll-mt-32 space-y-4 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-purple-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold">
+                <Camera size={16} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  5. Quick-Log Hotkeys: 1-Tap Logging &amp; Custom Creation
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Left vertical gradient progress bars, custom hotkey builder, and Gemini Vision AI meal plate scans.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/today"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-500/40 text-purple-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+            >
+              <span>Try Hotkeys on Today</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Left: 1-Tap & Vertical Gradient */}
+              <div className="rounded-xl border border-purple-500/30 bg-slate-950 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                    <Zap size={12} /> 1-Tap Logging &amp; Left Vertical Gradient Fill Bar
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800/40">Goal Progress</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Mock Hotkey Card 1 */}
+                  <div className="rounded-xl border border-emerald-500/40 bg-slate-900 p-3 relative overflow-hidden space-y-2">
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-t from-emerald-600 via-emerald-500 to-teal-400 rounded-l-xl" style={{ height: '75%' }} />
+                    <div className="flex items-center justify-between pl-1">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs">
+                        <Droplets size={12} />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded">+12</span>
+                    </div>
+                    <div className="pl-1">
+                      <div className="text-base font-black text-white font-mono">72 <span className="text-[10px] text-slate-400 font-normal">oz</span></div>
+                      <div className="text-[11px] font-bold text-slate-200">Hydration</div>
+                    </div>
+                    <div className="text-[9px] font-mono text-slate-400 border-t border-white/5 pt-1 pl-1 flex items-center justify-between">
+                      <span>Goal: 100oz</span>
+                      <span className="text-orange-400 font-bold">Details →</span>
+                    </div>
+                  </div>
+
+                  {/* Mock Hotkey Card 2 */}
+                  <div className="rounded-xl border border-orange-500/40 bg-slate-900 p-3 relative overflow-hidden space-y-2">
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-t from-orange-600 via-orange-500 to-amber-400 rounded-l-xl" style={{ height: '100%' }} />
+                    <div className="flex items-center justify-between pl-1">
+                      <div className="w-6 h-6 rounded-lg bg-orange-500/20 text-orange-300 flex items-center justify-center text-xs">
+                        <Flame size={12} />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-orange-300 bg-orange-500/20 px-1.5 py-0.5 rounded">+30</span>
+                    </div>
+                    <div className="pl-1">
+                      <div className="text-base font-black text-white font-mono">160 <span className="text-[10px] text-slate-400 font-normal">g</span></div>
+                      <div className="text-[11px] font-bold text-slate-200">Protein Pulse</div>
+                    </div>
+                    <div className="text-[9px] font-mono text-emerald-400 border-t border-white/5 pt-1 pl-1 flex items-center justify-between font-bold">
+                      <span>✓ Goal Done</span>
+                      <span className="text-orange-400 font-bold">Details →</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: How to Create Your Own Custom Hotkey */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
+                  <Plus size={12} /> How to Create &amp; Customize Your Own Hotkeys
+                </span>
+                <div className="space-y-2 text-xs">
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                    <span className="font-bold text-white">1. Tap &ldquo;+ Add Hotkey&rdquo; or Manage Gear:</span>
+                    <p className="text-[11px] text-slate-300">Opens the hotkey builder drawer where you can select from 30+ longevity presets or craft a custom tracker.</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                    <span className="font-bold text-white">2. Set Precision Parameters:</span>
+                    <p className="text-[11px] text-slate-300">Define Name, Icon, Unit (oz, g, mins, sessions, cups, mg), Default 1-Tap Increment (+12, +30, +1), and Daily Goal.</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1">
+                    <span className="font-bold text-white">3. Active Day Scheduling:</span>
+                    <p className="text-[11px] text-slate-300">Choose which days of the week the hotkey appears (e.g. Sauna on Tue/Thu/Sat, Creatine daily).</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Vision Scan Row */}
+            <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/30 text-xs flex items-start gap-3">
+              <Camera size={18} className="text-purple-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <strong className="text-purple-200">Gemini Vision AI Meal Plate Scanner:</strong>
+                <p className="text-slate-300 leading-relaxed">
+                  Tap the first hotkey button (<span className="text-emerald-300 font-bold">Meal / Fast Break</span>) to photograph your plate. Multimodal Vision AI instantly extracts calories, protein, carbs, prebiotic fiber, healthy fats, botanical plant diversity count, and lets you add or remove specific constituent ingredients.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* CHAPTER 6: UNIFIED FASTING & SCHEDULE HUB */}
+        {/* ========================================================================= */}
+        <section id="schedule" className="scroll-mt-32 space-y-4 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-sky-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-400 flex items-center justify-center font-bold">
+                <Clock size={16} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  6. Unified Fasting &amp; Schedule Hub
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Fasting protocols (16:8, 18:6, OMAD), circadian eating windows &amp; precision macro targets.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/schedule"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-sky-950/60 hover:bg-sky-900 border border-sky-500/40 text-sky-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+            >
+              <span>Open Schedule Hub</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+              <div className="p-3 rounded-xl bg-slate-950 border border-sky-500/30 space-y-1">
+                <span className="text-[10px] font-mono text-sky-400 uppercase font-bold">[Edit] Fasting Window</span>
+                <div className="text-base font-black text-white">16:8 Protocol</div>
+                <p className="text-[10px] text-slate-400">16h Fasting / 8h Eating Window</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950 border border-emerald-500/30 space-y-1">
+                <span className="text-[10px] font-mono text-emerald-400 uppercase font-bold">[Edit] Fast Break Time</span>
+                <div className="text-base font-black text-white">12:00 PM</div>
+                <p className="text-[10px] text-slate-400">First Bite Circadian Target</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950 border border-amber-500/30 space-y-1">
+                <span className="text-[10px] font-mono text-amber-400 uppercase font-bold">[Edit] Fast Cutoff Time</span>
+                <div className="text-base font-black text-white">8:00 PM</div>
+                <p className="text-[10px] text-slate-400">Last Bite / Fast Initiation</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950 border border-purple-500/30 space-y-1">
+                <span className="text-[10px] font-mono text-purple-400 uppercase font-bold">[Edit] Daily Targets</span>
+                <div className="text-base font-black text-white">2,200 kcal</div>
+                <p className="text-[10px] text-slate-400">160g P • 45g Fiber • 70g Fat</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-sky-400">1. Tap Any Headline Card</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Click any of the 4 KPI cards above to open the Fasting &amp; Nutrition Targets Drawer.
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-sky-400">2. Dial In Fasting &amp; Macros</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Choose 16:8, 18:6, 20:4, OMAD, or custom fasting hours, and set separate targets for Net Carbs vs Prebiotic Fiber.
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-sky-400">3. Smart Rescheduling Grid</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  In the Schedule split view, easily drag, drop, roll over missed days, or push upcoming sessions forward.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* CHAPTER 7: BLOODWORK & PHENOAGE */}
+        {/* ========================================================================= */}
+        <section id="bloodwork" className="scroll-mt-32 space-y-4 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-rose-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center font-bold">
+                <Activity size={16} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  7. Bloodwork, Lab Panels &amp; BioAge (PhenoAge) Testing
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Uploading lab PDFs, AI biomarker extraction, and clinical 9-biomarker PhenoAge calculations.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/physiological-age"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+            >
+              <span>Open BioAge Hub</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Left: Upload & Extraction */}
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                  <FileText size={12} /> Multimodal Lab Vision AI Upload
+                </span>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Upload any PDF report or photo of bloodwork from Quest Diagnostics, Labcorp, Function Health, Marek Health, etc.
+                </p>
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-rose-500/20 text-xs space-y-1.5 font-mono">
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span>• ApoB:</span>
+                    <span className="text-emerald-400 font-bold">68 mg/dL (Optimal &lt; 70)</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span>• hs-CRP:</span>
+                    <span className="text-emerald-400 font-bold">0.3 mg/L (Optimal &lt; 0.5)</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span>• Fasting Glucose:</span>
+                    <span className="text-emerald-400 font-bold">84 mg/dL</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span>• HbA1c:</span>
+                    <span className="text-emerald-400 font-bold">5.1%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: PhenoAge Gauge */}
+              <div className="rounded-xl border border-rose-500/30 bg-slate-950 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
+                    <Activity size={12} /> PhenoAge Biological Age Gap
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">Morgan Levine Algorithm</span>
+                </div>
+                <div className="p-3 rounded-lg bg-gradient-to-br from-purple-950/40 to-slate-900 border border-purple-500/30 text-center space-y-1">
+                  <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">-7.2 Years</div>
+                  <div className="text-xs text-slate-200 font-bold">Biological Age: 34.8 vs Chronological: 42.0</div>
+                  <p className="text-[11px] text-slate-400">Your cellular senescence and organ resilience is decelerated relative to peers.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Deep Step-by-Step */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-rose-400">1. Upload Lab PDF or Photo</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Navigate to <span className="text-rose-300 font-bold">Physiological Age</span> and tap the upload button. No manual transcription needed.
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-rose-400">2. Longevity Reference Ranges</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Biomarkers are benchmarked against optimal longevity targets rather than standard broad hospital sickness ranges.
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                <div className="text-xs font-bold text-rose-400">3. PhenoAge Gap Tracking</div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Track your biological age trajectory across consecutive panels to verify if your protocols are truly moving the needle.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* CHAPTER 8: EXPLORE PROTOCOLS */}
+        {/* ========================================================================= */}
+        <section id="explore" className="scroll-mt-32 space-y-4 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-amber-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold">
+                <Search size={16} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  8. Explore Clinical Protocols Catalog
+                </h3>
+                <p className="text-xs text-slate-400">
+                  100+ clinical protocols (Bryan Johnson Blueprint, Peter Attia Decathlon, Sinclair Epigenetic Stack, Valter Longo FMD).
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/explore"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900 border border-amber-500/40 text-amber-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+            >
+              <span>Browse Catalog</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="text-xs font-bold text-amber-300">Bryan Johnson Blueprint 2026</div>
+                <p className="text-[11px] text-slate-400">Comprehensive multi-vector biomarkers, longevity supplements, and circadian schedule.</p>
+                <span className="inline-block text-[10px] font-mono bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-800">54 Steps</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="text-xs font-bold text-cyan-300">Peter Attia Centenarian Decathlon</div>
+                <p className="text-[11px] text-slate-400">Zone 2 endurance, VO2 max intervals, stability, heavy carries, and vascular ApoB targets.</p>
+                <span className="inline-block text-[10px] font-mono bg-cyan-950 text-cyan-300 px-2 py-0.5 rounded border border-cyan-800">Physicality</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="text-xs font-bold text-purple-300">Valter Longo Fasting-Mimicking Diet</div>
+                <p className="text-[11px] text-slate-400">5-day periodic caloric restriction inducing deep systemic autophagy and stem cell renewal.</p>
+                <span className="inline-block text-[10px] font-mono bg-purple-950 text-purple-300 px-2 py-0.5 rounded border border-purple-800">Autophagy</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-950/60 border border-white/5 text-xs text-slate-300 space-y-1">
+              <strong className="text-white">1-Click Enrollment &amp; Protocol Comparison:</strong>
+              <p className="leading-relaxed">
+                Tap any protocol card to review the scientific dossier, target biological vectors, and compare protocols side-by-side. Tap <span className="text-emerald-300 font-bold">Enroll Protocol</span> to schedule all constituent steps directly into Today, or <span className="text-indigo-300 font-bold">Add to Bench</span> to experiment first.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* CHAPTER 9: THE BENCH */}
+        {/* ========================================================================= */}
+        <section id="bench" className="scroll-mt-32 space-y-4 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-indigo-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center font-bold">
+                <Bookmark size={16} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  9. The Bench &amp; Protocol Staging Sandbox
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Staging area to research, tune dosages, and experiment before activating into your live routine.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/bench"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-indigo-950/60 hover:bg-indigo-900 border border-indigo-500/40 text-indigo-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+            >
+              <span>Open The Bench</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+            <div className="p-4 rounded-xl bg-slate-950 border border-indigo-500/30 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-indigo-300">Why Use The Bench?</span>
+                <span className="text-[10px] font-mono text-slate-400">Backlog Management</span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                When you discover exciting longevity interventions (e.g. Fisetin senolytic cycling, peptide titrations, or infrared heat therapy), add them to <span className="text-indigo-300 font-bold">The Bench</span>. You can configure their dosage sliders, study their Geek Mode papers, and customize their cadence without cluttering your daily schedule until you are ready to promote them to Today.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* CHAPTER 10: AI LONGEVITY COACH */}
+        {/* ========================================================================= */}
+        <section id="coach" className="scroll-mt-32 space-y-4 pt-4">
+          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-purple-500/20 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold">
+                <Sparkles size={16} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-black text-white">
+                  10. AI Longevity Coach &amp; In-App Guide
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Circadian sequencing advice, supplement synergy checks, and 1-click addition to Today.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/coach"
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-500/40 text-purple-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+            >
+              <span>Chat with Coach</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+            <div className="p-4 rounded-xl bg-slate-950 border border-purple-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                  <Sparkles size={12} /> Inline AI Coach on Today Timeline
+                </span>
+                <span className="text-[10px] font-mono text-purple-300 bg-purple-950 px-2 py-0.5 rounded border border-purple-800">20 Rotating Clinical Prompts</span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Located right under your Daily Longevity Tip banner on the Today timeline, the single-line AI Longevity Coach bar provides rapid evidence-based answers tailored directly to your active stack and profile.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1">
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-white/5 space-y-1">
+                  <div className="font-bold text-purple-300">1. Stack Synergies</div>
+                  <p className="text-[11px] text-slate-400">Ask about absorption timing (e.g. fat-soluble vitamins, caffeine cutoff times, cold vs sauna sequencing).</p>
+                </div>
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-white/5 space-y-1">
+                  <div className="font-bold text-purple-300">2. In-App Navigation</div>
+                  <p className="text-[11px] text-slate-400">Ask where to find features (e.g. &ldquo;where do I upload bloodwork&rdquo;) for instant deep-link navigation buttons.</p>
+                </div>
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-white/5 space-y-1">
+                  <div className="font-bold text-purple-300">3. 1-Click Enrollment</div>
+                  <p className="text-[11px] text-slate-400">When the coach suggests an intervention, tap <span className="text-emerald-300 font-bold">Add to Today</span> to immediately schedule it into your routine.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer Navigation */}
+        <div className="pt-8 text-center space-y-3">
+          <Link
+            href="/today"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-sm shadow-xl shadow-purple-950/50 transition-all cursor-pointer hover:scale-105"
+          >
+            <span>Launch Today Protocol Timeline</span>
+            <ArrowRight size={16} />
+          </Link>
+          <div>
+            <Link href="/settings" className="text-xs text-slate-400 hover:text-slate-200 transition-colors">
+              ← Return to Profile &amp; Settings
+            </Link>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }

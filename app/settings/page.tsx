@@ -135,11 +135,11 @@ export default function SettingsPage() {
                     Visual Feature Guide &amp; App Tour
                   </h3>
                   <span className="text-[9px] bg-purple-950 border border-purple-800 text-purple-300 px-2 py-0.5 rounded-full font-mono font-bold uppercase">
-                    8 Chapters
+                    Interactive Playbook
                   </span>
                 </div>
                 <p className="text-xs text-slate-300 line-clamp-1 mt-0.5">
-                  Walkthrough screenshots for Today timeline, Fasting hub, Modality studio &amp; Biomarkers.
+                  Visual walkthrough for Today timeline, Outcomes, Fasting hub, Modality studio &amp; Biomarkers.
                 </p>
               </div>
             </div>
