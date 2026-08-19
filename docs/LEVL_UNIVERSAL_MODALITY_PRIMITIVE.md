@@ -1899,3 +1899,25 @@ Possible to integrate into a future longevity knowledge graph
 The primitive should be powerful, but the MVP should stay lean.
 
 Start with a small number of excellent modalities and expand depth over time.
+
+---
+
+## 33. Protocol-Modality Dosing & Literature Specification Standard
+
+When any modality is linked to an expert or clinical protocol (e.g., Huberman, Attia, Longo, Blueprint, Patrick, Brecka), the following rules MUST be enforced:
+
+1. **Modality-Specific Protocol Notes**:
+   Protocol instructions, notes, and execution details MUST be 100% specific to that exact modality. NEVER use generic parent protocol overviews.
+
+2. **Mandatory Execution Parameters**:
+   All modality protocol specs MUST include exact physical & chemical parameters:
+   - **Temperature**: (e.g. `50°F–55°F / 10°C–13°C` for cold plunge; `174°F+` for sauna)
+   - **Exact Dosing / Intake**: (e.g. `20mg/kg Fisetin + 1,000mg Quercetin + 1 tbsp EVOO`)
+   - **Duration & Frequency**: (e.g. `2–3 mins per session`, `11 mins total weekly`)
+   - **Administration & Synergy Notes**: (e.g. *"Søberg Principle natural warm-up"*, *"Delay caffeine 90-120m"*)
+
+3. **Source Material & PubMed Links**:
+   Every protocol modality MUST link directly to its verified PubMed paper or official author protocol documentation URL.
+
+4. **Strict Protocol Attribution**:
+   Bryan Johnson 2026 Blueprint presets MUST ONLY be attached to modalities officially present in Bryan Johnson's 2026 stack list.

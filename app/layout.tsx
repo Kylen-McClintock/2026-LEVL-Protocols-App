@@ -1,13 +1,42 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/navigation/BottomNav";
+import InstallAppBanner from "@/components/ui/InstallAppBanner";
+import { AuthProvider } from "@/contexts/AuthContext";
+import AuthModal from "@/components/modals/AuthModal";
+import AuthStatusBadge from "@/components/navigation/AuthStatusBadge";
 
 const inter = Inter({ subsets: ["latin"] });
 
+export const viewport: Viewport = {
+  themeColor: "#020617",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
-  title: "LEVL Protocols",
-  description: "Longevity protocol engine.",
+  title: {
+    default: "LEVL Protocols",
+    template: "%s | LEVL Protocols",
+  },
+  description: "Longevity Protocol Engine & Multi-System Biological Optimization",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "LEVL",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: "/levl-official-logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -16,26 +45,56 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} min-h-screen pb-16 md:pb-0 md:flex`}>
-        {/* Desktop Sidebar Stub */}
-        <aside className="hidden md:flex flex-col w-64 border-r border-levl-border p-4 h-screen sticky top-0">
-          <div className="text-xl font-bold mb-8 tracking-wider text-white">LEVL</div>
-          <nav className="space-y-4 text-levl-text-secondary">
-            <a href="/today" className="block hover:text-white transition-colors">Today</a>
-            <a href="/weekly" className="block hover:text-white transition-colors">Weekly</a>
-            <a href="/bench" className="block hover:text-white transition-colors">Bench</a>
-            <a href="/explore" className="block hover:text-white transition-colors">Explore</a>
-            <a href="/settings" className="block hover:text-white transition-colors">Settings</a>
-          </nav>
-        </aside>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className={`${inter.className} min-h-screen pb-16 md:pb-0 md:flex relative`} suppressHydrationWarning>
+        <AuthProvider>
+          {/* Background Glowing Orbs */}
+          <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+            <div className="absolute top-[-10%] left-[-10%] w-[70vw] h-[70vw] max-w-[800px] max-h-[800px] bg-sky-500/20 blur-[100px] rounded-full" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-blue-600/15 blur-[120px] rounded-full" />
+          </div>
 
-        {/* Main Content Area */}
-        <main className="flex-1 min-h-screen">
-          {children}
-        </main>
+          {/* Desktop Sidebar */}
+          <aside className="hidden md:flex flex-col w-64 border-r border-levl-border p-4 h-screen sticky top-0 bg-slate-950/60 backdrop-blur-md z-40">
+            <div className="mb-6 pt-1 px-1 flex items-center justify-between">
+              <img 
+                src="/logo.png" 
+                alt="LEVL Protocols" 
+                className="h-8 w-auto object-contain"
+              />
+              <AuthStatusBadge />
+            </div>
+            <nav className="space-y-4 text-levl-text-secondary flex-1">
+              <a href="/today" className="block hover:text-white transition-colors">Today</a>
+              <a href="/schedule" className="block hover:text-white transition-colors">Schedule</a>
+              <a href="/bench" className="block hover:text-white transition-colors">Bench</a>
+              <a href="/aging" className="block hover:text-white transition-colors flex items-center gap-1.5"><span className="text-levl-accent">⚡</span> Biological Aging</a>
+              <a href="/tracking" className="block hover:text-white transition-colors">Tracking</a>
+              <a href="/coach" className="block hover:text-white transition-colors text-levl-accent font-medium flex items-center"><span className="mr-2">✦</span> Coach</a>
+              <a href="/explore" className="block hover:text-white transition-colors">Explore</a>
+              <a href="/settings" className="block hover:text-white transition-colors">Profile</a>
+            </nav>
+          </aside>
 
-        <BottomNav />
+          {/* Mobile Top Logo Bar */}
+          <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-levl-border bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
+            <img 
+              src="/logo.png" 
+              alt="LEVL Protocols" 
+              className="h-7 w-auto object-contain"
+            />
+            <AuthStatusBadge />
+          </div>
+
+          {/* Main Content Area */}
+          <main className="flex-1 min-h-screen">
+            {children}
+          </main>
+
+          <InstallAppBanner />
+          <AuthModal />
+          <BottomNav />
+        </AuthProvider>
       </body>
     </html>
   );

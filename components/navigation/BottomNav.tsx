@@ -2,14 +2,31 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Sun, Calendar, Bookmark, Compass, Settings } from 'lucide-react'
+import { Sun, Calendar, Compass, User, TrendingUp } from 'lucide-react'
 
-const navItems = [
+interface NavItem {
+  label: string
+  href: string
+  icon: any
+  matchPaths?: string[]
+}
+
+const navItems: NavItem[] = [
   { label: 'Today', href: '/today', icon: Sun },
-  { label: 'Weekly', href: '/weekly', icon: Calendar },
-  { label: 'Bench', href: '/bench', icon: Bookmark },
+  { label: 'Schedule', href: '/schedule', icon: Calendar },
   { label: 'Explore', href: '/explore', icon: Compass },
-  { label: 'Settings', href: '/settings', icon: Settings },
+  { 
+    label: 'Insights', 
+    href: '/tracking', 
+    icon: TrendingUp,
+    matchPaths: ['/tracking', '/aging'] 
+  },
+  { 
+    label: 'Profile', 
+    href: '/settings', 
+    icon: User,
+    matchPaths: ['/settings', '/bench'] 
+  },
 ]
 
 export default function BottomNav() {
@@ -19,21 +36,24 @@ export default function BottomNav() {
   if (pathname === '/onboarding') return null
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-b-0 border-l-0 border-r-0 pb-safe md:hidden">
-      <div className="flex justify-around items-center h-16">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-b-0 border-l-0 border-r-0 pb-safe md:hidden bg-slate-950/95 backdrop-blur-xl shadow-2xl">
+      <div className="grid grid-cols-5 items-center h-16 w-full px-1 sm:px-4">
         {navItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname.startsWith(item.href)
+          const isActive = item.matchPaths 
+            ? item.matchPaths.some(p => pathname.startsWith(p))
+            : pathname.startsWith(item.href)
+
           return (
             <Link 
               key={item.href} 
               href={item.href}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
-                isActive ? 'text-levl-accent' : 'text-levl-text-secondary hover:text-white'
+              className={`flex flex-col items-center justify-center h-full py-1 space-y-1 transition-all ${
+                isActive ? 'text-levl-accent font-bold scale-105' : 'text-levl-text-secondary hover:text-white'
               }`}
             >
-              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <Icon size={21} strokeWidth={isActive ? 2.5 : 2} />
+              <span className="text-[11px] font-medium tracking-tight">{item.label}</span>
             </Link>
           )
         })}

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-levl-bg: #0a0a0f;
+  --color-levl-bg: #030712; /* Very dark blue matching LEVL */
   --color-levl-card: rgba(20, 20, 28, 0.6);
   --color-levl-card-hover: rgba(30, 30, 42, 0.8);
   --color-levl-accent: #10b981;
@@ -17,9 +17,6 @@
     background-color: var(--color-levl-bg);
     color: var(--color-levl-text-primary);
     -webkit-font-smoothing: antialiased;
-    /* Subtle dark gradient background */
-    background-image: radial-gradient(circle at 50% 0%, rgba(20, 20, 40, 0.5) 0%, transparent 60%);
-    background-attachment: fixed;
   }
 }
 
@@ -35,4 +32,19 @@
     background: var(--color-levl-card-hover);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
+
+  .pb-safe {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .pt-safe {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
 }
+
+/* Touch Ergonomics & Momentum Scrolling */
+html {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+

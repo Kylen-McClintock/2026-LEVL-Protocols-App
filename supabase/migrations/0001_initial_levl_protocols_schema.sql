@@ -116,6 +116,7 @@ CREATE TABLE protocols (
   source_label TEXT,
   popularity_placeholder INTEGER DEFAULT 0,
   review_status TEXT,
+  creator_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

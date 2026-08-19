@@ -1,0 +1,30 @@
+const { createClient } = require('@supabase/supabase-js');
+const fs = require('fs');
+
+let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+let supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (fs.existsSync('.env.local')) {
+  const envText = fs.readFileSync('.env.local', 'utf-8');
+  envText.split('\n').forEach(line => {
+    const [key, ...vals] = line.split('=');
+    if (key && vals.length) {
+      const val = vals.join('=').trim().replace(/^["']|["']$/g, '');
+      if (key.trim() === 'NEXT_PUBLIC_SUPABASE_URL') supabaseUrl = val;
+      if (key.trim() === 'NEXT_PUBLIC_SUPABASE_ANON_KEY') supabaseKey = val;
+    }
+  });
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function checkHandstand() {
+  const { data, error } = await supabase.from('modalities').select('*').or('id.eq.handstand,name.ilike.%handstand%');
+  if (error) {
+    console.error(error);
+    return;
+  }
+  console.log('Handstand Row:', JSON.stringify(data, null, 2));
+}
+
+checkHandstand();

@@ -9,10 +9,16 @@ export function getSlidersForSession(
   userProfile?: UserProfile | null
 ) {
   // 1. Find the explicitly mapped outcomes from the modality
+  let functionalOutcomes = modality.functional_outcomes_to_track || [];
+  if (typeof functionalOutcomes === 'string') {
+    const cleaned = (functionalOutcomes as string).replace(/^{|}$/g, '');
+    functionalOutcomes = cleaned ? cleaned.split(',') : [];
+  }
+
   const mappedOutcomeIds = [
     modality.primary_outcome, 
     ...(modality.secondary_outcomes || []),
-    ...(modality.functional_outcomes_to_track || [])
+    ...functionalOutcomes
   ].filter(Boolean) as string[];
 
   // Convert to unique set

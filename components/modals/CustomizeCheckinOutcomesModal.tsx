@@ -1,0 +1,454 @@
+'use client'
+
+import React, { useState, useMemo, useEffect } from 'react'
+import { OutcomeDimension, UserProfile } from '@/lib/types'
+import { X, Check, Sliders, Sparkles, Sun, Moon, Search, Star } from 'lucide-react'
+import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
+import { updateUserProfile } from '@/lib/data'
+
+type CustomizeCheckinOutcomesModalProps = {
+  isOpen: boolean
+  onClose: () => void
+  title?: string
+  mode?: 'morning' | 'nightly'
+  allOutcomes: OutcomeDimension[]
+  userProfile?: UserProfile | null
+  onOutcomesUpdated?: (updatedPreferences?: Record<string, number>) => void
+}
+
+const RECOMMENDED_IDS = ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep']
+
+export const CHECKIN_EXPOSURES_METADATA = [
+  { id: 'alcohol_drinks', name: 'Alcohol Intake', icon: '🍷', description: 'Tracks standard drinks and sleep architecture impact' },
+  { id: 'nicotine_exposure', name: 'Nicotine & Smoking', icon: '🚬', description: 'Combustible tobacco, vapes, and nicotine pouches' },
+  { id: 'cannabis_exposure', name: 'Cannabis & THC', icon: '🌿', description: 'Inhaled flower/vape, edibles, and tinctures' },
+  { id: 'late_caffeine', name: 'Last Caffeine Timing', icon: '☕', description: 'Exact time or hours before bed (10-12h clearance)' },
+  { id: 'sitting_duration', name: 'Prolonged Sitting', icon: '🪑', description: 'Daily sedentary work & desk duration' },
+  { id: 'blue_light', name: 'Last Screen / Blue Light', icon: '📱', description: 'Exact time or hours before bed (melatonin preservation)' },
+  { id: 'processed_sugar', name: 'Ultra-Processed Foods', icon: '🍕', description: 'High-glycemic load and refined seed oil foods' },
+  { id: 'late_meal', name: 'Last Meal Timing', icon: '🍟', description: 'Exact time or hours before bed (digestion & resting HR drop)' },
+]
+
+export default function CustomizeCheckinOutcomesModal({
+  isOpen,
+  onClose,
+  title = "Edit Tracked Outcomes",
+  mode = 'morning',
+  allOutcomes,
+  userProfile,
+  onOutcomesUpdated
+}: CustomizeCheckinOutcomesModalProps) {
+  const [activeTab, setActiveTab] = useState<'morning' | 'nightly'>(mode)
+  const [preferences, setPreferences] = useState<Record<string, number>>({})
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    if (mode) setActiveTab(mode)
+  }, [mode, isOpen])
+
+  useEffect(() => {
+    if (userProfile?.outcome_preference_scores && Object.keys(userProfile.outcome_preference_scores).length > 0) {
+      setPreferences({ ...userProfile.outcome_preference_scores })
+    } else {
+      const init: Record<string, number> = {}
+      allOutcomes.forEach(o => {
+        if (o.is_default_wellbeing || RECOMMENDED_IDS.includes(o.id)) {
+          init[`morning:${o.id}`] = 10
+          init[`nightly:${o.id}`] = 10
+        }
+      })
+      CHECKIN_EXPOSURES_METADATA.forEach(e => {
+        init[`exposure:${e.id}`] = 10
+      })
+      setPreferences(init)
+    }
+  }, [userProfile, allOutcomes, isOpen])
+
+  const getKey = (id: string, tab: 'morning' | 'nightly') => `${tab}:${id}`
+
+  const isTracked = (id: string, tab: 'morning' | 'nightly') => {
+    const key = getKey(id, tab)
+    const val = preferences[key] ?? preferences[id]
+    if (val === undefined) {
+      return RECOMMENDED_IDS.includes(id)
+    }
+    return val >= 7
+  }
+
+  const toggleOutcomeTracked = (id: string) => {
+    const key = getKey(id, activeTab)
+    setPreferences(prev => {
+      const currentlyTracked = isTracked(id, activeTab)
+      const newScore = currentlyTracked ? 0 : 9
+      return { ...prev, [key]: newScore }
+    })
+  }
+
+  const isExposureTracked = (id: string) => {
+    const key = `exposure:${id}`
+    const val = preferences[key]
+    if (val === undefined) return true
+    return val >= 7
+  }
+
+  const toggleExposureTracked = (id: string) => {
+    const key = `exposure:${id}`
+    setPreferences(prev => {
+      const currentlyTracked = isExposureTracked(id)
+      return { ...prev, [key]: currentlyTracked ? 0 : 9 }
+    })
+  }
+
+  // Split into Recommended and Additional
+  const recommendedOutcomes = useMemo(() => {
+    return allOutcomes.filter(o => o.is_default_wellbeing || RECOMMENDED_IDS.includes(o.id))
+  }, [allOutcomes])
+
+  const additionalOutcomes = useMemo(() => {
+    return allOutcomes.filter(o => !o.is_default_wellbeing && !RECOMMENDED_IDS.includes(o.id))
+  }, [allOutcomes])
+
+  // Count active outcomes per tab
+  const morningActiveCount = useMemo(() => {
+    return allOutcomes.filter(o => isTracked(o.id, 'morning')).length
+  }, [allOutcomes, preferences])
+
+  const nightlyActiveCount = useMemo(() => {
+    return allOutcomes.filter(o => isTracked(o.id, 'nightly')).length
+  }, [allOutcomes, preferences])
+
+  // Filtered Additional Outcomes
+  const filteredAdditionalOutcomes = useMemo(() => {
+    return additionalOutcomes.filter(o => {
+      const matchesSearch = 
+        !searchQuery || 
+        o.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (o.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+      
+      const matchesCat = selectedCategory === 'all' || o.category === selectedCategory
+
+      return matchesSearch && matchesCat
+    }).sort((a, b) => {
+      const aTracked = isTracked(a.id, activeTab) ? 1 : 0
+      const bTracked = isTracked(b.id, activeTab) ? 1 : 0
+      if (aTracked !== bTracked) return bTracked - aTracked
+      return a.name.localeCompare(b.name)
+    })
+  }, [additionalOutcomes, preferences, activeTab, searchQuery, selectedCategory])
+
+  const filteredRecommendedOutcomes = useMemo(() => {
+    return recommendedOutcomes.filter(o => {
+      return !searchQuery || 
+        o.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (o.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+    })
+  }, [recommendedOutcomes, searchQuery])
+
+  if (!isOpen) return null
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    try {
+      const localId = getLocalUserId()
+      await updateUserProfile(localId, { outcome_preference_scores: preferences })
+      if (onOutcomesUpdated) {
+        onOutcomesUpdated(preferences)
+      }
+      onClose()
+    } catch (err) {
+      console.error('Error saving tracked outcomes:', err)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in overflow-y-auto">
+      <div className="bg-slate-900 border border-indigo-500/30 w-full max-w-xl rounded-3xl p-4 sm:p-6 shadow-2xl relative space-y-4 max-h-[88vh] flex flex-col my-auto">
+        <button 
+          onClick={onClose}
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-white p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors z-10 cursor-pointer"
+        >
+          <X size={18} />
+        </button>
+
+        {/* Modal Header */}
+        <div className="pr-8 shrink-0 border-b border-indigo-500/20 pb-3">
+          <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider mb-1">
+            <Sliders size={15} /> Check-in Outcome Preferences
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-white leading-tight">
+            Customize Tracked Bio-Signals
+          </h2>
+          <p className="text-[11px] text-gray-400 mt-1">
+            Toggle any bio-signal ON or OFF for your <span className="text-amber-300 font-semibold">Morning</span> and <span className="text-rose-300 font-semibold">Nightly</span> check-ins.
+          </p>
+        </div>
+
+        {/* Morning / Nightly Mode Tabs */}
+        <div className="grid grid-cols-2 gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/10 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('morning')}
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === 'morning'
+                ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-400/50 text-amber-200 shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Sun size={14} className={activeTab === 'morning' ? 'text-amber-400' : 'text-slate-500'} />
+            <span>Morning Check-in</span>
+            <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              {morningActiveCount} active
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('nightly')}
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === 'nightly'
+                ? 'bg-gradient-to-r from-rose-500/20 to-purple-500/20 border border-rose-400/50 text-rose-200 shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Moon size={14} className={activeTab === 'nightly' ? 'text-rose-300' : 'text-slate-500'} />
+            <span>Nightly Check-in</span>
+            <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              {nightlyActiveCount} active
+            </span>
+          </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative shrink-0">
+          <Search className="absolute left-3 top-2.5 text-slate-500 w-4 h-4" />
+          <input
+            type="text"
+            placeholder={`Search ${activeTab === 'morning' ? 'Morning' : 'Nightly'} bio-signals (e.g. Mood, Energy, Stress, Focus)...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+          />
+        </div>
+
+        {/* Scrollable Outcome List */}
+        <div className="overflow-y-auto space-y-4 flex-1 pr-1 custom-scrollbar">
+
+          {/* ⭐ RECOMMENDED BASELINE BIO-SIGNALS SECTION */}
+          {filteredRecommendedOutcomes.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-amber-300 border-b border-amber-500/20 pb-1">
+                <Star size={13} className="text-amber-400 fill-amber-400" />
+                <span>Recommended Baseline Bio-Signals</span>
+              </div>
+
+              <div className="space-y-2">
+                {filteredRecommendedOutcomes.map(outcome => {
+                  const active = isTracked(outcome.id, activeTab)
+
+                  return (
+                    <div 
+                      key={outcome.id}
+                      onClick={() => toggleOutcomeTracked(outcome.id)}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                        active 
+                          ? activeTab === 'morning'
+                            ? 'bg-amber-950/40 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' 
+                            : 'bg-rose-950/40 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+                          : 'bg-black/40 border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded-xl border ${
+                          active 
+                            ? activeTab === 'morning'
+                              ? 'bg-amber-500 text-white border-amber-400' 
+                              : 'bg-rose-500 text-white border-rose-400'
+                            : 'bg-black/50 text-gray-500 border-white/10'
+                        }`}>
+                          {active ? <Check size={14} strokeWidth={3} /> : <div className="w-3.5 h-3.5" />}
+                        </div>
+
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-white text-xs">{outcome.name}</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              Recommended
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            {outcome.description || 'Core daily subjective bio-signal tracking'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        active 
+                          ? activeTab === 'morning'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' 
+                            : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                          : 'bg-white/5 text-gray-500 border-white/10'
+                      }`}>
+                        {active ? 'Tracked' : 'Hidden'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 🚫 LIFESTYLE & NEGATIVE EXPOSURES TO TRACK */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-rose-300 border-b border-rose-500/20 pb-1">
+              <span className="flex items-center gap-1.5">
+                <span>🚫</span>
+                <span>Check-in Exposures &amp; Lifestyle Factors</span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-normal">
+                ({CHECKIN_EXPOSURES_METADATA.filter(e => isExposureTracked(e.id)).length} Active)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {CHECKIN_EXPOSURES_METADATA.map(exp => {
+                const active = isExposureTracked(exp.id)
+
+                return (
+                  <div
+                    key={exp.id}
+                    onClick={() => toggleExposureTracked(exp.id)}
+                    className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                      active
+                        ? 'bg-rose-950/30 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]'
+                        : 'bg-black/40 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className={`p-1.5 rounded-xl border shrink-0 ${
+                        active
+                          ? 'bg-rose-500 text-white border-rose-400'
+                          : 'bg-black/50 text-gray-500 border-white/10'
+                      }`}>
+                        {active ? <Check size={12} strokeWidth={3} /> : <div className="w-3 h-3" />}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">{exp.icon}</span>
+                          <span className="font-bold text-white text-xs truncate">{exp.name}</span>
+                        </div>
+                        <p className="text-[9px] text-gray-400 truncate">{exp.description}</p>
+                      </div>
+                    </div>
+
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ml-1 ${
+                      active
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                        : 'bg-white/5 text-gray-500 border-white/10'
+                    }`}>
+                      {active ? 'Tracked' : 'Hidden'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* ⚡ ADDITIONAL BIO-SIGNALS & GOALS SECTION */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-indigo-300 border-b border-indigo-500/20 pb-1">
+              <span className="flex items-center gap-1.5">
+                <Sparkles size={13} className="text-indigo-400" />
+                <span>Additional Bio-Signals & Goals</span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-normal">
+                ({filteredAdditionalOutcomes.length} Available)
+              </span>
+            </div>
+
+            {filteredAdditionalOutcomes.length > 0 ? (
+              <div className="space-y-2">
+                {filteredAdditionalOutcomes.map(outcome => {
+                  const active = isTracked(outcome.id, activeTab)
+
+                  return (
+                    <div 
+                      key={outcome.id}
+                      onClick={() => toggleOutcomeTracked(outcome.id)}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                        active 
+                          ? activeTab === 'morning'
+                            ? 'bg-amber-950/30 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.15)]' 
+                            : 'bg-rose-950/30 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]'
+                          : 'bg-black/40 border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded-xl border ${
+                          active 
+                            ? activeTab === 'morning'
+                              ? 'bg-amber-500 text-white border-amber-400' 
+                              : 'bg-rose-500 text-white border-rose-400'
+                            : 'bg-black/50 text-gray-500 border-white/10'
+                        }`}>
+                          {active ? <Check size={14} strokeWidth={3} /> : <div className="w-3.5 h-3.5" />}
+                        </div>
+
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-white text-xs">{outcome.name}</span>
+                            {outcome.category && (
+                              <span className="text-[9px] text-slate-400 font-mono">({outcome.category})</span>
+                            )}
+                          </div>
+                          {outcome.description && (
+                            <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{outcome.description}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        active 
+                          ? activeTab === 'morning'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' 
+                            : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                          : 'bg-white/5 text-gray-500 border-white/10'
+                      }`}>
+                        {active ? 'Tracked' : 'Hidden'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-center text-xs text-slate-500 py-4 italic">
+                No matching additional bio-signals found for "{searchQuery}".
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Modal Action Buttons */}
+        <div className="flex items-center gap-3 pt-3 border-t border-white/10 shrink-0">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {isSaving ? 'Saving Preferences...' : `Save ${activeTab === 'morning' ? 'Morning' : 'Nightly'} Outcomes`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
