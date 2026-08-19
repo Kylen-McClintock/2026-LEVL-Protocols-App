@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { UserBenchItem, UserProfile } from '@/lib/types'
-import { Plus, Trash2, Check, Info, Activity, User, Sparkles, ExternalLink } from 'lucide-react'
+import { Plus, Trash2, Check, Info, Activity, User, Sparkles, ExternalLink, CheckCircle2 } from 'lucide-react'
 import GeekMode from './GeekMode'
 import PersonalizeModalityModal from '../modals/PersonalizeModalityModal'
 import { DosageDetailModal } from '../modals/DosageDetailModal'
@@ -177,16 +177,16 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
           <div className="flex gap-2">
             <button 
               onClick={(e) => { e.stopPropagation(); setShowPersonalizeModal(true); }}
-              className="flex-1 border text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-2 transition-colors bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white"
+              className="flex-1 border text-xs sm:text-sm font-bold h-9 rounded-xl flex items-center justify-center gap-1.5 transition-colors bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white"
             >
-              <Activity size={16} /> Personalize
+              <Activity size={14} /> Personalize
             </button>
 
             <button 
               onClick={(e) => { e.stopPropagation(); setShowGeekMode(!showGeekMode); }}
-              className={`flex-1 border text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${showGeekMode ? 'bg-levl-purple text-white border-levl-purple' : 'bg-levl-purple/10 border-levl-purple/30 text-levl-purple hover:bg-levl-purple hover:text-white'}`}
+              className={`flex-1 border text-xs sm:text-sm font-bold h-9 rounded-xl flex items-center justify-center gap-1.5 transition-colors ${showGeekMode ? 'bg-levl-purple text-white border-levl-purple' : 'bg-levl-purple/10 border-levl-purple/30 text-purple-300 hover:bg-levl-purple hover:text-white'}`}
             >
-              <Info size={16} /> Geek Mode
+              <Info size={14} /> Geek Mode
             </button>
           </div>
           
@@ -208,23 +208,36 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
         />
       )}
 
-      <div className="flex gap-2 p-4 pt-0 border-t border-white/5 mt-2">
+      <div className="flex items-center gap-2 p-4 pt-0 border-t border-white/5 mt-2">
         <button 
           onClick={handleToday}
           disabled={addedToToday || isProcessing}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${addedToToday ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-levl-accent text-white hover:bg-levl-accent/90'}`}
+          className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
+            addedToToday 
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-default' 
+              : 'bg-levl-accent text-white hover:bg-levl-accent/90 shadow-md cursor-pointer'
+          }`}
         >
-          {addedToToday ? <Check size={14} /> : <Plus size={14} />}
-          {addedToToday ? 'Added to Today' : 'Add to Today'}
+          {addedToToday ? (
+            <span className="flex items-center justify-center gap-1.5 truncate">
+              <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+              <span className="truncate">In Today&apos;s Plan</span>
+            </span>
+          ) : (
+            <span className="flex items-center justify-center gap-1.5 truncate">
+              <Plus size={15} className="shrink-0" />
+              <span className="truncate">{isProcessing ? 'Adding...' : 'Add to Today'}</span>
+            </span>
+          )}
         </button>
         
         <button 
           onClick={handleRemove}
           disabled={isProcessing}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium bg-red-900/20 text-red-400 border border-red-900/30 hover:bg-red-900/40 transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-bold bg-rose-950/40 text-rose-300 border border-rose-500/30 hover:bg-rose-900/60 transition-colors cursor-pointer"
         >
-          <Trash2 size={14} />
-          Remove
+          <Trash2 size={14} className="text-rose-400 shrink-0" />
+          <span className="truncate">Remove</span>
         </button>
       </div>
     </div>

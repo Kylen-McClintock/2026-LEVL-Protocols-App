@@ -345,31 +345,49 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 p-4 pt-0 border-t border-white/5 mt-2">
+      <div className="flex items-center gap-2 p-4 pt-0 border-t border-white/5 mt-2">
         <button 
           onClick={handleToday}
           disabled={isCurrentlyActiveInToday || isAddingToday}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
             isCurrentlyActiveInToday 
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold' 
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default shadow-[0_0_12px_rgba(16,185,129,0.15)]' 
               : 'bg-levl-accent text-white hover:bg-levl-accent/90 cursor-pointer shadow-md'
           }`}
         >
-          {isCurrentlyActiveInToday ? <Check size={14} /> : <Plus size={14} />}
-          {isCurrentlyActiveInToday ? 'In Today\'s Plan' : isAddingToday ? 'Adding...' : 'Add Protocol to Today'}
+          {isCurrentlyActiveInToday ? (
+            <span className="flex items-center justify-center gap-1.5 truncate">
+              <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+              <span className="truncate">In Today&apos;s Plan</span>
+            </span>
+          ) : (
+            <span className="flex items-center justify-center gap-1.5 truncate">
+              <Plus size={15} className="shrink-0" />
+              <span className="truncate">{isAddingToday ? 'Adding...' : 'Add to Today'}</span>
+            </span>
+          )}
         </button>
         
         <button 
           onClick={handleBench}
           disabled={isCurrentlyOnBench || isAddingBench}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-colors ${
+          className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all ${
             isCurrentlyOnBench 
-              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold' 
-              : 'bg-white/10 text-white hover:bg-white/20 cursor-pointer'
+              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-default' 
+              : 'bg-white/10 text-white hover:bg-white/20 border border-white/10 cursor-pointer'
           }`}
         >
-          {isCurrentlyOnBench ? <Check size={14} /> : <BookmarkPlus size={14} />}
-          {isCurrentlyOnBench ? 'In Bench' : isAddingBench ? 'Adding...' : 'Add to Bench'}
+          {isCurrentlyOnBench ? (
+            <span className="flex items-center justify-center gap-1.5 truncate">
+              <Bookmark size={15} className="text-cyan-400 shrink-0" />
+              <span className="truncate">Saved on Bench</span>
+            </span>
+          ) : (
+            <span className="flex items-center justify-center gap-1.5 truncate">
+              <BookmarkPlus size={15} className="shrink-0 text-cyan-400" />
+              <span className="truncate">{isAddingBench ? 'Saving...' : 'Add to Bench'}</span>
+            </span>
+          )}
         </button>
 
         {onCompare && (
@@ -378,7 +396,7 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
               e.stopPropagation()
               onCompare(protocol)
             }}
-            className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+            className={`h-9 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer shrink-0 ${
               isPinnedForCompare
                 ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-sm'
                 : 'bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 border-purple-700/40'
@@ -386,7 +404,7 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
             title="Compare protocol side-by-side"
           >
             <Scale size={14} className="text-purple-400" />
-            <span>{isPinnedForCompare ? 'Selected' : 'Compare'}</span>
+            <span className="hidden sm:inline">{isPinnedForCompare ? 'Selected' : 'Compare'}</span>
           </button>
         )}
       </div>

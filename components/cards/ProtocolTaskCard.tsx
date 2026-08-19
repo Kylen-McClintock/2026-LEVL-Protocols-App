@@ -2707,32 +2707,36 @@ export default function ProtocolTaskCard({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
                 <button 
                   onClick={(e) => { e.stopPropagation(); setShowManageModal(true); }}
-                  className="flex-1 text-xs flex items-center justify-center gap-1 bg-white/5 border border-white/10 text-gray-300 px-2 py-2 rounded hover:bg-white/10 transition-colors"
+                  className="flex-1 h-9 text-xs font-bold flex items-center justify-center gap-1.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-200 px-2.5 rounded-xl transition-all cursor-pointer"
                 >
-                  <CalendarDays size={12} /> Schedule
+                  <CalendarDays size={13} className="text-purple-400" /> Schedule
                 </button>
                 {task.status !== 'completed' && (
                   <>
                     <button 
                       onClick={() => onStatusChange(task.id, 'partial')}
-                      className="flex-1 text-xs bg-white/5 border border-white/10 text-gray-300 px-2 py-2 rounded hover:bg-white/10 transition-colors"
+                      className="flex-1 h-9 text-xs font-bold flex items-center justify-center gap-1.5 bg-amber-950/30 hover:bg-amber-900/50 border border-amber-500/30 text-amber-300 px-2.5 rounded-xl transition-all cursor-pointer"
                     >
-                      Mark Partial
+                      <Clock size={13} className="text-amber-400" /> Partial
                     </button>
                     <button 
                       onClick={() => onStatusChange(task.id, 'not_today')}
-                      className="flex-1 text-xs bg-white/5 border border-white/10 text-gray-300 px-2 py-2 rounded hover:bg-white/10 transition-colors"
+                      className="flex-1 h-9 text-xs font-bold flex items-center justify-center gap-1.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-400 px-2.5 rounded-xl transition-all cursor-pointer"
                     >
-                      Skip Today
+                      <X size={13} className="text-slate-400" /> Skip Today
                     </button>
                   </>
                 )}
                 <button 
                   onClick={(e) => { e.stopPropagation(); setActionModalType('bench'); }}
                   disabled={isProcessing || benched}
-                  className={`flex-1 text-xs flex items-center justify-center gap-1 border px-2 py-2 rounded transition-colors disabled:opacity-50 ${benched ? 'bg-levl-accent/20 border-levl-accent/30 text-levl-accent' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+                  className={`flex-1 h-9 text-xs font-bold flex items-center justify-center gap-1.5 border px-2.5 rounded-xl transition-all cursor-pointer disabled:opacity-50 ${
+                    benched 
+                      ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' 
+                      : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/60 text-slate-200'
+                  }`}
                 >
-                  <Bookmark size={12} /> Bench
+                  <Bookmark size={13} className="text-cyan-400" /> Bench
                 </button>
               </div>
 
@@ -2760,14 +2764,18 @@ export default function ProtocolTaskCard({
                 <button 
                   onClick={handlePersonalizeClick}
                   disabled={isProcessing}
-                  className="border text-xs font-bold h-10 rounded-lg flex items-center justify-center gap-1.5 transition-colors bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white disabled:opacity-50"
+                  className="border text-xs sm:text-sm font-bold h-9 rounded-xl flex items-center justify-center gap-1.5 transition-colors bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white disabled:opacity-50 cursor-pointer"
                 >
                   <Activity size={14} /> Personalize
                 </button>
 
                 <button 
                   onClick={(e) => { e.stopPropagation(); setShowGeekMode(!showGeekMode); }}
-                  className={`border text-xs font-bold h-10 rounded-lg flex items-center justify-center gap-1.5 transition-colors ${showGeekMode ? 'bg-levl-purple text-white border-levl-purple' : 'bg-levl-purple/10 border-levl-purple/30 text-levl-purple hover:bg-levl-purple hover:text-white'}`}
+                  className={`border text-xs sm:text-sm font-bold h-9 rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                    showGeekMode 
+                      ? 'bg-levl-purple text-white border-levl-purple shadow-md' 
+                      : 'bg-levl-purple/10 border-levl-purple/30 text-purple-300 hover:bg-levl-purple hover:text-white'
+                  }`}
                 >
                   <Info size={14} /> Geek Mode
                 </button>
