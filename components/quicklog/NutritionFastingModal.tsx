@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Zap,
   Edit3,
+  Wheat,
   Image as ImageIcon
 } from 'lucide-react'
 import { DailyMealLogEntry, UserNutritionTargets, CircadianFastingState, MealScanResult, UserProfile } from '@/lib/types'
@@ -42,6 +43,7 @@ interface NutritionFastingModalProps {
   date: string
   localUserId: string
   userProfile?: UserProfile | null
+  initialShowTargets?: boolean
   onClose: () => void
   onLogsChanged?: () => void
 }
@@ -52,6 +54,7 @@ export default function NutritionFastingModal({
   date,
   localUserId,
   userProfile,
+  initialShowTargets = false,
   onClose,
   onLogsChanged
 }: NutritionFastingModalProps) {
@@ -74,8 +77,8 @@ export default function NutritionFastingModal({
   const [calories, setCalories] = useState<number>(0)
   const [protein, setProtein] = useState<number>(0)
   const [carbs, setCarbs] = useState<number>(0)
-  const [fat, setFat] = useState<number>(0)
   const [fiber, setFiber] = useState<number>(0)
+  const [fat, setFat] = useState<number>(0)
   const [veggieServings, setVeggieServings] = useState<number>(0)
   const [fruitServings, setFruitServings] = useState<number>(0)
   const [mealTime, setMealTime] = useState<string>(format(new Date(), 'HH:mm'))
@@ -86,7 +89,7 @@ export default function NutritionFastingModal({
   const [overrideLastBite, setOverrideLastBite] = useState<string>('20:00')
 
   // Targets Config Drawer
-  const [showTargetsDrawer, setShowTargetsDrawer] = useState(false)
+  const [showTargetsDrawer, setShowTargetsDrawer] = useState(initialShowTargets)
   const [editTargets, setEditTargets] = useState<UserNutritionTargets | null>(null)
   const [targetsSavedToast, setTargetsSavedToast] = useState(false)
 
@@ -122,13 +125,13 @@ export default function NutritionFastingModal({
         acc.calories += m.calories || 0
         acc.protein += m.protein_g || 0
         acc.carbs += m.carbs_g || 0
-        acc.fat += m.fat_g || 0
         acc.fiber += m.fiber_g || 0
+        acc.fat += m.fat_g || 0
         acc.veggies += m.veggie_servings || 0
         acc.fruits += m.fruit_servings || 0
         return acc
       },
-      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, veggies: 0, fruits: 0 }
+      { calories: 0, protein: 0, carbs: 0, fiber: 0, fat: 0, veggies: 0, fruits: 0 }
     )
   }, [meals])
 
@@ -173,8 +176,8 @@ export default function NutritionFastingModal({
         setCalories(data.calories)
         setProtein(data.protein_g)
         setCarbs(data.carbs_g)
-        setFat(data.fat_g)
         setFiber(data.fiber_g)
+        setFat(data.fat_g)
         setVeggieServings(data.veggie_servings)
         setFruitServings(data.fruit_servings)
         setMealTime(format(new Date(), 'HH:mm'))
@@ -196,8 +199,8 @@ export default function NutritionFastingModal({
     setCalories(Math.round(scanResult.calories * mult))
     setProtein(Math.round(scanResult.protein_g * mult))
     setCarbs(Math.round(scanResult.carbs_g * mult))
-    setFat(Math.round(scanResult.fat_g * mult))
     setFiber(Math.round(scanResult.fiber_g * mult))
+    setFat(Math.round(scanResult.fat_g * mult))
     setVeggieServings(Math.round(scanResult.veggie_servings * mult * 2) / 2)
     setFruitServings(Math.round(scanResult.fruit_servings * mult * 2) / 2)
   }
@@ -210,8 +213,8 @@ export default function NutritionFastingModal({
     setCalories(450)
     setProtein(30)
     setCarbs(35)
+    setFiber(6)
     setFat(15)
-    setFiber(5)
     setVeggieServings(1.0)
     setFruitServings(0)
     setMealTime(format(new Date(), 'HH:mm'))
@@ -243,8 +246,8 @@ export default function NutritionFastingModal({
         calories: Number(calories) || 0,
         protein_g: Number(protein) || 0,
         carbs_g: Number(carbs) || 0,
-        fat_g: Number(fat) || 0,
         fiber_g: Number(fiber) || 0,
+        fat_g: Number(fat) || 0,
         veggie_servings: Number(veggieServings) || 0,
         fruit_servings: Number(fruitServings) || 0,
         plant_diversity_count: scanResult?.plant_diversity_count || 0,
@@ -439,7 +442,7 @@ export default function NutritionFastingModal({
               <div className="space-y-1">
                 <h4 className="text-sm font-extrabold text-white">Analyzing Plate with Gemini Vision...</h4>
                 <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                  Calculating portion sizes, protein density, net carbs, and fruit/veggie servings.
+                  Calculating portion sizes, protein density, net carbs, prebiotic fiber, and fruit/veggie servings.
                 </p>
               </div>
             </div>
@@ -515,42 +518,51 @@ export default function NutritionFastingModal({
                 </div>
               </div>
 
-              {/* Macro Inputs */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {/* 5-Macro Input Grid: Separating Carbs vs Fiber */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-400">Calories (kcal)</label>
                   <input
                     type="number"
                     value={calories || ''}
                     onChange={(e) => setCalories(Number(e.target.value))}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500 font-mono"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Protein (g)</label>
+                  <label className="text-[10px] uppercase font-bold text-orange-400">Protein (g)</label>
                   <input
                     type="number"
                     value={protein || ''}
                     onChange={(e) => setProtein(Number(e.target.value))}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500 font-mono"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Carbs (g)</label>
+                  <label className="text-[10px] uppercase font-bold text-sky-400">Net Carbs (g)</label>
                   <input
                     type="number"
                     value={carbs || ''}
                     onChange={(e) => setCarbs(Number(e.target.value))}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500 font-mono"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Fat (g)</label>
+                  <label className="text-[10px] uppercase font-bold text-teal-400">Fiber (g)</label>
+                  <input
+                    type="number"
+                    value={fiber || ''}
+                    onChange={(e) => setFiber(Number(e.target.value))}
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+                <div className="space-y-1 col-span-2 sm:col-span-1">
+                  <label className="text-[10px] uppercase font-bold text-purple-400">Fat (g)</label>
                   <input
                     type="number"
                     value={fat || ''}
                     onChange={(e) => setFat(Number(e.target.value))}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none focus:border-emerald-500 font-mono"
                   />
                 </div>
               </div>
@@ -744,7 +756,7 @@ export default function NutritionFastingModal({
             </div>
           </div>
 
-          {/* 3. DAILY MACROS & PHYTOCHEMICAL PROGRESS */}
+          {/* 3. DAILY 5-METRIC MACRO & PLANT PROGRESS GRID (SEPARATING CARBS VS FIBER) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -756,8 +768,8 @@ export default function NutritionFastingModal({
               </span>
             </div>
 
-            {/* 4-Macro Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {/* 5-Macro Precision Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               {/* Calories */}
               <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1.5">
                 <div className="flex justify-between items-center text-[10px] font-bold uppercase text-slate-400">
@@ -791,8 +803,8 @@ export default function NutritionFastingModal({
               {/* Net Carbs */}
               <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1.5">
                 <div className="flex justify-between items-center text-[10px] font-bold uppercase text-slate-400">
-                  <span>Carbs / Fiber</span>
-                  <span className="text-sky-400">{dayTotals.fiber}g fib</span>
+                  <span>Net Carbs</span>
+                  <span className="text-sky-400">{Math.round((dayTotals.carbs / (targets?.carbs_g || 200)) * 100)}%</span>
                 </div>
                 <div className="text-base font-black text-white">{dayTotals.carbs}g <span className="text-[10px] font-normal text-slate-400">/ {targets?.carbs_g || 200}g</span></div>
                 <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
@@ -803,8 +815,23 @@ export default function NutritionFastingModal({
                 </div>
               </div>
 
-              {/* Fats */}
+              {/* Prebiotic Fiber */}
               <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1.5">
+                <div className="flex justify-between items-center text-[10px] font-bold uppercase text-teal-400">
+                  <span>Fiber</span>
+                  <span className="text-teal-300">{Math.round((dayTotals.fiber / (targets?.fiber_g || 40)) * 100)}%</span>
+                </div>
+                <div className="text-base font-black text-white">{dayTotals.fiber}g <span className="text-[10px] font-normal text-slate-400">/ {targets?.fiber_g || 40}g</span></div>
+                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-r from-teal-500 to-emerald-400 h-full rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, Math.round((dayTotals.fiber / (targets?.fiber_g || 40)) * 100))}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Fats */}
+              <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-1.5 col-span-2 sm:col-span-1">
                 <div className="flex justify-between items-center text-[10px] font-bold uppercase text-slate-400">
                   <span>Healthy Fats</span>
                   <span className="text-purple-400">{Math.round((dayTotals.fat / (targets?.fat_g || 70)) * 100)}%</span>
@@ -907,6 +934,12 @@ export default function NutritionFastingModal({
                           <span>{meal.protein_g}g P</span>
                           <span>•</span>
                           <span>{meal.carbs_g}g C</span>
+                          {meal.fiber_g > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="text-teal-300 font-semibold">{meal.fiber_g}g Fib</span>
+                            </>
+                          )}
                           <span>•</span>
                           <span>{meal.fat_g}g F</span>
                           {meal.veggie_servings > 0 && (
@@ -964,7 +997,7 @@ export default function NutritionFastingModal({
                   <span>Personalized Recommendation</span>
                 </div>
                 <p className="text-[11px] text-slate-300">
-                  Based on bodyweight ({userProfile?.weight_lbs || 175} lbs), 0.9g/lb protein supports muscle protein synthesis and lean tissue recovery during longevity caloric budgeting.
+                  Based on bodyweight ({userProfile?.weight_lbs || 175} lbs), 0.9g/lb protein supports muscle protein synthesis. Aiming for 40g+ prebiotic fiber optimizes SCFA butyrate and gut microbiome longevity.
                 </p>
               </div>
 
@@ -980,7 +1013,7 @@ export default function NutritionFastingModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300 uppercase">Daily Protein Target (g)</label>
+                  <label className="text-xs font-bold text-orange-400 uppercase">Daily Protein Target (g)</label>
                   <input
                     type="number"
                     value={editTargets.protein_g}
@@ -990,7 +1023,7 @@ export default function NutritionFastingModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300 uppercase">Daily Net Carbs Target (g)</label>
+                  <label className="text-xs font-bold text-sky-400 uppercase">Daily Net Carbs Target (g)</label>
                   <input
                     type="number"
                     value={editTargets.carbs_g}
@@ -1000,7 +1033,19 @@ export default function NutritionFastingModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300 uppercase">Daily Fat Target (g)</label>
+                  <label className="text-xs font-bold text-teal-400 uppercase flex items-center gap-1">
+                    <Wheat size={13} /> Daily Prebiotic Fiber Target (g)
+                  </label>
+                  <input
+                    type="number"
+                    value={editTargets.fiber_g || 40}
+                    onChange={(e) => setEditTargets({ ...editTargets, fiber_g: Number(e.target.value) })}
+                    className="w-full bg-black/60 border border-teal-500/30 rounded-xl p-3 text-sm text-teal-300 font-bold focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-purple-400 uppercase">Daily Fat Target (g)</label>
                   <input
                     type="number"
                     value={editTargets.fat_g}
@@ -1031,7 +1076,7 @@ export default function NutritionFastingModal({
                   />
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2">
+                <div className="space-y-1.5">
                   <label className="text-xs font-bold text-sky-400 uppercase">Target Fasting Window (Hours)</label>
                   <select
                     value={editTargets.target_fasting_hours}

@@ -123,6 +123,7 @@ export async function getNutritionTargets(localUserId: string, userProfile?: Use
     daily_calories: defaultCalories,
     protein_g: defaultProtein,
     carbs_g: defaultCarbs,
+    fiber_g: isFemale ? 35 : 45,
     fat_g: defaultFat,
     veggie_servings: 5.0,
     fruit_servings: 2.0,

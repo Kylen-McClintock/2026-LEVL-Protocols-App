@@ -21,7 +21,9 @@ import {
   Salad,
   Apple,
   Sliders,
-  Camera
+  Camera,
+  Edit3,
+  Wheat
 } from 'lucide-react'
 import { loadAllMealLogs, getNutritionTargets } from '@/lib/storage/nutritionStorage'
 import NutritionFastingModal from '@/components/quicklog/NutritionFastingModal'
@@ -59,6 +61,7 @@ export default function FastingSplitView({
   const [allMeals, setAllMeals] = useState<DailyMealLogEntry[]>([])
   const [targets, setTargets] = useState<UserNutritionTargets | null>(null)
   const [selectedDayForModal, setSelectedDayForModal] = useState<string | null>(null)
+  const [modalInitialShowTargets, setModalInitialShowTargets] = useState<boolean>(false)
 
   // Load Meals & Nutrition Targets
   const reloadData = async () => {
@@ -115,10 +118,12 @@ export default function FastingSplitView({
     const daysWithMeals = new Set(weekMeals.map(m => m.date)).size || 1
     const totalCals = weekMeals.reduce((acc, m) => acc + (m.calories || 0), 0)
     const totalProt = weekMeals.reduce((acc, m) => acc + (m.protein_g || 0), 0)
+    const totalCarbs = weekMeals.reduce((acc, m) => acc + (m.carbs_g || 0), 0)
+    const totalFiber = weekMeals.reduce((acc, m) => acc + (m.fiber_g || 0), 0)
     const totalVeggies = weekMeals.reduce((acc, m) => acc + (m.veggie_servings || 0), 0)
     const totalFruits = weekMeals.reduce((acc, m) => acc + (m.fruit_servings || 0), 0)
 
-    // Distinct plant species across the week
+    // Distinct plant species across the week (excluding animal proteins and non-plant fillers)
     const plantSet = new Set<string>()
     const NON_PLANT_KEYWORDS = [
       'egg', 'chicken', 'steak', 'beef', 'pork', 'fish', 'salmon', 'tuna', 'turkey', 'bacon',
@@ -136,7 +141,6 @@ export default function FastingSplitView({
       })
     })
 
-    // Plant diversity count: strictly real plant ingredients or 0 for animal-only meals
     const distinctPlants = plantSet.size > 0
       ? Math.min(30, plantSet.size)
       : weekMeals.reduce((acc, m) => {
@@ -149,6 +153,8 @@ export default function FastingSplitView({
     return {
       avgCalories: Math.round(totalCals / daysWithMeals),
       avgProtein: Math.round(totalProt / daysWithMeals),
+      avgCarbs: Math.round(totalCarbs / daysWithMeals),
+      avgFiber: Math.round(totalFiber / daysWithMeals),
       avgVeggies: Math.round((totalVeggies / daysWithMeals) * 10) / 10,
       avgFruits: Math.round((totalFruits / daysWithMeals) * 10) / 10,
       distinctPlantsCount: Math.min(30, distinctPlants),
@@ -156,98 +162,160 @@ export default function FastingSplitView({
     }
   }, [weekMeals])
 
-  const completedFastsCount = fastingTasks.filter(t => t.status === 'completed').length
+  // Open targets editor directly from headline buttons
+  const handleOpenTargetsEditor = () => {
+    setSelectedDayForModal(format(new Date(), 'yyyy-MM-dd'))
+    setModalInitialShowTargets(true)
+  }
+
+  // Open meal logger for a specific date
+  const handleOpenDayModal = (dateStr: string) => {
+    setSelectedDayForModal(dateStr)
+    setModalInitialShowTargets(false)
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in">
       
-      {/* 1. NUTRITION & FASTING EXECUTIVE 4-KPI GRID */}
+      {/* 1. NUTRITION & FASTING EXECUTIVE 4-KPI GRID (CLICKABLE TO EDIT TARGETS) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Fasting Ratio */}
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl flex items-center gap-3.5 backdrop-blur-md">
-          <div className="w-11 h-11 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-md">
-            <Clock size={22} />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-              Fasting Window
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl sm:text-2xl font-black text-white font-mono">
-                {fastingWindowHours}:{feedingWindowHours}
-              </span>
-              <span className="text-[10px] text-teal-400 font-bold">Ratio</span>
+        {/* Fasting Ratio Card */}
+        <button
+          type="button"
+          onClick={handleOpenTargetsEditor}
+          className="text-left p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-teal-500/50 shadow-xl flex items-center justify-between gap-3 backdrop-blur-md transition-all group cursor-pointer"
+          title="Click to edit fasting window and eating span targets"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0 shadow-md">
+              <Clock size={22} />
             </div>
-            <span className="text-[10px] text-slate-400 block truncate mt-0.5">
-              {defaultFirstBite} – {defaultLastBite}
-            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                  Fasting Window
+                </span>
+                <Edit3 size={11} className="text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-xl sm:text-2xl font-black text-white font-mono">
+                  {fastingWindowHours}:{feedingWindowHours}
+                </span>
+                <span className="text-[10px] text-teal-400 font-bold">Ratio</span>
+              </div>
+              <span className="text-[10px] text-slate-400 block truncate mt-0.5">
+                {defaultFirstBite} – {defaultLastBite}
+              </span>
+            </div>
           </div>
-        </div>
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-300 border border-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            Edit
+          </span>
+        </button>
 
-        {/* Daily Caloric & Protein Average */}
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl flex items-center gap-3.5 backdrop-blur-md">
-          <div className="w-11 h-11 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 flex items-center justify-center shrink-0 shadow-md">
-            <Flame size={22} />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-              Weekly Avg Intake
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl sm:text-2xl font-black text-orange-300 font-mono">
-                {weeklySummary.avgCalories || targets?.daily_calories || 2200}
-              </span>
-              <span className="text-[10px] text-slate-400">kcal/d</span>
+        {/* Daily Caloric & Protein Average Card */}
+        <button
+          type="button"
+          onClick={handleOpenTargetsEditor}
+          className="text-left p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-orange-500/50 shadow-xl flex items-center justify-between gap-3 backdrop-blur-md transition-all group cursor-pointer"
+          title="Click to edit daily calorie, protein, net carb & fiber targets"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0 shadow-md">
+              <Flame size={22} />
             </div>
-            <span className="text-[10px] text-orange-400 font-bold block truncate mt-0.5">
-              Avg Protein: {weeklySummary.avgProtein || targets?.protein_g || 160}g
-            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                  Weekly Avg Intake
+                </span>
+                <Edit3 size={11} className="text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-xl sm:text-2xl font-black text-orange-300 font-mono">
+                  {weeklySummary.avgCalories || targets?.daily_calories || 2200}
+                </span>
+                <span className="text-[10px] text-slate-400">kcal/d</span>
+              </div>
+              <span className="text-[10px] text-orange-400 font-bold block truncate mt-0.5">
+                Avg Protein: {weeklySummary.avgProtein || targets?.protein_g || 160}g
+              </span>
+            </div>
           </div>
-        </div>
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-300 border border-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            Edit
+          </span>
+        </button>
 
-        {/* Longevity Plant Servings */}
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl flex items-center gap-3.5 backdrop-blur-md">
-          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 shadow-md">
-            <Salad size={22} />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-              Daily Plant Servings
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl sm:text-2xl font-black text-emerald-300 font-mono">
-                {weeklySummary.avgVeggies} 🥦
-              </span>
-              <span className="text-sm font-black text-purple-300 font-mono">
-                {weeklySummary.avgFruits} 🫐
+        {/* Longevity Plant Servings Card */}
+        <button
+          type="button"
+          onClick={handleOpenTargetsEditor}
+          className="text-left p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-emerald-500/50 shadow-xl flex items-center justify-between gap-3 backdrop-blur-md transition-all group cursor-pointer"
+          title="Click to edit daily vegetable & fruit serving goals"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0 shadow-md">
+              <Salad size={22} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                  Daily Plant Servings
+                </span>
+                <Edit3 size={11} className="text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-xl sm:text-2xl font-black text-emerald-300 font-mono">
+                  {weeklySummary.avgVeggies} 🥦
+                </span>
+                <span className="text-sm font-black text-purple-300 font-mono">
+                  {weeklySummary.avgFruits} 🫐
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-400 block truncate mt-0.5">
+                Goal: {targets?.veggie_servings || 5} veg • {targets?.fruit_servings || 2} fruit
               </span>
             </div>
-            <span className="text-[10px] text-slate-400 block truncate mt-0.5">
-              Goal: {targets?.veggie_servings || 5} veg • {targets?.fruit_servings || 2} fruit
-            </span>
           </div>
-        </div>
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            Edit
+          </span>
+        </button>
 
-        {/* Weekly Plant Diversity Target */}
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl flex items-center gap-3.5 backdrop-blur-md">
-          <div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0 shadow-md">
-            <Sparkles size={22} />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-              Plant Diversity Count
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl sm:text-2xl font-black text-purple-300 font-mono">
-                {weeklySummary.distinctPlantsCount}
-              </span>
-              <span className="text-[10px] text-slate-400">/ 30 species</span>
+        {/* Weekly Plant Diversity Target Card */}
+        <button
+          type="button"
+          onClick={handleOpenTargetsEditor}
+          className="text-left p-4 rounded-2xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-purple-500/50 shadow-xl flex items-center justify-between gap-3 backdrop-blur-md transition-all group cursor-pointer"
+          title="Click to view and adjust longevity prebiotic and botanical targets"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 group-hover:scale-105 transition-transform flex items-center justify-center shrink-0 shadow-md">
+              <Sparkles size={22} />
             </div>
-            <span className="text-[10px] text-purple-400 font-bold block truncate mt-0.5">
-              Microbiome Longevity Target
-            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                  Plant Diversity Count
+                </span>
+                <Edit3 size={11} className="text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-xl sm:text-2xl font-black text-purple-300 font-mono">
+                  {weeklySummary.distinctPlantsCount}
+                </span>
+                <span className="text-[10px] text-slate-400">/ 30 species</span>
+              </div>
+              <span className="text-[10px] text-purple-400 font-bold block truncate mt-0.5">
+                Microbiome Longevity Target
+              </span>
+            </div>
           </div>
-        </div>
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            Edit
+          </span>
+        </button>
       </div>
 
       {/* Active Enrolled Fasting Modalities */}
@@ -260,7 +328,7 @@ export default function FastingSplitView({
           {activeFastingModalities.map(m => (
             <span
               key={m.id}
-              className="px-2.5 py-0.5 rounded-lg bg-teal-500/10 border border-teal-500/30 text-teal-300 font-semibold text-[11px]"
+              className="px-2.5 py-1 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-300 text-xs font-semibold"
             >
               {m.name}
             </span>
@@ -293,6 +361,8 @@ export default function FastingSplitView({
             const dayMeals = allMeals.filter(m => m.date === dateStr)
             const dayCalories = dayMeals.reduce((acc, m) => acc + (m.calories || 0), 0)
             const dayProtein = dayMeals.reduce((acc, m) => acc + (m.protein_g || 0), 0)
+            const dayCarbs = dayMeals.reduce((acc, m) => acc + (m.carbs_g || 0), 0)
+            const dayFiber = dayMeals.reduce((acc, m) => acc + (m.fiber_g || 0), 0)
             const dayVeggies = dayMeals.reduce((acc, m) => acc + (m.veggie_servings || 0), 0)
             const dayFruits = dayMeals.reduce((acc, m) => acc + (m.fruit_servings || 0), 0)
 
@@ -347,13 +417,20 @@ export default function FastingSplitView({
                     </div>
                   </div>
 
-                  {/* Daily Macro Progress Summary */}
+                  {/* Daily Macro Progress Summary: Separating Carbs vs Fiber */}
                   {dayMeals.length > 0 ? (
                     <div className="space-y-1.5 text-[11px]">
                       <div className="flex justify-between text-slate-300 font-mono">
-                        <span className="font-bold text-orange-400">{dayProtein}g Protein</span>
-                        <span className="text-slate-400 font-bold">{dayCalories} / {targets?.daily_calories || 2200}</span>
+                        <span className="font-bold text-orange-400">{dayProtein}g Prot</span>
+                        <span className="text-slate-400 font-bold">{dayCalories}k</span>
                       </div>
+
+                      {/* Separated Net Carbs & Fiber Row */}
+                      <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                        <span className="text-sky-300">{dayCarbs}g Net C</span>
+                        <span className="text-teal-300 font-semibold">{dayFiber}g Fiber</span>
+                      </div>
+
                       <div className="flex items-center gap-1.5 pt-0.5">
                         {dayVeggies > 0 && (
                           <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold">
@@ -389,14 +466,14 @@ export default function FastingSplitView({
                   )}
                 </div>
 
-                {/* Log Meal Button for this date */}
+                {/* Day Action Button */}
                 <button
                   type="button"
-                  onClick={() => setSelectedDayForModal(dateStr)}
-                  className="w-full py-1.5 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/40 text-slate-300 hover:text-emerald-300 text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  onClick={() => handleOpenDayModal(dateStr)}
+                  className="w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-[0.98] border border-emerald-500/30 text-emerald-300 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <Plus size={12} />
-                  <span>{dayMeals.length > 0 ? 'Add / View Meals' : 'Log Meal'}</span>
+                  <Plus size={13} />
+                  <span>{dayMeals.length > 0 ? 'View / Log Meals' : 'Log Meal'}</span>
                 </button>
               </div>
             )
@@ -452,7 +529,11 @@ export default function FastingSplitView({
           date={selectedDayForModal}
           localUserId={localUserId}
           userProfile={userProfile}
-          onClose={() => setSelectedDayForModal(null)}
+          initialShowTargets={modalInitialShowTargets}
+          onClose={() => {
+            setSelectedDayForModal(null)
+            setModalInitialShowTargets(false)
+          }}
           onLogsChanged={reloadData}
         />
       )}

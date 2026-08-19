@@ -465,6 +465,7 @@ export interface UserNutritionTargets {
   daily_calories: number
   protein_g: number
   carbs_g: number
+  fiber_g: number // Prebiotic fiber target, e.g. 40g
   fat_g: number
   veggie_servings: number
   fruit_servings: number
