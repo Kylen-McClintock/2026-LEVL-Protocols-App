@@ -7,6 +7,23 @@ import { QuickHotkeyConfig } from '../types'
 export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
   // 1. NUTRITION & MACROS
   {
+    id: 'nutrition_macros',
+    name: 'Log Meal / Macros',
+    icon: 'Utensils',
+    category: 'nutrition',
+    unit: 'kcal',
+    default_increment: 450,
+    daily_goal: 2200,
+    is_negative: false,
+    color_theme: 'emerald',
+    presets: [
+      { label: 'Standard Meal (+500 kcal)', amount: 500, notes: 'Balanced whole food meal' },
+      { label: 'Protein Shake (+200 kcal)', amount: 200, notes: 'Post-workout pulse' },
+      { label: 'Longevity Salad (+350 kcal)', amount: 350, notes: 'Cruciferous greens, EVOO & seeds' },
+      { label: 'Nut Pudding & Berries (+400 kcal)', amount: 400, notes: 'Blueprint polyphenol meal' }
+    ]
+  },
+  {
     id: 'protein_pulse',
     name: 'Protein Pulse',
     icon: 'Flame',
@@ -262,7 +279,7 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
  * Default starter set auto-populated for fresh profiles
  */
 export const DEFAULT_STARTER_HOTKEYS: QuickHotkeyConfig[] = [
-  POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'protein_pulse')!,
+  POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'nutrition_macros')!,
   POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'water_intake')!,
   POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'coffee_caffeine')!,
   POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'outside_sunlight')!,

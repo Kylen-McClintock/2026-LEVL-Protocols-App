@@ -438,3 +438,63 @@ export interface PeptideModalityMetadata {
   common_side_effects?: string[]
 }
 
+// ----------------------------------------------------
+// NUTRITION & CIRCADIAN FASTING TYPES
+// ----------------------------------------------------
+
+export interface DailyMealLogEntry {
+  id: string
+  local_user_id: string
+  date: string // YYYY-MM-DD
+  timestamp: string // ISO string
+  meal_name: string
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  fiber_g: number
+  veggie_servings: number // Standard 1 cup raw / 0.5 cup cooked servings
+  fruit_servings: number // Standard 1 medium fruit / 0.5 cup berries servings
+  plant_diversity_count?: number // Distinct plant ingredients
+  ingredients?: string[]
+  image_url?: string // Optional base64 or thumbnail URL only if user clicks "Keep Photo"
+  notes?: string
+}
+
+export interface UserNutritionTargets {
+  daily_calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  veggie_servings: number
+  fruit_servings: number
+  target_fasting_hours: number // Default 16
+  eating_window_start_target?: string // e.g. "12:00"
+  eating_window_end_target?: string // e.g. "20:00"
+}
+
+export interface MealScanResult {
+  meal_name: string
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  fiber_g: number
+  veggie_servings: number
+  fruit_servings: number
+  plant_diversity_count: number
+  ingredients: string[]
+  confidence_score?: number
+  summary?: string
+}
+
+export interface CircadianFastingState {
+  first_meal_time: string | null // ISO timestamp or HH:mm
+  last_meal_time: string | null // ISO timestamp or HH:mm
+  eating_window_hours: number // e.g. 7.5
+  current_fast_hours: number // Elapsed hours since last meal
+  is_currently_fasting: boolean
+  target_fast_hours: number // e.g. 16
+}
+
+

@@ -23,7 +23,8 @@ import {
   Sliders,
   Sparkles,
   ChevronRight,
-  Calendar
+  Calendar,
+  Utensils
 } from 'lucide-react'
 import { QuickHotkeyConfig, DailyQuickLogEntry, UserProfile } from '@/lib/types'
 import {
@@ -34,6 +35,7 @@ import {
 import QuickLogDetailModal from './QuickLogDetailModal'
 import ManageHotkeysModal from './ManageHotkeysModal'
 import ProteinPulseTrackerModal from './ProteinPulseTrackerModal'
+import NutritionFastingModal from './NutritionFastingModal'
 
 interface QuickHotkeyGridProps {
   date: string
@@ -57,7 +59,8 @@ const ICON_MAP: Record<string, any> = {
   Smartphone,
   Zap,
   Activity,
-  Leaf
+  Leaf,
+  Utensils
 }
 
 export default function QuickHotkeyGrid({
@@ -71,6 +74,7 @@ export default function QuickHotkeyGrid({
   const [selectedHotkeyForDetail, setSelectedHotkeyForDetail] = useState<QuickHotkeyConfig | null>(null)
   const [isManageModalOpen, setIsManageModalOpen] = useState(false)
   const [isProteinModalOpen, setIsProteinModalOpen] = useState(false)
+  const [isNutritionModalOpen, setIsNutritionModalOpen] = useState(false)
   const [justTappedId, setJustTappedId] = useState<string | null>(null)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -111,15 +115,22 @@ export default function QuickHotkeyGrid({
     const handleUpdate = () => reloadData()
     window.addEventListener('levl_quicklog_updated', handleUpdate)
     window.addEventListener('levl_hotkeys_config_updated', handleUpdate)
+    window.addEventListener('levl_nutrition_updated', handleUpdate)
 
     return () => {
       window.removeEventListener('levl_quicklog_updated', handleUpdate)
       window.removeEventListener('levl_hotkeys_config_updated', handleUpdate)
+      window.removeEventListener('levl_nutrition_updated', handleUpdate)
     }
   }, [date, localUserId])
 
   const handleQuickTapIncrement = async (e: React.MouseEvent, hotkey: QuickHotkeyConfig) => {
     e.stopPropagation()
+    if (hotkey.id === 'nutrition_macros') {
+      setIsNutritionModalOpen(true)
+      return
+    }
+
     setJustTappedId(hotkey.id)
     setTimeout(() => setJustTappedId(null), 400)
 
@@ -140,8 +151,8 @@ export default function QuickHotkeyGrid({
   }
 
   const handleCardClick = (hotkey: QuickHotkeyConfig) => {
-    if (hotkey.id === 'protein_pulse') {
-      setIsProteinModalOpen(true)
+    if (hotkey.id === 'nutrition_macros' || hotkey.id === 'protein_pulse') {
+      setIsNutritionModalOpen(true)
     } else {
       setSelectedHotkeyForDetail(hotkey)
     }
@@ -241,6 +252,8 @@ export default function QuickHotkeyGrid({
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center border text-xs shrink-0 transition-colors ${
                       hotkey.is_negative
                         ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+                        : hotkey.id === 'nutrition_macros'
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
                         : hotkey.id === 'protein_pulse'
                         ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
                         : 'bg-slate-800 border-white/5 text-slate-300 group-hover/btn:text-white'
@@ -253,6 +266,8 @@ export default function QuickHotkeyGrid({
                     className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-mono font-black border transition-all flex items-center gap-0.5 shadow-sm ${
                       hotkey.is_negative
                         ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 group-hover/btn:bg-rose-500 group-hover/btn:text-white'
+                        : hotkey.id === 'nutrition_macros'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 group-hover/btn:bg-emerald-500 group-hover/btn:text-black'
                         : 'bg-orange-500/20 text-orange-300 border-orange-500/40 group-hover/btn:bg-orange-500 group-hover/btn:text-black'
                     }`}
                   >
@@ -353,6 +368,17 @@ export default function QuickHotkeyGrid({
           localUserId={localUserId}
           logs={logs}
           onClose={() => setSelectedHotkeyForDetail(null)}
+          onLogsChanged={reloadData}
+        />
+      )}
+
+      {/* Modal: AI Nutrition & Circadian Fasting Engine */}
+      {isNutritionModalOpen && (
+        <NutritionFastingModal
+          date={date}
+          localUserId={localUserId}
+          userProfile={userProfile}
+          onClose={() => setIsNutritionModalOpen(false)}
           onLogsChanged={reloadData}
         />
       )}
