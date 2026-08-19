@@ -1,4 +1,10 @@
 import { Modality, UserProfile } from '../types'
+import {
+  getEffortMetadata,
+  getCostMetadata,
+  getSafetyMetadata,
+  evaluateModalityLongevity
+} from './adaptiveRecommendationEngine'
 
 export type NbaContext = {
   biomarkers?: Record<string, { raw_value: number; normalized_value: number; lab_flag?: string }>
@@ -8,12 +14,13 @@ export type NbaContext = {
 /**
  * Calculates the Next Best Action score, match percentage, and personalized reasons.
  * Incorporates:
- * 1. Foundational Longevity Benefit
- * 2. User Functional Outcome Goals
- * 3. Baseline Negative Longevity Factors & Counter-Protocols (Sedentary, Alcohol, Caffeine, Smoking, Blue Light, Sugar)
- * 4. Bloodwork Lab Biomarkers (ApoB, hs-CRP, HbA1c, Vitamin D3)
- * 5. Physiological Age Assessment Sub-Scores (Balance, Grip Strength, Chair Stand, Reaction Time)
- * 6. Hard Profile Conflicts & Budget Demotions (e.g. Plasmapheresis over budget)
+ * 1. Multi-Dimensional Longevity Impact (Base Benefit, Evidence Quality, Effect Size, Safety Level)
+ * 2. User Functional Outcome Goals & Synergies
+ * 3. 1–5 Effort Rating Friction Penalties & Time Optimization
+ * 4. Baseline Negative Longevity Factors & Counter-Protocols (Sedentary, Alcohol, Caffeine, Smoking, Blue Light, Sugar)
+ * 5. Bloodwork Lab Biomarkers (ApoB, hs-CRP, HbA1c, Vitamin D3)
+ * 6. Physiological Age Assessment Sub-Scores (Balance, Grip Strength, Chair Stand, Reaction Time)
+ * 7. Hard Profile Conflicts & Cost Budget Constraints
  */
 export function calculateNextBestAction(
   modality: Modality, 
@@ -24,6 +31,7 @@ export function calculateNextBestAction(
   
   const coef = userProfile?.longevity_personalization_coefficient || 1.0;
   const reasons: string[] = [];
+  const evalData = evaluateModalityLongevity(modality, userProfile);
   
   const modText = (
     (modality.name || '') + ' ' + 
@@ -34,12 +42,12 @@ export function calculateNextBestAction(
     (modality.id || '')
   ).toLowerCase();
 
-  // --- Signal 1: Foundational Longevity Benefit (Up to 35 points) ---
-  const baseBenefit = modality.overall_longevity_benefit || 3.0; // Usually out of 10
+  // --- Signal 1: Multi-Dimensional Longevity Impact (Up to 35 points) ---
+  const baseBenefit = evalData.longevityImpactScore; // Composite 0-10 based on Evidence, Effect Size, Safety
   let score = baseBenefit * 3.5 * coef; 
   
   if (baseBenefit >= 7.5) {
-    reasons.push('High foundational longevity impact.');
+    reasons.push(`High Longevity Impact Score (${baseBenefit}/10).`);
   }
 
   // --- Signal 2: Functional Outcome Preferences (Up to 40 points) ---

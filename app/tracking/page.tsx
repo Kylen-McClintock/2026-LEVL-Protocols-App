@@ -13,6 +13,7 @@ import {
   getUserModalityHabits
 } from '@/lib/data'
 import { calculateNextBestAction } from '@/lib/ranking/nextBestAction'
+import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
 import { UserProfile, Modality, DailyProtocolTask, UserModalityHabit, DailyWellbeingCheckin } from '@/lib/types'
 import {
   Target,
@@ -823,11 +824,19 @@ export default function TrackingPage() {
                       </p>
 
                       <div className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-lg flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <h5 className="font-bold text-xs text-white truncate">
-                            {outcome.nextBestAction.display_name || outcome.nextBestAction.name}
-                          </h5>
-                          <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h5 className="font-bold text-xs text-white truncate">
+                              {outcome.nextBestAction.display_name || outcome.nextBestAction.name}
+                            </h5>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${getEffortMetadata(outcome.nextBestAction).badgeColor}`}>
+                              {getEffortMetadata(outcome.nextBestAction).shortLabel}
+                            </span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+                              Cost: {getCostMetadata(outcome.nextBestAction.cost_tier).shortLabel}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 line-clamp-1">
                             {outcome.nextBestAction.brief_description}
                           </p>
                         </div>

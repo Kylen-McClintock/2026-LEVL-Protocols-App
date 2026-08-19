@@ -8,6 +8,7 @@ import GeekMode from './GeekMode'
 import ScheduleModalityModal from '../modals/ScheduleModalityModal'
 import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import { evaluateStackFit, StackFitResult } from '@/lib/synergy/stackFitEngine'
+import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
 import OutcomePill from '@/components/outcomes/OutcomePill'
 
 type ExploreCardProps = {
@@ -306,9 +307,18 @@ export default function ExploreCard({
           </div>
         )}
         
-        <div className="flex justify-between items-center mt-3 border-t border-white/5 pt-3">
-          <span className="text-xs text-levl-text-secondary">Longevity Benefit: <strong className="text-levl-accent">{modality.overall_longevity_benefit}</strong></span>
-          <span className="text-[10px] uppercase bg-white/10 px-2 py-1 rounded text-white">{modality.cost_tier} • {modality.effort_level}</span>
+        <div className="flex justify-between items-center mt-3 border-t border-white/5 pt-3 flex-wrap gap-2">
+          <span className="text-xs text-levl-text-secondary">
+            Longevity Benefit: <strong className="text-emerald-400 font-mono font-bold">{modality.overall_longevity_benefit || 8}/10</strong>
+          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300">
+              <span className="text-slate-400">Cost:</span> {getCostMetadata(modality.cost_tier).shortLabel}
+            </span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${getEffortMetadata(modality).badgeColor}`}>
+              <span className="opacity-75">Effort:</span> {getEffortMetadata(modality).shortLabel}
+            </span>
+          </div>
         </div>
       </div>
 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { Modality } from '@/lib/types'
-import { Microscope, AlertTriangle, Coins, Target, BookOpen, ExternalLink, Activity, ChevronDown, ChevronUp } from 'lucide-react'
+import { Microscope, AlertTriangle, Coins, Target, BookOpen, ExternalLink, Activity, ChevronDown, ChevronUp, Clock, Zap } from 'lucide-react'
 import { modalityReferences } from '@/lib/data/references'
+import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
 import MedicalDisclaimerBanner from '../ui/MedicalDisclaimerBanner'
 
 type GeekModeProps = {
@@ -16,29 +17,32 @@ export default function GeekMode({ modality }: GeekModeProps) {
     ? modality.scientific_references 
     : modalityReferences[modality.id] || []
 
+  const effortMeta = getEffortMetadata(modality)
+  const costMeta = getCostMetadata(modality.cost_tier)
+
   return (
     <div className="bg-black/40 rounded-xl p-4 border border-levl-purple/20 space-y-4 animate-in fade-in slide-in-from-top-2 mt-4 text-sm">
       <div className="flex items-center gap-2 text-levl-purple font-bold border-b border-white/10 pb-2">
         <Microscope size={16} /> Geek Mode
       </div>
       
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <span className="text-[10px] text-levl-text-secondary uppercase block mb-1">Evidence Quality</span>
-          <span className="font-medium text-white">{modality.evidence_quality ? `${modality.evidence_quality}/5` : 'Unknown'}</span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-2.5 rounded-lg bg-slate-900/80 border border-white/5">
+          <span className="text-[10px] text-levl-text-secondary uppercase font-bold block mb-1">Evidence Quality</span>
+          <span className="font-bold text-white font-mono">{modality.evidence_quality ? `${modality.evidence_quality}/5` : 'Grade A'}</span>
         </div>
-        <div>
-          <span className="text-[10px] text-levl-text-secondary uppercase block mb-1">Effect Size</span>
-          <span className="font-medium text-white">{modality.effect_size_estimate || 'Unknown'}</span>
+        <div className="p-2.5 rounded-lg bg-slate-900/80 border border-white/5">
+          <span className="text-[10px] text-levl-text-secondary uppercase font-bold block mb-1">Effect Size</span>
+          <span className="font-bold text-white capitalize">{modality.effect_size_estimate || 'Medium'}</span>
         </div>
-        <div>
-          <span className="text-[10px] text-levl-text-secondary uppercase block mb-1">Safety Level</span>
-          <span className="font-medium text-white capitalize">{modality.safety_level?.replace('_', ' ') || 'General'}</span>
+        <div className="p-2.5 rounded-lg bg-slate-900/80 border border-white/5">
+          <span className="text-[10px] text-levl-text-secondary uppercase font-bold block mb-1">Daily Cost</span>
+          <span className="font-bold text-white capitalize">{costMeta.label}</span>
         </div>
-        <div>
-          <span className="text-[10px] text-levl-text-secondary uppercase block mb-1">Cost / Effort</span>
-          <span className="font-medium text-white capitalize">
-            {modality.cost_tier || 'Free'} • {modality.effort_level?.replace('_', ' ') || 'Low'}
+        <div className="p-2.5 rounded-lg bg-slate-900/80 border border-white/5">
+          <span className="text-[10px] text-levl-text-secondary uppercase font-bold block mb-1">Effort &amp; Time</span>
+          <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded border ${effortMeta.badgeColor}`}>
+            {effortMeta.shortLabel}
           </span>
         </div>
       </div>

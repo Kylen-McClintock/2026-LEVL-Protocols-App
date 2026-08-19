@@ -15,7 +15,9 @@ import {
   getBenchItems,
   createDailyTask,
   saveOutcomeObservation,
-  addModalityOrProtocolToToday
+  addModalityOrProtocolToToday,
+  getModalities,
+  addToBench
 } from '@/lib/data'
 import { DailyProtocolTask, Modality, OutcomeDimension, UserProfile, UserBenchItem, DailyWellbeingCheckin as WellbeingType } from '@/lib/types'
 import { format, parseISO, addDays, subDays, isBefore, startOfDay, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns'
@@ -29,6 +31,7 @@ import { PulsedModalityCard } from '@/components/cards/PulsedModalityCard'
 import ProactiveDiagnosticCard from '@/components/cards/ProactiveDiagnosticCard'
 import DailyWellbeingCheckin from '@/components/score/DailyWellbeingCheckin'
 import { DailyLongevityTipBanner } from '@/components/banners/DailyLongevityTipBanner'
+import { AdaptiveRecommendationBanner } from '@/components/banners/AdaptiveRecommendationBanner'
 import { LongevityCoachInputBar } from '@/components/ai/LongevityCoachInputBar'
 import { DailyHistoricalDebriefHeader } from '@/components/cards/DailyHistoricalDebriefHeader'
 import { ViewSelectorHeader, CalendarViewMode, LayoutOrientation, MainCategory, SUB_CATEGORIES_MAP } from '@/components/ui/ViewSelectorHeader'
@@ -113,6 +116,7 @@ function TodayPageContent() {
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [tasks, setTasks] = useState<DailyProtocolTask[]>([])
+  const [allModalities, setAllModalities] = useState<Modality[]>([])
   const [allOutcomes, setAllOutcomes] = useState<OutcomeDimension[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -265,12 +269,13 @@ function TodayPageContent() {
         }
         setProfile(userProfile)
 
-        const [currentTasks, outcomes, protocols, bench, todayCheckin] = await Promise.all([
+        const [currentTasks, outcomes, protocols, bench, todayCheckin, fetchedMods] = await Promise.all([
           getDailyProtocolTasks(localUserId, dateStr),
           getOutcomeDimensions(),
           getProtocols(),
           getBenchItems(localUserId),
-          getDailyWellbeingCheckin(localUserId, dateStr)
+          getDailyWellbeingCheckin(localUserId, dateStr),
+          getModalities()
         ])
 
         setTasks(currentTasks)
@@ -278,6 +283,7 @@ function TodayPageContent() {
         setAvailableProtocols(protocols.map((p: any) => ({ id: p.id, name: p.name })))
         setBenchItems(bench)
         setWellbeingCheckin(todayCheckin || null)
+        setAllModalities(fetchedMods || [])
       } catch (err) {
         console.error('Error loading Today data:', err)
       } finally {
@@ -1720,6 +1726,30 @@ function TodayPageContent() {
                 isCollapsedByDefault={isPastDate}
               />
             </div>
+
+            {/* 5b. Dynamic Adaptive Recommendation (Next Best Action or 80/20 Simplification) */}
+            {allModalities.length > 0 && tasks.length > 0 && !isPastDate && (
+              <div className="mb-4">
+                <AdaptiveRecommendationBanner
+                  tasks={tasks}
+                  allModalities={allModalities}
+                  userProfile={profile}
+                  streakDays={0}
+                  onAddToToday={async (modalityId: string) => {
+                    if (profile) {
+                      await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
+                      await refreshTodayTasks()
+                    }
+                  }}
+                  onMoveToBench={async (modalityId: string) => {
+                    if (profile) {
+                      await addToBench(profile.local_user_id, modalityId)
+                      await refreshTodayTasks()
+                    }
+                  }}
+                />
+              </div>
+            )}
 
             {/* Full-Width AI Longevity Coach Input Bar */}
             <div className="mb-6">

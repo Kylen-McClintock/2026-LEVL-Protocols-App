@@ -133,10 +133,10 @@ const CHAPTERS: Chapter[] = [
   },
   {
     id: 'coach',
-    title: '10. AI Longevity Coach & In-App Guide',
-    subtitle: 'Circadian sequencing advice, synergy checks & 1-click stack enrollment',
+    title: '10. AI Coach, Next Best Action & 80/20 Simplification',
+    subtitle: 'Adaptive progression, friction de-escalation & 1–5 Effort Matrix',
     icon: <Sparkles className="w-4 h-4 text-purple-400" />,
-    badge: 'AI Assistant',
+    badge: 'Adaptive Intelligence',
     color: 'purple',
     destinationRoute: '/coach'
   }
@@ -1051,10 +1051,10 @@ export default function GuidePage() {
               </div>
               <div>
                 <h3 className="text-lg sm:text-xl font-black text-white">
-                  10. AI Longevity Coach &amp; In-App Guide
+                  10. AI Coach, Next Best Action &amp; 80/20 Simplification
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Circadian sequencing advice, supplement synergy checks, and 1-click addition to Today.
+                  Adaptive progression when thriving, friction de-escalation when struggling, and the 1–5 Effort Matrix.
                 </p>
               </div>
             </div>
@@ -1067,7 +1067,111 @@ export default function GuidePage() {
             </Link>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-4 shadow-xl">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6 space-y-5 shadow-xl">
+            {/* 1. The Dual Adaptive Engines */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Next Best Action Card */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-purple-950/50 to-slate-950 border border-purple-500/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                    <Sparkles size={12} /> Next Best Action (Progression)
+                  </span>
+                  <span className="text-[9px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                    High Adherence (75%+)
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-white">Synergistic Protocol Layering</h4>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  When your protocol compliance is strong (e.g. 14+ day streak on core habits), the engine calculates un-enrolled modalities with the highest **Action ROI** (maximum longevity impact with minimal incremental friction) and suggests 1-click additions tailored to your biomarkers and goals.
+                </p>
+              </div>
+
+              {/* 80/20 Simplification Card */}
+              <div className="p-4 rounded-xl bg-gradient-to-br from-amber-950/40 to-slate-950 border border-amber-500/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                    <Scale size={12} /> 80/20 Stack Simplification
+                  </span>
+                  <span className="text-[9px] font-mono text-amber-300 bg-amber-950 px-2 py-0.5 rounded border border-amber-800">
+                    Friction Detected (&lt;60%)
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-white">Friction De-Escalation &amp; Stack Reset</h4>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  When life gets busy and completion drops, the engine detects **high-effort bottleneck modalities** (e.g. cold plunge or VO2 max skipped 3+ times). It offers 1-click **14-day benching** of the culprit to eliminate daily resistance while locking in your core 80/20 foundational anchors.
+                </p>
+              </div>
+            </div>
+
+            {/* 2. The 1–5 Effort Matrix */}
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <Layers size={14} className="text-cyan-400" /> The 1–5 Effort &amp; Friction Matrix
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  Friction = Prep + Discomfort + Equipment + Cognitive Load
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs">
+                <div className="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-500/30 space-y-1">
+                  <div className="font-extrabold text-emerald-300">Level 1: Frictionless</div>
+                  <div className="text-[10px] font-mono text-slate-400">0–2 min • Anywhere</div>
+                  <p className="text-[11px] text-slate-300">Morning sun, water + electrolytes, post-meal walk, creatine in water.</p>
+                </div>
+                <div className="p-2.5 rounded-lg bg-teal-950/30 border border-teal-500/30 space-y-1">
+                  <div className="font-extrabold text-teal-300">Level 2: Routine</div>
+                  <div className="text-[10px] font-mono text-slate-400">2–10 min • Stacking</div>
+                  <p className="text-[11px] text-slate-300">Morning 6-pill stack, 16:8 fasting window, plant diversity target, box breath.</p>
+                </div>
+                <div className="p-2.5 rounded-lg bg-cyan-950/30 border border-cyan-500/30 space-y-1">
+                  <div className="font-extrabold text-cyan-300">Level 3: Moderate</div>
+                  <div className="text-[10px] font-mono text-slate-400">15–45 min • Block</div>
+                  <p className="text-[11px] text-slate-300">Zone 2 cardio, 20m sauna, red light panel, joint mobility routine.</p>
+                </div>
+                <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-500/30 space-y-1">
+                  <div className="font-extrabold text-amber-300">Level 4: Hormesis</div>
+                  <div className="text-[10px] font-mono text-slate-400">20–60 min • Discomfort</div>
+                  <p className="text-[11px] text-slate-300">3-min cold plunge (48°F), heavy resistance lifting, VO2 Max 4x4 intervals, CGM.</p>
+                </div>
+                <div className="p-2.5 rounded-lg bg-rose-950/30 border border-rose-500/30 space-y-1">
+                  <div className="font-extrabold text-rose-300">Level 5: Intensive</div>
+                  <div className="text-[10px] font-mono text-slate-400">Multi-Day / Clinical</div>
+                  <p className="text-[11px] text-slate-300">5-day Fasting-Mimicking Diet, peptide reconstitution cycles, senolytic blasts.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Multi-Dimensional Longevity Impact Formula */}
+            <div className="p-4 rounded-xl bg-slate-950/90 border border-white/5 space-y-2 text-xs text-slate-300">
+              <div className="font-bold text-white flex items-center gap-1.5">
+                <Activity size={14} className="text-purple-400" /> Multi-Dimensional Longevity Impact &amp; ROI Formula
+              </div>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Every modality in the LEVL catalog is scored across 5 verified scientific dimensions:
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[11px]">
+                <div className="p-2 rounded bg-slate-900 border border-white/5">
+                  <span className="text-slate-400 block text-[10px]">EVIDENCE QUALITY</span>
+                  <span className="text-emerald-400 font-bold">1–5 Scale (RCTs/Meta)</span>
+                </div>
+                <div className="p-2 rounded bg-slate-900 border border-white/5">
+                  <span className="text-slate-400 block text-[10px]">EFFECT SIZE</span>
+                  <span className="text-cyan-400 font-bold">Small to Substantial</span>
+                </div>
+                <div className="p-2 rounded bg-slate-900 border border-white/5">
+                  <span className="text-slate-400 block text-[10px]">SAFETY &amp; CONTRAINDICATIONS</span>
+                  <span className="text-teal-400 font-bold">Risk-Stratified</span>
+                </div>
+                <div className="p-2 rounded bg-slate-900 border border-white/5">
+                  <span className="text-slate-400 block text-[10px]">DAILY FINANCIAL COST</span>
+                  <span className="text-amber-400 font-bold">Free to Premium</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Inline AI Longevity Coach on Today Timeline */}
             <div className="p-4 rounded-xl bg-slate-950 border border-purple-500/30 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
