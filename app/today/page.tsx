@@ -1895,70 +1895,67 @@ function TodayPageContent() {
               </div>
             )}
 
-            {/* Timeline Layout Mode & Completion Mode Toggle Bar */}
-            <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-2.5 rounded-2xl mb-4 backdrop-blur-md shadow-sm flex-wrap gap-3">
+            {/* Timeline Layout Mode & Completion Mode Toggle Bar (Single Row on Mobile & Desktop) */}
+            <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-1.5 sm:p-2.5 rounded-2xl mb-4 backdrop-blur-md shadow-sm gap-1.5 sm:gap-3 overflow-x-auto no-scrollbar">
               {/* Left: Timeline Layout Mode (Time Blocks vs Protocols) */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-extrabold text-slate-300 uppercase tracking-wider pl-2 flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-purple-400" /> Timeline Layout:
-                </span>
-                <div className="flex items-center bg-black/60 p-1 rounded-xl border border-white/10 gap-1 text-xs">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center bg-black/60 p-0.5 sm:p-1 rounded-xl border border-white/10 gap-0.5 sm:gap-1 text-xs">
                   <button
                     type="button"
                     onClick={() => setViewMode('chronological')}
-                    className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0 ${
                       viewMode === 'chronological'
                         ? 'bg-purple-600 text-white shadow-md border border-purple-400/30 font-extrabold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <Clock size={13} />
+                    <Clock size={12} className="shrink-0" />
                     <span>Time Blocks</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setViewMode('protocol')}
-                    className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0 ${
                       viewMode === 'protocol'
                         ? 'bg-purple-600 text-white shadow-md border border-purple-400/30 font-extrabold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <ListOrdered size={13} />
+                    <ListOrdered size={12} className="shrink-0" />
                     <span>Protocols</span>
                   </button>
                 </div>
               </div>
 
               {/* Right: Completion Mode (Track Outcomes vs Fast Mode) in the SAME ROW */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center bg-black/60 p-1 rounded-xl border border-white/10 gap-1 text-xs shadow-inner">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center bg-black/60 p-0.5 sm:p-1 rounded-xl border border-white/10 gap-0.5 sm:gap-1 text-xs shadow-inner">
                   <button
                     type="button"
                     onClick={() => handleCompletionModeChange('outcome')}
-                    className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0 ${
                       completionMode === 'outcome'
                         ? 'bg-purple-600 text-white shadow-md border border-purple-400/30 font-extrabold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                     title="Track Outcomes: deep metric tracking with sliders"
                   >
-                    <Activity size={13} className={completionMode === 'outcome' ? 'text-purple-200' : 'text-slate-400'} />
+                    <Activity size={12} className={`shrink-0 ${completionMode === 'outcome' ? 'text-purple-200' : 'text-slate-400'}`} />
                     <span>Track Outcomes</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleCompletionModeChange('fast')}
-                    className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0 ${
                       completionMode === 'fast'
                         ? 'bg-amber-500 text-slate-950 shadow-md font-black'
                         : 'text-slate-400 hover:text-white'
                     }`}
                     title="Fast Mode: 1-click instant completion"
                   >
-                    <Zap size={13} className={completionMode === 'fast' ? 'text-slate-950 fill-slate-950' : 'text-amber-400'} />
+                    <Zap size={12} className={`shrink-0 ${completionMode === 'fast' ? 'text-slate-950 fill-slate-950' : 'text-amber-400'}`} />
                     <span>Fast Mode</span>
                   </button>
                 </div>
