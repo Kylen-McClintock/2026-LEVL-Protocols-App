@@ -8,6 +8,7 @@ import {
   Activity, Check, X, Plus, ChevronDown, ChevronUp, Sparkles, 
   Zap, Moon, Brain, Shield, Heart, Eye, Gauge, Flame, Dumbbell 
 } from 'lucide-react'
+import { getOutcomeDescription } from '@/lib/utils/outcomeDescriptions'
 
 // Helper to assign vibrant icons and colors to known outcome dimensions
 function getOutcomeVisual(id: string) {
@@ -239,14 +240,19 @@ export default function FunctionalOutcomesRankingCard({
                     key={id} 
                     className="p-3.5 rounded-2xl bg-black/50 border border-white/10 hover:border-white/20 transition-all space-y-2.5 shadow-sm group"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
                           {visual.icon}
                         </div>
-                        <span className="text-xs font-bold text-white truncate">
-                          {name}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-white block">
+                            {name}
+                          </span>
+                          <p className="text-[11px] text-slate-400 leading-snug mt-0.5">
+                            {getOutcomeDescription(id, outcomeObj?.description)}
+                          </p>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
