@@ -200,6 +200,65 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
               </div>
             )}
 
+            {/* Detected Direct Navigation Action Links */}
+            {(response.advice.includes('/physiological-age') || response.advice.includes('/tracking') || response.advice.includes('/schedule') || response.advice.includes('/explore') || response.advice.includes('/bench') || response.advice.includes('/settings')) && (
+              <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Quick Navigation:
+                </span>
+                {(response.advice.includes('/physiological-age') || response.advice.includes('/tracking')) && (
+                  <button
+                    type="button"
+                    onClick={() => router.push('/physiological-age')}
+                    className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  >
+                    <span>🩸 Open Bloodwork &amp; BioAge</span>
+                    <ArrowRight size={11} />
+                  </button>
+                )}
+                {response.advice.includes('/schedule') && (
+                  <button
+                    type="button"
+                    onClick={() => router.push('/schedule')}
+                    className="text-xs font-bold px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-600/50 text-cyan-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  >
+                    <span>⏱️ Open Fasting &amp; Schedule Hub</span>
+                    <ArrowRight size={11} />
+                  </button>
+                )}
+                {response.advice.includes('/explore') && (
+                  <button
+                    type="button"
+                    onClick={() => router.push('/explore')}
+                    className="text-xs font-bold px-3 py-1.5 rounded-xl bg-teal-950/60 hover:bg-teal-900/80 border border-teal-600/50 text-teal-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  >
+                    <span>🔍 Open Explore Catalog</span>
+                    <ArrowRight size={11} />
+                  </button>
+                )}
+                {response.advice.includes('/bench') && (
+                  <button
+                    type="button"
+                    onClick={() => router.push('/bench')}
+                    className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/80 border border-amber-600/50 text-amber-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  >
+                    <span>🏋️ Open Bench Backlog</span>
+                    <ArrowRight size={11} />
+                  </button>
+                )}
+                {response.advice.includes('/settings') && (
+                  <button
+                    type="button"
+                    onClick={() => router.push('/settings')}
+                    className="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  >
+                    <span>⚙️ Open Settings &amp; Profile</span>
+                    <ArrowRight size={11} />
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Suggested Modalities to Add */}
             {response.suggestedAdditions && response.suggestedAdditions.length > 0 && onAddToToday && (
               <div className="pt-2 border-t border-slate-800/80 space-y-2">
