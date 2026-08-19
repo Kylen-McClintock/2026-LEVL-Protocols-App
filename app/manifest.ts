@@ -12,13 +12,13 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     icons: [
       {
-        src: '/levl-official-logo.png',
+        src: '/logo.png',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/levl-official-logo.png',
+        src: '/logo.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',

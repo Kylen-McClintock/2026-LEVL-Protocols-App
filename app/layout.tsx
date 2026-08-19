@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: "/levl-official-logo.png",
+    icon: "/logo.png",
     apple: "/logo.png",
   },
 };
