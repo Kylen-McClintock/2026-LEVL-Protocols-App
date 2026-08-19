@@ -93,13 +93,22 @@ export function getEffortMetadata(modalityOrLevel: Modality | string | number | 
   }
 
   // Keyword heuristic resolution
+  // LEVEL 5: Intensive / Multi-Day (Prolonged Fasting 48h/72h, 5-Day FMD, Peptides, Reconstitution)
   if (
     numVal === 5 ||
     rawStr.includes('level_5') ||
     rawStr.includes('5-day') ||
     rawStr.includes('fmd') ||
+    rawStr.includes('prolonged fast') ||
     rawStr.includes('water fast') ||
+    rawStr.includes('48-hour') ||
+    rawStr.includes('48h') ||
+    rawStr.includes('72-hour') ||
     rawStr.includes('72h') ||
+    rawStr.includes('73h') ||
+    rawStr.includes('fisetin senolytic') ||
+    rawStr.includes('dasatinib') ||
+    rawStr.includes('senolytic blast') ||
     rawStr.includes('peptide') ||
     rawStr.includes('injection') ||
     rawStr.includes('subcutaneous') ||
@@ -117,6 +126,7 @@ export function getEffortMetadata(modalityOrLevel: Modality | string | number | 
     }
   }
 
+  // LEVEL 4: High Hormesis & Prep (Cold Plunge, Heavy Lifting, VO2 Max, CGM)
   if (
     numVal === 4 ||
     rawStr.includes('level_4') ||
@@ -130,6 +140,7 @@ export function getEffortMetadata(modalityOrLevel: Modality | string | number | 
     rawStr.includes('norwegian') ||
     rawStr.includes('hiit') ||
     rawStr.includes('cgm') ||
+    rawStr.includes('continuous glucose') ||
     rawStr.includes('very_high')
   ) {
     return {
@@ -143,6 +154,7 @@ export function getEffortMetadata(modalityOrLevel: Modality | string | number | 
     }
   }
 
+  // LEVEL 3: Moderate Effort (15–45 min time blocks: Sauna, Zone 2, Red Light, 20:4 Fasting)
   if (
     numVal === 3 ||
     rawStr.includes('level_3') ||
@@ -154,9 +166,9 @@ export function getEffortMetadata(modalityOrLevel: Modality | string | number | 
     rawStr.includes('photobiomodulation') ||
     rawStr.includes('mobility') ||
     rawStr.includes('foam roll') ||
-    rawStr.includes('moderate') ||
-    rawStr.includes('medium') ||
-    rawStr.includes('high')
+    rawStr.includes('18:6') ||
+    rawStr.includes('20:4') ||
+    rawStr.includes('omad')
   ) {
     return {
       level: 3,
@@ -169,20 +181,20 @@ export function getEffortMetadata(modalityOrLevel: Modality | string | number | 
     }
   }
 
+  // LEVEL 2: Low-Friction Routine (2–10 min, habit stacked onto meals/morning box)
   if (
     numVal === 2 ||
     rawStr.includes('level_2') ||
-    rawStr.includes('supplement') ||
-    rawStr.includes('stack') ||
-    rawStr.includes('capsule') ||
-    rawStr.includes('pill') ||
+    rawStr.includes('morning protocol box') ||
     rawStr.includes('16:8') ||
-    rawStr.includes('fast break') ||
     rawStr.includes('plant diversity') ||
+    rawStr.includes('prebiotic fiber') ||
     rawStr.includes('protein pulse') ||
     rawStr.includes('box breath') ||
-    rawStr.includes('sigh') ||
-    rawStr.includes('low')
+    rawStr.includes('4-7-8') ||
+    rawStr.includes('physiological sigh') ||
+    rawStr.includes('nsdr') ||
+    rawStr.includes('meditation')
   ) {
     return {
       level: 2,
@@ -195,14 +207,15 @@ export function getEffortMetadata(modalityOrLevel: Modality | string | number | 
     }
   }
 
-  // Level 1: Default Frictionless
+  // LEVEL 1: Frictionless Micro-Habits & Single Pills (0–2 min, zero prep, anywhere)
+  // Single pills/capsules (K2, Sulforaphane, Glycine, Magnesium, Apigenin, Creatine, Taurine, Vitamin D3, TMG, etc.)
   return {
     level: 1,
     label: 'Level 1: Frictionless',
     shortLabel: 'Lvl 1 (Frictionless)',
     timeEstimate: '0–2 min',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-    description: 'Anywhere, zero setup, negligible cognitive load, instant compliance.',
+    description: 'Anywhere, single pill or quick habit, zero setup, negligible cognitive load, instant compliance.',
     frictionFactors: ['Zero Friction', 'No Gear Needed']
   }
 }
@@ -213,7 +226,7 @@ export function getEffortMetadata(modalityOrLevel: Modality | string | number | 
 export function getCostMetadata(costTier: string | undefined): CostMetadata {
   const c = (costTier || '').toLowerCase().trim()
 
-  if (c.includes('premium') || c.includes('expensive') || c.includes('$$$$') || c.includes('10+')) {
+  if (c.includes('premium') || c.includes('expensive') || c.includes('$$$$') || c.includes('10+') || c.includes('peptide') || c.includes('hbot')) {
     return {
       score: 4,
       label: 'Premium ($10+/day)',
@@ -223,7 +236,7 @@ export function getCostMetadata(costTier: string | undefined): CostMetadata {
     }
   }
 
-  if (c.includes('high') || c.includes('$$$') || c.includes('3-10')) {
+  if (c.includes('high') || c.includes('$$$') || c.includes('3-10') || c.includes('urolithin') || c.includes('mitopure') || c.includes('cgm') || c.includes('ca-akg')) {
     return {
       score: 3,
       label: 'High ($3–$10/day)',
@@ -233,7 +246,7 @@ export function getCostMetadata(costTier: string | undefined): CostMetadata {
     }
   }
 
-  if (c.includes('moderate') || c.includes('medium') || c.includes('$$') || c.includes('1-3')) {
+  if (c.includes('moderate') || c.includes('medium') || c.includes('$$') || c.includes('1-3') || c.includes('nmn') || c.includes('resveratrol') || c.includes('spermidine') || c.includes('sulforaphane')) {
     return {
       score: 2,
       label: 'Moderate ($1–$3/day)',

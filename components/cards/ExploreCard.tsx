@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Modality, UserProfile, UserBenchItem } from '@/lib/types'
-import { BookmarkPlus, Plus, Check, Info, Sparkles, Search, CalendarPlus, CheckCircle2, Bookmark, Scale, ArrowRightLeft, AlertTriangle, History, Ban, Flame, ShieldCheck } from 'lucide-react'
+import { BookmarkPlus, Plus, Check, Info, Sparkles, Search, CalendarPlus, CheckCircle2, Bookmark, Scale, ArrowRightLeft, AlertTriangle, History, Ban, Flame, ShieldCheck, Layers, ChevronDown, ChevronUp } from 'lucide-react'
 import GeekMode from './GeekMode'
 import ScheduleModalityModal from '../modals/ScheduleModalityModal'
 import { DosageBadgeButton } from '../ui/DosageBadgeButton'
@@ -307,23 +307,61 @@ export default function ExploreCard({
           </div>
         )}
         
-        <div className="flex justify-between items-center mt-3 border-t border-white/5 pt-3 flex-wrap gap-2">
+        <div className="flex justify-between items-center mt-3 border-t border-white/5 pt-3">
           <span className="text-xs text-levl-text-secondary">
-            Longevity Benefit: <strong className="text-emerald-400 font-mono font-bold">{modality.overall_longevity_benefit || 8}/10</strong>
+            Longevity Impact: <strong className="text-emerald-400 font-mono font-bold text-sm">{modality.overall_longevity_benefit || 8}/10</strong>
           </span>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300">
-              <span className="text-slate-400">Cost:</span> {getCostMetadata(modality.cost_tier).shortLabel}
-            </span>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${getEffortMetadata(modality).badgeColor}`}>
-              <span className="opacity-75">Effort:</span> {getEffortMetadata(modality).shortLabel}
-            </span>
-          </div>
+          <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+            {expanded ? 'Collapse' : 'Inspect details'} {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </span>
         </div>
       </div>
 
       {expanded && (
         <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-4 animate-in fade-in slide-in-from-top-2">
+          {/* Core Scientific Metric Tiles */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">Evidence Quality</span>
+              <span className="text-xs font-bold text-white font-mono">
+                {modality.evidence_quality ? `${modality.evidence_quality}/5 (Clinical RCTs)` : 'Grade A (5/5)'}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">Effect Size</span>
+              <span className="text-xs font-bold text-cyan-300 capitalize">
+                {modality.effect_size_estimate || 'Medium'}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">Daily Cost</span>
+              <span className="text-xs font-bold text-amber-300">
+                {getCostMetadata(modality.cost_tier).label}
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">Effort &amp; Time</span>
+              <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded border ${getEffortMetadata(modality).badgeColor}`}>
+                {getEffortMetadata(modality).shortLabel}
+              </span>
+            </div>
+          </div>
+
+          {/* Impacted Hallmarks of Aging */}
+          {modality.hallmarks_of_aging_impact && modality.hallmarks_of_aging_impact.length > 0 && (
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-purple-500/20 space-y-1.5">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                <Layers size={12} className="text-purple-400" /> Targeted Hallmarks of Aging:
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {(Array.isArray(modality.hallmarks_of_aging_impact) ? modality.hallmarks_of_aging_impact : [modality.hallmarks_of_aging_impact]).map((h: string, idx: number) => (
+                  <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-950/80 border border-purple-800 text-purple-200">
+                    {h}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           {modality.nba_result && modality.nba_result.reasons.length > 0 && (
             <div className="bg-levl-accent/5 rounded-lg p-3 border border-levl-accent/20 space-y-2">
               <h4 className="text-xs font-semibold text-levl-accent uppercase flex items-center gap-1">

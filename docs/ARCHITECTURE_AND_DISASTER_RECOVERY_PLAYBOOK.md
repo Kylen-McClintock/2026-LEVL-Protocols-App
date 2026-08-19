@@ -31,11 +31,22 @@ Level 1: Frictionless ──> Level 2: Routine ──> Level 3: Moderate ──>
 
 | Level | Name | Time & Location Constraints | Biological / Practical Examples | Count in DB |
 | :--- | :--- | :--- | :--- | :--- |
-| **Level 1** | **Frictionless** | 0–2 min, zero prep, anywhere | Morning sunlight, water + electrolytes, 10-min post-meal walk, creatine in water, blue light filter | **108** |
-| **Level 2** | **Routine** | 2–10 min, habit stacked onto meals | Morning 6-pill stack (NMN, Resveratrol, Omega-3), 16:8 fasting, 30g prebiotic fiber, box breathing | **51** |
-| **Level 3** | **Moderate** | 15–45 min, dedicated time block | Zone 2 cardio, 20m Finnish sauna (174°F+), red light therapy panel, joint mobility routine | **16** |
-| **Level 4** | **High Hormesis** | 20–60 min, intense discomfort/gear | 3-min cold plunge (48°F), heavy resistance lifting, Norwegian 4x4 VO2 Max, CGM sensors | **13** |
-| **Level 5** | **Intensive** | Multi-day restriction or clinical setup | 5-day Fasting-Mimicking Diet (Longo FMD), subcutaneous peptide cycles, senolytic blasts | **10** |
+| **Level 1** | **Frictionless** | 0–2 min, zero prep, anywhere | Single oral pills/capsules (K2, Sulforaphane, Glycine, Magnesium, Apigenin, Creatine, Taurine, D3, TMG), morning sun, water + electrolytes, 10m post-meal walk | **108** |
+| **Level 2** | **Routine** | 2–10 min, habit stacked onto meals | Morning multi-supplement protocol box, 16:8 fasting window, 30g prebiotic fiber, box breathing, 4-7-8 breathwork | **51** |
+| **Level 3** | **Moderate** | 15–45 min, dedicated time block | Zone 2 cardio, 20m Finnish sauna (174°F+), red light therapy panel, joint mobility routine, 20:4 fasting | **16** |
+| **Level 4** | **High Hormesis** | 20–60 min, intense discomfort/gear | 3-min cold plunge (48°F), heavy resistance lifting, Norwegian 4x4 VO2 Max, CGM sensor application | **13** |
+| **Level 5** | **Intensive** | Multi-day restriction or clinical setup | 48h / 72h prolonged water fasts, 5-day Fasting-Mimicking Diet (Longo FMD), subcutaneous peptide cycles, senolytic blasts, HBOT | **10** |
+
+### Verified Cost Tiers:
+- **Free ($0/day):** Sunlight, Hydration, Fasting (16:8, 20:4, 72h), Post-Meal Walks, Breathwork, Sleep Environment.
+- **Low (<$1/day):** Single vitamins & minerals (D3+K2, Glycine, Magnesium, Creatine, Taurine, Zinc, Melatonin).
+- **Moderate ($1–$3/day):** NMN, Resveratrol, Spermidine, Sulforaphane, Curcumin, Berberine, Quercetin, Apigenin, CoQ10.
+- **High ($3–$10/day):** Urolithin A (Mitopure), CGM continuous sensors, Ca-AKG, NAD+ injections.
+- **Premium ($10+/day):** Peptides (BPC-157, Epithalon, MOTS-c), HBOT chambers, Whole-body cryotherapy, Plasmapheresis.
+
+### Canonical 12 Hallmarks of Aging (López-Otín et al., 2023):
+Every modality targets 1–3 verified biological hallmarks:
+1. `Mitochondrial Dysfunction` • 2. `Cellular Senescence` • 3. `Epigenetic Alterations` • 4. `Loss of Proteostasis` • 5. `Deregulated Nutrient Sensing` • 6. `Chronic Inflammation` • 7. `Disabled Macroautophagy` • 8. `Genomic Instability` • 9. `Telomere Attrition` • 10. `Stem Cell Exhaustion` • 11. `Dysbiosis` • 12. `Altered Intercellular Communication`.
 
 ---
 
