@@ -451,56 +451,57 @@ export default function ExploreCard({
               }
             }}
             disabled={isCurrentlyOnBench && !isCurrentlyActiveInToday}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
               isCurrentlyActiveInToday
-                ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold cursor-pointer'
+                ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.15)]'
                 : isCurrentlyOnBench 
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold cursor-default'
-                : 'bg-levl-accent text-white hover:bg-levl-accent/90 shadow-lg shadow-levl-accent/20'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-default'
+                : 'bg-levl-accent hover:bg-levl-accent/90 text-white shadow-levl-accent/20 cursor-pointer'
             }`}
           >
             {isCurrentlyActiveInToday ? (
-              <>
-                <CheckCircle2 size={16} className="text-emerald-400" />
-                Scheduled in Today&apos;s Plan
-              </>
+              <span className="flex items-center justify-center gap-1.5 truncate">
+                <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                <span className="truncate">In Today&apos;s Plan</span>
+              </span>
             ) : isCurrentlyOnBench ? (
-              <>
-                <Bookmark size={16} className="text-cyan-400" />
-                Saved on Bench
-              </>
+              <span className="flex items-center justify-center gap-1.5 truncate">
+                <Bookmark size={15} className="text-cyan-400 shrink-0" />
+                <span className="truncate">Saved on Bench</span>
+              </span>
             ) : (
-              <>
-                <CalendarPlus size={16} />
-                Add to Protocol
-              </>
+              <span className="flex items-center justify-center gap-1.5 truncate">
+                <CalendarPlus size={15} className="shrink-0" />
+                <span className="truncate">Add to Today</span>
+              </span>
             )}
           </button>
 
           {onPinForCompare && (
             <button 
               onClick={(e) => { e.stopPropagation(); onPinForCompare(modality); }}
-              className={`px-3 py-2.5 rounded-lg text-sm font-bold border flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+              className={`h-9 px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                 isPinnedForCompare 
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm' 
                   : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
               }`}
               title="Pin modality to compare side-by-side"
             >
-              <Scale size={15} />
+              <Scale size={14} />
               <span className="hidden sm:inline">{isPinnedForCompare ? 'Selected' : 'Compare'}</span>
             </button>
           )}
 
           <button 
             onClick={(e) => { e.stopPropagation(); setShowGeekMode(!showGeekMode); }}
-            className={`px-3.5 py-2.5 rounded-lg text-sm font-bold border flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+            className={`h-9 px-3.5 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
               showGeekMode 
                 ? 'bg-levl-purple text-white border-levl-purple shadow-md' 
-                : 'bg-levl-purple/10 border-levl-purple/30 text-levl-purple hover:bg-levl-purple hover:text-white'
+                : 'bg-levl-purple/10 border-levl-purple/30 text-purple-300 hover:bg-levl-purple hover:text-white'
             }`}
           >
-            <Info size={16} /> Geek Mode
+            <Info size={14} />
+            <span>Geek Mode</span>
           </button>
         </div>
 
