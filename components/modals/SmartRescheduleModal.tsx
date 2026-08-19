@@ -81,8 +81,9 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
           
           {/* Option 1: Snooze 'Til Later (This Evening) */}
           <button
+            type="button"
             onClick={() => onExecuteReschedule('snooze_later_today', undefined, selectedSlot)}
-            className="w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all bg-slate-950/60 border-slate-800 hover:border-teal-500/80 hover:bg-slate-800/60 group"
+            className="w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all bg-slate-950/60 border-slate-800 hover:border-teal-500/80 hover:bg-slate-800/60 active:scale-[0.98] cursor-pointer group"
           >
             <div className="w-10 h-10 rounded-xl bg-teal-950/80 border border-teal-800/60 flex items-center justify-center text-teal-400 shrink-0 group-hover:scale-105 transition-transform">
               <Clock className="w-5 h-5" />
@@ -99,8 +100,9 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
           {/* Option 2: Push to Tomorrow (Slide Split Forward) - Highlighted for Pulsed / Workouts */}
           {isPulsed && (
             <button
+              type="button"
               onClick={() => onExecuteReschedule('slide_forward')}
-              className="w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all bg-purple-950/40 border-purple-500/60 hover:border-purple-400 hover:bg-purple-950/60 group shadow-sm"
+              className="w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all bg-purple-950/40 border-purple-500/60 hover:border-purple-400 hover:bg-purple-950/60 active:scale-[0.98] cursor-pointer group shadow-sm"
             >
               <div className="w-10 h-10 rounded-xl bg-purple-900/80 border border-purple-600/80 flex items-center justify-center text-purple-300 shrink-0 group-hover:scale-105 transition-transform">
                 <FastForward className="w-5 h-5" />
@@ -120,8 +122,9 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
           {/* Option 3: Swap with Future Rest Day - Ideal for Workouts / Fasting */}
           {isPulsed && (
             <button
+              type="button"
               onClick={() => onExecuteReschedule('swap_rest_day')}
-              className="w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all bg-slate-950/60 border-slate-800 hover:border-amber-500/80 hover:bg-slate-800/60 group"
+              className="w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all bg-slate-950/60 border-slate-800 hover:border-amber-500/80 hover:bg-slate-800/60 active:scale-[0.98] cursor-pointer group"
             >
               <div className="w-10 h-10 rounded-xl bg-amber-950/80 border border-amber-800/60 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 transition-transform">
                 <ArrowRightLeft className="w-5 h-5" />
@@ -139,8 +142,9 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
 
           {/* Option 4: Skip Completely (Default for Daily Supplements / Habits) */}
           <button
+            type="button"
             onClick={() => onExecuteReschedule('skip_session')}
-            className={`w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all ${
+            className={`w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all active:scale-[0.98] cursor-pointer ${
               isDailySupplement && !isPulsed
                 ? 'bg-slate-800/90 border-slate-700 hover:border-slate-500'
                 : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'

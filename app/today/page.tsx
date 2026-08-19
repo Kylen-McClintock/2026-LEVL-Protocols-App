@@ -37,7 +37,7 @@ import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolOverviewHeaderCard from '@/components/cards/ProtocolOverviewHeaderCard'
 import AdHocLoggerModal from '@/components/modals/AdHocLoggerModal'
 import EnrollProtocolModal from '@/components/modals/EnrollProtocolModal'
-import { SmartRescheduleModal } from '@/components/modals/SmartRescheduleModal'
+import { SmartRescheduleModal, RescheduleActionType } from '@/components/modals/SmartRescheduleModal'
 import CustomizeModalityOutcomesModal from '@/components/modals/CustomizeModalityOutcomesModal'
 import QuickHotkeyGrid from '@/components/quicklog/QuickHotkeyGrid'
 
@@ -417,18 +417,55 @@ function TodayPageContent() {
     setIsRescheduleModalOpen(true)
   }
 
-  const handleExecuteReschedule = async (newDate: string) => {
+  const handleExecuteReschedule = async (
+    action: RescheduleActionType, 
+    customDateStr?: string, 
+    newTimingSlot?: string
+  ) => {
     if (!rescheduleTask || !profile) return
     const localUserId = profile.local_user_id
     const modalityId = rescheduleTask.modality_id || rescheduleTask.protocol_step?.modality_id
-    if (modalityId) {
-      await createDailyTask(localUserId, newDate, modalityId)
-      await updateDailyTaskStatus(rescheduleTask.id, 'skipped', 'Rescheduled')
-      await refreshTodayTasks()
+
+    try {
+      if (action === 'snooze_later_today') {
+        // 1. Snooze 'Til Later today: Update status to 'snoozed'
+        await updateDailyTaskStatus(rescheduleTask.id, 'snoozed', 'Snoozed to Evening')
+        await refreshTodayTasks()
+      } else if (action === 'skip_session') {
+        // 2. Skip completely for this cycle
+        await updateDailyTaskStatus(rescheduleTask.id, 'skipped', 'Skipped')
+        await refreshTodayTasks()
+      } else if (action === 'slide_forward') {
+        // 3. Push to tomorrow (slide split)
+        const tomorrow = format(addDays(parseISO(dateStr), 1), 'yyyy-MM-dd')
+        if (modalityId) {
+          await createDailyTask(localUserId, tomorrow, modalityId)
+        }
+        await updateDailyTaskStatus(rescheduleTask.id, 'skipped', 'Rescheduled to Tomorrow')
+        await refreshTodayTasks()
+      } else if (action === 'swap_rest_day') {
+        // 4. Swap with rest day (shift forward 2 days)
+        const targetDate = format(addDays(parseISO(dateStr), 2), 'yyyy-MM-dd')
+        if (modalityId) {
+          await createDailyTask(localUserId, targetDate, modalityId)
+        }
+        await updateDailyTaskStatus(rescheduleTask.id, 'skipped', 'Swapped with Rest Day')
+        await refreshTodayTasks()
+      } else if (action === 'custom_date' && customDateStr) {
+        // 5. Reschedule to custom selected date
+        if (modalityId) {
+          await createDailyTask(localUserId, customDateStr, modalityId)
+        }
+        await updateDailyTaskStatus(rescheduleTask.id, 'skipped', `Rescheduled to ${customDateStr}`)
+        await refreshTodayTasks()
+      }
+    } catch (err) {
+      console.error('Error executing reschedule action:', err)
+    } finally {
+      setIsRescheduleModalOpen(false)
+      setRescheduleTask(null)
+      setRescheduleModality(null)
     }
-    setIsRescheduleModalOpen(false)
-    setRescheduleTask(null)
-    setRescheduleModality(null)
   }
 
   const handleMoveToBench = async (task: DailyProtocolTask) => {
@@ -770,7 +807,7 @@ function TodayPageContent() {
       const isCompleted = task.status === 'completed'
       const isRecentlyCompleted = recentlyCompletedIds.has(task.id)
       const isSnoozed = task.status === 'snoozed'
-      const isSkipped = task.status === 'skipped' || task.status === 'not_today' || !!task.status_reason
+      const isSkipped = task.status === 'skipped' || task.status === 'not_today' || (!isCompleted && !isSnoozed && task.status === 'missed')
 
       if (isCompleted) {
         completedTop.push(task)
