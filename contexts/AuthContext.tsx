@@ -116,10 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithOtp = useCallback(async (email: string) => {
     if (!supabase) return { error: null }
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+        emailRedirectTo: origin ? `${origin}/today` : undefined,
         shouldCreateUser: true
       }
     })
@@ -160,10 +161,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = useCallback(async () => {
     if (!supabase) return { error: null }
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
+        redirectTo: origin ? `${origin}/today` : undefined
       }
     })
     return { error }
