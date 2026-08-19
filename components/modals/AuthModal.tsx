@@ -104,11 +104,6 @@ export default function AuthModal() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                Zero Friction
-              </span>
-            </div>
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
               {step === 'email' ? 'Sign In & Cloud Sync' : 'Enter 6-Digit Code'}
             </h2>
@@ -146,15 +141,19 @@ export default function AuthModal() {
 
         {step === 'email' ? (
           <div className="space-y-4">
-            {/* Biometric Passkey Login (Face ID / Touch ID) */}
+            {/* Biometric Passkey Login (Face ID / Touch ID / Android Biometrics) */}
             {isPasskeyAvailable && (
               <button
                 type="button"
                 onClick={handlePasskeySignIn}
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer disabled:opacity-50 border border-purple-400/30"
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer disabled:opacity-50 border border-purple-400/30"
               >
-                <Fingerprint size={17} className="text-purple-200" />
+                {loading ? (
+                  <RefreshCw size={17} className="animate-spin text-purple-200" />
+                ) : (
+                  <Fingerprint size={17} className="text-purple-200" />
+                )}
                 <span>Sign in with Face ID / Touch ID</span>
               </button>
             )}

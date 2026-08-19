@@ -156,13 +156,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error }
   }, [])
 
-  // Biometric Passkey Login (Face ID / Touch ID)
+  // Biometric Passkey Login (Face ID / Touch ID / Android Biometrics)
   const signInWithPasskey = useCallback(async () => {
-    const res = await authenticateWithBiometrics()
+    const activeId = user?.id || localUserId
+    const activeEmail = user?.email || 'member@levl.app'
+    const activeName = (user as any)?.user_metadata?.full_name || 'LEVL Member'
+
+    const res = await authenticateWithBiometrics(activeId, activeEmail, activeName)
     if (res.success && res.passkey) {
       // Reconnect session with verified passkey account
       localStorage.setItem(LOCAL_USER_ID_KEY, res.passkey.userId)
       setLocalUserId(res.passkey.userId)
+      setHasRegisteredPasskey(true)
 
       // Create a virtual user representation if Supabase session is offline
       if (!user) {
@@ -177,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true }
     }
     return { success: false, error: res.error }
-  }, [user])
+  }, [user, localUserId])
 
   // Register Passkey for current logged in user
   const registerCurrentDevicePasskey = useCallback(async () => {
