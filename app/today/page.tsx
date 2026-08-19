@@ -14,7 +14,8 @@ import {
   getProtocols,
   getBenchItems,
   createDailyTask,
-  saveOutcomeObservation
+  saveOutcomeObservation,
+  addModalityOrProtocolToToday
 } from '@/lib/data'
 import { DailyProtocolTask, Modality, OutcomeDimension, UserProfile, UserBenchItem, DailyWellbeingCheckin as WellbeingType } from '@/lib/types'
 import { format, parseISO, addDays, subDays, isBefore, startOfDay, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns'
@@ -1709,9 +1710,9 @@ function TodayPageContent() {
             <div className="mb-4">
               <DailyLongevityTipBanner 
                 scoredTips={scoredTips}
-                onAddToToday={async (modalityId: string) => {
+                onAddToToday={async (modalityOrProtocolId: string) => {
                   if (profile) {
-                    await createDailyTask(profile.local_user_id, dateStr, modalityId)
+                    await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityOrProtocolId)
                     await refreshTodayTasks()
                   }
                 }}
@@ -1726,9 +1727,9 @@ function TodayPageContent() {
                 userProfile={profile}
                 todayTasks={tasks}
                 currentTipHeadline={scoredTips && scoredTips.length > 0 ? scoredTips[0].tip.headline : undefined}
-                onAddToToday={async (modalityId: string) => {
+                onAddToToday={async (nameOrId: string) => {
                   if (profile) {
-                    await createDailyTask(profile.local_user_id, dateStr, modalityId)
+                    await addModalityOrProtocolToToday(profile.local_user_id, dateStr, nameOrId)
                     await refreshTodayTasks()
                   }
                 }}

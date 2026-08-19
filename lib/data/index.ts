@@ -843,9 +843,70 @@ export async function processSnoozedTasksRollover(localUserId: string, currentDa
 export async function createDailyTask(localUserId: string, date: string, modalityId: string, archetype?: string) {
   if (!supabase) return null
 
-  // Fetch the modality to determine bunching logic
-  const { data: modality } = await supabase.from('modalities').select('*').eq('id', modalityId).single()
-  
+  // 1. Fetch and resolve the modality object reliably (DB + in-memory cache + built-in library)
+  let modality: any = null
+  const isModalityUuid = modalityId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(modalityId)
+
+  if (isModalityUuid) {
+    const { data } = await supabase.from('modalities').select('*').eq('id', modalityId).maybeSingle()
+    modality = data
+  }
+
+  if (!modality) {
+    modality = await getModalityById(modalityId)
+  }
+
+  if (!modality) {
+    const allMods = await getModalities()
+    const cleanLower = modalityId.toLowerCase().replace(/_/g, ' ')
+    modality = allMods.find(m => 
+      m.id === modalityId || 
+      m.slug === modalityId || 
+      m.name.toLowerCase() === cleanLower ||
+      (m.display_name && m.display_name.toLowerCase() === cleanLower) ||
+      m.name.toLowerCase().includes(cleanLower) ||
+      cleanLower.includes(m.name.toLowerCase())
+    )
+  }
+
+  let effectiveModalityId = modality?.id || modalityId
+
+  // If the modality exists in built-in presets but is not in Supabase yet, upsert it so foreign keys pass
+  if (modality && !isModalityUuid) {
+    try {
+      const { data: existingMod } = await supabase
+        .from('modalities')
+        .select('id')
+        .or(`id.eq.${modality.id},name.ilike.${modality.name}`)
+        .maybeSingle()
+
+      if (existingMod?.id) {
+        effectiveModalityId = existingMod.id
+      } else {
+        const { data: insertedMod } = await supabase
+          .from('modalities')
+          .insert({
+            name: modality.name,
+            display_name: modality.display_name || modality.name,
+            category: modality.category || 'Supplements',
+            headline_benefit: modality.headline_benefit || 'Healthspan optimization',
+            biological_mechanism: modality.biological_mechanism || '',
+            evidence_quality: modality.evidence_quality || 4,
+            overall_longevity_benefit: modality.overall_longevity_benefit || 4,
+            default_timing: modality.default_timing || 'Morning'
+          })
+          .select()
+          .single()
+
+        if (insertedMod?.id) {
+          effectiveModalityId = insertedMod.id
+        }
+      }
+    } catch (err) {
+      console.warn('Could not sync built-in modality to remote DB, using effective ID:', err)
+    }
+  }
+
   let timing_slot = resolveOptimalTimingSlot(modality, null, archetype || 'anytime')
   if (modality) {
     const isSupplement = modality.category?.toLowerCase().includes('supplement') || 
@@ -874,7 +935,6 @@ export async function createDailyTask(localUserId: string, date: string, modalit
     else if (pattern.includes('every_other_day')) stepDays = 2
   }
 
-  // If destination is 'tomorrow', start date should already reflect that
   // Parse YYYY-MM-DD reliably using local date components
   const [year, month, day] = date.split('-').map(Number)
   const localStartDate = new Date(year, month - 1, day)
@@ -889,7 +949,7 @@ export async function createDailyTask(localUserId: string, date: string, modalit
       .select('id')
       .eq('local_user_id', localUserId)
       .eq('scheduled_date', targetDateStr)
-      .eq('modality_id', modalityId)
+      .eq('modality_id', effectiveModalityId)
       .maybeSingle()
 
     if (existing) {
@@ -905,7 +965,7 @@ export async function createDailyTask(localUserId: string, date: string, modalit
       tasksToInsert.push({
         local_user_id: localUserId, 
         scheduled_date: targetDateStr, 
-        modality_id: modalityId, 
+        modality_id: effectiveModalityId, 
         timing_slot: timing_slot,
         status: 'pending'
       })
@@ -925,6 +985,121 @@ export async function createDailyTask(localUserId: string, date: string, modalit
     return data || []
   }
   return []
+}
+
+/**
+ * Universal Intelligent Dispatcher: Adds any modality OR protocol suggested by the AI Longevity Coach or Tip Engine
+ */
+export async function addModalityOrProtocolToToday(localUserId: string, date: string, nameOrId: string) {
+  if (!nameOrId || !localUserId) return false
+
+  const cleanQuery = nameOrId.trim()
+  const lowerQuery = cleanQuery.toLowerCase().replace(/_/g, ' ')
+  const slugQuery = cleanQuery.toLowerCase().replace(/[^a-z0-9]+/g, '_')
+
+  // 1. Check if it matches an existing Protocol
+  const allProtocols = await getProtocols()
+  const matchedProtocol = allProtocols.find(p => 
+    p.id === cleanQuery ||
+    p.slug === slugQuery ||
+    p.slug === cleanQuery ||
+    p.name.toLowerCase() === lowerQuery ||
+    p.name.toLowerCase().includes(lowerQuery) ||
+    lowerQuery.includes(p.name.toLowerCase())
+  )
+
+  if (matchedProtocol) {
+    return await addProtocolToToday(localUserId, date, matchedProtocol.id)
+  }
+
+  // 2. Check if it matches an existing Modality
+  const allModalities = await getModalities()
+  let matchedModality = allModalities.find(m => 
+    m.id === cleanQuery ||
+    m.slug === slugQuery ||
+    m.slug === cleanQuery ||
+    m.name.toLowerCase() === lowerQuery ||
+    (m.display_name && m.display_name.toLowerCase() === lowerQuery)
+  )
+
+  // 3. Fuzzy match common longevity modalities
+  if (!matchedModality) {
+    matchedModality = allModalities.find(m => {
+      const mName = (m.name || m.display_name || '').toLowerCase()
+      return mName.includes(lowerQuery) || lowerQuery.includes(mName)
+    })
+  }
+
+  // 4. Token-based synonym matching
+  if (!matchedModality) {
+    const synonyms: Record<string, string[]> = {
+      'cold plunge': ['cold', 'plunge', 'ice bath', 'cold shower', 'cryo'],
+      'sauna': ['sauna', 'heat', 'steam', 'infrared'],
+      'creatine': ['creatine', 'creatine monohydrate'],
+      'zone 2': ['zone 2', 'cardio', 'aerobic', 'endurance'],
+      'fisetin': ['fisetin', 'senolytic'],
+      'quercetin': ['quercetin'],
+      'nmn': ['nmn', 'nad', 'nicotinamide'],
+      'resveratrol': ['resveratrol', 'sirtuin'],
+      'magnesium': ['magnesium', 'glycinate', 'threonate', 'malate'],
+      'sunlight': ['sunlight', 'morning sun', 'circadian light'],
+      'breathwork': ['breathwork', 'box breath', 'sigh', 'wim hof'],
+      'red light': ['red light', 'photobiomodulation', 'pbm'],
+      'bpc 157': ['bpc', 'bpc-157', 'wolverine'],
+      'glynac': ['glynac', 'glycine', 'nac'],
+      'ta1': ['ta1', 'ta-1', 'thymosin'],
+      'omega 3': ['omega', 'fish oil', 'dha', 'epa'],
+      'vitamin d': ['vitamin d', 'd3', 'd3+k2', 'cholecalciferol']
+    }
+
+    for (const [key, terms] of Object.entries(synonyms)) {
+      if (terms.some(t => lowerQuery.includes(t))) {
+        matchedModality = allModalities.find(m => {
+          const mName = (m.name || m.display_name || '').toLowerCase()
+          return terms.some(t => mName.includes(t))
+        })
+        if (matchedModality) break
+      }
+    }
+  }
+
+  if (matchedModality) {
+    const res = await createDailyTask(localUserId, date, matchedModality.id)
+    return !!res
+  }
+
+  // 5. If completely new modality suggested by AI, create loose task with generated modality
+  if (supabase) {
+    try {
+      const formattedName = cleanQuery
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase())
+
+      const { data: newMod, error: modErr } = await supabase
+        .from('modalities')
+        .insert({
+          name: formattedName,
+          display_name: formattedName,
+          category: 'Supplements',
+          headline_benefit: 'Suggested by AI Longevity Coach',
+          evidence_quality: 4,
+          overall_longevity_benefit: 4,
+          default_timing: 'Morning'
+        })
+        .select()
+        .single()
+
+      if (newMod && !modErr) {
+        const res = await createDailyTask(localUserId, date, newMod.id)
+        return !!res
+      }
+    } catch (err) {
+      console.warn('Could not auto-create custom modality:', err)
+    }
+  }
+
+  const res = await createDailyTask(localUserId, date, cleanQuery)
+  return !!res
 }
 
 export async function addProtocolToToday(localUserId: string, date: string, protocolId: string) {

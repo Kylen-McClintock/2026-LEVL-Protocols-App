@@ -273,8 +273,7 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
                         key={idx}
                         type="button"
                         onClick={async () => {
-                          const slug = modalityName.toLowerCase().replace(/[^a-z0-9]+/g, '_')
-                          await onAddToToday(slug)
+                          await onAddToToday(modalityName)
                           setAddedItems(prev => ({ ...prev, [modalityName]: true }))
                         }}
                         disabled={isAdded}

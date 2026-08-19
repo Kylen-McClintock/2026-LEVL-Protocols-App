@@ -7,7 +7,7 @@ import { lastAssistantMessageIsCompleteWithToolCalls, DefaultChatTransport, UIMe
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolCard from '@/components/cards/ProtocolCard'
-import { addToBench, addProtocolToBench, addProtocolToToday, createDailyTask } from '@/lib/data'
+import { addToBench, addProtocolToBench, addProtocolToToday, createDailyTask, addModalityOrProtocolToToday } from '@/lib/data'
 
 interface MinimalistAgingCoachProps {
   profile?: any
@@ -93,7 +93,7 @@ export default function MinimalistAgingCoach({
 
   const handleAddModalityToToday = async (id: string) => {
     const dateStr = new Date().toISOString().split('T')[0]
-    await createDailyTask(getLocalUserId(), dateStr, id)
+    await addModalityOrProtocolToToday(getLocalUserId(), dateStr, id)
   }
 
   const handleAddProtocolToBench = async (id: string) => {
@@ -102,7 +102,7 @@ export default function MinimalistAgingCoach({
 
   const handleAddProtocolToToday = async (id: string) => {
     const dateStr = new Date().toISOString().split('T')[0]
-    await addProtocolToToday(getLocalUserId(), dateStr, id)
+    await addModalityOrProtocolToToday(getLocalUserId(), dateStr, id)
   }
 
   return (

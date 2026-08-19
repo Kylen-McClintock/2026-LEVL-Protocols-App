@@ -182,6 +182,7 @@ export type Modality = {
 export type Protocol = {
   id: string
   name: string
+  slug?: string
   description?: string
   protocol_type?: 'levl_core' | 'source_imported' | 'user_custom' | 'ai_drafted' | 'expert_created' | 'brand_protocol' | 'study_derived'
   primary_goal?: string

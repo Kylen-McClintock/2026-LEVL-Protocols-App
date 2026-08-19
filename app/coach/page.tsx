@@ -11,7 +11,7 @@ import ProtocolCard from '@/components/cards/ProtocolCard'
 import { UserProfile } from '@/lib/types'
 import { getLatestBiomarkerMeasurements, getUserLabPanels } from '@/lib/data/bloodworkData'
 import { getBiologicalMeasurements } from '@/lib/data/physiologicalAgeData'
-import { getOrCreateUserProfile, getBenchItems, getDailyProtocolTasks, getDailyWellbeingCheckin, addToBench, addProtocolToBench, addProtocolToToday, createDailyTask } from '@/lib/data'
+import { getOrCreateUserProfile, getBenchItems, getDailyProtocolTasks, getDailyWellbeingCheckin, addToBench, addProtocolToBench, addProtocolToToday, createDailyTask, addModalityOrProtocolToToday } from '@/lib/data'
 
 export default function CoachPage() {
   const [input, setInput] = useState('')
@@ -106,7 +106,7 @@ export default function CoachPage() {
 
   const handleAddModalityToToday = async (modalityId: string) => {
     const dateStr = new Date().toISOString().split('T')[0]
-    await createDailyTask(getLocalUserId(), dateStr, modalityId)
+    await addModalityOrProtocolToToday(getLocalUserId(), dateStr, modalityId)
   }
 
   const handleAddProtocolToBench = async (protocolId: string) => {
@@ -115,7 +115,7 @@ export default function CoachPage() {
 
   const handleAddProtocolToToday = async (protocolId: string) => {
     const dateStr = new Date().toISOString().split('T')[0]
-    await addProtocolToToday(getLocalUserId(), dateStr, protocolId)
+    await addModalityOrProtocolToToday(getLocalUserId(), dateStr, protocolId)
   }
 
   return (
