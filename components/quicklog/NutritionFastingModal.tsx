@@ -82,6 +82,8 @@ export default function NutritionFastingModal({
   const [veggieServings, setVeggieServings] = useState<number>(0)
   const [fruitServings, setFruitServings] = useState<number>(0)
   const [mealTime, setMealTime] = useState<string>(format(new Date(), 'HH:mm'))
+  const [ingredientsList, setIngredientsList] = useState<string[]>([])
+  const [newIngredientInput, setNewIngredientInput] = useState<string>('')
 
   // Fasting Time Override Editor State
   const [isEditingFastingTimes, setIsEditingFastingTimes] = useState(false)
@@ -180,6 +182,8 @@ export default function NutritionFastingModal({
         setFat(data.fat_g)
         setVeggieServings(data.veggie_servings)
         setFruitServings(data.fruit_servings)
+        setIngredientsList(data.ingredients || [])
+        setNewIngredientInput('')
         setMealTime(format(new Date(), 'HH:mm'))
         setKeepPhotoInJournal(false) // Discard by default
         setStep('review')
@@ -217,6 +221,8 @@ export default function NutritionFastingModal({
     setFat(15)
     setVeggieServings(1.0)
     setFruitServings(0)
+    setIngredientsList([])
+    setNewIngredientInput('')
     setMealTime(format(new Date(), 'HH:mm'))
     setKeepPhotoInJournal(false)
     setStep('manual')
@@ -250,8 +256,8 @@ export default function NutritionFastingModal({
         fat_g: Number(fat) || 0,
         veggie_servings: Number(veggieServings) || 0,
         fruit_servings: Number(fruitServings) || 0,
-        plant_diversity_count: scanResult?.plant_diversity_count || 0,
-        ingredients: scanResult?.ingredients,
+        plant_diversity_count: scanResult?.plant_diversity_count || (veggieServings > 0 || fruitServings > 0 ? 1 : 0),
+        ingredients: ingredientsList.length > 0 ? ingredientsList : undefined,
         image_url: keepPhotoInJournal && capturedImageBase64 ? capturedImageBase64 : undefined,
         notes: scanResult?.summary
       }
@@ -262,6 +268,8 @@ export default function NutritionFastingModal({
       setStep('idle')
       setCapturedImageBase64(null)
       setScanResult(null)
+      setIngredientsList([])
+      setNewIngredientInput('')
     } catch (err: any) {
       console.error('Error saving meal:', err)
       setErrorMsg('Failed to save meal entry.')
@@ -591,19 +599,78 @@ export default function NutritionFastingModal({
                 </div>
               </div>
 
-              {/* Ingredients Badges if scanned */}
-              {scanResult?.ingredients && scanResult.ingredients.length > 0 && (
-                <div className="space-y-1.5">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Constituent Ingredients</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {scanResult.ingredients.map((ing, idx) => (
-                      <span key={idx} className="text-[11px] bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg text-slate-300">
-                        {ing}
-                      </span>
-                    ))}
-                  </div>
+              {/* Interactive Constituent Ingredients & Foods Editor (Remove / Add) */}
+              <div className="space-y-2.5 p-3.5 rounded-2xl bg-black/50 border border-white/10 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1.5">
+                    <Utensils size={13} className="text-emerald-400" />
+                    <span>Constituent Ingredients &amp; Foods ({ingredientsList.length})</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    Tap <span className="text-rose-400 font-bold">✕</span> to remove • Add below
+                  </span>
                 </div>
-              )}
+
+                {/* Interactive Ingredient Chips */}
+                <div className="flex flex-wrap gap-1.5 min-h-[32px] items-center">
+                  {ingredientsList.length === 0 ? (
+                    <span className="text-[11px] text-slate-500 italic py-1">
+                      No constituent ingredients listed yet. Type below to add items.
+                    </span>
+                  ) : (
+                    ingredientsList.map((ing, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1.5 text-[11px] bg-slate-900 border border-emerald-500/30 text-emerald-200 pl-2.5 pr-1.5 py-1 rounded-xl shadow-sm hover:border-emerald-500/60 transition-all group"
+                      >
+                        <span className="font-medium">{ing}</span>
+                        <button
+                          type="button"
+                          onClick={() => setIngredientsList(prev => prev.filter((_, i) => i !== idx))}
+                          className="w-4 h-4 rounded-full flex items-center justify-center bg-white/5 hover:bg-rose-500/30 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
+                          title={`Remove "${ing}"`}
+                        >
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+
+                {/* Inline Add Ingredient Input */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newIngredientInput}
+                    onChange={(e) => setNewIngredientInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        if (newIngredientInput.trim()) {
+                          setIngredientsList(prev => [...prev, newIngredientInput.trim()])
+                          setNewIngredientInput('')
+                        }
+                      }
+                    }}
+                    placeholder="Add ingredient (e.g. 1/2 avocado, 1 scoop whey, 1 tbsp olive oil)..."
+                    className="flex-1 bg-black/60 border border-white/10 focus:border-emerald-500/60 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newIngredientInput.trim()) {
+                        setIngredientsList(prev => [...prev, newIngredientInput.trim()])
+                        setNewIngredientInput('')
+                      }
+                    }}
+                    disabled={!newIngredientInput.trim()}
+                    className="px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition-all disabled:opacity-30 cursor-pointer flex items-center gap-1 shrink-0"
+                  >
+                    <Plus size={13} strokeWidth={3} />
+                    <span>Add</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Photo Retention Toggle: Discard by Default */}
               {capturedImageBase64 && (
@@ -955,6 +1022,16 @@ export default function NutritionFastingModal({
                             </>
                           )}
                         </div>
+
+                        {meal.ingredients && meal.ingredients.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {meal.ingredients.map((ing, idx) => (
+                              <span key={idx} className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-slate-300">
+                                {ing}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 

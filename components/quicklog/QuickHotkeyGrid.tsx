@@ -26,12 +26,13 @@ import {
   Calendar,
   Utensils
 } from 'lucide-react'
-import { QuickHotkeyConfig, DailyQuickLogEntry, UserProfile } from '@/lib/types'
+import { QuickHotkeyConfig, DailyQuickLogEntry, UserProfile, DailyMealLogEntry } from '@/lib/types'
 import {
   getUserHotkeys,
   loadQuickLogsForDate,
   saveQuickLogEntry
 } from '@/lib/storage/quickLogsStorage'
+import { loadDailyMealLogs } from '@/lib/storage/nutritionStorage'
 import QuickLogDetailModal from './QuickLogDetailModal'
 import ManageHotkeysModal from './ManageHotkeysModal'
 import ProteinPulseTrackerModal from './ProteinPulseTrackerModal'
@@ -71,6 +72,7 @@ export default function QuickHotkeyGrid({
 }: QuickHotkeyGridProps) {
   const [hotkeys, setHotkeys] = useState<QuickHotkeyConfig[]>([])
   const [logs, setLogs] = useState<DailyQuickLogEntry[]>([])
+  const [meals, setMeals] = useState<DailyMealLogEntry[]>([])
   const [selectedHotkeyForDetail, setSelectedHotkeyForDetail] = useState<QuickHotkeyConfig | null>(null)
   const [isManageModalOpen, setIsManageModalOpen] = useState(false)
   const [isProteinModalOpen, setIsProteinModalOpen] = useState(false)
@@ -101,12 +103,14 @@ export default function QuickHotkeyGrid({
 
   const reloadData = async () => {
     if (!localUserId) return
-    const [fetchedHotkeys, fetchedLogs] = await Promise.all([
+    const [fetchedHotkeys, fetchedLogs, fetchedMeals] = await Promise.all([
       getUserHotkeys(localUserId),
-      loadQuickLogsForDate(localUserId, date)
+      loadQuickLogsForDate(localUserId, date),
+      loadDailyMealLogs(localUserId, date)
     ])
     setHotkeys(fetchedHotkeys)
     setLogs(fetchedLogs)
+    setMeals(fetchedMeals || [])
   }
 
   useEffect(() => {
@@ -224,8 +228,15 @@ export default function QuickHotkeyGrid({
             {visibleHotkeys.map(hotkey => {
               const IconComp = ICON_MAP[hotkey.icon] || Activity
               const hotkeyLogs = logs.filter(l => l.hotkey_id === hotkey.id)
-              const totalVal = hotkeyLogs.reduce((acc, l) => acc + l.value, 0)
+              const mealCalories = meals.reduce((acc, m) => acc + (m.calories || 0), 0)
+              const totalVal = hotkey.id === 'nutrition_macros' && mealCalories > 0
+                ? mealCalories
+                : hotkeyLogs.reduce((acc, l) => acc + l.value, 0)
+              const entryCount = hotkey.id === 'nutrition_macros' && meals.length > 0 ? meals.length : hotkeyLogs.length
               const isGoalReached = hotkey.daily_goal && !hotkey.is_negative ? totalVal >= hotkey.daily_goal : false
+              const progressPct = hotkey.daily_goal && !hotkey.is_negative
+                ? Math.min(100, Math.max(0, Math.round((totalVal / hotkey.daily_goal) * 100)))
+                : totalVal > 0 ? 100 : 0
               const isTapped = justTappedId === hotkey.id
 
           return (
@@ -243,11 +254,29 @@ export default function QuickHotkeyGrid({
                   : 'bg-slate-900/90 border-slate-800 hover:border-orange-500/40'
               }`}
             >
+              {/* Thin Vertical Gradient Bar filling up proportionately along left side (reaches top at 100% of goal) */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 sm:w-1.5 bg-slate-800/40 z-10 pointer-events-none rounded-l-2xl overflow-hidden">
+                <div
+                  className={`absolute bottom-0 left-0 right-0 transition-all duration-500 rounded-bl-2xl ${
+                    progressPct >= 100 ? 'rounded-tl-2xl' : ''
+                  } ${
+                    hotkey.is_negative
+                      ? 'bg-gradient-to-t from-rose-600 via-rose-500 to-red-400'
+                      : hotkey.id === 'nutrition_macros'
+                      ? 'bg-gradient-to-t from-emerald-600 via-emerald-500 to-teal-400'
+                      : hotkey.id === 'protein_pulse'
+                      ? 'bg-gradient-to-t from-orange-600 via-orange-500 to-amber-400'
+                      : 'bg-gradient-to-t from-orange-500 via-amber-400 to-emerald-400'
+                  }`}
+                  style={{ height: `${progressPct}%` }}
+                />
+              </div>
+
               {/* PRIMARY 1-CLICK LOGGING AREA (Biggest portion of the card) */}
               <button
                 type="button"
                 onClick={(e) => handleQuickTapIncrement(e, hotkey)}
-                className="w-full text-left p-2.5 sm:p-3.5 flex-1 flex flex-col justify-between cursor-pointer hover:bg-white/[0.03] active:bg-orange-500/10 active:scale-[0.98] transition-all group/btn focus:outline-none"
+                className="w-full text-left p-2.5 pl-3.5 sm:p-3.5 sm:pl-4 flex-1 flex flex-col justify-between cursor-pointer hover:bg-white/[0.03] active:bg-orange-500/10 active:scale-[0.98] transition-all group/btn focus:outline-none"
                 title={`1-Click: Log +${hotkey.default_increment} ${hotkey.unit}`}
               >
                 {/* Top Row: Icon + 1-Tap Indicator Badge */}
@@ -313,11 +342,18 @@ export default function QuickHotkeyGrid({
               >
                 <span className="truncate mr-1">
                   {hotkey.daily_goal && !hotkey.is_negative ? (
-                    <span className={isGoalReached ? 'text-emerald-400 font-bold' : ''}>
-                      {isGoalReached ? '✓ Done' : `Goal: ${hotkey.daily_goal}${hotkey.unit}`}
-                    </span>
+                    <>
+                      {/* Desktop: Keep Goal Visible */}
+                      <span className={`hidden sm:inline ${isGoalReached ? 'text-emerald-400 font-bold' : ''}`}>
+                        {isGoalReached ? '✓ Done' : `Goal: ${hotkey.daily_goal}${hotkey.unit}`}
+                      </span>
+                      {/* Mobile: Hide Goal, Show Clean Entry Count or Done */}
+                      <span className={`sm:hidden ${isGoalReached ? 'text-emerald-400 font-bold' : ''}`}>
+                        {isGoalReached ? '✓ Done' : `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}`}
+                      </span>
+                    </>
                   ) : (
-                    <span>{hotkeyLogs.length} {hotkeyLogs.length === 1 ? 'entry' : 'entries'}</span>
+                    <span>{entryCount} {entryCount === 1 ? 'entry' : 'entries'}</span>
                   )}
                 </span>
 
