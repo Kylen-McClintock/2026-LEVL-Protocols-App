@@ -56,6 +56,7 @@ import { resolveRecommendedDose, ProtocolDoseContext } from '@/lib/utils/resolve
 import { UserProfile } from '@/lib/types'
 import { isPeptideModality } from '@/lib/peptides/peptideCycleEngine'
 import PeptideTitrationPlanner from '@/components/peptides/PeptideTitrationPlanner'
+import { ModalityAICoachBar } from '@/components/ai/ModalityAICoachBar'
 
 // Helper to format timing_slot strings "morning_supplement_stack" -> "Morning Supplement Stack"
 const formatSlotName = (str: string) => {
@@ -513,6 +514,29 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
               </p>
             </div>
           )}
+
+          {/* AI Modality & Protocol Synergy Coach Bar (Full Width) */}
+          <ModalityAICoachBar
+            modalityName={modality?.name || 'Protocol Modality'}
+            modalityDetails={modality}
+            protocolName={prescribedProtocolName}
+            currentDose={customDose}
+            currentTiming={selectedSlot}
+            userProfile={userProfile}
+            onApplyDose={(dose) => setCustomDose(dose)}
+            onApplyTiming={(timing) => {
+              const lower = timing.toLowerCase()
+              if (lower.includes('morning') || lower.includes('wake') || lower.includes('am')) setSelectedSlot('morning')
+              else if (lower.includes('bed') || lower.includes('sleep') || lower.includes('night')) setSelectedSlot('pre_bed')
+              else if (lower.includes('midday') || lower.includes('noon') || lower.includes('lunch')) setSelectedSlot('midday')
+              else if (lower.includes('evening') || lower.includes('dinner') || lower.includes('pm')) setSelectedSlot('evening')
+              else if (lower.includes('meal') || lower.includes('food')) setSelectedSlot('with_meal')
+              else setSelectedSlot('morning')
+            }}
+            onAppendNotes={(note) => {
+              setPersonalNotes(prev => prev ? `${prev}\n\n${note}` : note)
+            }}
+          />
 
           {/* 2-Column Responsive Desktop Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">

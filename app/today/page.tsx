@@ -28,6 +28,7 @@ import { PulsedModalityCard } from '@/components/cards/PulsedModalityCard'
 import ProactiveDiagnosticCard from '@/components/cards/ProactiveDiagnosticCard'
 import DailyWellbeingCheckin from '@/components/score/DailyWellbeingCheckin'
 import { DailyLongevityTipBanner } from '@/components/banners/DailyLongevityTipBanner'
+import { LongevityCoachInputBar } from '@/components/ai/LongevityCoachInputBar'
 import { DailyHistoricalDebriefHeader } from '@/components/cards/DailyHistoricalDebriefHeader'
 import { ViewSelectorHeader, CalendarViewMode, LayoutOrientation, MainCategory, SUB_CATEGORIES_MAP } from '@/components/ui/ViewSelectorHeader'
 import { ThreeDaySplitView } from '@/components/views/ThreeDaySplitView'
@@ -1705,7 +1706,7 @@ function TodayPageContent() {
             </div>
 
             {/* 5. Daily Longevity Tip Banner (collapsed by default on past dates) */}
-            <div className="mb-6">
+            <div className="mb-4">
               <DailyLongevityTipBanner 
                 scoredTips={scoredTips}
                 onAddToToday={async (modalityId: string) => {
@@ -1716,6 +1717,21 @@ function TodayPageContent() {
                 }}
                 onDismiss={(tipId: string) => setDismissedTipIds(prev => [...prev, tipId])}
                 isCollapsedByDefault={isPastDate}
+              />
+            </div>
+
+            {/* Full-Width AI Longevity Coach Input Bar */}
+            <div className="mb-6">
+              <LongevityCoachInputBar
+                userProfile={profile}
+                todayTasks={tasks}
+                currentTipHeadline={scoredTips && scoredTips.length > 0 ? scoredTips[0].tip.headline : undefined}
+                onAddToToday={async (modalityId: string) => {
+                  if (profile) {
+                    await createDailyTask(profile.local_user_id, dateStr, modalityId)
+                    await refreshTodayTasks()
+                  }
+                }}
               />
             </div>
 

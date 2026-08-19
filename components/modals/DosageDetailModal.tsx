@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { assessSafetyWithAI } from '../../lib/data'
 import { getCircadianTipForModality } from '../../lib/utils/circadianTimingTips'
+import { ModalityAICoachBar } from '../ai/ModalityAICoachBar'
 
 export const CHRONOLOGICAL_TIMING_PRESETS = [
   { label: '🌅 Upon Waking (6:00 AM – 8:00 AM)', value: 'Upon Waking (6:00 AM – 8:00 AM)' },
@@ -438,6 +439,35 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
         {/* Scrollable Modal Body */}
         <div className="p-5 sm:p-6 md:p-7 overflow-y-auto custom-scrollbar space-y-6 flex-1 min-h-0 text-slate-200">
           
+          {/* AI Modality & Protocol Synergy Coach Bar */}
+          <ModalityAICoachBar
+            modalityName={modality?.name || 'Protocol Modality'}
+            modalityDetails={modality}
+            protocolName={activeProtoPreset?.protocolName}
+            currentDose={`${customDoseInput ? customDoseInput : customValue} ${unit}`}
+            currentTiming={getEffectiveTimingString()}
+            userProfile={userProfile}
+            onApplyDose={(dose) => {
+              const cleaned = dose.replace(/[^\d.]/g, '')
+              if (cleaned) {
+                setCustomDoseInput(cleaned)
+                const num = parseFloat(cleaned)
+                if (!isNaN(num)) setCustomValue(num)
+              } else {
+                setCustomDoseInput(dose)
+              }
+              setSelectedSource('Personal Target')
+            }}
+            onApplyTiming={(timing) => {
+              const matched = matchDefaultTimingPreset(timing)
+              setDose1Timing(matched.presetValue)
+              if (matched.isCustom) setCustomTimingText(matched.customText)
+            }}
+            onAppendNotes={(note) => {
+              setPersonalNotes(prev => prev ? `${prev}\n\n${note}` : note)
+            }}
+          />
+
           {/* SECTION 1: Active Context Recommendation Card */}
           <div className="bg-gradient-to-br from-slate-800/90 to-slate-900 border border-slate-700/70 rounded-2xl p-5 shadow-lg space-y-3.5">
             <div className="flex items-center justify-between gap-3 flex-wrap">
