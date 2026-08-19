@@ -144,16 +144,16 @@ export default function SupplementScannerModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl max-h-[92vh] flex flex-col rounded-3xl bg-slate-950/95 border border-purple-500/30 shadow-2xl text-white overflow-hidden">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+      <div className="relative w-full max-w-xl max-h-[88vh] sm:max-h-[90vh] flex flex-col rounded-3xl bg-slate-950/98 border border-purple-500/30 shadow-2xl text-white overflow-hidden my-auto">
         
         {/* Ambient Top Glow */}
         <div className="absolute -top-24 -right-24 w-60 h-60 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
 
         {/* Modal Header */}
-        <div className="p-5 sm:p-6 border-b border-white/10 flex items-center justify-between shrink-0 bg-slate-900/60 backdrop-blur-sm">
+        <div className="p-4 sm:p-6 border-b border-white/10 flex items-center justify-between shrink-0 bg-slate-900/60 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 border border-purple-400/40 flex items-center justify-center text-white shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 border border-purple-400/40 flex items-center justify-center text-white shadow-md shrink-0">
               <Camera size={20} />
             </div>
             <div>
@@ -181,7 +181,7 @@ export default function SupplementScannerModal({
         </div>
 
         {/* Modal Content Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1 text-slate-200">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 text-slate-200">
           
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 animate-in fade-in">
@@ -416,21 +416,21 @@ export default function SupplementScannerModal({
                 </div>
               </label>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
+              {/* Action Buttons: Sticky Bottom Bar inside Modal */}
+              <div className="sticky bottom-0 bg-slate-950/98 backdrop-blur-xl -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 p-4 sm:p-5 border-t border-white/10 flex items-center gap-3 z-20 mt-4 shadow-2xl">
                 <button
                   type="button"
                   onClick={resetAll}
-                  className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs rounded-xl transition-all border border-white/10 cursor-pointer"
+                  className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs rounded-xl transition-all border border-white/10 cursor-pointer shrink-0"
                 >
-                  Scan Another Label
+                  Scan Another
                 </button>
 
                 <button
                   type="button"
                   disabled={isSaving}
                   onClick={handleSaveSupplement}
-                  className="flex-1 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="flex-1 py-3.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 min-h-[46px]"
                 >
                   {isSaving ? (
                     <>
