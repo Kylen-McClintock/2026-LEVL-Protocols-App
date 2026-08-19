@@ -113,14 +113,18 @@ export default function QuickHotkeyGrid({
     reloadData()
 
     const handleUpdate = () => reloadData()
+    const handleOpenNutrition = () => setIsNutritionModalOpen(true)
+
     window.addEventListener('levl_quicklog_updated', handleUpdate)
     window.addEventListener('levl_hotkeys_config_updated', handleUpdate)
     window.addEventListener('levl_nutrition_updated', handleUpdate)
+    window.addEventListener('levl_open_nutrition_modal', handleOpenNutrition)
 
     return () => {
       window.removeEventListener('levl_quicklog_updated', handleUpdate)
       window.removeEventListener('levl_hotkeys_config_updated', handleUpdate)
       window.removeEventListener('levl_nutrition_updated', handleUpdate)
+      window.removeEventListener('levl_open_nutrition_modal', handleOpenNutrition)
     }
   }, [date, localUserId])
 

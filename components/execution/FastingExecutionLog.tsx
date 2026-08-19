@@ -84,11 +84,24 @@ export default function FastingExecutionLog({ value, onChange, isMultiDay = fals
         <div className="text-[10px] text-levl-text-secondary uppercase tracking-wider font-bold">
           Fasting Log
         </div>
-        {value.duration !== undefined && value.duration !== '' && (
-          <div className="text-[10px] text-levl-accent font-bold">
-            {value.duration} Hours Logged
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {value.duration !== undefined && value.duration !== '' && (
+            <div className="text-[10px] text-levl-accent font-bold">
+              {value.duration} Hours Logged
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('levl_open_nutrition_modal'))
+            }}
+            className="px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+            title="Snap food photo or log meal macros"
+          >
+            <Utensils size={10} />
+            <span>Log Meal / Macros</span>
+          </button>
+        </div>
       </div>
       
       {/* Autophagy Stage Highlight Banner */}

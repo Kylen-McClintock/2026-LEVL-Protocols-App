@@ -242,7 +242,7 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
           }`}
         >
           <Flame size={14} />
-          <span>⏳ Fasting &amp; Autophagy</span>
+          <span>🥗 Nutrition &amp; Fasting</span>
         </button>
 
         <button
@@ -316,6 +316,7 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
           tasks={tasks}
           weekDays={weekDays}
           userProfile={userProfile}
+          localUserId={userProfile?.local_user_id}
         />
       ) : activeLens === 'peptides' ? (
         <PeptideSplitView
