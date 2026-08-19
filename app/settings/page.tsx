@@ -14,6 +14,7 @@ import FastingFeedingCard from '@/components/profile/FastingFeedingCard'
 import PhysicalTrainingRecoveryCard from '@/components/profile/PhysicalTrainingRecoveryCard'
 import HardwareAccessCard from '@/components/profile/HardwareAccessCard'
 import BloodworkProfileCard from '@/components/profile/BloodworkProfileCard'
+import NegativeLongevityFactorsCard from '@/components/profile/NegativeLongevityFactorsCard'
 import TemperatureUnitSettingsCard from '@/components/profile/TemperatureUnitSettingsCard'
 
 export default function SettingsPage() {
@@ -186,6 +187,13 @@ export default function SettingsPage() {
         )}
 
         {profile && <BloodworkProfileCard profile={profile} />}
+
+        {profile && (
+          <NegativeLongevityFactorsCard 
+            profile={profile} 
+            onUpdated={(updated) => setProfile(updated)} 
+          />
+        )}
 
         <TemperatureUnitSettingsCard />
 
