@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getBenchItems, getBenchProtocols, createDailyTask, addProtocolToToday, removeFromBench, getOrCreateUserProfile, getDraftModalities, getDraftProtocols, getProtocols, getDailyProtocolTasks } from '@/lib/data'
 import { UserBenchItem, UserProfile, Modality, Protocol } from '@/lib/types'
-import { Bookmark, Plus, Sparkles } from 'lucide-react'
+import { Bookmark, Plus, Sparkles, HelpCircle } from 'lucide-react'
 import BenchCard from '@/components/cards/BenchCard'
 import ProtocolCard from '@/components/cards/ProtocolCard'
 import DraftCard from '@/components/cards/DraftCard'
@@ -125,11 +126,19 @@ export default function BenchPage() {
   return (
     <div className="p-4 max-w-xl mx-auto pt-8">
       <header className="mb-6">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4 gap-3">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2"><Bookmark size={24} className="text-levl-accent" /> Bench</h1>
             <p className="text-levl-text-secondary text-sm">Your saved modalities and protocols.</p>
           </div>
+
+          <Link
+            href="/guide#bench"
+            className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+            title="View Bench & Backlog Guide"
+          >
+            <HelpCircle size={13} className="text-purple-400" /> Guide
+          </Link>
         </div>
 
         <div className="flex p-1 bg-black/40 rounded-xl border border-white/5 overflow-x-auto scrollbar-hide">

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Calendar as CalendarIcon, Clock, Activity, CalendarDays, Bookmark, Target, TrendingUp } from 'lucide-react'
+import { Calendar as CalendarIcon, Clock, Activity, CalendarDays, Bookmark, Target, TrendingUp, HelpCircle } from 'lucide-react'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getProtocolTasksHistory, getOrCreateUserProfile, getDailyWellbeingHistory } from '@/lib/data'
 import { DailyProtocolTask, UserProfile, DailyWellbeingCheckin } from '@/lib/types'
@@ -76,6 +76,13 @@ export default function SchedulePage() {
 
           {/* Quick Hub Navigation Chips */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar shrink-0">
+            <Link
+              href="/guide#schedule"
+              className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+              title="View Fasting & Schedule Guide"
+            >
+              <HelpCircle size={13} className="text-purple-400" /> Guide
+            </Link>
             <Link
               href="/bench"
               className="px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"

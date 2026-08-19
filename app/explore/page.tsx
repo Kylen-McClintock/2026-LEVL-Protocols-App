@@ -21,7 +21,7 @@ import { getMacroCategory, MACRO_CATEGORIES } from '@/lib/utils/categories'
 import { sortModalitiesByNBA } from '@/lib/ranking/nextBestAction'
 import { calculateModalityPopularityScore, calculateProtocolPopularityScore } from '@/lib/ranking/popularityScore'
 import Link from 'next/link'
-import { Compass, Filter, ChevronDown, ChevronUp, X, Search, SlidersHorizontal, History, Scale, Sparkles, Trash2, ArrowRight, Info, Flame, Sun, Bookmark } from 'lucide-react'
+import { Compass, Filter, ChevronDown, ChevronUp, X, Search, SlidersHorizontal, History, Scale, Sparkles, Trash2, ArrowRight, Info, Flame, Sun, Bookmark, HelpCircle } from 'lucide-react'
 import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolCard, { PROTOCOL_SYNERGY_MAP } from '@/components/cards/ProtocolCard'
 import ModalityCompareModal from '@/components/modals/ModalityCompareModal'
@@ -959,7 +959,7 @@ export default function ExplorePage() {
           </Link>
         </div>
 
-        <div className="flex justify-between items-start pt-2">
+        <div className="flex justify-between items-start pt-2 gap-3">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2"><Compass size={24} className="text-levl-accent" /> Explore</h1>
             <p className="text-levl-text-secondary text-sm">Discover what works for you.</p>
@@ -974,6 +974,14 @@ export default function ExplorePage() {
               </span>
             </p>
           </div>
+
+          <Link
+            href="/guide#explore"
+            className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+            title="View Explore Catalog Guide"
+          >
+            <HelpCircle size={13} className="text-purple-400" /> Guide
+          </Link>
         </div>
 
         <div className="flex p-1 bg-black/40 rounded-xl border border-white/5">

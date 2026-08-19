@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { User, RefreshCw, Activity, Target, Bookmark, ChevronRight, Cloud, LogOut, Sparkles, Camera } from 'lucide-react'
+import { User, RefreshCw, Activity, Target, Bookmark, ChevronRight, Cloud, LogOut, Sparkles, Camera, BookOpen } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getOrCreateUserProfile, getOutcomeDimensions, getModalities } from '@/lib/data'
@@ -118,6 +118,37 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
+        {/* LEVL Visual Feature Guide & App Tour Card */}
+        <Link
+          href="/guide"
+          className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-950/70 via-slate-900 to-slate-900 border border-purple-500/40 hover:border-purple-400/70 shadow-xl transition-all block group relative overflow-hidden backdrop-blur-md"
+        >
+          <div className="absolute top-0 right-0 w-36 h-36 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-11 h-11 rounded-2xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center font-bold shrink-0 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                <BookOpen size={20} className="text-purple-400" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-extrabold text-white group-hover:text-purple-300 transition-colors">
+                    Visual Feature Guide &amp; App Tour
+                  </h3>
+                  <span className="text-[9px] bg-purple-950 border border-purple-800 text-purple-300 px-2 py-0.5 rounded-full font-mono font-bold uppercase">
+                    8 Chapters
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 line-clamp-1 mt-0.5">
+                  Walkthrough screenshots for Today timeline, Fasting hub, Modality studio &amp; Biomarkers.
+                </p>
+              </div>
+            </div>
+            <div className="p-2 rounded-xl bg-purple-950/60 border border-purple-700/50 text-purple-300 group-hover:text-white group-hover:bg-purple-900 transition-all shrink-0">
+              <ChevronRight size={16} />
+            </div>
+          </div>
+        </Link>
+
         {/* Cloud Sync & Account Status Card */}
         <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-purple-500/30 shadow-xl space-y-4 backdrop-blur-md">
           <div className="flex items-center justify-between flex-wrap gap-3">

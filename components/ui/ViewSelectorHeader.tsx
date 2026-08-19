@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { CalendarDays, ChevronDown, Check, Filter, LayoutGrid, Calendar, Columns, Rows, AlignJustify, Zap, Activity } from 'lucide-react'
+import Link from 'next/link'
+import { CalendarDays, ChevronDown, Check, Filter, LayoutGrid, Calendar, Columns, Rows, AlignJustify, Zap, Activity, HelpCircle } from 'lucide-react'
 
 export type CalendarViewMode = 'today' | '3day' | 'week' | 'month'
 export type LayoutOrientation = 'columns' | 'stack'
@@ -188,6 +189,16 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
               </div>
             )}
           </div>
+
+          {/* Subtle Contextual Guide Button */}
+          <Link
+            href="/guide#today"
+            className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-purple-500/50 text-slate-400 hover:text-purple-300 transition-colors cursor-pointer shadow-sm flex items-center gap-1 shrink-0"
+            title="View Today Timeline Guide"
+          >
+            <HelpCircle className="w-4 h-4 text-purple-400" />
+            <span className="text-[11px] font-bold hidden sm:inline">Guide</span>
+          </Link>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { 
   Activity, 
   Zap, 
@@ -19,7 +20,8 @@ import {
   Wind,
   Dumbbell,
   Footprints,
-  Brain
+  Brain,
+  HelpCircle
 } from 'lucide-react'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getOrCreateUserProfile } from '@/lib/data'
@@ -114,12 +116,22 @@ export default function PhysiologicalAgePage() {
           </p>
         </div>
 
-        <button
-          onClick={() => openAddModal()}
-          className="px-5 py-2.5 rounded-xl bg-levl-accent hover:bg-levl-accent/90 text-white font-bold text-xs shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all flex items-center justify-center gap-2 self-start sm:self-auto"
-        >
-          <Plus size={16} /> Record Measurement
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Link
+            href="/guide#bloodwork"
+            className="px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-purple-500/40 text-slate-300 hover:text-purple-300 font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm"
+            title="View Bloodwork & BioAge Guide"
+          >
+            <HelpCircle size={14} className="text-purple-400" />
+            <span>Guide</span>
+          </Link>
+          <button
+            onClick={() => openAddModal()}
+            className="px-5 py-2.5 rounded-xl bg-levl-accent hover:bg-levl-accent/90 text-white font-bold text-xs shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all flex items-center justify-center gap-2"
+          >
+            <Plus size={16} /> Record Measurement
+          </button>
+        </div>
       </div>
 
       {/* Hero Result Banner */}
