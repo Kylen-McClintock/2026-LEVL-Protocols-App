@@ -410,10 +410,10 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   const comparisonProtocols = resolved.allProtocolPresets.filter(p => p.protocolName !== activeProtoPreset?.protocolName)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 md:p-6 animate-in fade-in duration-200 overflow-y-auto">
+      <div className="relative w-full max-w-xl md:max-w-3xl lg:max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[92vh] min-h-0 my-auto">
         {/* Modal Header */}
-        <div className="p-5 sm:p-6 border-b border-slate-800 flex items-start justify-between bg-slate-950/70">
+        <div className="p-5 sm:p-6 border-b border-slate-800 flex items-start justify-between bg-slate-950/90 backdrop-blur-md shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold uppercase tracking-wider text-teal-400 bg-teal-950/80 border border-teal-800/60 px-3 py-1 rounded-full flex items-center gap-1.5">
@@ -428,7 +428,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-2.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800/80 transition-colors"
+            className="p-2.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800/80 transition-colors shrink-0 ml-2"
             aria-label="Close dosage detail modal"
           >
             <X className="w-5 h-5" />
@@ -436,7 +436,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
         </div>
 
         {/* Scrollable Modal Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-slate-200">
+        <div className="p-5 sm:p-6 md:p-7 overflow-y-auto custom-scrollbar space-y-6 flex-1 min-h-0 text-slate-200">
           
           {/* SECTION 1: Active Context Recommendation Card */}
           <div className="bg-gradient-to-br from-slate-800/90 to-slate-900 border border-slate-700/70 rounded-2xl p-5 shadow-lg space-y-3.5">
@@ -1053,7 +1053,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between gap-3 shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-colors"

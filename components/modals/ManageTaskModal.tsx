@@ -463,24 +463,24 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
   const doseUnit = resolvedDose?.unit || ''
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 animate-in fade-in">
-      <div className="bg-slate-900 border border-cyan-500/30 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-slate-950/70">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center shadow-lg shadow-cyan-950/50">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-in fade-in overflow-y-auto">
+      <div className="bg-slate-900 border border-cyan-500/30 w-full max-w-xl md:max-w-4xl lg:max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[92vh] min-h-0 my-auto text-white">
+        {/* Sticky Header */}
+        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-slate-950/90 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center shadow-lg shadow-cyan-950/50 shrink-0">
               <Sparkles size={20} />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-black text-white leading-tight">
+                <h2 className="text-base sm:text-lg font-black text-white leading-tight truncate">
                   {modality.display_name || modality.name}
                 </h2>
-                <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0">
                   {modality.category || 'protocol'}
                 </span>
               </div>
-              <span className="text-[11px] text-slate-400 block mt-0.5">
+              <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
                 {modality.brief_description || modality.headline_benefit || 'Custom Protocol Schedule & Dosage'}
               </span>
             </div>
@@ -488,15 +488,15 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0 ml-2"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Scrollable Content Body */}
-        <div className="p-4 sm:p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1 text-xs">
-          {/* ACTIVE CONTEXT PRESCRIPTION BANNER */}
+        {/* Scrollable Content Body with Desktop 2-Column Grid */}
+        <div className="p-4 sm:p-6 md:p-7 space-y-6 overflow-y-auto custom-scrollbar flex-1 min-h-0 text-xs">
+          {/* ACTIVE CONTEXT PRESCRIPTION BANNER (Full Width) */}
           {prescribedDoseText && (
             <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-950 to-slate-900 border border-cyan-500/30 space-y-2.5 shadow-inner">
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -508,888 +508,898 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
                   {prescribedProtocolName}
                 </span>
               </div>
-              <p className="text-sm font-black text-white leading-snug">
+              <p className="text-sm sm:text-base font-black text-white leading-snug">
                 {prescribedDoseText}
               </p>
             </div>
           )}
 
-          {/* SECTION 1: Cadence & Scheduling Strategy (LEVL BLUE STYLING) */}
-          <div className="space-y-3">
-            <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Sparkles size={13} className="text-cyan-400" />
-              <span>1. Cadence &amp; Scheduling Strategy</span>
-            </label>
+          {/* 2-Column Responsive Desktop Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            
+            {/* LEFT COLUMN: Cadence, Scheduling & Adaptation Strategy */}
+            <div className="space-y-6">
+              {/* SECTION 1: Cadence & Scheduling Strategy (LEVL BLUE STYLING) */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Sparkles size={13} className="text-cyan-400" />
+                  <span>1. Cadence &amp; Scheduling Strategy</span>
+                </label>
 
-            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950/80 rounded-2xl border border-white/5">
-              <button
-                type="button"
-                onClick={() => setScheduleMode('days_of_week')}
-                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  scheduleMode === 'days_of_week'
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md shadow-cyan-500/25 border border-cyan-400/40'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <CalendarIcon size={14} />
-                <span>Days of Week</span>
-              </button>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950/80 rounded-2xl border border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setScheduleMode('days_of_week')}
+                    className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      scheduleMode === 'days_of_week'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md shadow-cyan-500/25 border border-cyan-400/40'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <CalendarIcon size={14} />
+                    <span>Days of Week</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setScheduleMode('rest_interval')}
-                className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  scheduleMode === 'rest_interval' || scheduleMode === 'specific_dates'
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md shadow-cyan-500/25 border border-cyan-400/40'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <ShieldCheck size={14} />
-                <span>Recovery Rest &amp; Pulsed</span>
-              </button>
-            </div>
-
-            {/* Mode A: 7-Day Selector (LEVL BLUE STYLED) */}
-            {scheduleMode === 'days_of_week' ? (
-              <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 space-y-3 animate-in fade-in">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
-                    <span>🗓️ Active Scheduled Days ({selectedDays.length}/7):</span>
-                  </span>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={setTueFri}
-                      className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
-                    >
-                      Tue/Fri (2x/wk)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={setMonWedFri}
-                      className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
-                    >
-                      Mon/Wed/Fri
-                    </button>
-                    <button
-                      type="button"
-                      onClick={setWeekdays}
-                      className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
-                    >
-                      5 on / 2 off
-                    </button>
-                    <button
-                      type="button"
-                      onClick={resetEveryday}
-                      className="text-[10px] font-bold text-slate-400 hover:text-white underline cursor-pointer"
-                    >
-                      Everyday
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleMode('rest_interval')}
+                    className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      scheduleMode === 'rest_interval' || scheduleMode === 'specific_dates'
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md shadow-cyan-500/25 border border-cyan-400/40'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <ShieldCheck size={14} />
+                    <span>Recovery Rest &amp; Pulsed</span>
+                  </button>
                 </div>
 
-                {/* Day Buttons with LEVL Blue styling */}
-                <div className="grid grid-cols-7 gap-1.5">
-                  {DAYS_OF_WEEK.map((day, idx) => {
-                    const isSelected = selectedDays.includes(day)
-                    return (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => toggleDay(day)}
-                        className={`h-9 rounded-xl font-extrabold text-xs flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 ${
-                          isSelected
-                            ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-black shadow-md shadow-cyan-500/30 border border-cyan-400/40'
-                            : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
-                        }`}
-                        title={`Toggle ${day}`}
-                      >
-                        {DAY_LABELS[idx]}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <p className="text-[10px] text-slate-500 italic">
-                  {selectedDays.length === 7
-                    ? 'Scheduled everyday across the weekly calendar.'
-                    : `Scheduled on ${selectedDays.join(', ')} (${selectedDays.length} days/week).`}
-                </p>
-              </div>
-            ) : (
-              /* Mode B: Recovery Rest Interval with Dynamic Anchor, Progression Toggle & Calendar Picker */
-              <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 space-y-3.5 animate-in fade-in">
-                {/* 1. Quick Rest Days Selector */}
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold text-slate-300 block">
-                    ⏱️ Rest Days Between Sessions:
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {[
-                      { days: 0, label: '0 Days', sub: 'Everyday' },
-                      { days: 1, label: '1 Day Rest', sub: 'Every 2nd Day' },
-                      { days: 2, label: '2 Days Rest', sub: 'Every 3rd Day' },
-                      { days: 3, label: '3 Days Rest', sub: 'Every 4th Day' },
-                      { days: 6, label: 'Weekly', sub: '6 Days Rest (1x/Wk)' }
-                    ].map(opt => (
-                      <button
-                        key={opt.days}
-                        type="button"
-                        onClick={() => handleSelectRestInterval(opt.days)}
-                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
-                          scheduleMode === 'rest_interval' && !intervalPreset && restDaysBetween === opt.days
-                            ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 font-bold shadow-md ring-1 ring-cyan-500/40'
-                            : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
-                        }`}
-                      >
-                        <span className="block font-black text-xs">{opt.label}</span>
-                        <span className="block text-[9px] text-slate-500">{opt.sub}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 2. Anchor Starting Day Selector */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
-                      <span>🚀 Start / Anchor Day:</span>
-                    </span>
-                    <span className="text-[10px] text-cyan-400 font-bold">
-                      Starts on {anchorDay}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-7 gap-1.5">
-                    {DAYS_OF_WEEK.map((day, idx) => {
-                      const isAnchor = anchorDay === day
-                      return (
+                {/* Mode A: 7-Day Selector (LEVL BLUE STYLED) */}
+                {scheduleMode === 'days_of_week' ? (
+                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 space-y-3 animate-in fade-in">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                        <span>🗓️ Active Scheduled Days ({selectedDays.length}/7):</span>
+                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
                         <button
-                          key={day}
                           type="button"
-                          onClick={() => handleSelectAnchorDay(day)}
-                          className={`h-8 rounded-xl font-extrabold text-xs flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 ${
-                            isAnchor
-                              ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25 font-black ring-1 ring-white/30'
-                              : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
-                          }`}
-                          title={`Anchor start day on ${day}`}
+                          onClick={setTueFri}
+                          className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
                         >
-                          {DAY_LABELS[idx]}
+                          Tue/Fri (2x/wk)
                         </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* 3. Rolling Rotation vs Lock Weekly Toggle */}
-                <div className="pt-1">
-                  <div className="grid grid-cols-2 gap-2 p-1 bg-black/40 rounded-xl border border-white/5">
-                    <button
-                      type="button"
-                      onClick={() => setIsRollingRotation(true)}
-                      className={`p-2 rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs ${
-                        isRollingRotation
-                          ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-200 font-bold shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <RefreshCw size={13} className={isRollingRotation ? 'text-cyan-400 animate-spin-slow' : ''} />
-                      <span className="font-bold">Rolling Rotation</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsRollingRotation(false)}
-                      className={`p-2 rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs ${
-                        !isRollingRotation
-                          ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-200 font-bold shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <Lock size={13} className={!isRollingRotation ? 'text-cyan-400' : ''} />
-                      <span className="font-bold">Lock Weekly</span>
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1 pl-1">
-                    {isRollingRotation 
-                      ? '🔄 Continuous rolling rotation maintains strict rest intervals across calendar weeks (days shift over time).' 
-                      : '🔒 Weekly lock repeats the exact same days every week for fixed weekly routines.'}
-                  </p>
-                </div>
-
-                {/* 4. Live Multi-Week Progression Preview */}
-                <div className="p-3 bg-black/50 rounded-2xl border border-white/10 space-y-2.5">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-300 font-bold flex items-center gap-1.5">
-                      <span>🗓️ Cadence Summary:</span>
-                    </span>
-                    <span className="text-cyan-400 font-extrabold text-[10px]">
-                      {scheduleMode === 'specific_dates'
-                        ? `${specificDates.length} Specific Dates`
-                        : restDaysBetween > 6
-                        ? `Every ${restDaysBetween + 1} Days`
-                        : isRollingRotation && multiWeekSchedule.isAlternating
-                        ? '2-Week Repeating Cycle'
-                        : 'Weekly Repeating'}
-                    </span>
-                  </div>
-
-                  {/* Week 1 Row */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 px-0.5 font-mono">
-                      <span>{isRollingRotation && multiWeekSchedule.isAlternating ? 'Week 1:' : 'Active Days:'} {multiWeekSchedule.week1.join(', ')}</span>
-                      <span className="text-slate-500">{multiWeekSchedule.week1.length} sessions</span>
+                        <button
+                          type="button"
+                          onClick={setMonWedFri}
+                          className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                        >
+                          Mon/Wed/Fri
+                        </button>
+                        <button
+                          type="button"
+                          onClick={setWeekdays}
+                          className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                        >
+                          5 on / 2 off
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetEveryday}
+                          className="text-[10px] font-bold text-slate-400 hover:text-white underline cursor-pointer"
+                        >
+                          Everyday
+                        </button>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-7 gap-1">
-                      {DAYS_OF_WEEK.map((d, idx) => {
-                        const isActive = multiWeekSchedule.week1.includes(d)
+
+                    {/* Day Buttons with LEVL Blue styling */}
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {DAYS_OF_WEEK.map((day, idx) => {
+                        const isSelected = selectedDays.includes(day)
                         return (
-                          <div
-                            key={`w1-${d}`}
-                            className={`h-6 rounded-lg text-[10px] font-black flex items-center justify-center transition-all ${
-                              isActive
-                                ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-black shadow-sm'
-                                : 'bg-white/5 text-slate-600'
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => toggleDay(day)}
+                            className={`h-9 rounded-xl font-extrabold text-xs flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 ${
+                              isSelected
+                                ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-black shadow-md shadow-cyan-500/30 border border-cyan-400/40'
+                                : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
                             }`}
+                            title={`Toggle ${day}`}
                           >
                             {DAY_LABELS[idx]}
-                          </div>
+                          </button>
                         )
                       })}
                     </div>
-                  </div>
 
-                  {/* Week 2 Row */}
-                  {isRollingRotation && multiWeekSchedule.isAlternating && (
-                    <div className="space-y-1 pt-1.5 border-t border-white/5 animate-in fade-in slide-in-from-top-1">
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 px-0.5 font-mono">
-                        <span className="text-cyan-400">Week 2: {multiWeekSchedule.week2.join(', ')}</span>
-                        <span className="text-slate-500">{multiWeekSchedule.week2.length} sessions</span>
+                    <p className="text-[10px] text-slate-500 italic">
+                      {selectedDays.length === 7
+                        ? 'Scheduled everyday across the weekly calendar.'
+                        : `Scheduled on ${selectedDays.join(', ')} (${selectedDays.length} days/week).`}
+                    </p>
+                  </div>
+                ) : (
+                  /* Mode B: Recovery Rest Interval with Dynamic Anchor, Progression Toggle & Calendar Picker */
+                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 space-y-3.5 animate-in fade-in">
+                    {/* 1. Quick Rest Days Selector */}
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] font-bold text-slate-300 block">
+                        ⏱️ Rest Days Between Sessions:
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {[
+                          { days: 0, label: '0 Days', sub: 'Everyday' },
+                          { days: 1, label: '1 Day Rest', sub: 'Every 2nd Day' },
+                          { days: 2, label: '2 Days Rest', sub: 'Every 3rd Day' },
+                          { days: 3, label: '3 Days Rest', sub: 'Every 4th Day' },
+                          { days: 6, label: 'Weekly', sub: '6 Days Rest (1x/Wk)' }
+                        ].map(opt => (
+                          <button
+                            key={opt.days}
+                            type="button"
+                            onClick={() => handleSelectRestInterval(opt.days)}
+                            className={`p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                              scheduleMode === 'rest_interval' && !intervalPreset && restDaysBetween === opt.days
+                                ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 font-bold shadow-md ring-1 ring-cyan-500/40'
+                                : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            <span className="block font-black text-xs">{opt.label}</span>
+                            <span className="block text-[9px] text-slate-500">{opt.sub}</span>
+                          </button>
+                        ))}
                       </div>
-                      <div className="grid grid-cols-7 gap-1">
-                        {DAYS_OF_WEEK.map((d, idx) => {
-                          const isActive = multiWeekSchedule.week2.includes(d)
+                    </div>
+
+                    {/* 2. Anchor Starting Day Selector */}
+                    <div className="space-y-1.5 pt-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                          <span>🚀 Start / Anchor Day:</span>
+                        </span>
+                        <span className="text-[10px] text-cyan-400 font-bold">
+                          Starts on {anchorDay}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-7 gap-1.5">
+                        {DAYS_OF_WEEK.map((day, idx) => {
+                          const isAnchor = anchorDay === day
                           return (
-                            <div
-                              key={`w2-${d}`}
-                              className={`h-6 rounded-lg text-[10px] font-black flex items-center justify-center transition-all ${
-                                isActive
-                                  ? 'bg-cyan-400 text-black font-black shadow-sm'
-                                  : 'bg-white/5 text-slate-600'
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => handleSelectAnchorDay(day)}
+                              className={`h-8 rounded-xl font-extrabold text-xs flex items-center justify-center transition-all cursor-pointer select-none active:scale-95 ${
+                                isAnchor
+                                  ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25 font-black ring-1 ring-white/30'
+                                  : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
                               }`}
+                              title={`Anchor start day on ${day}`}
                             >
                               {DAY_LABELS[idx]}
-                            </div>
+                            </button>
                           )
                         })}
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* 5. Collapsible Extended Pulsed & Interactive Calendar Date Picker */}
-                <div className="pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowExtendedPulsed(!showExtendedPulsed)}
-                    className="w-full py-2 px-3 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white flex items-center justify-between text-xs font-bold transition-all cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Sparkles size={13} className="text-cyan-400" />
-                      <span>Other Pulsed Cadences &amp; Custom Calendar Dates...</span>
-                    </span>
-                    <span className="flex items-center gap-1 text-[11px] text-cyan-400">
-                      {intervalPreset ? (
-                        <span className="bg-cyan-500/20 px-2 py-0.5 rounded-md border border-cyan-500/30 font-mono text-[10px]">
-                          {intervalPreset.replace('_', ' ').toUpperCase()}
-                        </span>
-                      ) : null}
-                      {showExtendedPulsed ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                    </span>
-                  </button>
-
-                  {showExtendedPulsed && (
-                    <div className="mt-2.5 p-3 rounded-2xl bg-black/60 border border-white/10 space-y-3 animate-in fade-in">
-                      {/* Presets Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                        {[
-                          { key: 'bi_weekly', label: 'Bi-Weekly', sub: 'Every 2 Wks (13d Rest)', restDays: 13 },
-                          { key: 'monthly', label: 'Monthly', sub: 'Every 30 Days (29d Rest)', restDays: 29 },
-                          { key: 'quarterly', label: 'Quarterly', sub: 'Every 90 Days (89d Rest)', restDays: 89 }
-                        ].map(preset => (
-                          <button
-                            key={preset.key}
-                            type="button"
-                            onClick={() => handleSelectPreset(preset.key, preset.restDays)}
-                            className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
-                              intervalPreset === preset.key
-                                ? 'bg-cyan-500/25 border-cyan-500 text-cyan-300 font-bold shadow-md ring-1 ring-cyan-500/40'
-                                : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
-                            }`}
-                          >
-                            <span className="block font-black text-[11px] leading-tight">{preset.label}</span>
-                            <span className="block text-[9px] text-slate-500 leading-tight mt-0.5">{preset.sub}</span>
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Custom Days Input */}
-                      <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-3">
-                        <div>
-                          <span className="text-[11px] font-bold text-white block">Custom Interval (Days):</span>
-                          <span className="text-[10px] text-slate-400">Sets session every N days</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 bg-slate-900 border border-white/10 rounded-xl p-1">
-                          <button
-                            type="button"
-                            onClick={() => handleCustomDaysChange(customIntervalDays - 1)}
-                            className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
-                          >
-                            <Minus size={13} />
-                          </button>
-                          <input
-                            type="number"
-                            min="1"
-                            max="730"
-                            value={customIntervalDays}
-                            onChange={(e) => handleCustomDaysChange(parseInt(e.target.value) || 1)}
-                            className="w-12 bg-transparent text-center text-xs font-black text-cyan-400 focus:outline-none"
-                          />
-                          <span className="text-[10px] text-slate-500 pr-1">Days</span>
-                          <button
-                            type="button"
-                            onClick={() => handleCustomDaysChange(customIntervalDays + 1)}
-                            className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
-                          >
-                            <Plus size={13} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Interactive Calendar Date Picker */}
-                      <div className="pt-2 border-t border-white/5 space-y-2">
+                    {/* 3. Rolling Rotation vs Lock Weekly Toggle */}
+                    <div className="pt-1">
+                      <div className="grid grid-cols-2 gap-2 p-1 bg-black/40 rounded-xl border border-white/5">
                         <button
                           type="button"
-                          onClick={() => {
-                            setCalendarPickerOpen(!calendarPickerOpen)
-                            if (!calendarPickerOpen) {
-                              setScheduleMode('specific_dates')
-                              setIntervalPreset('specific_dates')
-                            }
-                          }}
-                          className={`w-full py-2 px-3 rounded-xl border flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-                            scheduleMode === 'specific_dates'
-                              ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 font-extrabold shadow-sm'
-                              : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                          onClick={() => setIsRollingRotation(true)}
+                          className={`p-2 rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs ${
+                            isRollingRotation
+                              ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-200 font-bold shadow-sm'
+                              : 'text-slate-400 hover:text-white'
                           }`}
                         >
-                          <span className="flex items-center gap-2">
-                            <CalendarIcon size={14} className="text-cyan-400" />
-                            <span>Pick Specific Future Dates on Calendar</span>
-                          </span>
-                          <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30 font-mono">
-                            {specificDates.length} Selected
-                          </span>
+                          <RefreshCw size={13} className={isRollingRotation ? 'text-cyan-400 animate-spin-slow' : ''} />
+                          <span className="font-bold">Rolling Rotation</span>
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsRollingRotation(false)}
+                          className={`p-2 rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs ${
+                            !isRollingRotation
+                              ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-200 font-bold shadow-sm'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          <Lock size={13} className={!isRollingRotation ? 'text-cyan-400' : ''} />
+                          <span className="font-bold">Lock Weekly</span>
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1 pl-1">
+                        {isRollingRotation 
+                          ? '🔄 Continuous rolling rotation maintains strict rest intervals across calendar weeks (days shift over time).' 
+                          : '🔒 Weekly lock repeats the exact same days every week for fixed weekly routines.'}
+                      </p>
+                    </div>
 
-                        {calendarPickerOpen && (
-                          <div className="p-3 bg-slate-950 rounded-2xl border border-white/10 space-y-2 animate-in fade-in">
-                            <div className="flex items-center justify-between px-1">
+                    {/* 4. Live Multi-Week Progression Preview */}
+                    <div className="p-3 bg-black/50 rounded-2xl border border-white/10 space-y-2.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-300 font-bold flex items-center gap-1.5">
+                          <span>🗓️ Cadence Summary:</span>
+                        </span>
+                        <span className="text-cyan-400 font-extrabold text-[10px]">
+                          {scheduleMode === 'specific_dates'
+                            ? `${specificDates.length} Specific Dates`
+                            : restDaysBetween > 6
+                            ? `Every ${restDaysBetween + 1} Days`
+                            : isRollingRotation && multiWeekSchedule.isAlternating
+                            ? '2-Week Repeating Cycle'
+                            : 'Weekly Repeating'}
+                        </span>
+                      </div>
+
+                      {/* Week 1 Row */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 px-0.5 font-mono">
+                          <span>{isRollingRotation && multiWeekSchedule.isAlternating ? 'Week 1:' : 'Active Days:'} {multiWeekSchedule.week1.join(', ')}</span>
+                          <span className="text-slate-500">{multiWeekSchedule.week1.length} sessions</span>
+                        </div>
+                        <div className="grid grid-cols-7 gap-1">
+                          {DAYS_OF_WEEK.map((d, idx) => {
+                            const isActive = multiWeekSchedule.week1.includes(d)
+                            return (
+                              <div
+                                key={`w1-${d}`}
+                                className={`h-6 rounded-lg text-[10px] font-black flex items-center justify-center transition-all ${
+                                  isActive
+                                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-black shadow-sm'
+                                    : 'bg-white/5 text-slate-600'
+                                }`}
+                              >
+                                {DAY_LABELS[idx]}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Week 2 Row */}
+                      {isRollingRotation && multiWeekSchedule.isAlternating && (
+                        <div className="space-y-1 pt-1.5 border-t border-white/5 animate-in fade-in slide-in-from-top-1">
+                          <div className="flex items-center justify-between text-[10px] text-slate-400 px-0.5 font-mono">
+                            <span className="text-cyan-400">Week 2: {multiWeekSchedule.week2.join(', ')}</span>
+                            <span className="text-slate-500">{multiWeekSchedule.week2.length} sessions</span>
+                          </div>
+                          <div className="grid grid-cols-7 gap-1">
+                            {DAYS_OF_WEEK.map((d, idx) => {
+                              const isActive = multiWeekSchedule.week2.includes(d)
+                              return (
+                                <div
+                                  key={`w2-${d}`}
+                                  className={`h-6 rounded-lg text-[10px] font-black flex items-center justify-center transition-all ${
+                                    isActive
+                                      ? 'bg-cyan-400 text-black font-black shadow-sm'
+                                      : 'bg-white/5 text-slate-600'
+                                  }`}
+                                >
+                                  {DAY_LABELS[idx]}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 5. Collapsible Extended Pulsed & Interactive Calendar Date Picker */}
+                    <div className="pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowExtendedPulsed(!showExtendedPulsed)}
+                        className="w-full py-2 px-3 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white flex items-center justify-between text-xs font-bold transition-all cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Sparkles size={13} className="text-cyan-400" />
+                          <span>Other Pulsed Cadences &amp; Custom Calendar Dates...</span>
+                        </span>
+                        <span className="flex items-center gap-1 text-[11px] text-cyan-400">
+                          {intervalPreset ? (
+                            <span className="bg-cyan-500/20 px-2 py-0.5 rounded-md border border-cyan-500/30 font-mono text-[10px]">
+                              {intervalPreset.replace('_', ' ').toUpperCase()}
+                            </span>
+                          ) : null}
+                          {showExtendedPulsed ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                        </span>
+                      </button>
+
+                      {showExtendedPulsed && (
+                        <div className="mt-2.5 p-3 rounded-2xl bg-black/60 border border-white/10 space-y-3 animate-in fade-in">
+                          {/* Presets Grid */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                            {[
+                              { key: 'bi_weekly', label: 'Bi-Weekly', sub: 'Every 2 Wks (13d Rest)', restDays: 13 },
+                              { key: 'monthly', label: 'Monthly', sub: 'Every 30 Days (29d Rest)', restDays: 29 },
+                              { key: 'quarterly', label: 'Quarterly', sub: 'Every 90 Days (89d Rest)', restDays: 89 }
+                            ].map(preset => (
+                              <button
+                                key={preset.key}
+                                type="button"
+                                onClick={() => handleSelectPreset(preset.key, preset.restDays)}
+                                className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                                  intervalPreset === preset.key
+                                    ? 'bg-cyan-500/25 border-cyan-500 text-cyan-300 font-bold shadow-md ring-1 ring-cyan-500/40'
+                                    : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                                }`}
+                              >
+                                <span className="block font-black text-[11px] leading-tight">{preset.label}</span>
+                                <span className="block text-[9px] text-slate-500 leading-tight mt-0.5">{preset.sub}</span>
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Custom Days Input */}
+                          <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-3">
+                            <div>
+                              <span className="text-[11px] font-bold text-white block">Custom Interval (Days):</span>
+                              <span className="text-[10px] text-slate-400">Sets session every N days</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-slate-900 border border-white/10 rounded-xl p-1">
                               <button
                                 type="button"
-                                onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
+                                onClick={() => handleCustomDaysChange(customIntervalDays - 1)}
                                 className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
                               >
-                                <ChevronLeft size={15} />
+                                <Minus size={13} />
                               </button>
-                              <span className="font-extrabold text-xs text-white">
-                                {format(calendarMonth, 'MMMM yyyy')}
+                              <input
+                                type="number"
+                                min="1"
+                                max="730"
+                                value={customIntervalDays}
+                                onChange={(e) => handleCustomDaysChange(parseInt(e.target.value) || 1)}
+                                className="w-12 bg-transparent text-center text-xs font-black text-cyan-400 focus:outline-none"
+                              />
+                              <span className="text-[10px] text-slate-500 pr-1">Days</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCustomDaysChange(customIntervalDays + 1)}
+                                className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
+                              >
+                                <Plus size={13} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Interactive Calendar Date Picker */}
+                          <div className="pt-2 border-t border-white/5 space-y-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCalendarPickerOpen(!calendarPickerOpen)
+                                if (!calendarPickerOpen) {
+                                  setScheduleMode('specific_dates')
+                                  setIntervalPreset('specific_dates')
+                                }
+                              }}
+                              className={`w-full py-2 px-3 rounded-xl border flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                                scheduleMode === 'specific_dates'
+                                  ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 font-extrabold shadow-sm'
+                                  : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                              }`}
+                            >
+                              <span className="flex items-center gap-2">
+                                <CalendarIcon size={14} className="text-cyan-400" />
+                                <span>Pick Specific Future Dates on Calendar</span>
                               </span>
-                              <button
-                                type="button"
-                                onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
-                                className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
-                              >
-                                <ChevronRight size={15} />
-                              </button>
-                            </div>
+                              <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30 font-mono">
+                                {specificDates.length} Selected
+                              </span>
+                            </button>
 
-                            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500">
-                              {DAY_LABELS.map((lbl, i) => (
-                                <div key={i}>{lbl}</div>
-                              ))}
-                            </div>
-
-                            <div className="grid grid-cols-7 gap-1">
-                              {calendarDays.map((day) => {
-                                const dateStr = format(day, 'yyyy-MM-dd')
-                                const isCurrentMonth = isSameMonth(day, calendarMonth)
-                                const isSelected = specificDates.includes(dateStr)
-                                const isTodayDate = isToday(day)
-
-                                return (
+                            {calendarPickerOpen && (
+                              <div className="p-3 bg-slate-950 rounded-2xl border border-white/10 space-y-2 animate-in fade-in">
+                                <div className="flex items-center justify-between px-1">
                                   <button
-                                    key={dateStr}
                                     type="button"
-                                    onClick={() => toggleSpecificDate(dateStr)}
-                                    className={`h-7 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer select-none ${
-                                      isSelected
-                                        ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-black shadow-md shadow-cyan-500/30 ring-1 ring-white/40'
-                                        : isCurrentMonth
-                                        ? isTodayDate
-                                          ? 'bg-white/10 border border-cyan-500 text-cyan-400'
-                                          : 'bg-white/5 text-slate-300 hover:bg-white/15 hover:text-white'
-                                        : 'bg-transparent text-slate-700 hover:text-slate-500'
-                                    }`}
-                                    title={dateStr}
+                                    onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
+                                    className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
                                   >
-                                    {format(day, 'd')}
+                                    <ChevronLeft size={15} />
                                   </button>
-                                )
-                              })}
-                            </div>
-
-                            {/* Selected Date Chips */}
-                            {specificDates.length > 0 && (
-                              <div className="pt-2 border-t border-white/5 space-y-1.5">
-                                <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                  <span>Selected Pulse Dates ({specificDates.length}):</span>
+                                  <span className="font-extrabold text-xs text-white">
+                                    {format(calendarMonth, 'MMMM yyyy')}
+                                  </span>
                                   <button
                                     type="button"
-                                    onClick={() => setSpecificDates([])}
-                                    className="text-red-400 hover:underline cursor-pointer"
+                                    onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+                                    className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
                                   >
-                                    Clear all
+                                    <ChevronRight size={15} />
                                   </button>
                                 </div>
-                                <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto custom-scrollbar">
-                                  {specificDates.map(d => (
-                                    <span
-                                      key={d}
-                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono"
-                                    >
-                                      <span>{d}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleSpecificDate(d)}
-                                        className="hover:text-white cursor-pointer ml-0.5"
-                                      >
-                                        ×
-                                      </button>
-                                    </span>
+
+                                <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500">
+                                  {DAY_LABELS.map((lbl, i) => (
+                                    <div key={i}>{lbl}</div>
                                   ))}
                                 </div>
+
+                                <div className="grid grid-cols-7 gap-1">
+                                  {calendarDays.map((day) => {
+                                    const dateStr = format(day, 'yyyy-MM-dd')
+                                    const isCurrentMonth = isSameMonth(day, calendarMonth)
+                                    const isSelected = specificDates.includes(dateStr)
+                                    const isTodayDate = isToday(day)
+
+                                    return (
+                                      <button
+                                        key={dateStr}
+                                        type="button"
+                                        onClick={() => toggleSpecificDate(dateStr)}
+                                        className={`h-7 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer select-none ${
+                                          isSelected
+                                            ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-black shadow-md shadow-cyan-500/30 ring-1 ring-white/40'
+                                            : isCurrentMonth
+                                            ? isTodayDate
+                                              ? 'bg-white/10 border border-cyan-500 text-cyan-400'
+                                              : 'bg-white/5 text-slate-300 hover:bg-white/15 hover:text-white'
+                                            : 'bg-transparent text-slate-700 hover:text-slate-500'
+                                        }`}
+                                        title={dateStr}
+                                      >
+                                        {format(day, 'd')}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+
+                                {/* Selected Date Chips */}
+                                {specificDates.length > 0 && (
+                                  <div className="pt-2 border-t border-white/5 space-y-1.5">
+                                    <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                      <span>Selected Pulse Dates ({specificDates.length}):</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSpecificDates([])}
+                                        className="text-red-400 hover:underline cursor-pointer"
+                                      >
+                                        Clear all
+                                      </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto custom-scrollbar">
+                                      {specificDates.map(d => (
+                                        <span
+                                          key={d}
+                                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono"
+                                        >
+                                          <span>{d}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleSpecificDate(d)}
+                                            className="hover:text-white cursor-pointer ml-0.5"
+                                          >
+                                            ×
+                                          </button>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* SECTION 2: Real-World Adaptation */}
-          <div className="space-y-3">
-            <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Zap size={13} className="text-cyan-400" />
-              <span>2. Real-World Adaptation (If Skipped / Missed)</span>
-            </label>
-
-            <div className="space-y-2">
-              {[
-                {
-                  id: 'roll_forward',
-                  title: 'Roll Forward (Move to next available day)',
-                  badge: 'Recommended',
-                  desc: 'If missed or skipped, automatically moves this session to tomorrow / next available day so you never lose progress.'
-                },
-                {
-                  id: 'fixed',
-                  title: 'Fixed Calendar Days',
-                  badge: 'Strict Cadence',
-                  desc: 'If missed, marks it skipped for the day. Your next session stays locked to its regular planned calendar cadence.'
-                },
-                {
-                  id: 'shift_sequence',
-                  title: 'Cascade Shift (Shift Entire Sequence)',
-                  badge: 'Rotational Sequence',
-                  desc: 'Shifts all upcoming protocol sessions forward by 1 day so your step-by-step sequence stays strictly intact.'
-                }
-              ].map(opt => (
-                <div
-                  key={opt.id}
-                  onClick={() => setSkipPolicy(opt.id as any)}
-                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
-                    skipPolicy === opt.id
-                      ? 'bg-cyan-950/30 border-cyan-500/50 shadow-md ring-1 ring-cyan-500/30'
-                      : 'bg-slate-950/40 border-white/5 hover:border-white/10 hover:bg-slate-950/70'
-                  }`}
-                >
-                  <div className="pt-0.5">
-                    <input
-                      type="radio"
-                      name="skipPolicy"
-                      checked={skipPolicy === opt.id}
-                      onChange={() => setSkipPolicy(opt.id as any)}
-                      className="accent-cyan-500 w-4 h-4 cursor-pointer"
-                    />
                   </div>
-                  <div className="space-y-0.5 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-white text-xs">{opt.title}</span>
-                      <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-white/10 text-slate-300">
-                        {opt.badge}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 leading-snug">{opt.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* SECTION 3: Multi-Session Dose Splitter (1x / 2x AM-PM / 3x TID) */}
-          <div className="space-y-3">
-            <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Clock size={13} className="text-cyan-400" />
-              <span>3. Daily Session Frequency &amp; Timing Slots</span>
-            </label>
-
-            {/* Circadian Recommendation Pill */}
-            {circadianTip && (
-              <div className="p-3 rounded-xl bg-purple-950/30 border border-purple-500/30 text-purple-200 text-xs flex items-start gap-2.5">
-                <Sparkles size={15} className="text-purple-400 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-white block text-[11px] font-extrabold mb-0.5">AI Circadian Timing Recommendation:</strong>
-                  <p className="opacity-90 leading-snug text-[11px]">{circadianTip}</p>
-                </div>
+                )}
               </div>
-            )}
 
-            {/* Doses per day buttons */}
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { count: 1, label: '1x Daily', sub: 'Single Session' },
-                { count: 2, label: '2x Daily', sub: 'Split AM / PM' },
-                { count: 3, label: '3x Daily', sub: 'TID with Meals' }
-              ].map(d => (
-                <button
-                  key={d.count}
-                  type="button"
-                  onClick={() => setDosesPerDay(d.count)}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                    dosesPerDay === d.count
-                      ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 font-bold shadow-md'
-                      : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  <span className="block font-black text-xs">{d.label}</span>
-                  <span className="block text-[9px] text-slate-500">{d.sub}</span>
-                </button>
-              ))}
-            </div>
+              {/* SECTION 2: Real-World Adaptation */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Zap size={13} className="text-cyan-400" />
+                  <span>2. Real-World Adaptation (If Skipped / Missed)</span>
+                </label>
 
-            {/* Timing Block Pickers */}
-            {dosesPerDay === 1 ? (
-              <div className="space-y-1.5 pt-1">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Execution Window:</span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {TIME_BLOCKS.map(slot => (
-                    <button
-                      key={slot}
-                      type="button"
-                      onClick={() => setSelectedSlot(slot)}
-                      className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer ${
-                        selectedSlot === slot
-                          ? 'bg-cyan-500/20 border-cyan-500 text-white font-bold shadow-md'
-                          : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                <div className="space-y-2">
+                  {[
+                    {
+                      id: 'roll_forward',
+                      title: 'Roll Forward (Move to next available day)',
+                      badge: 'Recommended',
+                      desc: 'If missed or skipped, automatically moves this session to tomorrow / next available day so you never lose progress.'
+                    },
+                    {
+                      id: 'fixed',
+                      title: 'Fixed Calendar Days',
+                      badge: 'Strict Cadence',
+                      desc: 'If missed, marks it skipped for the day. Your next session stays locked to its regular planned calendar cadence.'
+                    },
+                    {
+                      id: 'shift_sequence',
+                      title: 'Cascade Shift (Shift Entire Sequence)',
+                      badge: 'Rotational Sequence',
+                      desc: 'Shifts all upcoming protocol sessions forward by 1 day so your step-by-step sequence stays strictly intact.'
+                    }
+                  ].map(opt => (
+                    <div
+                      key={opt.id}
+                      onClick={() => setSkipPolicy(opt.id as any)}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
+                        skipPolicy === opt.id
+                          ? 'bg-cyan-950/30 border-cyan-500/50 shadow-md ring-1 ring-cyan-500/30'
+                          : 'bg-slate-950/40 border-white/5 hover:border-white/10 hover:bg-slate-950/70'
                       }`}
                     >
-                      <Clock size={12} className={selectedSlot === slot ? 'text-cyan-400' : 'text-slate-500'} />
-                      <span className="truncate text-[11px]">{formatSlotName(slot)}</span>
-                    </button>
+                      <div className="pt-0.5">
+                        <input
+                          type="radio"
+                          name="skipPolicy"
+                          checked={skipPolicy === opt.id}
+                          onChange={() => setSkipPolicy(opt.id as any)}
+                          className="accent-cyan-500 w-4 h-4 cursor-pointer"
+                        />
+                      </div>
+                      <div className="space-y-0.5 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-white text-xs">{opt.title}</span>
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-white/10 text-slate-300">
+                            {opt.badge}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 leading-snug">{opt.desc}</p>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
-            ) : (
-              <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 space-y-3">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-cyan-400 block uppercase">Dose 1 Timing:</span>
-                  <select
-                    value={dose1Timing}
-                    onChange={e => setDose1Timing(e.target.value)}
-                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500"
-                  >
-                    {TIME_BLOCKS.map(slot => (
-                      <option key={slot} value={slot}>{formatSlotName(slot)}</option>
-                    ))}
-                  </select>
-                </div>
 
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-cyan-400 block uppercase">Dose 2 Timing:</span>
-                  <select
-                    value={dose2Timing}
-                    onChange={e => setDose2Timing(e.target.value)}
-                    className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500"
-                  >
-                    {TIME_BLOCKS.map(slot => (
-                      <option key={slot} value={slot}>{formatSlotName(slot)}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* SECTION 3: Multi-Session Frequency & Timing Slots */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Clock size={13} className="text-cyan-400" />
+                  <span>3. Daily Session Frequency &amp; Timing Slots</span>
+                </label>
 
-                {dosesPerDay === 3 && (
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-cyan-400 block uppercase">Dose 3 Timing:</span>
-                    <select
-                      value={dose3Timing}
-                      onChange={e => setDose3Timing(e.target.value)}
-                      className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500"
+                {/* Circadian Recommendation Pill */}
+                {circadianTip && (
+                  <div className="p-3 rounded-xl bg-purple-950/30 border border-purple-500/30 text-purple-200 text-xs flex items-start gap-2.5">
+                    <Sparkles size={15} className="text-purple-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-white block text-[11px] font-extrabold mb-0.5">AI Circadian Timing Recommendation:</strong>
+                      <p className="opacity-90 leading-snug text-[11px]">{circadianTip}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Doses per day buttons */}
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { count: 1, label: '1x Daily', sub: 'Single Session' },
+                    { count: 2, label: '2x Daily', sub: 'Split AM / PM' },
+                    { count: 3, label: '3x Daily', sub: 'TID with Meals' }
+                  ].map(d => (
+                    <button
+                      key={d.count}
+                      type="button"
+                      onClick={() => setDosesPerDay(d.count)}
+                      className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                        dosesPerDay === d.count
+                          ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 font-bold shadow-md'
+                          : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                      }`}
                     >
+                      <span className="block font-black text-xs">{d.label}</span>
+                      <span className="block text-[9px] text-slate-500">{d.sub}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Timing Block Pickers */}
+                {dosesPerDay === 1 ? (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Execution Window:</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {TIME_BLOCKS.map(slot => (
-                        <option key={slot} value={slot}>{formatSlotName(slot)}</option>
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => setSelectedSlot(slot)}
+                          className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer ${
+                            selectedSlot === slot
+                              ? 'bg-cyan-500/20 border-cyan-500 text-white font-bold shadow-md'
+                              : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <Clock size={12} className={selectedSlot === slot ? 'text-cyan-400' : 'text-slate-500'} />
+                          <span className="truncate text-[11px]">{formatSlotName(slot)}</span>
+                        </button>
                       ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* SECTION 4: Interactive Literature Range Spectrum & Multi-Parameter Custom Dosage */}
-          <div className="space-y-3">
-            <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Sliders size={13} className="text-cyan-400" />
-              <span>4. Literature Range Spectrum &amp; Custom Targets</span>
-            </label>
-
-            <div className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-4">
-              {/* Literature Range Bar */}
-              {resolvedDose?.literatureRange && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[11px] text-slate-300">
-                    <span className="font-semibold text-white">Literature Range:</span>
-                    <span className="font-mono font-bold text-cyan-400">
-                      {minLit} {doseUnit} – {maxLit} {doseUnit}
-                    </span>
-                  </div>
-
-                  <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden relative border border-white/10 shadow-inner">
-                    <div
-                      className="h-full bg-gradient-to-r from-emerald-500 via-cyan-500 to-purple-500 rounded-full opacity-90"
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Recommended Marker Row Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                {resolvedDose?.starterDose && (
-                  <button
-                    type="button"
-                    onClick={() => handleApplyPresetDose(`${resolvedDose.starterDose!.value} ${doseUnit}`)}
-                    className="p-2.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 hover:border-emerald-400 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold">
-                      <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span>Starter</span>
                     </div>
-                    <span className="block font-mono font-bold text-xs text-white mt-0.5">
-                      {resolvedDose.starterDose.value} {doseUnit}
-                    </span>
-                  </button>
-                )}
-
-                {resolvedDose?.personalizedTargetDose && (
-                  <button
-                    type="button"
-                    onClick={() => handleApplyPresetDose(`${resolvedDose.personalizedTargetDose!.value} ${doseUnit}`)}
-                    className="p-2.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 hover:border-cyan-400 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-1.5 text-cyan-400 text-[10px] font-bold">
-                      <div className="w-2 h-2 rounded-full bg-cyan-400" />
-                      <span>Personal Target</span>
-                    </div>
-                    <span className="block font-mono font-bold text-xs text-white mt-0.5">
-                      {resolvedDose.personalizedTargetDose.value} {doseUnit}
-                    </span>
-                  </button>
-                )}
-
-                {prescribedDoseText && (
-                  <button
-                    type="button"
-                    onClick={() => handleApplyPresetDose(prescribedDoseText)}
-                    className="p-2.5 rounded-xl bg-slate-900/90 border border-purple-500/30 hover:border-purple-400 text-left transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-1.5 text-purple-400 text-[10px] font-bold">
-                      <div className="w-2 h-2 rounded-full bg-purple-400" />
-                      <span className="truncate">{prescribedProtocolName}</span>
-                    </div>
-                    <span className="block font-mono font-bold text-xs text-white mt-0.5 truncate">
-                      {prescribedDoseText}
-                    </span>
-                  </button>
-                )}
-              </div>
-
-              {/* Multi-Parameter Inputs */}
-              <div className="pt-2 border-t border-white/5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-cyan-300 uppercase tracking-wider">
-                    Multi-Parameter Custom Target
-                  </span>
-                  <span className="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">
-                    {getEffectiveFormattedDose() || 'Standard'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-slate-300 block uppercase">
-                      Primary Exposure / Dose:
-                    </span>
-                    <input
-                      type="text"
-                      value={customDose}
-                      onChange={e => setCustomDose(e.target.value)}
-                      placeholder="e.g. 23 mins or 2.5 mg SubQ"
-                      className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500 font-mono font-bold"
-                    />
                   </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-slate-300 block uppercase">
-                      {secondaryLabel}:
-                    </span>
-                    <input
-                      type="text"
-                      value={secondaryParam}
-                      onChange={e => setSecondaryParam(e.target.value)}
-                      placeholder={secondaryPlaceholder}
-                      className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500 font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Secondary Presets */}
-                <div className="space-y-1">
-                  <span className="text-[9px] font-mono text-slate-500 uppercase block">Presets:</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {secondaryPresets.map(pre => (
-                      <button
-                        key={pre}
-                        type="button"
-                        onClick={() => setSecondaryParam(pre)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-all cursor-pointer ${
-                          secondaryParam === pre
-                            ? 'bg-cyan-950 border-cyan-400 text-cyan-200'
-                            : 'bg-white/5 border-white/5 text-slate-300 hover:text-white'
-                        }`}
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 space-y-3">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-cyan-400 block uppercase">Dose 1 Timing:</span>
+                      <select
+                        value={dose1Timing}
+                        onChange={e => setDose1Timing(e.target.value)}
+                        className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500"
                       >
-                        {pre}
+                        {TIME_BLOCKS.map(slot => (
+                          <option key={slot} value={slot}>{formatSlotName(slot)}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-cyan-400 block uppercase">Dose 2 Timing:</span>
+                      <select
+                        value={dose2Timing}
+                        onChange={e => setDose2Timing(e.target.value)}
+                        className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500"
+                      >
+                        {TIME_BLOCKS.map(slot => (
+                          <option key={slot} value={slot}>{formatSlotName(slot)}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {dosesPerDay === 3 && (
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-cyan-400 block uppercase">Dose 3 Timing:</span>
+                        <select
+                          value={dose3Timing}
+                          onChange={e => setDose3Timing(e.target.value)}
+                          className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500"
+                        >
+                          {TIME_BLOCKS.map(slot => (
+                            <option key={slot} value={slot}>{formatSlotName(slot)}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: Dosage, Literature Spectrum, Titration & Evidence */}
+            <div className="space-y-6">
+              {/* SECTION 4: Interactive Literature Range Spectrum & Multi-Parameter Custom Dosage */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Sliders size={13} className="text-cyan-400" />
+                  <span>4. Literature Range Spectrum &amp; Custom Targets</span>
+                </label>
+
+                <div className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-4">
+                  {/* Literature Range Bar */}
+                  {resolvedDose?.literatureRange && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-[11px] text-slate-300">
+                        <span className="font-semibold text-white">Literature Range:</span>
+                        <span className="font-mono font-bold text-cyan-400">
+                          {minLit} {doseUnit} – {maxLit} {doseUnit}
+                        </span>
+                      </div>
+
+                      <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden relative border border-white/10 shadow-inner">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-500 via-cyan-500 to-purple-500 rounded-full opacity-90"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recommended Marker Row Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                    {resolvedDose?.starterDose && (
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPresetDose(`${resolvedDose.starterDose!.value} ${doseUnit}`)}
+                        className="p-2.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 hover:border-emerald-400 text-left transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold">
+                          <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                          <span>Starter</span>
+                        </div>
+                        <span className="block font-mono font-bold text-xs text-white mt-0.5">
+                          {resolvedDose.starterDose.value} {doseUnit}
+                        </span>
                       </button>
-                    ))}
+                    )}
+
+                    {resolvedDose?.personalizedTargetDose && (
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPresetDose(`${resolvedDose.personalizedTargetDose!.value} ${doseUnit}`)}
+                        className="p-2.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 hover:border-cyan-400 text-left transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-1.5 text-cyan-400 text-[10px] font-bold">
+                          <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                          <span>Personal Target</span>
+                        </div>
+                        <span className="block font-mono font-bold text-xs text-white mt-0.5">
+                          {resolvedDose.personalizedTargetDose.value} {doseUnit}
+                        </span>
+                      </button>
+                    )}
+
+                    {prescribedDoseText && (
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPresetDose(prescribedDoseText)}
+                        className="p-2.5 rounded-xl bg-slate-900/90 border border-purple-500/30 hover:border-purple-400 text-left transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-1.5 text-purple-400 text-[10px] font-bold">
+                          <div className="w-2 h-2 rounded-full bg-purple-400" />
+                          <span className="truncate">{prescribedProtocolName}</span>
+                        </div>
+                        <span className="block font-mono font-bold text-xs text-white mt-0.5 truncate">
+                          {prescribedDoseText}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Multi-Parameter Inputs */}
+                  <div className="pt-2 border-t border-white/5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-cyan-300 uppercase tracking-wider">
+                        Multi-Parameter Custom Target
+                      </span>
+                      <span className="text-[11px] font-mono font-bold text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">
+                        {getEffectiveFormattedDose() || 'Standard'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-slate-300 block uppercase">
+                          Primary Exposure / Dose:
+                        </span>
+                        <input
+                          type="text"
+                          value={customDose}
+                          onChange={e => setCustomDose(e.target.value)}
+                          placeholder="e.g. 23 mins or 2.5 mg SubQ"
+                          className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500 font-mono font-bold"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-slate-300 block uppercase">
+                          {secondaryLabel}:
+                        </span>
+                        <input
+                          type="text"
+                          value={secondaryParam}
+                          onChange={e => setSecondaryParam(e.target.value)}
+                          placeholder={secondaryPlaceholder}
+                          className="w-full p-2.5 bg-slate-900 border border-white/10 rounded-xl text-xs text-white focus:border-cyan-500 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Secondary Presets */}
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-mono text-slate-500 uppercase block">Presets:</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {secondaryPresets.map(pre => (
+                          <button
+                            key={pre}
+                            type="button"
+                            onClick={() => setSecondaryParam(pre)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-all cursor-pointer ${
+                              secondaryParam === pre
+                                ? 'bg-cyan-950 border-cyan-400 text-cyan-200'
+                                : 'bg-white/5 border-white/5 text-slate-300 hover:text-white'
+                            }`}
+                          >
+                            {pre}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* OPTIONAL PEPTIDE TITRATION STEP-UP PLANNER */}
+                {(isPeptideModality(task as any) ||
+                  modality?.category === 'Peptide' ||
+                  modalityKey.toLowerCase().includes('subq') ||
+                  modalityKey.toLowerCase().includes('peptide') ||
+                  modalityKey.toLowerCase().includes('bpc') ||
+                  modalityKey.toLowerCase().includes('tirzepatide') ||
+                  modalityKey.toLowerCase().includes('semaglutide') ||
+                  modalityKey.toLowerCase().includes('ghk') ||
+                  modalityKey.toLowerCase().includes('cjc') ||
+                  modalityKey.toLowerCase().includes('ipamorelin')) && (
+                  <div className="pt-2">
+                    <PeptideTitrationPlanner
+                      modalityKey={modalityKey}
+                      modalityName={modality?.name || 'Peptide Bioactive'}
+                      currentDoseAmount={parseFloat(customDose) || 250}
+                      doseUnit={doseUnit || 'mcg'}
+                      onApplyDose={(newDose, unit) => {
+                        setCustomDose(`${newDose} ${unit}`)
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION 5: Evidence Dossier & Personal Protocol Notes */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <FileText size={13} className="text-cyan-400" />
+                  <span>5. Protocol Details &amp; Personal Notes</span>
+                </label>
+
+                <div className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-3">
+                  {/* PubMed study link if available */}
+                  {(modality as any)?.pubmed_url || activeProtocolContext?.sourceUrl ? (
+                    <div className="flex items-center justify-between text-xs text-slate-300">
+                      <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
+                        <BookOpen size={13} />
+                        <span>Scientific Evidence &amp; Study Data</span>
+                      </span>
+                      <a
+                        href={(modality as any)?.pubmed_url || activeProtocolContext?.sourceUrl || 'https://pubmed.ncbi.nlm.nih.gov/'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-cyan-400 hover:underline flex items-center gap-1 font-mono"
+                      >
+                        <span>Source Material &amp; PubMed</span>
+                        <ExternalLink size={11} />
+                      </a>
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-300 block uppercase">
+                      Personal Protocol Log &amp; Notes:
+                    </span>
+                    <textarea
+                      rows={3}
+                      value={personalNotes}
+                      onChange={e => setPersonalNotes(e.target.value)}
+                      placeholder="e.g. SubQ abdomen, reconstituted with 2ml BAC water."
+                      className="w-full p-3 bg-slate-950 border border-white/10 rounded-2xl text-xs text-slate-200 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none"
+                    />
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* OPTIONAL PEPTIDE TITRATION STEP-UP PLANNER */}
-            {(isPeptideModality(task as any) ||
-              modality?.category === 'Peptide' ||
-              modalityKey.toLowerCase().includes('subq') ||
-              modalityKey.toLowerCase().includes('peptide') ||
-              modalityKey.toLowerCase().includes('bpc') ||
-              modalityKey.toLowerCase().includes('tirzepatide') ||
-              modalityKey.toLowerCase().includes('semaglutide') ||
-              modalityKey.toLowerCase().includes('ghk') ||
-              modalityKey.toLowerCase().includes('cjc') ||
-              modalityKey.toLowerCase().includes('ipamorelin')) && (
-              <div className="pt-2">
-                <PeptideTitrationPlanner
-                  modalityKey={modalityKey}
-                  modalityName={modality?.name || 'Peptide Bioactive'}
-                  currentDoseAmount={parseFloat(customDose) || 250}
-                  doseUnit={doseUnit || 'mcg'}
-                  onApplyDose={(newDose, unit) => {
-                    setCustomDose(`${newDose} ${unit}`)
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* SECTION 5: Evidence Dossier & Personal Protocol Notes */}
-          <div className="space-y-3">
-            <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <FileText size={13} className="text-cyan-400" />
-              <span>5. Protocol Details &amp; Personal Notes</span>
-            </label>
-
-            <div className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-3">
-              {/* PubMed study link if available */}
-              {(modality as any)?.pubmed_url || activeProtocolContext?.sourceUrl ? (
-                <div className="flex items-center justify-between text-xs text-slate-300">
-                  <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
-                    <BookOpen size={13} />
-                    <span>Scientific Evidence &amp; Study Data</span>
-                  </span>
-                  <a
-                    href={(modality as any)?.pubmed_url || activeProtocolContext?.sourceUrl || 'https://pubmed.ncbi.nlm.nih.gov/'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] text-cyan-400 hover:underline flex items-center gap-1 font-mono"
-                  >
-                    <span>Source Material &amp; PubMed</span>
-                    <ExternalLink size={11} />
-                  </a>
-                </div>
-              ) : null}
-
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-300 block uppercase">
-                  Personal Protocol Log &amp; Notes:
-                </span>
-                <textarea
-                  rows={2}
-                  value={personalNotes}
-                  onChange={e => setPersonalNotes(e.target.value)}
-                  placeholder="e.g. SubQ abdomen, reconstituted with 2ml BAC water."
-                  className="w-full p-3 bg-slate-950 border border-white/10 rounded-2xl text-xs text-slate-200 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none"
-                />
+              {/* SECTION 6: Scope Checkbox */}
+              <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={applyToFuture}
+                    onChange={e => setApplyToFuture(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-cyan-500 rounded cursor-pointer"
+                  />
+                  <div>
+                    <span className="font-bold text-white text-xs block">
+                      Apply to all upcoming instances of this modality
+                    </span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">
+                      Synchronizes this schedule, dosage, and skip adaptation policy across your active protocol calendar.
+                    </span>
+                  </div>
+                </label>
               </div>
             </div>
-          </div>
-
-          {/* SECTION 6: Scope Checkbox */}
-          <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5">
-            <label className="flex items-start gap-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={applyToFuture}
-                onChange={e => setApplyToFuture(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-cyan-500 rounded cursor-pointer"
-              />
-              <div>
-                <span className="font-bold text-white text-xs block">
-                  Apply to all upcoming instances of this modality
-                </span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  Synchronizes this schedule, dosage, and skip adaptation policy across your active protocol calendar.
-                </span>
-              </div>
-            </label>
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Sticky Footer */}
         {showDeleteConfirm ? (
-          <div className="p-4 sm:p-5 border-t border-red-500/40 bg-red-950/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="p-4 sm:p-5 border-t border-red-500/40 bg-red-950/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200 shrink-0">
             <div className="flex items-center gap-2 text-red-200 text-xs">
               <AlertTriangle size={17} className="text-red-400 shrink-0" />
               <span>
@@ -1417,7 +1427,7 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
             </div>
           </div>
         ) : (
-          <div className="p-4 sm:p-5 border-t border-white/10 bg-slate-950/80 flex items-center justify-between gap-3">
+          <div className="p-4 sm:p-5 border-t border-white/10 bg-slate-950/90 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
             <button
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
