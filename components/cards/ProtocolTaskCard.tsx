@@ -751,7 +751,7 @@ export default function ProtocolTaskCard({
     setIsSavingOutcomes(true)
     try {
       const localUserId = getLocalUserId()
-      const dateStr = format(new Date(), 'yyyy-MM-dd')
+      const dateStr = task.scheduled_date || format(new Date(), 'yyyy-MM-dd')
       const batchInputs: any[] = []
 
       const targetModalityId = task.modality_id || task.protocol_step?.modality_id || modality.id || ''
@@ -838,7 +838,7 @@ export default function ProtocolTaskCard({
     setIsSavingEditOutcomes(true)
     try {
       const localUserId = getLocalUserId()
-      const dateStr = format(new Date(), 'yyyy-MM-dd')
+      const dateStr = task.scheduled_date || format(new Date(), 'yyyy-MM-dd')
       const batchInputs: any[] = []
 
       const targetModalityId = task.modality_id || task.protocol_step?.modality_id || modality.id || ''
@@ -1040,13 +1040,38 @@ export default function ProtocolTaskCard({
 
   const completedSummaryText = getCompletedSummaryText()
   
-  let formattedCompletedTime = ''
-  if (task.completed_at) {
+  const getCompletedDisplayContext = (): string | null => {
+    if (!task.completed_at && task.status !== 'completed') return null
+    const timeSource = task.completed_at || (task.status === 'completed' ? task.created_at : null)
+    if (!timeSource) return null
+
     try {
-      const cDate = new Date(task.completed_at)
-      formattedCompletedTime = cDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    } catch (e) {}
+      const cDate = new Date(timeSource)
+      if (isNaN(cDate.getTime())) return null
+
+      const timeStr = cDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      const todayStr = format(new Date(), 'yyyy-MM-dd')
+      
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const yesterdayStr = format(yesterday, 'yyyy-MM-dd')
+
+      const taskDate = task.scheduled_date || format(cDate, 'yyyy-MM-dd')
+
+      if (taskDate === todayStr) {
+        return `Completed today at ${timeStr}`
+      } else if (taskDate === yesterdayStr) {
+        return `Completed yesterday at ${timeStr}`
+      } else {
+        const formattedDate = format(new Date(taskDate.replace(/-/g, '/')), 'EEE, MMM d')
+        return `Completed ${formattedDate} at ${timeStr}`
+      }
+    } catch (e) {
+      return null
+    }
   }
+
+  const completedDisplayContext = getCompletedDisplayContext()
 
   // Mobile Touch Swipe Gesture State
   const [dragOffset, setDragOffset] = useState(0)
@@ -1222,14 +1247,9 @@ export default function ProtocolTaskCard({
                   </span>
                 )}
               </div>
-              {formattedCompletedTime && (
-                <p className="text-[10px] text-emerald-400/70 font-mono mt-0.5 flex items-center gap-1.5 flex-wrap">
-                  <span>Logged at {formattedCompletedTime}</span>
-                  {task.scheduled_date && task.scheduled_date !== format(new Date(), 'yyyy-MM-dd') && (
-                    <span className="text-[9px] bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded text-emerald-300 font-semibold">
-                      for {format(new Date(task.scheduled_date.replace(/-/g, '/')), 'EEE, MMM d')}
-                    </span>
-                  )}
+              {completedDisplayContext && (
+                <p className="text-[10px] text-emerald-400/80 font-mono mt-0.5 flex items-center gap-1.5 flex-wrap font-medium">
+                  <span>✓ {completedDisplayContext}</span>
                 </p>
               )}
             </div>

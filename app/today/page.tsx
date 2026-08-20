@@ -349,16 +349,29 @@ function TodayPageContent() {
 
     // Anchor completion timestamp to selected historical day if backfilling past days
     let effectiveCompletedAt = completedAt
-    if (status === 'completed' && !effectiveCompletedAt) {
+    if (status === 'completed') {
       const todayStr = format(new Date(), 'yyyy-MM-dd')
       const targetDateStr = dateStr || todayStr
-      if (targetDateStr === todayStr) {
-        effectiveCompletedAt = new Date().toISOString()
+
+      if (effectiveCompletedAt) {
+        const parsedDate = new Date(effectiveCompletedAt)
+        if (!isNaN(parsedDate.getTime())) {
+          const parsedDateStr = format(parsedDate, 'yyyy-MM-dd')
+          if (parsedDateStr !== targetDateStr) {
+            const [y, m, d] = targetDateStr.split('-').map(Number)
+            const anchored = new Date(y, m - 1, d, parsedDate.getHours(), parsedDate.getMinutes(), parsedDate.getSeconds())
+            effectiveCompletedAt = anchored.toISOString()
+          }
+        }
       } else {
-        const now = new Date()
-        const [y, m, d] = targetDateStr.split('-').map(Number)
-        const histDate = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds())
-        effectiveCompletedAt = histDate.toISOString()
+        if (targetDateStr === todayStr) {
+          effectiveCompletedAt = new Date().toISOString()
+        } else {
+          const now = new Date()
+          const [y, m, d] = targetDateStr.split('-').map(Number)
+          const histDate = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds())
+          effectiveCompletedAt = histDate.toISOString()
+        }
       }
     } else if (status !== 'completed' && !completedAt) {
       effectiveCompletedAt = undefined
