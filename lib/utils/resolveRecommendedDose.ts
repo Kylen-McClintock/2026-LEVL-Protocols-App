@@ -227,9 +227,9 @@ function parseDoseFromText(text: string, isPeptideOrHighRisk: boolean = false, m
     const target = isPeptideOrHighRisk ? min : Math.round((min + max) / 2)
     return {
       unit,
-      starter: { value: min, unit, notes: `Conservative starter dose (${min} ${unit}).` },
-      target: { value: target, unit, notes: isPeptideOrHighRisk ? `Conservative clinical target dose (${target} ${unit}) for safe tissue recovery.` : `Recommended target average (${target} ${unit}).` },
-      blueprint: { value: max, unit, notes: `Upper bound from literature range (${max} ${unit}).` },
+      starter: { value: min, unit, notes: `${min} ${unit}` },
+      target: { value: target, unit, notes: `${target} ${unit}` },
+      blueprint: { value: max, unit, notes: `${max} ${unit}` },
       litRange: { min, max, unit }
     }
   } else {
@@ -238,9 +238,9 @@ function parseDoseFromText(text: string, isPeptideOrHighRisk: boolean = false, m
     const max = Math.round(val * 1.5) || val
     return {
       unit,
-      starter: { value: min, unit, notes: `Conservative starter dose (${min} ${unit}).` },
-      target: { value: val, unit, notes: `Standard evidence dose (${val} ${unit}).` },
-      blueprint: { value: max, unit, notes: `Standard protocol dose (${val} ${unit}).` },
+      starter: { value: min, unit, notes: `${min} ${unit}` },
+      target: { value: val, unit, notes: `${val} ${unit}` },
+      blueprint: { value: max, unit, notes: `${val} ${unit}` },
       litRange: { min: min > 0 ? min : 1, max, unit }
     }
   }
@@ -251,6 +251,14 @@ export function resolveRecommendedDose(
   userProfile?: UserProfile | null,
   protocolContext?: ProtocolDoseContext | ProtocolDoseContext[] | null
 ): ResolvedDoseResult {
+  // Explicit defaults for modalities where dose_or_exposure is unset or food/bowl
+  if (!modality.dose_or_exposure) {
+    if (modality.id === 'blueprint_nut_pudding') modality.dose_or_exposure = '1 bowl'
+    else if (modality.id === 'blueprint_super_veggie') modality.dose_or_exposure = '1 bowl'
+    else if (modality.id === 'blueprint_60m_exercise_routine') modality.dose_or_exposure = '60 mins'
+    else if (modality.id === 'blueprint_sleep_architecture') modality.dose_or_exposure = '8:30 PM (65°F)'
+  }
+
   const catLower = (modality.category || '').toLowerCase()
   const nameLower = (modality.name || modality.display_name || '').toLowerCase()
   const typeLower = (modality.modality_type || (modality as any).logging_type || '').toLowerCase()
@@ -378,12 +386,18 @@ export function resolveRecommendedDose(
   )
 
   if (isSensitive && starter) {
-    const starterDoseText = (modality.relationships?.dosage_profile?.starter_notes && modality.relationships.dosage_profile.starter_notes.length < 50)
-      ? modality.relationships.dosage_profile.starter_notes
-      : (starter.notes || `${starter.value} ${unit}`)
+    let cleanStarterText = `${starter.value} ${unit}`
+    if (starter.notes) {
+      const match = starter.notes.match(/\(([^)]+)\)/)
+      if (match && match[1]) {
+        cleanStarterText = match[1].trim()
+      } else if (!starter.notes.toLowerCase().includes('conservative') && !starter.notes.toLowerCase().includes('starter dose') && !starter.notes.toLowerCase().includes('dose')) {
+        cleanStarterText = starter.notes
+      }
+    }
 
     return {
-      recommendedDoseText: starterDoseText,
+      recommendedDoseText: cleanStarterText,
       recommendedValue: starter.value,
       unit,
       source: 'sensitivity_starter',
@@ -394,7 +408,7 @@ export function resolveRecommendedDose(
       blueprintDose: blueprint,
       allProtocolPresets,
       literatureRange: litRange,
-      rationale: starter.notes || 'Recommended conservative starter dose because Supplement Sensitivity is enabled in your profile.'
+      rationale: 'Recommended conservative starter dose because Supplement Sensitivity is enabled in your profile.'
     }
   }
 

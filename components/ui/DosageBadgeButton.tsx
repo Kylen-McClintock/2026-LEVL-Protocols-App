@@ -28,13 +28,22 @@ function cleanDosagePillText(text: string): string {
   if (!text) return ''
   let cleaned = text.trim()
 
-  // Remove leading protocol name prefixes (e.g. "Bryan Johnson 2026: 500mg", "Blueprint 2026: 500mg", "Longo Protocol: 16h fast")
-  cleaned = cleaned.replace(/^(bryan\s*johnson\s*(\d+)?|blueprint\s*(\d+)?|valter\s*longo|longo\s*protocol|attia\s*protocol|huberman\s*protocol)[:\-–—\s]+/i, '')
+  // 1. If text is like "Conservative starter dose (100 mg)." or "Starter dose (1 bowl)" -> extract inside parenthetical dose!
+  const parenthesizedDose = cleaned.match(/(?:starter|conservative|target|prescribed|blueprint|protocol)\s*dose[^(]*\(([^)]+)\)/i)
+  if (parenthesizedDose && parenthesizedDose[1]) {
+    cleaned = parenthesizedDose[1].trim()
+  }
 
-  // Remove trailing parenthesized protocol names (e.g. "500 mg (Blueprint 2026)", "500 mg (Bryan Johnson 2026)")
-  cleaned = cleaned.replace(/\s*\((bryan\s*johnson\s*\d*|blueprint\s*\d*|longo\s*protocol|attia\s*protocol|huberman\s*protocol)\)/gi, '')
+  // 2. Remove leading descriptive labels like "Conservative starter dose:", "Starter dose:", "Starter:", "Blueprint 2026:", "Target Dose:"
+  cleaned = cleaned.replace(/^(?:conservative\s*starter\s*dose|starter\s*dose|starter|blueprint\s*\d*|target\s*dose|prescribed\s*dose|standard\s*dose|protocol\s*dose|valter\s*longo|longo\s*protocol|attia\s*protocol|huberman\s*protocol)[:\-–—\s]+/i, '')
 
-  return cleaned.trim()
+  // 3. Remove trailing parenthesized protocol/dose type names (e.g. "(Blueprint 2026)", "(Starter Dose)", "(Bryan Johnson)")
+  cleaned = cleaned.replace(/\s*\((?:starter\s*dose|conservative\s*starter|blueprint\s*\d*|bryan\s*johnson\s*\d*|longo\s*protocol|attia\s*protocol|huberman\s*protocol)\)/gi, '')
+
+  // 4. Strip trailing punctuation like trailing periods from sentences
+  cleaned = cleaned.replace(/\.$/, '').trim()
+
+  return cleaned
 }
 
 export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
