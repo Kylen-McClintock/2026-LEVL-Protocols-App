@@ -111,6 +111,16 @@ function parseMultiDoseTimingSlots(timingStr?: string): MultiDoseSlot[] {
   return []
 }
 
+function parseLocalDate(dStr?: string | null): Date {
+  if (!dStr) return new Date()
+  const clean = dStr.split('T')[0]
+  const [y, m, d] = clean.split('-').map(Number)
+  if (y && m && d) {
+    return new Date(y, m - 1, d, 12, 0, 0)
+  }
+  return new Date()
+}
+
 function TodayPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -124,11 +134,7 @@ function TodayPageContent() {
 
   const currentDate = useMemo(() => {
     if (dateParam) {
-      try {
-        return parseISO(dateParam)
-      } catch (e) {
-        return new Date()
-      }
+      return parseLocalDate(dateParam)
     }
     return new Date()
   }, [dateParam])
@@ -206,8 +212,13 @@ function TodayPageContent() {
   }
 
   const navigateToDate = (targetDate: Date) => {
+    const todayFormatted = format(new Date(), 'yyyy-MM-dd')
     const dStr = format(targetDate, 'yyyy-MM-dd')
-    router.push(`/today?date=${dStr}`)
+    if (dStr === todayFormatted) {
+      router.push('/today')
+    } else {
+      router.push(`/today?date=${dStr}`)
+    }
   }
 
   const infradianStatus = useMemo(() => {
@@ -481,7 +492,7 @@ function TodayPageContent() {
         await refreshTodayTasks()
       } else if (action === 'slide_forward') {
         // 3. Push to tomorrow (slide split)
-        const tomorrow = format(addDays(parseISO(dateStr), 1), 'yyyy-MM-dd')
+        const tomorrow = format(addDays(parseLocalDate(dateStr), 1), 'yyyy-MM-dd')
         if (modalityId) {
           await createDailyTask(localUserId, tomorrow, modalityId)
         }
@@ -489,7 +500,7 @@ function TodayPageContent() {
         await refreshTodayTasks()
       } else if (action === 'swap_rest_day') {
         // 4. Swap with rest day (shift forward 2 days)
-        const targetDate = format(addDays(parseISO(dateStr), 2), 'yyyy-MM-dd')
+        const targetDate = format(addDays(parseLocalDate(dateStr), 2), 'yyyy-MM-dd')
         if (modalityId) {
           await createDailyTask(localUserId, targetDate, modalityId)
         }
@@ -1056,10 +1067,10 @@ function TodayPageContent() {
       return format(currentDate, 'EEEE, MMMM d')
     }
     if (calendarViewMode === '3day') {
-      return `${format(parseISO(threeDates[0]), 'MMM d')} – ${format(parseISO(threeDates[2]), 'MMM d, yyyy')}`
+      return `${format(parseLocalDate(threeDates[0]), 'MMM d')} – ${format(parseLocalDate(threeDates[2]), 'MMM d, yyyy')}`
     }
     if (calendarViewMode === 'week') {
-      return `${format(parseISO(weekDates[0]), 'MMM d')} – ${format(parseISO(weekDates[6]), 'MMM d, yyyy')}`
+      return `${format(parseLocalDate(weekDates[0]), 'MMM d')} – ${format(parseLocalDate(weekDates[6]), 'MMM d, yyyy')}`
     }
     return format(currentDate, 'MMMM yyyy')
   }, [calendarViewMode, currentDate, threeDates, weekDates])

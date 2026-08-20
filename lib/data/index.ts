@@ -820,7 +820,8 @@ export async function processSnoozedTasksRollover(localUserId: string, currentDa
   if (!supabase) return []
   
   try {
-    const currentDateObj = parseISO(currentDateStr)
+    const [y, m, d] = currentDateStr.split('-').map(Number)
+    const currentDateObj = (y && m && d) ? new Date(y, m - 1, d, 12, 0, 0) : new Date()
     const yesterdayStr = format(subDays(currentDateObj, 1), 'yyyy-MM-dd')
 
     // Fetch yesterday's tasks
