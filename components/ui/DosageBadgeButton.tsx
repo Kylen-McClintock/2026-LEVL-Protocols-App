@@ -28,17 +28,11 @@ function cleanDosagePillText(text: string): string {
   if (!text) return ''
   let cleaned = text.trim()
 
-  // If text is like "Conservative starter dose (100 mg)." -> extract "100 mg"
-  const parenthesizedMatch = cleaned.match(/starter\s*dose.*?\((\d+[\d.,]*\s*[a-zA-Z°]+(?:\s*[–—/-]\s*\d+[\d.,]*\s*[a-zA-Z°]+)?)\)/i)
-  if (parenthesizedMatch && parenthesizedMatch[1]) {
-    return parenthesizedMatch[1].trim()
-  }
+  // Remove leading protocol name prefixes (e.g. "Bryan Johnson 2026: 500mg", "Blueprint 2026: 500mg", "Longo Protocol: 16h fast")
+  cleaned = cleaned.replace(/^(bryan\s*johnson\s*(\d+)?|blueprint\s*(\d+)?|valter\s*longo|longo\s*protocol|attia\s*protocol|huberman\s*protocol)[:\-–—\s]+/i, '')
 
-  // Remove leading protocol / dose type prefixes (e.g. "Starter Dose: 250mg", "Blueprint 2026: 500mg", "Prescribed: 100mcg")
-  cleaned = cleaned.replace(/^(starter\s*dose|conservative\s*starter\s*dose|starter|blueprint\s*\d*|prescribed\s*dose|target\s*dose|standard\s*dose|protocol\s*dose)[:\-–—\s]+/i, '')
-
-  // Remove trailing parenthesized protocol or dose type descriptions (e.g. "500 mg (Blueprint 2026)", "250 mg (Starter Dose)")
-  cleaned = cleaned.replace(/\s*\((starter\s*dose|blueprint|longo|attia|huberman|patrick|brecka|dayspring|sensitivity|protocol\s*\d*|standard)[^)]*\)/gi, '')
+  // Remove trailing parenthesized protocol names (e.g. "500 mg (Blueprint 2026)", "500 mg (Bryan Johnson 2026)")
+  cleaned = cleaned.replace(/\s*\((bryan\s*johnson\s*\d*|blueprint\s*\d*|longo\s*protocol|attia\s*protocol|huberman\s*protocol)\)/gi, '')
 
   return cleaned.trim()
 }

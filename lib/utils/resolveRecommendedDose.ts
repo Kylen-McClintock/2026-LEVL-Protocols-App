@@ -360,8 +360,12 @@ export function resolveRecommendedDose(
   )
 
   if (isSensitive && starter) {
+    const starterDoseText = (modality.relationships?.dosage_profile?.starter_notes && modality.relationships.dosage_profile.starter_notes.length < 50)
+      ? modality.relationships.dosage_profile.starter_notes
+      : `${starter.value} ${unit}`
+
     return {
-      recommendedDoseText: `${starter.value} ${unit}`,
+      recommendedDoseText: starterDoseText,
       recommendedValue: starter.value,
       unit,
       source: 'sensitivity_starter',
@@ -391,7 +395,7 @@ export function resolveRecommendedDose(
     }
 
     return {
-      recommendedDoseText: primaryProto.doseText,
+      recommendedDoseText: primaryProto.doseText || modality.dose_or_exposure || defaultText,
       recommendedValue: primaryProto.doseAmount,
       unit: primaryProto.doseUnit || unit,
       source: 'protocol_preset',
@@ -408,10 +412,12 @@ export function resolveRecommendedDose(
     }
   }
 
-  // 3. Personalized Target (Blue)
+  // 3. Personalized Target / Standard Full Dose (Preserves full sets, reps, temperature, duration & notes)
+  const fullAccurateDoseText = modality.dose_or_exposure || (target ? `${target.value} ${unit}` : defaultText)
+
   if (target) {
     return {
-      recommendedDoseText: `${target.value} ${unit}`,
+      recommendedDoseText: fullAccurateDoseText,
       recommendedValue: target.value,
       unit,
       source: 'personalized_target',
@@ -428,7 +434,7 @@ export function resolveRecommendedDose(
 
   // 4. Default Fallback
   return {
-    recommendedDoseText: defaultText,
+    recommendedDoseText: fullAccurateDoseText,
     recommendedValue: (target as { value: number } | undefined)?.value || (starter as { value: number } | undefined)?.value || 1,
     unit,
     source: 'standard',
