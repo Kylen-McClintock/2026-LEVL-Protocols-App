@@ -182,7 +182,7 @@ export function getProtocolSourceDetails(protoName?: string, modality?: Modality
   }
 }
 
-function parseDoseFromText(text: string, isPeptideOrHighRisk: boolean = false) {
+function parseDoseFromText(text: string, isPeptideOrHighRisk: boolean = false, modalityCategory: string = '') {
   if (!text) return null
 
   // Strip non-dosage illuminance (lux), wavelength (nm), angles (°), temperatures (°F, °C), percentages (%) so they aren't parsed as duration/dose
@@ -196,14 +196,29 @@ function parseDoseFromText(text: string, isPeptideOrHighRisk: boolean = false) {
   if (numbers.length === 0) return null
 
   let unit = 'mg'
-  if (/mcg/i.test(text)) unit = 'mcg'
-  else if (/iu/i.test(text)) unit = 'IU'
-  else if (/ml/i.test(text)) unit = 'mL'
-  else if (/tbsp|tablespoon/i.test(text)) unit = 'tbsp'
-  else if (/\bg\b/i.test(text) && !/mg/i.test(text)) unit = 'g'
-  else if (/min|minute/i.test(text)) unit = 'mins'
-  else if (/hr|hour/i.test(text)) unit = 'hours'
-  else if (/session|cycle|round/i.test(text)) unit = 'sessions'
+  const textLower = text.toLowerCase()
+  if (/bowl/i.test(textLower)) unit = 'bowl'
+  else if (/serving/i.test(textLower)) unit = 'servings'
+  else if (/meal/i.test(textLower)) unit = 'meals'
+  else if (/cup/i.test(textLower)) unit = 'cups'
+  else if (/tbsp|tablespoon/i.test(textLower)) unit = 'tbsp'
+  else if (/tsp|teaspoon/i.test(textLower)) unit = 'tsp'
+  else if (/drop/i.test(textLower)) unit = 'drops'
+  else if (/capsule|cap\b/i.test(textLower)) unit = 'caps'
+  else if (/tablet|tab\b/i.test(textLower)) unit = 'tabs'
+  else if (/spray/i.test(textLower)) unit = 'sprays'
+  else if (/set/i.test(textLower)) unit = 'sets'
+  else if (/rep/i.test(textLower)) unit = 'reps'
+  else if (/mcg/i.test(textLower)) unit = 'mcg'
+  else if (/iu/i.test(textLower)) unit = 'IU'
+  else if (/ml/i.test(textLower)) unit = 'mL'
+  else if (/\bg\b/i.test(textLower) && !/mg/i.test(textLower)) unit = 'g'
+  else if (/min|minute/i.test(textLower)) unit = 'mins'
+  else if (/hr|hour/i.test(textLower)) unit = 'hours'
+  else if (/session|cycle|round/i.test(textLower)) unit = 'sessions'
+  else if (modalityCategory.toLowerCase().includes('nutrition') || modalityCategory.toLowerCase().includes('diet') || modalityCategory.toLowerCase().includes('food')) {
+    unit = 'serving'
+  }
 
   if (numbers.length >= 2) {
     const min = Math.min(numbers[0], numbers[1])
@@ -258,7 +273,7 @@ export function resolveRecommendedDose(
     nameLower.includes('acarbose')
 
   const profile = (modality.relationships?.dosage_profile || (modality as any).dosages) || null
-  const parsedFallback = !profile ? parseDoseFromText(modality.dose_or_exposure || '', isPeptideOrHighRisk) : null
+  const parsedFallback = !profile ? parseDoseFromText(modality.dose_or_exposure || '', isPeptideOrHighRisk, modality.category || '') : null
   const defaultText = modality.dose_or_exposure || 'Standard dose'
 
   const activeProtocolsList: ProtocolDoseContext[] = protocolContext
@@ -266,8 +281,6 @@ export function resolveRecommendedDose(
       ? protocolContext
       : [protocolContext]
     : []
-
-  let unit = profile?.unit || parsedFallback?.unit || 'mg'
 
   // Safety unit override for physical, calisthenics, breathwork, thermal, sleep & diagnostic modalities
   const isExerciseOrPhysical = catLower.includes('fitness') || catLower.includes('physical') || catLower.includes('cardio') || catLower.includes('strength') || typeLower.includes('exercise') || typeLower.includes('physical') || nameLower.includes('handstand') || nameLower.includes('walk') || nameLower.includes('push-up') || nameLower.includes('sprint') || nameLower.includes('squat')
@@ -288,13 +301,17 @@ export function resolveRecommendedDose(
     nameLower.includes('food cutoff') ||
     nameLower.includes('caffeine cutoff')
 
+  let unit = profile?.unit || parsedFallback?.unit
   if (isHoursBeforeBed) {
     unit = 'hours before bed'
-  } else if (unit === 'mg' || !unit || unit === 'undefined' || unit === 'exposure') {
-    if (nameLower.includes('handstand')) unit = 'seconds'
+  } else if (!unit || unit === 'undefined' || unit === 'exposure') {
+    if (nameLower.includes('nut_pudding') || nameLower.includes('nut pudding') || nameLower.includes('bowl')) unit = 'bowl'
+    else if (nameLower.includes('super_veggie') || nameLower.includes('super veggie') || catLower.includes('nutrition') || catLower.includes('diet') || typeLower.includes('nutrition') || typeLower.includes('diet')) unit = 'serving'
+    else if (nameLower.includes('handstand')) unit = 'seconds'
     else if (isExerciseOrPhysical || isBreathOrMind || isThermal) unit = 'mins'
     else if (isSleepOrFasting) unit = 'hours'
     else if (isDiagnostic) unit = 'sessions'
+    else unit = 'mg'
   }
 
   let starter = profile?.starter_dose ? { value: profile.starter_dose, unit, notes: profile.starter_notes } : parsedFallback?.starter
@@ -313,7 +330,7 @@ export function resolveRecommendedDose(
   const allProtocolPresets: ProtocolDosePreset[] = activeProtocolsList.map((proto, idx) => {
     let val = proto.doseAmount || target?.value || (isHoursBeforeBed ? 2 : 1)
     let u = proto.doseUnit || unit
-    let text = proto.doseText || `${val} ${u}`.trim()
+    let text = proto.doseText || modality.dose_or_exposure || `${val} ${u}`.trim()
 
     if (isHoursBeforeBed && (text.toLowerCase().includes('exposure') || !proto.doseAmount)) {
       val = 2
@@ -338,13 +355,14 @@ export function resolveRecommendedDose(
 
   // ONLY include Bryan Johnson Blueprint 2026 if this modality is ACTUALLY in Blueprint 2026!
   const isActuallyInBlueprint = BRYAN_JOHNSON_2026_IDS.has(modality.id) || Boolean((modality as any).is_blueprint_2026)
-  if (isActuallyInBlueprint && profile?.blueprint_dose && !allProtocolPresets.some(p => p.protocolName.toLowerCase().includes('blueprint'))) {
+  if (isActuallyInBlueprint && (profile?.blueprint_dose || modality.dose_or_exposure) && !allProtocolPresets.some(p => p.protocolName.toLowerCase().includes('blueprint'))) {
     const details = getProtocolSourceDetails('Bryan Johnson 2026 Blueprint', modality)
+    const bpDoseText = modality.dose_or_exposure || (profile?.blueprint_dose ? `${profile.blueprint_dose} ${unit}` : `${profile?.personalized_target_dose || 1} ${unit}`)
     allProtocolPresets.push({
       protocolName: 'Bryan Johnson 2026 Blueprint',
-      doseAmount: profile.blueprint_dose,
+      doseAmount: profile?.blueprint_dose || 1,
       doseUnit: unit,
-      doseText: `${profile.blueprint_dose} ${unit}`,
+      doseText: bpDoseText,
       colorBadge: 'purple',
       notes: details.fullProtocolInstructions,
       sourceUrl: details.sourceUrl,
@@ -362,7 +380,7 @@ export function resolveRecommendedDose(
   if (isSensitive && starter) {
     const starterDoseText = (modality.relationships?.dosage_profile?.starter_notes && modality.relationships.dosage_profile.starter_notes.length < 50)
       ? modality.relationships.dosage_profile.starter_notes
-      : `${starter.value} ${unit}`
+      : (starter.notes || `${starter.value} ${unit}`)
 
     return {
       recommendedDoseText: starterDoseText,
@@ -395,7 +413,7 @@ export function resolveRecommendedDose(
     }
 
     return {
-      recommendedDoseText: primaryProto.doseText || modality.dose_or_exposure || defaultText,
+      recommendedDoseText: modality.dose_or_exposure || primaryProto.doseText || defaultText,
       recommendedValue: primaryProto.doseAmount,
       unit: primaryProto.doseUnit || unit,
       source: 'protocol_preset',
