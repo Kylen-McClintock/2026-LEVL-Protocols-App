@@ -37,6 +37,8 @@ import QuickLogDetailModal from './QuickLogDetailModal'
 import ManageHotkeysModal from './ManageHotkeysModal'
 import ProteinPulseTrackerModal from './ProteinPulseTrackerModal'
 import NutritionFastingModal from './NutritionFastingModal'
+import PeriodFlowLoggerModal from '@/components/modals/PeriodFlowLoggerModal'
+import { calculateInfradianStatus } from '@/lib/tracking/infradianEngine'
 
 interface QuickHotkeyGridProps {
   date: string
@@ -77,6 +79,7 @@ export default function QuickHotkeyGrid({
   const [isManageModalOpen, setIsManageModalOpen] = useState(false)
   const [isProteinModalOpen, setIsProteinModalOpen] = useState(false)
   const [isNutritionModalOpen, setIsNutritionModalOpen] = useState(false)
+  const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false)
   const [justTappedId, setJustTappedId] = useState<string | null>(null)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -93,6 +96,10 @@ export default function QuickHotkeyGrid({
       return 'Mon'
     }
   }, [date])
+
+  const infradianStatus = useMemo(() => {
+    return calculateInfradianStatus(userProfile, date)
+  }, [userProfile, date])
 
   const visibleHotkeys = useMemo(() => {
     return hotkeys.filter(h => {
@@ -209,6 +216,24 @@ export default function QuickHotkeyGrid({
               </>
             )}
           </button>
+
+          {/* Contextual Infradian Period Hotkey */}
+          {infradianStatus && infradianStatus.enabled && (
+            <button
+              type="button"
+              onClick={() => setIsPeriodModalOpen(true)}
+              className="text-[11px] font-bold text-rose-300 hover:text-rose-200 flex items-center gap-1.5 transition-all cursor-pointer bg-rose-950/60 hover:bg-rose-950/90 px-2.5 py-1 rounded-xl border border-rose-500/40 shadow-sm active:scale-95"
+            >
+              <span>🌸</span>
+              <span>
+                {infradianStatus.todayLog?.is_period_day
+                  ? `Day ${infradianStatus.cycleDay}: ${infradianStatus.todayLog.flow_level} Flow`
+                  : infradianStatus.isPeriodExpectedSoon
+                  ? 'Period Expected (Log Start)'
+                  : `Cycle Day ${infradianStatus.cycleDay}`}
+              </span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -444,6 +469,23 @@ export default function QuickHotkeyGrid({
           onSaved={updated => {
             setHotkeys(updated)
             reloadData()
+          }}
+        />
+      )}
+
+      {/* Modal: Period & Flow Logger */}
+      {isPeriodModalOpen && (
+        <PeriodFlowLoggerModal
+          isOpen={isPeriodModalOpen}
+          onClose={() => setIsPeriodModalOpen(false)}
+          localUserId={localUserId}
+          userProfile={userProfile || null}
+          targetDate={date}
+          onSaved={() => {
+            reloadData()
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('levl_period_log_updated'))
+            }
           }}
         />
       )}

@@ -21,9 +21,10 @@ export default function ScheduleModalityModal({ isOpen, onClose, modality, onSuc
   if (!isOpen || !modality) return null
 
   const handleSchedule = (destination: 'today' | 'tomorrow' | 'bench') => {
-    // Instant confirmation state
+    // Instant confirmation state and immediate parent notification
     setConfirmedDestination(destination)
     setIsSaving(true)
+    onSuccess(destination)
     
     const localUserId = getLocalUserId()
     const targetDate = new Date()
@@ -32,7 +33,7 @@ export default function ScheduleModalityModal({ isOpen, onClose, modality, onSuc
     }
     const dateStr = format(targetDate, 'yyyy-MM-dd')
 
-    // Start async database save in parallel
+    // Start async database save in parallel (high-performance batched)
     const savePromise = destination === 'bench'
       ? addToBench(localUserId, modality.id)
       : createDailyTask(localUserId, dateStr, modality.id)
@@ -41,12 +42,11 @@ export default function ScheduleModalityModal({ isOpen, onClose, modality, onSuc
       .catch(err => console.error('Error saving scheduled modality:', err))
       .finally(() => setIsSaving(false))
 
-    // Auto-disappear after EXACTLY 1.5 seconds (1500ms) from click
+    // Auto-disappear smoothly after 900ms
     setTimeout(() => {
-      onSuccess(destination)
       setConfirmedDestination(null)
       onClose()
-    }, 1500)
+    }, 900)
   }
 
   const handleModalClose = () => {

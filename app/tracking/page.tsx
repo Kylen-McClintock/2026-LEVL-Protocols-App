@@ -43,11 +43,19 @@ import {
   HeartPulse,
   Maximize2,
   Minimize2,
-  Dna
+  Dna,
+  Info
 } from 'lucide-react'
 import ScheduleModalityModal from '@/components/modals/ScheduleModalityModal'
 import SwapModalityModal from '@/components/modals/SwapModalityModal'
 import FrictionBusterModal from '@/components/modals/FrictionBusterModal'
+import { KpiExplanationModal, KpiModalType } from '@/components/modals/KpiExplanationModal'
+import { HallmarksRadarChart } from '@/components/tracking/HallmarksRadarChart'
+import { BioGapSolverSection } from '@/components/tracking/BioGapSolverSection'
+import { HallmarkBiomarkersPanel } from '@/components/tracking/HallmarkBiomarkersPanel'
+import { calculateHallmarkCoverage, identifyBioGaps } from '@/lib/tracking/hallmarkCoverageEngine'
+import { evaluateComprehensiveBiomarkers } from '@/lib/tracking/hallmarkBiomarkerEngine'
+import { addModalityOrProtocolToToday } from '@/lib/data'
 import {
   calculateStackAdherence,
   ModalityAdherenceMetrics,
@@ -62,6 +70,7 @@ import {
 import { getOutcomeColor } from '@/lib/outcomes/outcomeColors'
 
 type FilterTab = 'all' | 'priority' | 'leaks' | 'momentum'
+type ViewSection = 'adherence_roi' | 'hallmarks_radar'
 
 interface ExtendedOutcomeSummary extends OutcomeAdherenceSummary {
   hasSynergyBonus?: boolean
@@ -83,6 +92,20 @@ export default function TrackingPage() {
   const [swappingModality, setSwappingModality] = useState<{ mod: Modality; outcome: string } | null>(null)
   const [frictionBusterModality, setFrictionBusterModality] = useState<{ modality: Modality; adherence: number } | null>(null)
   const [habits, setHabits] = useState<UserModalityHabit[]>([])
+  const [kpiModalType, setKpiModalType] = useState<KpiModalType>(null)
+
+  // Analytics View mode & 12 Hallmark suite state
+  const [activeViewSection, setActiveViewSection] = useState<ViewSection>('adherence_roi')
+  const [selectedHallmarkId, setSelectedHallmarkId] = useState<string | null>(null)
+  const [allModalitiesList, setAllModalitiesList] = useState<Modality[]>([])
+  const [todaysTasksList, setTodaysTasksList] = useState<DailyProtocolTask[]>([])
+
+  // 12 Hallmarks Interactive Controls: Evidence, Simulator, Effort Tier, Biomarkers
+  const [evidenceFilter, setEvidenceFilter] = useState<'all' | 'grade_a'>('all')
+  const [simulatedModalityIds, setSimulatedModalityIds] = useState<Set<string>>(new Set())
+  const [selectedEffortFilter, setSelectedEffortFilter] = useState<'all' | 'level_1' | 'level_2' | 'level_3'>('all')
+  const [showBiomarkersPanel, setShowBiomarkersPanel] = useState<boolean>(false)
+  const [userBiomarkerReadings, setUserBiomarkerReadings] = useState<Record<string, number>>({})
 
   // UI state filters
   const [selectedFilter, setSelectedFilter] = useState<FilterTab>('all')
@@ -135,6 +158,8 @@ export default function TrackingPage() {
       setProfile(fetchedProfile)
       setHabits(userHabits)
       setWellbeingLogs(wellbeingHistory)
+      setAllModalitiesList(allModalities)
+      setTodaysTasksList(todaysTasks)
 
       const activeModalitiesMap = new Map<string, Modality>()
       todaysTasks.forEach(task => {
@@ -364,6 +389,81 @@ export default function TrackingPage() {
     }
   }
 
+  // 12 Hallmarks of Aging Coverage Report & Bio-Gap Analysis with Simulator & Evidence Filter
+  const hallmarkReport = useMemo(() => {
+    return calculateHallmarkCoverage(todaysTasksList, allModalitiesList, profile, {
+      evidenceFilter,
+      simulatedModalityIds,
+      effortFilter: selectedEffortFilter
+    })
+  }, [todaysTasksList, allModalitiesList, profile, evidenceFilter, simulatedModalityIds, selectedEffortFilter])
+
+  // Load persistent user lab biomarkers on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('levl_user_biomarkers')
+      if (saved) {
+        setUserBiomarkerReadings(JSON.parse(saved))
+      }
+    } catch (e) {
+      console.error('Error loading biomarker readings from storage:', e)
+    }
+  }, [])
+
+  const bioGaps = useMemo(() => {
+    return identifyBioGaps(hallmarkReport, allModalitiesList, activeModalityIds, {
+      effortFilter: selectedEffortFilter,
+      evidenceFilter
+    })
+  }, [hallmarkReport, allModalitiesList, activeModalityIds, selectedEffortFilter, evidenceFilter])
+
+  const biomarkerStatuses = useMemo(() => {
+    return evaluateComprehensiveBiomarkers(userBiomarkerReadings)
+  }, [userBiomarkerReadings])
+
+  const biomarkerHighRiskCount = useMemo(() => {
+    return biomarkerStatuses.filter(s => s.hasRiskFlag).length
+  }, [biomarkerStatuses])
+
+  const handleToggleSimulate = (modId: string) => {
+    setSimulatedModalityIds(prev => {
+      const next = new Set(prev)
+      if (next.has(modId)) next.delete(modId)
+      else next.add(modId)
+      return next
+    })
+  }
+
+  const handleApplySimulatedStack = async () => {
+    const localUserId = getLocalUserId()
+    const today = new Date().toISOString().split('T')[0]
+    for (const modId of Array.from(simulatedModalityIds)) {
+      await addModalityOrProtocolToToday(localUserId, today, modId)
+    }
+    setSimulatedModalityIds(new Set())
+    const refreshedTasks = await getDailyProtocolTasks(localUserId, today)
+    setTodaysTasksList(refreshedTasks)
+  }
+
+  const handleClearSimulation = () => {
+    setSimulatedModalityIds(new Set())
+  }
+
+  const handleUpdateBiomarkerReading = (biomarkerId: string, value: number) => {
+    setUserBiomarkerReadings(prev => {
+      const next = {
+        ...prev,
+        [biomarkerId]: value
+      }
+      try {
+        localStorage.setItem('levl_user_biomarkers', JSON.stringify(next))
+      } catch (e) {
+        console.error('Error saving biomarker readings to storage:', e)
+      }
+      return next
+    })
+  }
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">
@@ -387,7 +487,7 @@ export default function TrackingPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto pt-6 sm:pt-8 pb-28 space-y-6 sm:space-y-8">
+    <div className="p-3 sm:p-6 lg:p-8 max-w-7xl w-full min-w-0 mx-auto pt-4 sm:pt-8 pb-28 space-y-6 sm:space-y-8">
       {/* Insights Section Switcher */}
       <div className="flex p-1 bg-black/50 rounded-2xl border border-white/10 max-w-md shadow-lg">
         <Link
@@ -404,81 +504,196 @@ export default function TrackingPage() {
         </Link>
       </div>
 
-      {/* Executive Header */}
-      <header className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
-              <Target size={28} className="text-levl-accent" />
-              <span>Protocol Tracking &amp; Outcome ROI</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-3xl leading-relaxed">
-              Real-time 80/20 biological leverage engine. Analyzes active habit consistency, isolates high-friction execution leaks, and unlocks Next Best Action stack upgrades.
-            </p>
-          </div>
-        </div>
+      {/* Analytics Hub Sub-Navigation: Outcomes ROI vs 12 Hallmarks Bio-Coverage */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-950/90 rounded-2xl border border-white/10 max-w-lg shadow-xl">
+        <button
+          type="button"
+          onClick={() => setActiveViewSection('adherence_roi')}
+          className={`flex-1 py-2.5 px-4 text-center text-xs sm:text-sm font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeViewSection === 'adherence_roi'
+              ? 'bg-levl-accent text-black shadow-md'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Target size={15} />
+          <span>Outcome ROI &amp; Habits</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveViewSection('hallmarks_radar')}
+          className={`flex-1 py-2.5 px-4 text-center text-xs sm:text-sm font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeViewSection === 'hallmarks_radar'
+              ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.35)]'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Dna size={15} className="text-purple-400" />
+          <span>12 Hallmarks Radar</span>
+        </button>
+      </div>
 
-        {/* Executive 4-Metric KPI Grid with Synergy Multiplier Callout */}
+      {activeViewSection === 'hallmarks_radar' ? (
+        <div className="space-y-8 animate-in fade-in duration-300">
+          {/* Biomarkers Diagnostics Cross-Link Panel (if open) */}
+          {showBiomarkersPanel && (
+            <HallmarkBiomarkersPanel
+              userReadings={userBiomarkerReadings}
+              onUpdateReading={handleUpdateBiomarkerReading}
+              onClose={() => setShowBiomarkersPanel(false)}
+              onSelectHallmark={(hId) => setSelectedHallmarkId(hId)}
+            />
+          )}
+
+          {/* 12 Hallmarks Geometric Radar Chart */}
+          <HallmarksRadarChart
+            coverageReport={hallmarkReport}
+            onSelectHallmark={(hId) => setSelectedHallmarkId(hId)}
+            selectedHallmarkId={selectedHallmarkId}
+            evidenceFilter={evidenceFilter}
+            onEvidenceFilterChange={(filter) => setEvidenceFilter(filter)}
+            simulatedCount={simulatedModalityIds.size}
+            onApplySimulatedStack={handleApplySimulatedStack}
+            onClearSimulation={handleClearSimulation}
+            showBiomarkersPanel={showBiomarkersPanel}
+            onToggleBiomarkersPanel={() => setShowBiomarkersPanel(prev => !prev)}
+            biomarkerHighRiskCount={biomarkerHighRiskCount}
+          />
+
+          {/* Multi-Tier Bio-Gap Solver Section */}
+          <BioGapSolverSection
+            gaps={bioGaps}
+            coverageReport={hallmarkReport}
+            onAddToToday={async (modId) => {
+              const localUserId = getLocalUserId()
+              const today = new Date().toISOString().split('T')[0]
+              await addModalityOrProtocolToToday(localUserId, today, modId)
+              const refreshedTasks = await getDailyProtocolTasks(localUserId, today)
+              setTodaysTasksList(refreshedTasks)
+            }}
+            onAddToBench={async (modId) => {
+              const localUserId = getLocalUserId()
+              await addToBench(localUserId, modId)
+            }}
+            simulatedModalityIds={simulatedModalityIds}
+            onToggleSimulate={handleToggleSimulate}
+            selectedEffortFilter={selectedEffortFilter}
+            onEffortFilterChange={(filter) => setSelectedEffortFilter(filter)}
+          />
+        </div>
+      ) : (
+        <>
+          {/* Executive Header */}
+          <header className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
+                  <Target size={28} className="text-levl-accent" />
+                  <span>Protocol Tracking &amp; Outcome ROI</span>
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-3xl leading-relaxed">
+                  Real-time 80/20 biological leverage engine. Analyzes active habit consistency, isolates high-friction execution leaks, and unlocks Next Best Action stack upgrades.
+                </p>
+              </div>
+            </div>
+
+        {/* Executive 4-Metric KPI Grid with Clickable Explanations & Harmonized Typography */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl flex items-center gap-3.5 backdrop-blur-md">
-            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 shadow-md">
+          {/* Card 1: Stack Adherence */}
+          <div
+            onClick={() => setKpiModalType('adherence')}
+            className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 hover:bg-slate-900/95 shadow-xl flex items-center gap-3.5 backdrop-blur-md cursor-pointer transition-all hover:scale-[1.01] group select-none"
+            title="Click for Stack Adherence explanation and breakdown"
+          >
+            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
               <Zap size={22} />
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-                Stack Adherence
-              </span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                  Stack Adherence
+                </span>
+                <Info size={11} className="text-slate-500 group-hover:text-emerald-400 transition-colors shrink-0 ml-1" />
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
                 <span className="text-xl sm:text-2xl font-black text-white font-mono">{overallAdherencePct}%</span>
-                <span className="text-[10px] text-emerald-400 font-bold">Rolling 14d</span>
+                <span className="text-[10px] text-emerald-400 font-bold font-sans">Rolling 14d</span>
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl flex items-center gap-3.5 backdrop-blur-md">
-            <div className="w-11 h-11 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-md">
+          {/* Card 2: Realized Impact */}
+          <div
+            onClick={() => setKpiModalType('realized_impact')}
+            className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-teal-500/40 hover:bg-slate-900/95 shadow-xl flex items-center gap-3.5 backdrop-blur-md cursor-pointer transition-all hover:scale-[1.01] group select-none"
+            title="Click for Realized Impact calculation and breakdown"
+          >
+            <div className="w-11 h-11 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
               <TrendingUp size={22} />
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-                Realized Impact
-              </span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                  Realized Impact
+                </span>
+                <Info size={11} className="text-slate-500 group-hover:text-teal-400 transition-colors shrink-0 ml-1" />
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
                 <span className="text-xl sm:text-2xl font-black text-teal-300 font-mono">{totalRealizedRoi}%</span>
-                <span className="text-[10px] text-slate-400 font-mono">({totalRealizedPoints}/{totalPotentialPoints} pts)</span>
+                <span className="text-[10px] text-slate-300 font-bold font-sans">({totalRealizedPoints}/{totalPotentialPoints} pts)</span>
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl flex items-center gap-3.5 backdrop-blur-md">
-            <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0 shadow-md">
+          {/* Card 3: Active Outcomes */}
+          <div
+            onClick={() => setKpiModalType('outcomes')}
+            className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-amber-500/40 hover:bg-slate-900/95 shadow-xl flex items-center gap-3.5 backdrop-blur-md cursor-pointer transition-all hover:scale-[1.01] group select-none"
+            title="Click for Active Outcomes breakdown"
+          >
+            <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
               <Award size={22} />
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-                Active Outcomes
-              </span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                  Active Outcomes
+                </span>
+                <Info size={11} className="text-slate-500 group-hover:text-amber-400 transition-colors shrink-0 ml-1" />
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
                 <span className="text-xl sm:text-2xl font-black text-white font-mono">{outcomeDataList.length}</span>
-                <span className="text-[10px] text-amber-300 font-bold">({counts.priority} Priority)</span>
+                <span className="text-[10px] text-amber-300 font-bold font-sans">({counts.priority} Priority)</span>
               </div>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-xl flex items-center gap-3.5 backdrop-blur-md">
-            <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0 shadow-md">
+          {/* Card 4: Biochemical Synergy */}
+          <div
+            onClick={() => setKpiModalType('synergy')}
+            className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-indigo-500/40 hover:bg-slate-900/95 shadow-xl flex items-center gap-3.5 backdrop-blur-md cursor-pointer transition-all hover:scale-[1.01] group select-none"
+            title="Click for Biochemical Synergy Multipliers and paired modalities"
+          >
+            <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
               <Sparkles size={22} />
             </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-                Biochemical Synergy
-              </span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-xl sm:text-2xl font-black text-indigo-300 font-mono">
-                  {activeSynergyPairsList.length} Active
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                  Biochemical Synergy
+                </span>
+                <Info size={11} className="text-slate-500 group-hover:text-indigo-400 transition-colors shrink-0 ml-1" />
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-0.5 flex-wrap">
+                <span className="text-xl sm:text-2xl font-black text-white font-mono">
+                  {activeSynergyPairsList.length}
+                </span>
+                <span className="text-[10px] text-indigo-300 font-bold font-sans">
+                  Active Pairs
                 </span>
                 {totalSynergyBonusPoints > 0 && (
-                  <span className="text-[10px] text-emerald-400 font-bold">+{totalSynergyBonusPoints} pts</span>
+                  <span className="text-[10px] text-emerald-400 font-bold font-sans">
+                    +{totalSynergyBonusPoints} pts
+                  </span>
                 )}
               </div>
             </div>
@@ -939,6 +1154,8 @@ export default function TrackingPage() {
           </div>
         </div>
       )}
+      </>
+      )}
 
       {/* Schedule Modality Modal */}
       <ScheduleModalityModal
@@ -977,6 +1194,22 @@ export default function TrackingPage() {
           }}
         />
       )}
+
+      {/* KPI Deep-Dive & Explanation Modal */}
+      <KpiExplanationModal
+        isOpen={!!kpiModalType}
+        onClose={() => setKpiModalType(null)}
+        modalType={kpiModalType}
+        overallAdherencePct={overallAdherencePct}
+        totalRealizedRoi={totalRealizedRoi}
+        totalRealizedPoints={totalRealizedPoints}
+        totalPotentialPoints={totalPotentialPoints}
+        outcomeCount={outcomeDataList.length}
+        priorityOutcomeCount={counts.priority}
+        activeSynergyPairs={activeSynergyPairsList}
+        totalSynergyBonusPoints={totalSynergyBonusPoints}
+        onSelectFilter={(filter) => setSelectedFilter(filter)}
+      />
     </div>
   )
 }

@@ -243,7 +243,7 @@ export default function ProtocolOverviewHeaderCard({
       pathways: ['AMPK Cellular Sensing', 'Autophagy Signal Triggers', 'Mitochondrial Efficiency'],
       mechanism: `Synergistic combination of ${totalCount} targeted modalities operating across complementary physiological time windows for maximum healthspan ROI.`,
       references: [
-        { title: 'LEVL Protocols Longevity Science Engine', url: 'https://pubmed.ncbi.nlm.nih.gov/' }
+        { title: 'Hallmarks of Aging: An Expanding Universe (Cell 2023 Update)', url: 'https://pubmed.ncbi.nlm.nih.gov/36599349/' }
       ]
     }
   }

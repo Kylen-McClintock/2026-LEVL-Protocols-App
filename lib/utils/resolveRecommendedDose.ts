@@ -172,8 +172,10 @@ export function getProtocolSourceDetails(protoName?: string, modality?: Modality
     }
   }
 
-  // Fallback to modality's efficacy stats PubMed URL if available
-  const firstPubMedUrl = modality?.efficacy_stats?.find((e: any) => e.source_url)?.source_url || 'https://pubmed.ncbi.nlm.nih.gov/'
+  // Fallback to modality's efficacy stats PubMed URL or verified scientific citation
+  const { resolvePubMedCitation } = require('@/lib/tracking/scientificCitations')
+  const citation = resolvePubMedCitation(modality?.id, modality?.name)
+  const firstPubMedUrl = modality?.efficacy_stats?.find((e: any) => e.source_url)?.source_url || citation.pubMedUrl
   return {
     sourceUrl: firstPubMedUrl,
     fullProtocolInstructions: `${modName}: Prescribed at ${modDose}. ${modNotes}`

@@ -61,16 +61,25 @@ export interface NextBestActionRecommendation {
   actionType: 'add_to_today' | 'upgrade_cadence' | 'stack_synergy'
 }
 
+export interface EightyTwentyCandidate {
+  modality: Modality
+  effortMeta: EffortMetadata
+  missedCount: number
+  reasoning: string
+}
+
 export interface EightyTwentySimplificationRecommendation {
   type: 'eighty_twenty_simplification'
   culpritModality: Modality
   title: string
   problemHeadline: string
   simplificationReason: string
+  otherCandidates: EightyTwentyCandidate[]
   preservedCoreStack: string[]
   effortMeta: EffortMetadata
   actionType: 'bench_modality' | 'de_escalate_cadence'
 }
+
 
 /**
  * 1–5 Effort Matrix Normalization:
@@ -373,7 +382,8 @@ export function evaluateModalityLongevity(
  */
 export function evaluateUserAdherenceState(
   historyTasks: DailyProtocolTask[] = [],
-  streakDays: number = 0
+  streakDays: number = 0,
+  benchedModalityIds?: Set<string>
 ): UserAdherenceEvaluation {
   if (!historyTasks || historyTasks.length === 0) {
     return {
@@ -389,10 +399,32 @@ export function evaluateUserAdherenceState(
     }
   }
 
-  const totalScheduled = historyTasks.length
-  const completedTasks = historyTasks.filter(t => t.status === 'completed')
+  // Filter out intentionally benched and eliminated tasks so they don't penalize user adherence
+  const activeEvaluatedTasks = historyTasks.filter(t => {
+    const mId = t.modality_id || t.protocol_step?.modality_id
+    if (mId && benchedModalityIds && benchedModalityIds.has(mId)) return false
+    if (t.status_reason === 'Moved to Bench' || t.status === 'contraindicated') return false
+    return true
+  })
+
+  if (activeEvaluatedTasks.length === 0) {
+    return {
+      status: 'balanced',
+      completionRate: 100,
+      totalScheduled: 0,
+      totalCompleted: 0,
+      totalMissedOrSkipped: 0,
+      highFrictionSkippedCount: 0,
+      streakDays,
+      summaryHeadline: 'Stack Reset Baseline',
+      summaryDetails: 'Benched modalities removed from active adherence tracking.'
+    }
+  }
+
+  const totalScheduled = activeEvaluatedTasks.length
+  const completedTasks = activeEvaluatedTasks.filter(t => t.status === 'completed')
   const totalCompleted = completedTasks.length
-  const missedTasks = historyTasks.filter(t => t.status === 'skipped' || t.status === 'missed' || (t.status === 'pending' && t.scheduled_date < new Date().toISOString().split('T')[0]))
+  const missedTasks = activeEvaluatedTasks.filter(t => t.status === 'skipped' || t.status === 'missed' || (t.status === 'pending' && t.scheduled_date < new Date().toISOString().split('T')[0]))
   const totalMissedOrSkipped = missedTasks.length
 
   const completionRate = totalScheduled > 0 ? Math.round((totalCompleted / totalScheduled) * 100) : 100
@@ -493,7 +525,8 @@ export function generateNextBestActionRecommendation(
  */
 export function generateEightyTwentySimplificationRecommendation(
   activeTasks: DailyProtocolTask[],
-  allModalities: Modality[]
+  allModalities: Modality[],
+  benchedModalityIds?: Set<string>
 ): EightyTwentySimplificationRecommendation | null {
   if (!activeTasks || activeTasks.length === 0) return null
 
@@ -503,6 +536,10 @@ export function generateEightyTwentySimplificationRecommendation(
   activeTasks.forEach(t => {
     const m = (t as any).modality || t.protocol_step?.modality || (t as any).loose_modality
     if (!m || !m.id) return
+
+    // Skip already benched or eliminated modalities
+    if (benchedModalityIds && benchedModalityIds.has(m.id)) return
+    if (t.status_reason === 'Moved to Bench' || t.status === 'contraindicated') return
 
     const effort = getEffortMetadata(m)
     const isMissed = t.status === 'skipped' || t.status === 'missed'
@@ -525,12 +562,35 @@ export function generateEightyTwentySimplificationRecommendation(
 
   const culpritMod = topCulprit.modality
   const effortMeta = getEffortMetadata(culpritMod)
-
   // Identify preserved low-friction 80/20 core anchors
+
   const preservedCore = Array.from(activeModsMap.values())
     .filter(item => item.modality.id !== culpritMod.id && item.effortLevel <= 2)
     .map(item => item.modality.display_name || item.modality.name)
     .slice(0, 3)
+
+  // Build secondary candidates from remaining culprits (effortLevel >= 3 or missedCount > 0)
+
+  const otherCandidates: EightyTwentyCandidate[] = culprits
+    .slice(1)
+    .filter(item => item.effortLevel >= 3 || item.missedCount > 0)
+    .map(item => {
+      const eMeta = getEffortMetadata(item.modality)
+      const modName = item.modality.display_name || item.modality.name
+      let reason = ''
+      if (item.missedCount > 0) {
+        reason = `${item.missedCount} missed session${item.missedCount > 1 ? 's' : ''} detected. Benching ${modName} reduces high-friction daily resistance (${eMeta.shortLabel}) and restores habit momentum.`
+      } else {
+        reason = `High-effort demands (${eMeta.shortLabel}, ${eMeta.timeEstimate}). Benching ${modName} temporarily frees up time and cognitive bandwidth.`
+      }
+
+      return {
+        modality: item.modality,
+        effortMeta: eMeta,
+        missedCount: item.missedCount,
+        reasoning: reason
+      }
+    })
 
   return {
     type: 'eighty_twenty_simplification',
@@ -538,8 +598,10 @@ export function generateEightyTwentySimplificationRecommendation(
     title: `80/20 Stack Reset: Bench ${culpritMod.display_name || culpritMod.name}`,
     problemHeadline: `High-Friction Barrier: ${effortMeta.label} (${topCulprit.missedCount} Misses)`,
     simplificationReason: `You've experienced friction completing ${culpritMod.display_name || culpritMod.name}. Moving it to your Bench for 14 days eliminates 80% of daily resistance while preserving your core foundation.`,
+    otherCandidates,
     preservedCoreStack: preservedCore.length > 0 ? preservedCore : ['Morning Sunlight', 'Morning Stack', 'Hydration Target'],
     effortMeta,
     actionType: 'bench_modality'
   }
 }
+

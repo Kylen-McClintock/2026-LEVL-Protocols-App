@@ -74,6 +74,10 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
   const [negScreens, setNegScreens] = useState<string>(preferences['neg_screens'] !== undefined ? String(preferences['neg_screens']) : 'skip')
   const [negLateMeal, setNegLateMeal] = useState<string>(preferences['neg_late_meal'] !== undefined ? String(preferences['neg_late_meal']) : 'skip')
   const [negSugar, setNegSugar] = useState<string>(preferences['neg_sugar'] !== undefined ? String(preferences['neg_sugar']) : 'skip')
+  // Infradian Cycle States (Only relevant for Female < 52)
+  const [enableInfradian, setEnableInfradian] = useState<boolean>(profile.infradian_cycle_enabled || false)
+  const [lastPeriodStartDate, setLastPeriodStartDate] = useState<string>(profile.last_period_start_date || '')
+  const [cycleLengthDays, setCycleLengthDays] = useState<number>(profile.average_cycle_length_days || 28)
 
   // Auto-save logic
   useEffect(() => {
@@ -84,6 +88,8 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
       
       const finalSex = sexSelection === 'Other' ? customSex : sexSelection
       const finalDiet = dietSelection === 'Other' ? customDiet : dietSelection
+
+      const isFemaleEligible = finalSex === 'Female' && (!age || parseInt(age) < 52)
 
       const updatedPref = {
         ...preferences,
@@ -109,7 +115,10 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
         body_fat_percentage: bodyFat ? parseFloat(bodyFat) : null as any,
         baseline_sleep_quality_0_10: enableSleep ? sleepQuality : null as any,
         biological_sex: finalSex || null as any,
-        dietary_pattern: finalDiet || null as any
+        dietary_pattern: finalDiet || null as any,
+        infradian_cycle_enabled: isFemaleEligible ? enableInfradian : false,
+        last_period_start_date: isFemaleEligible && enableInfradian && lastPeriodStartDate ? lastPeriodStartDate : null as any,
+        average_cycle_length_days: isFemaleEligible && enableInfradian ? cycleLengthDays : null as any
       })
       setTimeout(() => setIsSaving(false), 500)
     }
@@ -125,6 +134,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
     enableSafety, safetyIndex,
     age, weight, bodyFat, sleepQuality, enableSleep,
     sexSelection, customSex, dietSelection, customDiet,
+    enableInfradian, lastPeriodStartDate, cycleLengthDays,
     negAlcohol, negNicotine, negSitting, negCaffeine, negScreens, negLateMeal, negSugar,
     profile.local_user_id
   ])
@@ -219,6 +229,71 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
             <input type="text" value={customSex} onChange={e => setCustomSex(e.target.value)} placeholder="Specify..." className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white mt-2 outline-none" />
           )}
         </div>
+
+        {/* Conditional Infradian & Menstrual Cycle Tracking Card (Only for Female < 52) */}
+        {sexSelection === 'Female' && (!age || parseInt(age) < 52) && (
+          <div className="space-y-3 pt-3 border-t border-rose-500/20 bg-rose-950/20 p-3.5 rounded-xl border border-rose-500/30 animate-in fade-in">
+            <div className="flex justify-between items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🌸</span>
+                <div>
+                  <h4 className="text-xs font-bold text-white">Infradian &amp; Menstrual Cycle Protocol Sync</h4>
+                  <p className="text-[10px] text-slate-300">
+                    Syncs cold exposure, sauna heat, fasting, and HRV baselines to your monthly hormonal rhythm.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEnableInfradian(!enableInfradian)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  enableInfradian
+                    ? 'bg-rose-600 text-white shadow-sm'
+                    : 'bg-slate-900 border border-white/10 text-slate-400 hover:text-white'
+                }`}
+              >
+                {enableInfradian ? 'Enabled' : 'Enable'}
+              </button>
+            </div>
+
+            {enableInfradian && (
+              <div className="space-y-3 pt-2 border-t border-white/5 text-xs animate-in fade-in">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-rose-300 font-bold mb-1">
+                      Last Period Start Date (Day 1)
+                    </label>
+                    <input
+                      type="date"
+                      value={lastPeriodStartDate}
+                      onChange={e => setLastPeriodStartDate(e.target.value)}
+                      className="w-full bg-slate-900 border border-rose-500/40 rounded-lg p-1.5 text-xs text-white focus:border-rose-400 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[10px] font-mono text-rose-300 font-bold mb-1">
+                      <span>Average Cycle Length</span>
+                      <span>{cycleLengthDays} Days</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="21"
+                      max="38"
+                      value={cycleLengthDays}
+                      onChange={e => setCycleLengthDays(parseInt(e.target.value))}
+                      className="w-full accent-rose-500 h-1.5 bg-slate-900 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-slate-400">
+                  💡 <strong>Smart Contextual Hotkey:</strong> When your period window approaches (~Day 26–28), LEVL will automatically surface a quick 1-tap period logger on your Today dashboard.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="space-y-2 pt-2 border-t border-white/5">
           <label className="block text-xs font-medium text-gray-400 mb-1">Dietary Pattern</label>

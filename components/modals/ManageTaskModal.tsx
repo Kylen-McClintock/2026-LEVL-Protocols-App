@@ -53,6 +53,7 @@ import {
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getCircadianTipForModality } from '@/lib/utils/circadianTimingTips'
 import { resolveRecommendedDose, ProtocolDoseContext } from '@/lib/utils/resolveRecommendedDose'
+import { resolvePubMedCitation } from '@/lib/tracking/scientificCitations'
 import { UserProfile } from '@/lib/types'
 import { isPeptideModality } from '@/lib/peptides/peptideCycleEngine'
 import PeptideTitrationPlanner from '@/components/peptides/PeptideTitrationPlanner'
@@ -1372,7 +1373,13 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
                         <span>Scientific Evidence &amp; Study Data</span>
                       </span>
                       <a
-                        href={(modality as any)?.pubmed_url || activeProtocolContext?.sourceUrl || 'https://pubmed.ncbi.nlm.nih.gov/'}
+                        href={
+                          (modality as any)?.pubmed_url && (modality as any).pubmed_url !== 'https://pubmed.ncbi.nlm.nih.gov/'
+                            ? (modality as any).pubmed_url
+                            : activeProtocolContext?.sourceUrl && activeProtocolContext.sourceUrl !== 'https://pubmed.ncbi.nlm.nih.gov/'
+                            ? activeProtocolContext.sourceUrl
+                            : resolvePubMedCitation((modality as any)?.id || task?.modality_id, (modality as any)?.name || (modality as any)?.display_name || task?.loose_modality?.name || task?.protocol_step?.modality?.name).pubMedUrl
+                        }
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-[11px] text-cyan-400 hover:underline flex items-center gap-1 font-mono"

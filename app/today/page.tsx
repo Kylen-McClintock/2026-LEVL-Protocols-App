@@ -45,6 +45,8 @@ import EnrollProtocolModal from '@/components/modals/EnrollProtocolModal'
 import { SmartRescheduleModal, RescheduleActionType } from '@/components/modals/SmartRescheduleModal'
 import CustomizeModalityOutcomesModal from '@/components/modals/CustomizeModalityOutcomesModal'
 import QuickHotkeyGrid from '@/components/quicklog/QuickHotkeyGrid'
+import { InfradianAdaptiveBanner } from '@/components/banners/InfradianAdaptiveBanner'
+import { calculateInfradianStatus } from '@/lib/tracking/infradianEngine'
 
 import { calculateDailyEfficacySummary } from '@/lib/data/historicalAnalysis'
 import { getScoredLongevityTips } from '@/lib/ranking/tipPersonalization'
@@ -207,6 +209,10 @@ function TodayPageContent() {
     const dStr = format(targetDate, 'yyyy-MM-dd')
     router.push(`/today?date=${dStr}`)
   }
+
+  const infradianStatus = useMemo(() => {
+    return calculateInfradianStatus(profile, dateStr)
+  }, [profile, dateStr])
 
   // Mobile Pull to Refresh State
   const [pullDistance, setPullDistance] = useState(0)
@@ -493,13 +499,22 @@ function TodayPageContent() {
     }
   }
 
-  const handleMoveToBench = async (task: DailyProtocolTask) => {
+  const handleMoveToBench = async (taskOrModalityId: DailyProtocolTask | string) => {
     if (!profile) return
-    const mId = task.modality_id || task.protocol_step?.modality_id
+    const localUserId = profile.local_user_id
+    let mId: string | undefined
+    let taskId: string | undefined
+
+    if (typeof taskOrModalityId === 'string') {
+      mId = taskOrModalityId
+    } else if (taskOrModalityId && typeof taskOrModalityId === 'object') {
+      mId = taskOrModalityId.modality_id || taskOrModalityId.protocol_step?.modality_id
+      taskId = taskOrModalityId.id
+    }
+
     if (mId) {
-      const localUserId = profile.local_user_id
-      const { moveModalityToBench } = await import('@/lib/data')
-      await moveModalityToBench(localUserId, mId, task.id)
+      const { moveModalityToBench, getBenchItems } = await import('@/lib/data')
+      await moveModalityToBench(localUserId, mId, taskId)
       await refreshTodayTasks()
       const bItems = await getBenchItems(localUserId)
       setBenchItems(bItems)
@@ -1634,6 +1649,27 @@ function TodayPageContent() {
           />
         )}
 
+        {/* Infradian & Menstrual Cycle Adaptive Protocol Banner (When enabled for Female < 52) */}
+        {calendarViewMode === 'today' && infradianStatus && infradianStatus.enabled && (
+          <div className="mb-6">
+            <InfradianAdaptiveBanner
+              status={infradianStatus}
+              localUserId={profile?.local_user_id || getLocalUserId()}
+              userProfile={profile}
+              targetDate={dateStr}
+              onAddModalityToToday={async (modalityName: string) => {
+                if (profile) {
+                  await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityName)
+                  await refreshTodayTasks()
+                }
+              }}
+              onStatusUpdated={() => {
+                refreshTodayTasks()
+              }}
+            />
+          </div>
+        )}
+
         {/* Multi-Day Calendar View Renders */}
         {calendarViewMode === '3day' && (
           <ThreeDaySplitView
@@ -1726,30 +1762,6 @@ function TodayPageContent() {
                 isCollapsedByDefault={isPastDate}
               />
             </div>
-
-            {/* 5b. Dynamic Adaptive Recommendation (Next Best Action or 80/20 Simplification) */}
-            {allModalities.length > 0 && tasks.length > 0 && !isPastDate && (
-              <div className="mb-4">
-                <AdaptiveRecommendationBanner
-                  tasks={tasks}
-                  allModalities={allModalities}
-                  userProfile={profile}
-                  streakDays={0}
-                  onAddToToday={async (modalityId: string) => {
-                    if (profile) {
-                      await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
-                      await refreshTodayTasks()
-                    }
-                  }}
-                  onMoveToBench={async (modalityId: string) => {
-                    if (profile) {
-                      await addToBench(profile.local_user_id, modalityId)
-                      await refreshTodayTasks()
-                    }
-                  }}
-                />
-              </div>
-            )}
 
             {/* Full-Width AI Longevity Coach Input Bar */}
             <div className="mb-6">
@@ -2127,6 +2139,28 @@ function TodayPageContent() {
                 ) : (
                   renderTimelineBlocks()
                 )}
+              </div>
+            )}
+
+            {/* Bottom 80/20 Stack Simplification & Adaptive Recommendation Banner */}
+            {allModalities.length > 0 && tasks.length > 0 && !isPastDate && (
+              <div className="mt-8 pt-6 border-t border-white/10">
+                <AdaptiveRecommendationBanner
+                  tasks={tasks}
+                  allModalities={allModalities}
+                  userProfile={profile}
+                  streakDays={0}
+                  benchItems={benchItems}
+                  onAddToToday={async (modalityId: string) => {
+                    if (profile) {
+                      await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
+                      await refreshTodayTasks()
+                    }
+                  }}
+                  onMoveToBench={async (modalityId: string) => {
+                    await handleMoveToBench(modalityId)
+                  }}
+                />
               </div>
             )}
 

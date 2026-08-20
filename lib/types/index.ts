@@ -29,8 +29,63 @@ export type UserProfile = {
   resistance_training_days?: string[]
   fitness_training_level?: string
   enabled_hotkeys?: QuickHotkeyConfig[]
+  // Infradian & Menstrual Cycle Optimization
+  infradian_cycle_enabled?: boolean
+  last_period_start_date?: string // 'YYYY-MM-DD'
+  average_cycle_length_days?: number // default 28
   created_at: string
   updated_at: string
+}
+
+export type PeriodFlowLevel = 'none' | 'spotting' | 'light' | 'medium' | 'heavy'
+export type PeriodPainLevel = 0 | 1 | 2 | 3 // 0: None, 1: Mild, 2: Moderate, 3: Severe
+export type InfradianPhase = 'menstrual' | 'follicular' | 'ovulatory' | 'early_luteal' | 'late_luteal'
+
+export interface PeriodDailyLogEntry {
+  id: string
+  local_user_id: string
+  date: string // 'YYYY-MM-DD'
+  is_period_day: boolean
+  is_period_start?: boolean
+  flow_level: PeriodFlowLevel
+  pain_level: PeriodPainLevel
+  symptoms: string[] // e.g. ['cramps', 'headache', 'low_energy', 'bloating', 'energized']
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface InfradianProtocolModification {
+  id: string
+  category: 'cold_plunge' | 'sauna' | 'fasting' | 'exercise' | 'nutrition_supplement'
+  type: 'boost' | 'modify' | 'caution' | 'add'
+  title: string
+  reason: string
+  suggestedModalityName?: string
+  suggestedAction?: string
+  badgeText: string
+  colorTheme: 'emerald' | 'amber' | 'cyan' | 'rose' | 'purple'
+}
+
+export interface InfradianStatus {
+  enabled: boolean
+  currentPhase: InfradianPhase
+  phaseName: string
+  phaseDescription: string
+  cycleDay: number
+  cycleLength: number
+  isPeriodActive: boolean
+  isPeriodExpectedSoon: boolean // within 3 days of predicted start
+  daysUntilNextPeriod: number
+  todayLog?: PeriodDailyLogEntry
+  hormonalProfile: {
+    estrogen: 'low' | 'rising' | 'peak' | 'moderate' | 'dropping'
+    progesterone: 'low' | 'rising' | 'peak' | 'dropping'
+    basalBodyTempOffset: string
+    hrvBaselineOffset: string
+    insulinSensitivity: 'optimal' | 'high' | 'reduced'
+  }
+  protocolModifications: InfradianProtocolModification[]
 }
 
 export interface QuickHotkeyPreset {

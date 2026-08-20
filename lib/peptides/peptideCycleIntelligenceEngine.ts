@@ -7,6 +7,7 @@ import {
   PEPTIDE_PK_REGISTRY
 } from '@/lib/peptides/peptideCycleEngine'
 import { PROTOCOL_LITERATURE_BENCHMARKS } from '@/lib/peptides/peptideEffectivenessEngine'
+import { resolvePubMedCitation } from '@/lib/tracking/scientificCitations'
 
 export interface CycleQualityScores {
   overallScore: number // 0-100
@@ -505,7 +506,9 @@ export function evaluatePeptideCycleIntelligence({
       targetReceptors: (modalityObj as any)?.peptide_metadata?.target_receptors || targets,
       statedGoalFit: statedGoalMatch,
       evidenceLevel: cycle.evidenceLevel || 'High (Clinical Evidence)',
-      pubmedUrl: cycle.pubmedUrl || 'https://pubmed.ncbi.nlm.nih.gov/',
+      pubmedUrl: cycle.pubmedUrl && cycle.pubmedUrl !== 'https://pubmed.ncbi.nlm.nih.gov/'
+        ? cycle.pubmedUrl
+        : resolvePubMedCitation(cycle.modalityId, cycle.modalityName).pubMedUrl,
       weeklyFrequency: cycle.dosageSpec || 'Scheduled Pulse',
       timingSlot: cycle.timingSlot || 'evening',
       isRedundant: false

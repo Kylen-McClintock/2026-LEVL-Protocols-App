@@ -24,22 +24,23 @@ interface DosageBadgeButtonProps {
   onSavePersonalization?: (customDose: string, customTiming: string, notes?: string) => void
 }
 
-function formatShortSourceLabel(label: string): string {
-  if (!label) return ''
-  const lower = label.toLowerCase()
-  if (lower.includes('valter longo') || lower.includes('longo')) return 'Longo Protocol'
-  if (lower.includes('bryan johnson') || lower.includes('blueprint')) return 'Blueprint 2026'
-  if (lower.includes('peter attia') || lower.includes('attia')) return 'Attia Protocol'
-  if (lower.includes('rhonda patrick') || lower.includes('rhonda')) return 'Patrick Protocol'
-  if (lower.includes('huberman')) return 'Huberman Protocol'
-  if (lower.includes('brecka')) return 'Brecka Protocol'
-  if (lower.includes('wim hof')) return 'Wim Hof'
-  if (lower.includes('dayspring')) return 'Dayspring'
+function cleanDosagePillText(text: string): string {
+  if (!text) return ''
+  let cleaned = text.trim()
 
-  if (label.length > 20) {
-    return label.substring(0, 18) + '…'
+  // If text is like "Conservative starter dose (100 mg)." -> extract "100 mg"
+  const parenthesizedMatch = cleaned.match(/starter\s*dose.*?\((\d+[\d.,]*\s*[a-zA-Z°]+(?:\s*[–—/-]\s*\d+[\d.,]*\s*[a-zA-Z°]+)?)\)/i)
+  if (parenthesizedMatch && parenthesizedMatch[1]) {
+    return parenthesizedMatch[1].trim()
   }
-  return label
+
+  // Remove leading protocol / dose type prefixes (e.g. "Starter Dose: 250mg", "Blueprint 2026: 500mg", "Prescribed: 100mcg")
+  cleaned = cleaned.replace(/^(starter\s*dose|conservative\s*starter\s*dose|starter|blueprint\s*\d*|prescribed\s*dose|target\s*dose|standard\s*dose|protocol\s*dose)[:\-–—\s]+/i, '')
+
+  // Remove trailing parenthesized protocol or dose type descriptions (e.g. "500 mg (Blueprint 2026)", "250 mg (Starter Dose)")
+  cleaned = cleaned.replace(/\s*\((starter\s*dose|blueprint|longo|attia|huberman|patrick|brecka|dayspring|sensitivity|protocol\s*\d*|standard)[^)]*\)/gi, '')
+
+  return cleaned.trim()
 }
 
 export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
@@ -101,8 +102,6 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
     indigo: 'bg-indigo-950/70 border-indigo-700/60 text-indigo-300 hover:bg-indigo-900/80'
   }[resolved.badgeColor || 'blue']
 
-  const shortLabel = formatShortSourceLabel(resolved.sourceLabel)
-
   const modalElement = isModalOpen && (
     <ManageTaskModal
       isOpen={isModalOpen}
@@ -119,6 +118,7 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
   )
 
   const { formatText: formatTemp } = useTemperatureUnit()
+  const displayDoseText = cleanDosagePillText(activeDoseText || resolved.recommendedDoseText)
 
   return (
     <>
@@ -129,7 +129,7 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
           setIsModalOpen(true)
         }}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-semibold tracking-wide transition-all shadow-sm group max-w-full overflow-hidden leading-tight ${colorStyles} ${className}`}
-        title={`${formatTemp(resolved.recommendedDoseText)} (${resolved.sourceLabel}) - Click to customize`}
+        title={`${formatTemp(displayDoseText)} (${resolved.sourceLabel}) - Click to customize`}
       >
         <span className="shrink-0">
           {resolved.source === 'sensitivity_starter' && <ShieldCheck className="w-3 h-3 text-emerald-400" />}
@@ -137,10 +137,7 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
           {resolved.source === 'personalized_target' && <CheckCircle2 className="w-3 h-3 text-blue-400" />}
         </span>
 
-        <span className="font-mono text-white text-[11px] font-bold truncate max-w-[200px] sm:max-w-[320px]">{formatTemp(activeDoseText)}</span>
-        {shortLabel && (
-          <span className="text-[10px] opacity-90 font-sans font-medium shrink-0">({shortLabel})</span>
-        )}
+        <span className="font-mono text-white text-[11px] font-bold truncate">{formatTemp(displayDoseText)}</span>
 
         <Sliders className="w-3 h-3 ml-0.5 opacity-80 group-hover:opacity-100 transition-opacity shrink-0" />
       </button>

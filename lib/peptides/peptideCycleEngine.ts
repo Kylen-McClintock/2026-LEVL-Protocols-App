@@ -1,6 +1,7 @@
 import { DailyProtocolTask, Modality, UserProfile, DailyWellbeingCheckin } from '@/lib/types'
 import { BiomarkerMeasurementRecord } from '@/lib/aging-models/bioAgeTypes'
 import { format, differenceInDays, addDays, isAfter, isBefore, isSameDay } from 'date-fns'
+import { resolvePubMedCitation } from '@/lib/tracking/scientificCitations'
 
 export interface PeptideCycleSummary {
   protocolId: string
@@ -577,7 +578,9 @@ export function extractPeptideCycles(
       pkConfidence: pkConfig?.confidence || 'Moderate (Translational / Animal PK)',
       regulatoryStatus: pkConfig?.regulatoryStatus || 'Compounded Bioactive',
       evidenceLevel: (m as any)?.evidence_level || 'Moderate',
-      pubmedUrl: (m as any)?.pubmed_url || 'https://pubmed.ncbi.nlm.nih.gov/',
+      pubmedUrl: (m as any)?.pubmed_url && (m as any).pubmed_url !== 'https://pubmed.ncbi.nlm.nih.gov/'
+        ? (m as any).pubmed_url
+        : resolvePubMedCitation(firstTask.modality_id, m?.display_name || m?.name || firstTask.protocol_step?.modality?.name || firstTask.loose_modality?.name).pubMedUrl,
       contraindications: pkConfig?.contraindications || ['Consult functional physician prior to initiation'],
       synergyNotes: pkConfig?.synergyNotes || ['Maintain consistent daily timing for optimal circadian alignment'],
       administrationTips: pkConfig?.administrationTips || ['Store reconstituted solution in refrigerated compartment (2°C–8°C)'],

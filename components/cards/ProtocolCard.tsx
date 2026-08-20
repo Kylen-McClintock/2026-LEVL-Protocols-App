@@ -49,18 +49,24 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
 
   const handleBench = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    setIsAddingBench(true)
-    await onAddToBench(protocol.id)
-    setIsAddingBench(false)
     setAddedToBench(true)
+    setIsAddingBench(true)
+    try {
+      await onAddToBench(protocol.id)
+    } finally {
+      setIsAddingBench(false)
+    }
   }
 
   const handleToday = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    setIsAddingToday(true)
-    await onAddToToday(protocol.id)
-    setIsAddingToday(false)
     setAddedToToday(true)
+    setIsAddingToday(true)
+    try {
+      await onAddToToday(protocol.id)
+    } finally {
+      setIsAddingToday(false)
+    }
   }
 
   // Group steps by stack_group or timing_slot

@@ -323,34 +323,71 @@ export async function getCatalogMaps() {
 }
 
 export async function getOrCreateUserProfile(localUserId: string): Promise<UserProfile | null> {
-  if (!supabase) return null
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('*')
-    .eq('local_user_id', localUserId)
-    .single()
-
-  if (data) return data as UserProfile
-
-  if (error && error.code !== 'PGRST116') {
-    // some other error
-    console.error('Error fetching profile:', error)
-    return null
+  let cached: UserProfile | null = null
+  if (typeof window !== 'undefined' && localUserId) {
+    try {
+      const raw = localStorage.getItem(`levl_user_profile_${localUserId}`)
+      if (raw) cached = JSON.parse(raw) as UserProfile
+    } catch (e) {}
   }
 
-  // Create it
-  const { data: newProfile, error: insertError } = await supabase
-    .from('user_profiles')
-    .insert([{ local_user_id: localUserId }])
-    .select()
-    .single()
+  if (!supabase) return cached
 
-  if (insertError) {
-    console.error('Error creating profile:', insertError)
-    return null
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('local_user_id', localUserId)
+      .maybeSingle()
+
+    if (data) {
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`levl_user_profile_${localUserId}`, JSON.stringify(data))
+        } catch (e) {}
+      }
+      return data as UserProfile
+    }
+
+    if (error && error.code !== 'PGRST116') {
+      console.warn('Notice fetching profile from Supabase:', error)
+      return cached
+    }
+
+    // If cached profile exists locally, persist it to Supabase
+    if (cached) {
+      const { data: syncedProfile } = await supabase
+        .from('user_profiles')
+        .upsert({ ...cached, local_user_id: localUserId }, { onConflict: 'local_user_id' })
+        .select()
+        .maybeSingle()
+      if (syncedProfile) return syncedProfile as UserProfile
+      return cached
+    }
+
+    // Create a new blank profile
+    const { data: newProfile, error: insertError } = await supabase
+      .from('user_profiles')
+      .insert([{ local_user_id: localUserId }])
+      .select()
+      .maybeSingle()
+
+    if (insertError) {
+      console.warn('Notice creating initial profile in Supabase:', insertError)
+      return cached
+    }
+
+    if (newProfile && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`levl_user_profile_${localUserId}`, JSON.stringify(newProfile))
+      } catch (e) {}
+    }
+
+    return (newProfile as UserProfile) || cached
+  } catch (err) {
+    console.warn('Exception in getOrCreateUserProfile:', err)
+    return cached
   }
-
-  return newProfile as UserProfile
 }
 
 export async function updateUserProfile(localUserId: string, updates: Partial<UserProfile>) {
@@ -918,8 +955,6 @@ export async function createDailyTask(localUserId: string, date: string, modalit
     }
   }
 
-  const tasksToInsert = []
-  
   // Create tasks for the next 30 days based on cadence
   const modalityName = modality?.name?.toLowerCase() || ''
   const freqText = modality?.frequency?.toLowerCase() || ''
@@ -939,28 +974,35 @@ export async function createDailyTask(localUserId: string, date: string, modalit
   const [year, month, day] = date.split('-').map(Number)
   const localStartDate = new Date(year, month - 1, day)
 
+  const targetDateStrings: string[] = []
   for (let i = 0; i < 30; i += stepDays) {
     const targetDate = new Date(localStartDate)
     targetDate.setDate(localStartDate.getDate() + i)
-    const targetDateStr = format(targetDate, 'yyyy-MM-dd')
-    
-    const { data: existing } = await supabase
-      .from('daily_protocol_tasks')
-      .select('id')
-      .eq('local_user_id', localUserId)
-      .eq('scheduled_date', targetDateStr)
-      .eq('modality_id', effectiveModalityId)
-      .maybeSingle()
+    targetDateStrings.push(format(targetDate, 'yyyy-MM-dd'))
+  }
 
-    if (existing) {
-      await supabase
-        .from('daily_protocol_tasks')
-        .update({
-          status: 'pending',
-          timing_slot: timing_slot,
-          status_reason: null
-        })
-        .eq('id', existing.id)
+  // 1 single batch query to check existing tasks across all target dates
+  const { data: existingTasks } = await supabase
+    .from('daily_protocol_tasks')
+    .select('id, scheduled_date, status')
+    .eq('local_user_id', localUserId)
+    .eq('modality_id', effectiveModalityId)
+    .in('scheduled_date', targetDateStrings)
+
+  const existingDateMap = new Map<string, any>()
+  if (existingTasks) {
+    existingTasks.forEach(t => existingDateMap.set(t.scheduled_date, t))
+  }
+
+  const tasksToInsert: any[] = []
+  const idsToReactivate: string[] = []
+
+  targetDateStrings.forEach(targetDateStr => {
+    if (existingDateMap.has(targetDateStr)) {
+      const existing = existingDateMap.get(targetDateStr)
+      if (existing.status !== 'pending' && existing.status !== 'completed') {
+        idsToReactivate.push(existing.id)
+      }
     } else {
       tasksToInsert.push({
         local_user_id: localUserId, 
@@ -970,21 +1012,35 @@ export async function createDailyTask(localUserId: string, date: string, modalit
         status: 'pending'
       })
     }
+  })
+
+  let insertedTasks: any[] = []
+
+  if (idsToReactivate.length > 0) {
+    await supabase
+      .from('daily_protocol_tasks')
+      .update({
+        status: 'pending',
+        timing_slot: timing_slot,
+        status_reason: null
+      })
+      .in('id', idsToReactivate)
   }
 
   if (tasksToInsert.length > 0) {
-    const { data, error } = await supabase
+    const { data: inserted, error: insertError } = await supabase
       .from('daily_protocol_tasks')
       .insert(tasksToInsert)
       .select()
-      
-    if (error) {
-      console.warn('Error inserting loose task:', error?.message || error)
-      return null
+
+    if (insertError) {
+      console.warn('Error inserting loose tasks batch:', insertError?.message || insertError)
+    } else if (inserted) {
+      insertedTasks = inserted
     }
-    return data || []
   }
-  return []
+
+  return insertedTasks
 }
 
 /**
@@ -996,6 +1052,19 @@ export async function addModalityOrProtocolToToday(localUserId: string, date: st
   const cleanQuery = nameOrId.trim()
   const lowerQuery = cleanQuery.toLowerCase().replace(/_/g, ' ')
   const slugQuery = cleanQuery.toLowerCase().replace(/[^a-z0-9]+/g, '_')
+
+  // Direct fast check for single modality by ID
+  const directMod = await getModalityById(cleanQuery)
+  if (directMod) {
+    const res = await createDailyTask(localUserId, date, directMod.id)
+    return !!res
+  }
+
+  // Direct fast check for protocol by ID
+  const directProto = await getProtocolByIdWithSteps(cleanQuery)
+  if (directProto) {
+    return await addProtocolToToday(localUserId, date, directProto.id)
+  }
 
   // 1. Check if it matches an existing Protocol
   const allProtocols = await getProtocols()
@@ -3427,14 +3496,14 @@ export async function eliminateModality(
 }
 
 export async function moveModalityToBench(localUserId: string, modalityId: string, currentTaskId?: string) {
-  if (!supabase) return false
+  if (!supabase || !localUserId || !modalityId) return false
 
   const { data: existing } = await supabase
     .from('user_bench_items')
     .select('*')
     .eq('local_user_id', localUserId)
     .eq('modality_id', modalityId)
-    .single()
+    .maybeSingle()
 
   if (existing) {
     await supabase.from('user_bench_items').update({ status: 'benched', pinned: false }).eq('id', existing.id)
@@ -3447,7 +3516,7 @@ export async function moveModalityToBench(localUserId: string, modalityId: strin
     }])
   }
 
-  // Update all pending daily protocol tasks for this modality to skipped
+  // Update all pending daily protocol tasks for this modality to skipped with status_reason
   await supabase
     .from('daily_protocol_tasks')
     .update({ status: 'skipped', status_reason: 'Moved to Bench' })
@@ -3456,7 +3525,10 @@ export async function moveModalityToBench(localUserId: string, modalityId: strin
     .eq('status', 'pending')
 
   if (currentTaskId) {
-    await supabase.from('daily_protocol_tasks').update({ status: 'skipped', status_reason: 'Moved to Bench' }).eq('id', currentTaskId)
+    await supabase
+      .from('daily_protocol_tasks')
+      .update({ status: 'skipped', status_reason: 'Moved to Bench' })
+      .eq('id', currentTaskId)
   }
 
   return true

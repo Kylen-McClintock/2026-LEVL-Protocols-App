@@ -562,105 +562,105 @@ export default function DailyWellbeingCheckin({
     const lastFoodVal = initialData?.last_food_time ?? null
 
     return (
-      <div className="glass-card p-4 rounded-2xl mb-6 border border-levl-accent/20 bg-slate-950/60 shadow-xl space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <h3 className="font-bold text-sm text-white uppercase tracking-wider flex items-center gap-2">
-            <div className={`w-2.5 h-2.5 rounded-full ${initialData ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-amber-400'}`} />
-            <span>Wellbeing Check-in ({date.toLocaleDateString()})</span>
+      <div className="glass-card py-2.5 px-3 sm:px-4 rounded-xl mb-4 border border-levl-accent/20 bg-slate-950/60 shadow-xl space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider flex items-center gap-2 truncate">
+            <div className={`w-2 h-2 rounded-full shrink-0 ${initialData ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-amber-400'}`} />
+            <span className="truncate">Wellbeing Check-in ({date.toLocaleDateString()})</span>
           </h3>
           <button
             type="button"
             onClick={() => setIsEditing(true)}
-            className="text-xs font-bold text-emerald-300 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+            className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
           >
-            ✏️ {initialData ? 'Edit Historical Check-in' : 'Log Past Check-in'}
+            ✏️ {initialData ? 'Edit' : 'Log'}
           </button>
         </div>
 
         {initialData ? (
-          <div className="space-y-3 pt-1">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-xs">
               {/* MOOD CARD */}
               <div 
-                className={`p-3 rounded-xl border transition-all ${moodCfg ? moodCfg.borderColor : 'border-white/10'}`}
+                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${moodCfg ? moodCfg.borderColor : 'border-white/10'}`}
                 style={{ backgroundColor: moodCfg ? `${moodCfg.accentHex}15` : 'rgba(0,0,0,0.3)' }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Mood</span>
+                <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                  <span>Mood</span>
                   {moodCfg && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${moodCfg.badgeBg}`}>
+                    <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${moodCfg.badgeBg}`}>
                       {moodCfg.qualityLabel}
                     </span>
                   )}
                 </div>
-                <div className="flex items-baseline gap-1 mt-1.5">
-                  <span className={`font-mono font-black text-lg ${moodCfg ? moodCfg.textColor : 'text-white'}`}>
+                <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                  <span className={`font-mono font-black text-sm sm:text-base ${moodCfg ? moodCfg.textColor : 'text-white'}`}>
                     {moodVal != null ? moodVal : '—'}
                   </span>
-                  <span className="text-gray-500 text-xs font-mono">/ 10</span>
+                  <span className="text-gray-500 text-[10px] font-mono">/10</span>
                 </div>
               </div>
 
               {/* ENERGY CARD */}
               <div 
-                className={`p-3 rounded-xl border transition-all ${energyCfg ? energyCfg.borderColor : 'border-white/10'}`}
+                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${energyCfg ? energyCfg.borderColor : 'border-white/10'}`}
                 style={{ backgroundColor: energyCfg ? `${energyCfg.accentHex}15` : 'rgba(0,0,0,0.3)' }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Energy</span>
+                <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                  <span>Energy</span>
                   {energyCfg && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${energyCfg.badgeBg}`}>
+                    <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${energyCfg.badgeBg}`}>
                       {energyCfg.qualityLabel}
                     </span>
                   )}
                 </div>
-                <div className="flex items-baseline gap-1 mt-1.5">
-                  <span className={`font-mono font-black text-lg ${energyCfg ? energyCfg.textColor : 'text-white'}`}>
+                <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                  <span className={`font-mono font-black text-sm sm:text-base ${energyCfg ? energyCfg.textColor : 'text-white'}`}>
                     {energyVal != null ? energyVal : '—'}
                   </span>
-                  <span className="text-gray-500 text-xs font-mono">/ 10</span>
+                  <span className="text-gray-500 text-[10px] font-mono">/10</span>
                 </div>
               </div>
 
               {/* STRESS CARD */}
               <div 
-                className={`p-3 rounded-xl border transition-all ${stressCfg ? stressCfg.borderColor : 'border-white/10'}`}
+                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${stressCfg ? stressCfg.borderColor : 'border-white/10'}`}
                 style={{ backgroundColor: stressCfg ? `${stressCfg.accentHex}15` : 'rgba(0,0,0,0.3)' }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Stress</span>
+                <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                  <span>Stress</span>
                   {stressCfg && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${stressCfg.badgeBg}`}>
+                    <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${stressCfg.badgeBg}`}>
                       {stressCfg.qualityLabel}
                     </span>
                   )}
                 </div>
-                <div className="flex items-baseline gap-1 mt-1.5">
-                  <span className={`font-mono font-black text-lg ${stressCfg ? stressCfg.textColor : 'text-white'}`}>
+                <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                  <span className={`font-mono font-black text-sm sm:text-base ${stressCfg ? stressCfg.textColor : 'text-white'}`}>
                     {stressVal != null ? stressVal : '—'}
                   </span>
-                  <span className="text-gray-500 text-xs font-mono">/ 10</span>
+                  <span className="text-gray-500 text-[10px] font-mono">/10</span>
                 </div>
               </div>
 
               {/* SLEEP CARD */}
               <div 
-                className={`p-3 rounded-xl border transition-all ${sleepCfg ? sleepCfg.borderColor : 'border-white/10'}`}
+                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${sleepCfg ? sleepCfg.borderColor : 'border-white/10'}`}
                 style={{ backgroundColor: sleepCfg ? `${sleepCfg.accentHex}15` : 'rgba(0,0,0,0.3)' }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Sleep</span>
+                <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                  <span>Sleep</span>
                   {sleepCfg && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${sleepCfg.badgeBg}`}>
+                    <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${sleepCfg.badgeBg}`}>
                       {sleepCfg.qualityLabel}
                     </span>
                   )}
                 </div>
-                <div className="flex items-baseline gap-1 mt-1.5">
-                  <span className={`font-mono font-black text-lg ${sleepCfg ? sleepCfg.textColor : 'text-white'}`}>
+                <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                  <span className={`font-mono font-black text-sm sm:text-base ${sleepCfg ? sleepCfg.textColor : 'text-white'}`}>
                     {sleepVal != null ? sleepVal : '—'}
                   </span>
-                  <span className="text-gray-500 text-xs font-mono">/ 10</span>
+                  <span className="text-gray-500 text-[10px] font-mono">/10</span>
                 </div>
               </div>
             </div>
@@ -739,15 +739,15 @@ export default function DailyWellbeingCheckin({
     <>
       {/* 🌅 MORNING CHECK-IN CARD */}
       {(isSaved && !isEditing) || isCollapsedAll ? (
-        <div className="glass-card p-4 rounded-2xl mb-6 border border-emerald-500/30 bg-emerald-950/20 animate-in fade-in space-y-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <div className={`w-2.5 h-2.5 rounded-full ${isSaved ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-              <span className="text-white font-bold text-sm">
+        <div className="glass-card py-2.5 px-3 sm:px-4 rounded-xl mb-4 border border-emerald-500/30 bg-emerald-950/20 animate-in fade-in space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className={`w-2 h-2 rounded-full shrink-0 ${isSaved ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+              <span className="text-white font-bold text-xs sm:text-sm truncate">
                 {isSaved ? 'Morning Check-in Complete' : 'Morning Check-in (Collapsed)'}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -755,9 +755,10 @@ export default function DailyWellbeingCheckin({
                   setOutcomesModalMode("morning")
                   setIsOutcomesModalOpen(true)
                 }}
-                className="text-xs font-bold text-gray-200 bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                className="text-[11px] font-semibold text-gray-300 hover:text-white bg-white/10 hover:bg-white/15 border border-white/15 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm"
+                title="Edit tracked outcomes"
               >
-                <Sliders size={13} /> Edit Tracked Outcomes
+                <Sliders size={12} /> <span className="hidden sm:inline">Tracked Outcomes</span>
               </button>
               <button
                 type="button"
@@ -765,70 +766,96 @@ export default function DailyWellbeingCheckin({
                   setIsCollapsedAll(false)
                   setIsEditing(true)
                 }}
-                className="text-xs font-bold text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
               >
-                <ChevronDown size={14} /> {isSaved ? 'Edit Morning Ratings' : 'Expand Check-in'}
+                <ChevronDown size={12} /> {isSaved ? 'Edit' : 'Expand'}
               </button>
             </div>
           </div>
           
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-xs">
             <div 
-              className={`p-2.5 rounded-xl border transition-all ${currentMoodCfg.borderColor}`}
+              className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${currentMoodCfg.borderColor}`}
               style={{ backgroundColor: `${currentMoodCfg.accentHex}15` }}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Mood</span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${currentMoodCfg.badgeBg}`}>{currentMoodCfg.qualityLabel}</span>
+              <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                <span>Mood</span>
+                <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${currentMoodCfg.badgeBg}`}>{currentMoodCfg.qualityLabel}</span>
               </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className={`font-mono font-black text-base ${currentMoodCfg.textColor}`}>{mood}</span>
-                <span className="text-gray-500 text-xs font-mono">/ 10</span>
+              <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                <span className={`font-mono font-black text-sm sm:text-base ${currentMoodCfg.textColor}`}>{mood}</span>
+                <span className="text-gray-500 text-[10px] font-mono">/10</span>
               </div>
             </div>
 
             <div 
-              className={`p-2.5 rounded-xl border transition-all ${currentEnergyCfg.borderColor}`}
+              className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${currentEnergyCfg.borderColor}`}
               style={{ backgroundColor: `${currentEnergyCfg.accentHex}15` }}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Energy</span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${currentEnergyCfg.badgeBg}`}>{currentEnergyCfg.qualityLabel}</span>
+              <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                <span>Energy</span>
+                <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${currentEnergyCfg.badgeBg}`}>{currentEnergyCfg.qualityLabel}</span>
               </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className={`font-mono font-black text-base ${currentEnergyCfg.textColor}`}>{energy}</span>
-                <span className="text-gray-500 text-xs font-mono">/ 10</span>
+              <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                <span className={`font-mono font-black text-sm sm:text-base ${currentEnergyCfg.textColor}`}>{energy}</span>
+                <span className="text-gray-500 text-[10px] font-mono">/10</span>
               </div>
             </div>
 
             <div 
-              className={`p-2.5 rounded-xl border transition-all ${currentStressCfg.borderColor}`}
+              className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${currentStressCfg.borderColor}`}
               style={{ backgroundColor: `${currentStressCfg.accentHex}15` }}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Stress</span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${currentStressCfg.badgeBg}`}>{currentStressCfg.qualityLabel}</span>
+              <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                <span>Stress</span>
+                <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${currentStressCfg.badgeBg}`}>{currentStressCfg.qualityLabel}</span>
               </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className={`font-mono font-black text-base ${currentStressCfg.textColor}`}>{stress}</span>
-                <span className="text-gray-500 text-xs font-mono">/ 10</span>
+              <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                <span className={`font-mono font-black text-sm sm:text-base ${currentStressCfg.textColor}`}>{stress}</span>
+                <span className="text-gray-500 text-[10px] font-mono">/10</span>
               </div>
             </div>
 
             <div 
-              className={`p-2.5 rounded-xl border transition-all ${currentSleepCfg.borderColor}`}
+              className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${currentSleepCfg.borderColor}`}
               style={{ backgroundColor: `${currentSleepCfg.accentHex}15` }}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Sleep</span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${currentSleepCfg.badgeBg}`}>{currentSleepCfg.qualityLabel}</span>
+              <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
+                <span>Sleep</span>
+                <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${currentSleepCfg.badgeBg}`}>{currentSleepCfg.qualityLabel}</span>
               </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className={`font-mono font-black text-base ${currentSleepCfg.textColor}`}>{subjectiveSleep}</span>
-                <span className="text-gray-500 text-xs font-mono">/ 10</span>
+              <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                <span className={`font-mono font-black text-sm sm:text-base ${currentSleepCfg.textColor}`}>{subjectiveSleep}</span>
+                <span className="text-gray-500 text-[10px] font-mono">/10</span>
               </div>
             </div>
           </div>
+
+          {/* Optional compact secondary chips if logged */}
+          {(sleepScore || (isSaved && (skinClarity !== 5 || focusScore !== 5 || alcoholDrinks !== 'skip' || lateCaffeine !== 'skip' || lateMeal !== 'skip' || blueLight !== 'skip'))) && (
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5 text-[10px]">
+              {sleepScore && (
+                <span className="px-2 py-0.5 rounded-md bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-mono font-semibold">
+                  🌙 Sleep: <strong className="text-white">{sleepScore}/100</strong>
+                </span>
+              )}
+              {isSaved && skinClarity !== 5 && (
+                <span className="px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-purple-300 font-mono font-semibold">
+                  ✨ Skin: <strong className="text-white">{skinClarity}/10</strong>
+                </span>
+              )}
+              {isSaved && focusScore !== 5 && (
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-semibold">
+                  ⚡ Focus: <strong className="text-white">{focusScore}/10</strong>
+                </span>
+              )}
+              {isSaved && alcoholDrinks !== 'skip' && (
+                <span className="px-2 py-0.5 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-300 font-mono font-semibold">
+                  🍷 {alcoholDrinks} drinks
+                </span>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="glass-card p-4 rounded-xl mb-6 space-y-6 border border-levl-accent/20">

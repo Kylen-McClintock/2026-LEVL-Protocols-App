@@ -2,102 +2,192 @@ import { supabase } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 
 /**
- * Automatically merges/migrates any guest local session data to the authenticated user's account.
+ * Automatically merges/migrates any guest local session data to the authenticated user's account in Supabase.
  */
 export async function linkGuestDataToAuthUser(guestId: string, authUser: User): Promise<void> {
-  if (!supabase || !guestId || !authUser || guestId === authUser.id) {
+  if (!guestId || !authUser || guestId === authUser.id) {
     return
   }
 
+  // 1. Re-index and copy client-side LocalStorage cache so data is instant offline
+  if (typeof window !== 'undefined') {
+    try {
+      // Profile cache
+      const guestProfKey = `levl_user_profile_${guestId}`
+      const authProfKey = `levl_user_profile_${authUser.id}`
+      const guestProfRaw = localStorage.getItem(guestProfKey)
+      if (guestProfRaw && !localStorage.getItem(authProfKey)) {
+        localStorage.setItem(authProfKey, guestProfRaw)
+      }
+
+      // Observations cache
+      const guestObsKey = `levl_outcome_obs_${guestId}`
+      const authObsKey = `levl_outcome_obs_${authUser.id}`
+      const guestObsRaw = localStorage.getItem(guestObsKey)
+      if (guestObsRaw && !localStorage.getItem(authObsKey)) {
+        localStorage.setItem(authObsKey, guestObsRaw)
+      }
+
+      // Wellbeing checkins cache
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith(`levl_wellbeing_${guestId}_`)) {
+          const datePart = key.replace(`levl_wellbeing_${guestId}_`, '')
+          const targetKey = `levl_wellbeing_${authUser.id}_${datePart}`
+          const val = localStorage.getItem(key)
+          if (val && !localStorage.getItem(targetKey)) {
+            localStorage.setItem(targetKey, val)
+          }
+        }
+      }
+
+      // Update active local user ID
+      localStorage.setItem('levl_local_user_id', authUser.id)
+    } catch (e) {
+      console.warn('Notice re-indexing localStorage during auth link:', e)
+    }
+  }
+
+  if (!supabase) return
+
   try {
-    // 1. Ensure user_profile exists for authUser.id
+    // 2. Ensure user_profile exists and is migrated
     const { data: existingProfile } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('id', authUser.id)
+      .eq('local_user_id', authUser.id)
       .maybeSingle()
 
     const { data: guestProfile } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('id', guestId)
+      .eq('local_user_id', guestId)
       .maybeSingle()
 
     if (!existingProfile) {
       if (guestProfile) {
-        // Clone guest profile under the authenticated user ID
+        // Clone guest profile under the authenticated user's local_user_id
         const newProfile = {
           ...guestProfile,
-          id: authUser.id,
-          email: authUser.email || guestProfile.email,
-          name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || guestProfile.name || 'Protocol Optimizer',
+          id: undefined, // Let Supabase generate a clean UUID or use authUser.id
+          local_user_id: authUser.id,
+          display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || guestProfile.display_name || 'Protocol Optimizer',
           updated_at: new Date().toISOString()
         }
-        await supabase.from('user_profiles').upsert(newProfile)
+        await supabase.from('user_profiles').upsert(newProfile, { onConflict: 'local_user_id' })
       } else {
         await supabase.from('user_profiles').upsert({
-          id: authUser.id,
-          email: authUser.email,
-          name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'Protocol Optimizer',
+          local_user_id: authUser.id,
+          display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'Protocol Optimizer',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        })
+        }, { onConflict: 'local_user_id' })
       }
-    } else if (guestProfile && !existingProfile.equipment_profile?.length) {
-      // Merge preferences if existing profile was blank
+    } else if (guestProfile && (!existingProfile.primary_goals || existingProfile.primary_goals.length === 0)) {
+      // Merge preferences if the authenticated account had no goals set
       await supabase.from('user_profiles').update({
-        equipment_profile: guestProfile.equipment_profile || existingProfile.equipment_profile,
-        primary_goal: guestProfile.primary_goal || existingProfile.primary_goal,
-        preferred_time_slots: guestProfile.preferred_time_slots || existingProfile.preferred_time_slots,
+        primary_goals: guestProfile.primary_goals || existingProfile.primary_goals,
+        outcome_preference_scores: guestProfile.outcome_preference_scores || existingProfile.outcome_preference_scores,
+        hardware_access: guestProfile.hardware_access || existingProfile.hardware_access,
         updated_at: new Date().toISOString()
-      }).eq('id', authUser.id)
+      }).eq('local_user_id', authUser.id)
     }
 
-    // 2. Re-assign all guest tasks to the authenticated user
+    // 3. Migrate all daily protocol tasks to the authenticated local_user_id
     await supabase
       .from('daily_protocol_tasks')
-      .update({ user_id: authUser.id })
-      .eq('user_id', guestId)
+      .update({ local_user_id: authUser.id })
+      .eq('local_user_id', guestId)
 
-    // 3. Re-assign wellbeing checkins
-    await supabase
+    // 4. Migrate daily wellbeing checkins (prevent duplicate date collision)
+    const { data: existingCheckins } = await supabase
       .from('daily_wellbeing_checkins')
-      .update({ user_id: authUser.id })
-      .eq('user_id', guestId)
+      .select('checkin_date')
+      .eq('local_user_id', authUser.id)
 
-    // 4. Re-assign bench items (avoid duplicate unique constraint collisions if any)
+    const existingDates = new Set((existingCheckins || []).map(c => c.checkin_date))
+
+    const { data: guestCheckins } = await supabase
+      .from('daily_wellbeing_checkins')
+      .select('checkin_date')
+      .eq('local_user_id', guestId)
+
+    if (guestCheckins && guestCheckins.length > 0) {
+      const datesToMigrate = guestCheckins.filter(c => !existingDates.has(c.checkin_date)).map(c => c.checkin_date)
+      if (datesToMigrate.length > 0) {
+        await supabase
+          .from('daily_wellbeing_checkins')
+          .update({ local_user_id: authUser.id })
+          .eq('local_user_id', guestId)
+          .in('checkin_date', datesToMigrate)
+      }
+    }
+
+    // 5. Migrate user bench items (prevent duplicate modality collision)
     const { data: guestBench } = await supabase
       .from('user_bench_items')
-      .select('modality_id')
-      .eq('user_id', guestId)
+      .select('modality_id, protocol_id')
+      .eq('local_user_id', guestId)
 
     if (guestBench && guestBench.length > 0) {
       const { data: userBench } = await supabase
         .from('user_bench_items')
-        .select('modality_id')
-        .eq('user_id', authUser.id)
+        .select('modality_id, protocol_id')
+        .eq('local_user_id', authUser.id)
 
-      const existingModalityIds = new Set((userBench || []).map(b => b.modality_id))
-      const toMigrate = guestBench.filter(b => !existingModalityIds.has(b.modality_id)).map(b => b.modality_id)
+      const existingModIds = new Set((userBench || []).map(b => b.modality_id).filter(Boolean))
+      const existingProtIds = new Set((userBench || []).map(b => b.protocol_id).filter(Boolean))
 
-      if (toMigrate.length > 0) {
+      const modsToMigrate = guestBench
+        .filter(b => b.modality_id && !existingModIds.has(b.modality_id))
+        .map(b => b.modality_id as string)
+
+      const protsToMigrate = guestBench
+        .filter(b => b.protocol_id && !existingProtIds.has(b.protocol_id))
+        .map(b => b.protocol_id as string)
+
+      if (modsToMigrate.length > 0) {
         await supabase
           .from('user_bench_items')
-          .update({ user_id: authUser.id })
-          .eq('user_id', guestId)
-          .in('modality_id', toMigrate)
+          .update({ local_user_id: authUser.id })
+          .eq('local_user_id', guestId)
+          .in('modality_id', modsToMigrate)
+      }
+
+      if (protsToMigrate.length > 0) {
+        await supabase
+          .from('user_bench_items')
+          .update({ local_user_id: authUser.id })
+          .eq('local_user_id', guestId)
+          .in('protocol_id', protsToMigrate)
       }
     }
 
-    // 5. Re-assign user protocol instances
+    // 6. Migrate protocol instances
     await supabase
       .from('user_protocol_instances')
+      .update({ local_user_id: authUser.id })
+      .eq('local_user_id', guestId)
+
+    // 7. Migrate outcome observations
+    await supabase
+      .from('outcome_observations')
+      .update({ local_user_id: authUser.id })
+      .eq('local_user_id', guestId)
+
+    // 8. Migrate lab panels & biomarker measurements (tables that use user_id)
+    await supabase
+      .from('user_lab_panels')
       .update({ user_id: authUser.id })
       .eq('user_id', guestId)
 
-    // 6. Re-assign outcome observations
     await supabase
-      .from('outcome_observations')
+      .from('biomarker_measurements')
+      .update({ user_id: authUser.id })
+      .eq('user_id', guestId)
+
+    await supabase
+      .from('bioage_calculation_logs')
       .update({ user_id: authUser.id })
       .eq('user_id', guestId)
 

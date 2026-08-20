@@ -23,10 +23,7 @@ export default function SettingsPage() {
   const { 
     user, 
     signOut, 
-    openAuthModal, 
-    registerCurrentDevicePasskey, 
-    hasRegisteredPasskey, 
-    isPasskeyAvailable 
+    openAuthModal 
   } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [outcomes, setOutcomes] = useState<OutcomeDimension[]>([])
@@ -193,38 +190,6 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
-
-          {/* Passkey / Biometric Fast Login Toggle - ONLY for authenticated users */}
-          {user && isPasskeyAvailable && (
-            <div className="pt-3 border-t border-white/5 flex items-center justify-between flex-wrap gap-2 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-purple-400 font-extrabold">🔐 Face ID / Touch ID:</span>
-                <span className="text-slate-400">
-                  {hasRegisteredPasskey 
-                    ? `Active on this device for ${user.email}` 
-                    : 'Enable 1-tap unlock on this device'}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await registerCurrentDevicePasskey()
-                  } catch (e) {
-                    console.error('Passkey registration error:', e)
-                  }
-                }}
-                className={`px-3 py-1.5 rounded-lg border font-bold transition-colors ${
-                  hasRegisteredPasskey 
-                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30' 
-                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
-                }`}
-              >
-                {hasRegisteredPasskey ? '✓ Re-register Device' : 'Enable 1-Tap Unlock'}
-              </button>
-            </div>
-          )}
         </div>
 
         {/* AI Supplement Facts Scanner Banner Card */}
