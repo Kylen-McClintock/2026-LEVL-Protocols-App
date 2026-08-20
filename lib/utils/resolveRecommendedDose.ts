@@ -378,30 +378,60 @@ export function resolveRecommendedDose(
     })
   }
 
-  // 1. User Sensitivity Override (Takes priority if user profile specifies sensitivity)
+  const isFoodOrDiet = 
+    catLower.includes('nutrition') || 
+    catLower.includes('diet') || 
+    catLower.includes('food') || 
+    nameLower.includes('pudding') || 
+    nameLower.includes('veggie') || 
+    nameLower.includes('meal') || 
+    nameLower.includes('salad') || 
+    nameLower.includes('bowl')
+
+  const isNonSupplementIntervention = 
+    isFoodOrDiet || 
+    isExerciseOrPhysical || 
+    isBreathOrMind || 
+    isThermal || 
+    isSleepOrFasting || 
+    isDiagnostic
+
+  if (isFoodOrDiet && (!unit || unit === 'mg' || unit === 'undefined' || unit === 'exposure')) {
+    if (nameLower.includes('nut_pudding') || nameLower.includes('nut pudding') || nameLower.includes('pudding') || nameLower.includes('bowl')) unit = 'bowl'
+    else if (nameLower.includes('super_veggie') || nameLower.includes('super veggie') || nameLower.includes('meal')) unit = 'bowl'
+    else unit = 'serving'
+  }
+
+  const isSupplementCategory =
+    !isNonSupplementIntervention && (
+      catLower.includes('supplement') ||
+      catLower.includes('nootropic') ||
+      catLower.includes('compound') ||
+      catLower.includes('longevity') ||
+      catLower.includes('botanical') ||
+      catLower.includes('vitamin') ||
+      catLower.includes('mineral') ||
+      isPeptideOrHighRisk
+    )
+
+  // 1. User Sensitivity Override (Takes priority if user profile specifies sensitivity for supplements/peptides)
   const isSensitive = Boolean(
-    userProfile?.experimental_openness_0_99 !== undefined && userProfile.experimental_openness_0_99 < 30 ||
-    (userProfile as any)?.sensitive_to_new_supplements === true ||
-    (userProfile as any)?.supplement_sensitivity === true
+    isSupplementCategory && (
+      (userProfile?.experimental_openness_0_99 !== undefined && userProfile.experimental_openness_0_99 < 30) ||
+      (userProfile as any)?.sensitive_to_new_supplements === true ||
+      (userProfile as any)?.supplement_sensitivity === true
+    )
   )
 
-  if (isSensitive && starter) {
-    let cleanStarterText = `${starter.value} ${unit}`
-    if (starter.notes) {
-      const match = starter.notes.match(/\(([^)]+)\)/)
-      if (match && match[1]) {
-        cleanStarterText = match[1].trim()
-      } else if (!starter.notes.toLowerCase().includes('conservative') && !starter.notes.toLowerCase().includes('starter dose') && !starter.notes.toLowerCase().includes('dose')) {
-        cleanStarterText = starter.notes
-      }
-    }
+  if (isSensitive && starter && starter.value > 0) {
+    const cleanStarterText = `${starter.value} ${starter.unit || unit}`
 
     return {
       recommendedDoseText: cleanStarterText,
       recommendedValue: starter.value,
-      unit,
+      unit: starter.unit || unit,
       source: 'sensitivity_starter',
-      sourceLabel: 'Starter Dose (Sensitivity On)',
+      sourceLabel: 'Starter Dose',
       badgeColor: 'emerald',
       starterDose: starter,
       personalizedTargetDose: target,
