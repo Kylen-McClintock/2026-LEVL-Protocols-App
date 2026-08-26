@@ -527,19 +527,34 @@ export const MODALITY_VIDEOS: Record<string, ModalityVideoInfo> = {
 
   // 2. Cold Exposure & Søberg Principle
   cold_plunge: {
-    youtubeVideoId: 'hqN2REJIlEU',
-    videoStartSeconds: 45,
-    videoTitle: 'Cold Plunge & Søberg Reheating Principle'
+    youtubeVideoId: '5kkBgb426Aw',
+    videoStartSeconds: 0,
+    videoTitle: 'How to Cold Plunge: Crucial Tips for Beginners & Protocol Guide'
   },
   soberg_cold_water_immersion: {
-    youtubeVideoId: 'hqN2REJIlEU',
-    videoStartSeconds: 45,
-    videoTitle: 'Cold Plunge & Søberg Reheating Principle'
+    youtubeVideoId: '5kkBgb426Aw',
+    videoStartSeconds: 0,
+    videoTitle: 'How to Cold Plunge: Crucial Tips for Beginners & Protocol Guide'
   },
   cold_water_immersion: {
-    youtubeVideoId: 'hqN2REJIlEU',
-    videoStartSeconds: 45,
-    videoTitle: 'Cold Plunge & Søberg Reheating Principle'
+    youtubeVideoId: '5kkBgb426Aw',
+    videoStartSeconds: 0,
+    videoTitle: 'How to Cold Plunge: Crucial Tips for Beginners & Protocol Guide'
+  },
+  ice_bath: {
+    youtubeVideoId: '5kkBgb426Aw',
+    videoStartSeconds: 0,
+    videoTitle: 'How to Cold Plunge: Crucial Tips for Beginners & Protocol Guide'
+  },
+  deliberate_cold_exposure: {
+    youtubeVideoId: '5kkBgb426Aw',
+    videoStartSeconds: 0,
+    videoTitle: 'How to Cold Plunge: Crucial Tips for Beginners & Protocol Guide'
+  },
+  cold_shock: {
+    youtubeVideoId: '5kkBgb426Aw',
+    videoStartSeconds: 0,
+    videoTitle: 'How to Cold Plunge: Crucial Tips for Beginners & Protocol Guide'
   },
 
   // 3. Physical Tests (Only short dedicated movement demos)
@@ -704,7 +719,10 @@ export function getModalityVideoInfo(modalityId?: string, category?: string, nam
     return MODALITY_VIDEOS['sitting_rising_test']
   }
 
-  if (searchStr.includes('cold') && (searchStr.includes('plunge') || searchStr.includes('immersion'))) {
+  if (searchStr.includes('cold') && (searchStr.includes('plunge') || searchStr.includes('immersion') || searchStr.includes('bath') || searchStr.includes('shock') || searchStr.includes('water'))) {
+    return MODALITY_VIDEOS['cold_plunge']
+  }
+  if (searchStr.includes('ice bath') || searchStr.includes('ice_bath')) {
     return MODALITY_VIDEOS['cold_plunge']
   }
 

@@ -4,7 +4,7 @@ const uniqueIds = [
   'GLgKkG44MGo', // Soleus pushups & glucose walk
   'NivjpZ0VBro', // VILPA & VO2 Max 4x4
   'Dyid7vWO0zI', // Zone 2 Cardio
-  'hqN2REJIlEU', // Cold Plunge & Cold Exposure
+  '5kkBgb426Aw', // Cold Plunge & Cold Exposure Guide
   'pZX8ikmWvEU', // Sauna & Hyperthermic Conditioning
   'gz4G31LGyog', // 4-7-8 Breathing
   'rBdhqBGqiMc', // Cyclic Sighing
