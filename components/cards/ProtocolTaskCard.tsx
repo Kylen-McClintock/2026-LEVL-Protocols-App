@@ -26,6 +26,7 @@ import SupplementExecutionLog from '../execution/SupplementExecutionLog'
 import NutritionMacroExecutionLog from '../execution/NutritionMacroExecutionLog'
 import RedLightExecutionLog from '../execution/RedLightExecutionLog'
 import CGMExecutionLog from '../execution/CGMExecutionLog'
+import BlueLightDimmingExecutionLog from '../execution/BlueLightDimmingExecutionLog'
 import SunlightCircadianExecutionLog from '../execution/SunlightCircadianExecutionLog'
 import SleepHygieneExecutionLog from '../execution/SleepHygieneExecutionLog'
 import HydrationElectrolyteExecutionLog from '../execution/HydrationElectrolyteExecutionLog'
@@ -767,6 +768,7 @@ export default function ProtocolTaskCard({
   const isNutritionMacro = archetype === 'nutrition_macro'
   const isRedLight = archetype === 'red_light'
   const isCGM = archetype === 'cgm'
+  const isBlueLightDimming = archetype === 'blue_light_dimming'
   const isSunlight = archetype === 'sunlight'
   const isSleepHygiene = archetype === 'sleep'
   const isHydration = archetype === 'hydration'
@@ -1941,6 +1943,7 @@ export default function ProtocolTaskCard({
                 {isNutritionMacro && <NutritionMacroExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                 {isRedLight && <RedLightExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                 {isCGM && <CGMExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                {isBlueLightDimming && <BlueLightDimmingExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                 {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                 {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                 {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
@@ -2102,6 +2105,7 @@ export default function ProtocolTaskCard({
                   {isNutritionMacro && <NutritionMacroExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isRedLight && <RedLightExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isCGM && <CGMExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isBlueLightDimming && <BlueLightDimmingExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
@@ -2332,6 +2336,7 @@ export default function ProtocolTaskCard({
                   {isNutritionMacro && <NutritionMacroExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isRedLight && <RedLightExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isCGM && <CGMExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isBlueLightDimming && <BlueLightDimmingExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}

@@ -7,6 +7,7 @@ export type ModalityArchetype =
   | 'breathwork'
   | 'fasting'
   | 'nutrition_macro'
+  | 'blue_light_dimming'
   | 'red_light'
   | 'cgm'
   | 'sunlight'
@@ -183,10 +184,37 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     }
   }
 
-  // 6. RED LIGHT & PHOTOBIOMODULATION
+  // 6. BLUE LIGHT DIMMING, SCREEN REDUCTION & MELATONIN HYGIENE (Strict priority before red light / sunlight)
+  const isBlueLightMatch = (
+    logType === 'blue_light' ||
+    logType === 'blue_light_dimming' ||
+    name.includes('melatonin') ||
+    name.includes('dimming') ||
+    name.includes('blue-light') ||
+    name.includes('blue light') ||
+    name.includes('blue blocker') ||
+    name.includes('screen curfew') ||
+    name.includes('screen reduction') ||
+    name.includes('screen time') ||
+    name.includes('digital sunset') ||
+    name.includes('amber glasses') ||
+    name.includes('night shift') ||
+    name.includes('f.lux')
+  ) && !name.includes('supplement') && !name.includes('magnesium') && !name.includes('pill') && !name.includes('capsule')
+
+  if (isBlueLightMatch) {
+    return {
+      archetype: 'blue_light_dimming',
+      isSpecialized: true,
+      specializedTraits
+    }
+  }
+
+  // 7. RED LIGHT & PHOTOBIOMODULATION
   if (
     logType === 'red_light' || 
-    cat.includes('light') || 
+    cat.includes('red_light') || 
+    cat.includes('photobiomodulation') || 
     name.includes('red light') || 
     name.includes('photobiomodulation') || 
     name.includes('near-infrared') || 
@@ -200,7 +228,7 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     }
   }
 
-  // 7. CGM & GLUCOSE MANAGEMENT
+  // 8. CGM & GLUCOSE MANAGEMENT
   if (
     logType === 'cgm' || 
     name.includes('cgm') || 
@@ -217,10 +245,9 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     }
   }
 
-  // 8. SUNLIGHT & CIRCADIAN
+  // 9. SUNLIGHT & MORNING CIRCADIAN
   if (
     logType === 'sunlight' || 
-    cat.includes('circadian') || 
     name.includes('sunlight') || 
     name.includes('solar noon') || 
     name.includes('optic flow') || 
@@ -233,14 +260,14 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     }
   }
 
-  // 9. SLEEP HYGIENE
+  // 10. SLEEP ENVIRONMENT & SANCTUARY
   if (
     logType === 'sleep' || 
     cat.includes('sleep') || 
     name.includes('sleep') || 
     name.includes('mouth tape') || 
     name.includes('dark & cool') || 
-    name.includes('blue blocker') || 
+    name.includes('blackout') || 
     name.includes('circadian wind-down')
   ) {
     return {

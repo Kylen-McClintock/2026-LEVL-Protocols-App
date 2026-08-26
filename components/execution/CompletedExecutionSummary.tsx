@@ -349,6 +349,37 @@ export default function CompletedExecutionSummary({ modalityType, loggingType, d
     )
   }
 
+  // --- BLUE-LIGHT DIMMING & MELATONIN SHIELDING SUMMARY ---
+  if (details.dimming_method !== undefined || details.pre_bed_window_min !== undefined || details.overhead_lights_off !== undefined || details.screen_brightness_minimized !== undefined) {
+    const formatMethod = (m: string) => {
+      if (m === 'amber_glasses') return '👓 Amber Lenses (500nm+)'
+      if (m === 'screen_curfew') return '📵 Screen Curfew'
+      if (m === 'ambient_amber') return '🕯️ Low-Lux Amber Lights'
+      if (m === 'software_filter') return '📱 Red Screen Filter'
+      return m
+    }
+
+    return (
+      <div className="w-full mt-3 p-3 bg-black/20 rounded-lg border border-white/5 relative group">
+        <div className="text-[10px] text-amber-400 uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
+          <span>Melatonin Onset & Blue-Light Shielding Summary</span>
+          {onEdit && (
+            <button onClick={onEdit} className="text-gray-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer">
+              <Edit2 size={10} /> Edit
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-300">
+          {details.pre_bed_window_min && <span className="font-bold text-amber-300">{details.pre_bed_window_min} min pre-bed</span>}
+          {details.dimming_method && <span className="text-amber-200">{formatMethod(details.dimming_method)}</span>}
+          {details.lux_level && <span className="capitalize">{details.lux_level.replace('_', ' ')}</span>}
+          {details.overhead_lights_off && <span className="text-amber-400 font-semibold">✓ Overhead Lights Off</span>}
+          {details.screen_brightness_minimized && <span className="text-amber-400 font-semibold">✓ Screens Dimmed &lt;20%</span>}
+        </div>
+      </div>
+    )
+  }
+
   // --- SUNLIGHT CIRCADIAN SUMMARY ---
   if (details.sky_condition !== undefined || details.within_30m_waking !== undefined) {
     return (
