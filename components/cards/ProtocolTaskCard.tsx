@@ -312,7 +312,6 @@ export default function ProtocolTaskCard({
   const [showBoxApplet, setShowBoxApplet] = useState(false)
   const [showHyperApplet, setShowHyperApplet] = useState(false)
   const [showCoherentApplet, setShowCoherentApplet] = useState(false)
-  const [showPrecisionLog, setShowPrecisionLog] = useState(false)
   const lastCheckClickTimeRef = useRef<number>(0)
 
   const cardModalityId = task.modality_id || task.protocol_step?.modality_id || task.loose_modality?.id
@@ -727,6 +726,70 @@ export default function ProtocolTaskCard({
   const hasPreLoggableOutcomes = useMemo(() => {
     return hasAnyPreLoggableOutcome(currentRelevantOutcomes)
   }, [currentRelevantOutcomes])
+
+  const hasBaselineLogged = useMemo(() => {
+    return Object.keys(baselineOutcomesMap).length > 0 || (taskObs && taskObs.some(o => o.phase === 'pre'))
+  }, [baselineOutcomesMap, taskObs])
+
+  const baselineSummaryText = useMemo(() => {
+    if (!hasBaselineLogged) return null
+    const entries = Object.entries(baselineOutcomesMap)
+    if (entries.length === 0 && taskObs) {
+      const preObs = taskObs.filter(o => o.phase === 'pre')
+      return preObs.map(o => {
+        const found = allOutcomes.find(ao => ao.id === o.outcome_id)
+        return `${found?.name || o.outcome_id} ${o.value_0_10}/10`
+      }).join(' • ')
+    }
+    return entries.map(([id, val]) => {
+      const found = allOutcomes.find(o => o.id === id)
+      return `${found?.name || id} ${val}/10`
+    }).join(' • ')
+  }, [hasBaselineLogged, baselineOutcomesMap, taskObs, allOutcomes])
+
+  const renderBaselineTrigger = () => {
+    if (!hasPreLoggableOutcomes) return null
+
+    if (hasBaselineLogged) {
+      return (
+        <div className="flex items-center justify-between p-2.5 bg-purple-950/40 border border-purple-500/40 rounded-xl text-xs mb-3 shadow-sm">
+          <div className="flex items-center gap-2 text-purple-200 font-semibold truncate min-w-0">
+            <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center text-[10px] font-bold shrink-0">✓</span>
+            <span className="text-[11px] truncate font-mono">Baseline: {baselineSummaryText}</span>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowInlineOutcomes(true)
+              setActiveOutcomePhase('pre')
+            }}
+            className="text-[10px] font-bold text-purple-300 hover:text-white px-2.5 py-1 bg-purple-500/20 hover:bg-purple-500/30 rounded-md transition-colors shrink-0 ml-2 cursor-pointer border border-purple-500/30 flex items-center gap-1"
+          >
+            <Edit3 size={10} /> Edit Baseline
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          setShowInlineOutcomes(true)
+          setActiveOutcomePhase('pre')
+        }}
+        className="w-full py-2.5 px-3 mb-3 bg-purple-950/30 hover:bg-purple-900/40 border border-purple-500/30 hover:border-purple-400/50 text-purple-200 text-xs font-bold rounded-xl transition-all flex items-center justify-between cursor-pointer group shadow-sm"
+      >
+        <div className="flex items-center gap-2">
+          <Activity size={14} className="text-purple-400 group-hover:scale-110 transition-transform" />
+          <span>⚡ Log Pre-Session Baseline (Before)</span>
+        </div>
+        <span className="text-[10px] text-purple-300/70 font-mono">Optional pre-checkin →</span>
+      </button>
+    )
+  }
 
   const visibleOutcomes = useMemo(() => {
     if (activeOutcomePhase === 'pre') {
@@ -1658,6 +1721,9 @@ export default function ProtocolTaskCard({
           {!isJustCompletedInline && (
             <p className="text-xs text-gray-400 mb-3">{modality.brief_description}</p>
           )}
+
+          {/* BASELINE PRE-SESSION TRIGGER (Placed directly above execution logger) */}
+          {task.status === 'pending' && !isFutureTask && !showInlineOutcomes && renderBaselineTrigger()}
 
           {/* PENDING PRECISION EXECUTION LOGGER DIRECTLY ON EXPANDED CARD */}
           {task.status === 'pending' && !isFutureTask && hasPrecisionLogUI && !showInlineOutcomes && (
@@ -2670,54 +2736,12 @@ export default function ProtocolTaskCard({
           {/* Execution Tracker (Only if pending OR editing) */}
           {(task.status === 'pending' || isEditingExecution) && !isFutureTask && (
             <div className="mb-4 w-full">
-              {/* Top Quick Log Bar */}
-              <div className="flex items-center gap-3 w-full mb-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs uppercase tracking-wider text-levl-text-secondary font-bold">Log:</span>
-                  
-                  {/* Log Baseline (Before) Button: Rendered ONLY if the modality has pre-loggable acute outcomes */}
-                  {hasPreLoggableOutcomes && (
-                    <button 
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setExpanded(true)
-                        setShowInlineOutcomes(true)
-                        setActiveOutcomePhase('pre')
-                      }}
-                      className="h-10 bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-semibold px-3.5 rounded-lg hover:bg-purple-500 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
-                      title="Log baseline bio-signals before starting modality"
-                    >
-                      <Activity size={13} className="text-purple-400" /> Log Baseline (Before)
-                    </button>
-                  )}
+              {/* Baseline Pre-Session Trigger (Directly above execution log in modal) */}
+              {renderBaselineTrigger()}
 
-                  {/* GREEN Precision Complete / Precision Log Toggle Button (Rendered ONLY if precision UI exists) */}
-                  {hasPrecisionLogUI && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setShowPrecisionLog(!showPrecisionLog)
-                      }}
-                      className={`h-10 border text-xs font-bold px-3.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
-                        showPrecisionLog
-                          ? 'bg-emerald-500 text-white border-emerald-400 shadow-emerald-500/30'
-                          : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 hover:border-emerald-500/60'
-                      }`}
-                      title="Toggle detailed precision execution metrics & stack log"
-                    >
-                      <CheckCircle2 size={13} className={showPrecisionLog ? 'text-white' : 'text-emerald-400'} />
-                      <span>Precision Complete</span>
-                      {showPrecisionLog ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Specialized Execution Logging UIs (Collapsed by default, opens via Precision Complete button) */}
-              {hasPrecisionLogUI && showPrecisionLog && (
-                <div className="w-full mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              {/* Specialized Execution Logging UIs (Rendered directly) */}
+              {hasPrecisionLogUI && (
+                <div className="w-full mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
                   {/* THERMAL EXPOSURE UI (Sauna, Cold Plunge, Ice Bath) */}
                   {isThermal && (
                     <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />
@@ -2887,7 +2911,6 @@ export default function ProtocolTaskCard({
                           } else {
                             onStatusChange(task.id, 'completed', undefined, logDate.toISOString(), metrics, executionDetails)
                           }
-                          setShowPrecisionLog(false)
                         }}
                         className="h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
                       >
