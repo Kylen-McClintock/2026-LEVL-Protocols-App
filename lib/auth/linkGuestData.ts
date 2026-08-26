@@ -41,6 +41,21 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
         }
       }
 
+      // Hotkeys cache
+      const guestHotkeysKey = `levl_user_hotkeys_${guestId}`
+      const authHotkeysKey = `levl_user_hotkeys_${authUser.id}`
+      const guestHotkeysRaw = localStorage.getItem(guestHotkeysKey) || localStorage.getItem('levl_user_hotkeys')
+      if (guestHotkeysRaw) {
+        localStorage.setItem(authHotkeysKey, guestHotkeysRaw)
+      }
+
+      const guestCustomKey = `levl_custom_created_hotkeys_${guestId}`
+      const authCustomKey = `levl_custom_created_hotkeys_${authUser.id}`
+      const guestCustomRaw = localStorage.getItem(guestCustomKey)
+      if (guestCustomRaw) {
+        localStorage.setItem(authCustomKey, guestCustomRaw)
+      }
+
       // Update active local user ID
       localStorage.setItem('levl_local_user_id', authUser.id)
     } catch (e) {
@@ -83,12 +98,21 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
           updated_at: new Date().toISOString()
         }, { onConflict: 'local_user_id' })
       }
-    } else if (guestProfile && (!existingProfile.primary_goals || existingProfile.primary_goals.length === 0)) {
-      // Merge preferences if the authenticated account had no goals set
+    } else if (guestProfile) {
+      // Merge preferences and hotkey configs from guest into existing auth profile
+      const guestPref = (guestProfile.outcome_preference_scores as any) || {}
+      const authPref = (existingProfile.outcome_preference_scores as any) || {}
+      const mergedPref = {
+        ...guestPref,
+        ...authPref,
+        _custom_hotkeys: authPref._custom_hotkeys || guestPref._custom_hotkeys,
+        _created_custom_hotkeys: authPref._created_custom_hotkeys || guestPref._created_custom_hotkeys
+      }
+
       await supabase.from('user_profiles').update({
-        primary_goals: guestProfile.primary_goals || existingProfile.primary_goals,
-        outcome_preference_scores: guestProfile.outcome_preference_scores || existingProfile.outcome_preference_scores,
-        hardware_access: guestProfile.hardware_access || existingProfile.hardware_access,
+        primary_goals: existingProfile.primary_goals?.length ? existingProfile.primary_goals : (guestProfile.primary_goals || existingProfile.primary_goals),
+        outcome_preference_scores: mergedPref,
+        hardware_access: existingProfile.hardware_access?.length ? existingProfile.hardware_access : (guestProfile.hardware_access || existingProfile.hardware_access),
         updated_at: new Date().toISOString()
       }).eq('local_user_id', authUser.id)
     }
@@ -123,21 +147,40 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
       }
     }
 
-    // 5. Migrate user bench items (prevent duplicate modality collision)
+    // 5. Migrate user bench items & copy custom dosage / timing overrides
     const { data: guestBench } = await supabase
       .from('user_bench_items')
-      .select('modality_id, protocol_id')
+      .select('*')
       .eq('local_user_id', guestId)
 
     if (guestBench && guestBench.length > 0) {
       const { data: userBench } = await supabase
         .from('user_bench_items')
-        .select('modality_id, protocol_id')
+        .select('*')
         .eq('local_user_id', authUser.id)
 
       const existingModIds = new Set((userBench || []).map(b => b.modality_id).filter(Boolean))
       const existingProtIds = new Set((userBench || []).map(b => b.protocol_id).filter(Boolean))
 
+      // 5a. If auth profile already has this modality row, copy guest's custom dosage & timing overrides
+      for (const gb of guestBench) {
+        if (gb.modality_id && existingModIds.has(gb.modality_id)) {
+          if (gb.custom_dose || gb.custom_timing || gb.notes) {
+            await supabase
+              .from('user_bench_items')
+              .update({
+                custom_dose: gb.custom_dose,
+                custom_timing: gb.custom_timing,
+                notes: gb.notes,
+                updated_at: new Date().toISOString()
+              })
+              .eq('local_user_id', authUser.id)
+              .eq('modality_id', gb.modality_id)
+          }
+        }
+      }
+
+      // 5b. Migrate non-colliding guest bench items
       const modsToMigrate = guestBench
         .filter(b => b.modality_id && !existingModIds.has(b.modality_id))
         .map(b => b.modality_id as string)

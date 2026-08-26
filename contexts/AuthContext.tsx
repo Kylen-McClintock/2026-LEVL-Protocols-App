@@ -67,8 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null)
       if (session?.user) {
         const prevId = localStorage.getItem(LOCAL_USER_ID_KEY)
+        const cachedGuestId = localStorage.getItem('levl_prev_guest_id')
+        const targetGuestId = (prevId && prevId !== session.user.id) ? prevId : cachedGuestId
+        if (targetGuestId && targetGuestId !== session.user.id) {
+          await linkGuestDataToAuthUser(targetGuestId, session.user)
+        }
         if (prevId && prevId !== session.user.id) {
-          await linkGuestDataToAuthUser(prevId, session.user)
+          localStorage.setItem('levl_prev_guest_id', prevId)
         }
         localStorage.setItem(LOCAL_USER_ID_KEY, session.user.id)
         setLocalUserId(session.user.id)
@@ -87,9 +92,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (newSession?.user) {
           const previousGuestId = localStorage.getItem(LOCAL_USER_ID_KEY)
-          if (previousGuestId && previousGuestId !== newSession.user.id) {
+          const cachedGuestId = localStorage.getItem('levl_prev_guest_id')
+          const targetGuestId = (previousGuestId && previousGuestId !== newSession.user.id) ? previousGuestId : cachedGuestId
+          if (targetGuestId && targetGuestId !== newSession.user.id) {
             // Automatically migrate guest data to the authenticated account
-            await linkGuestDataToAuthUser(previousGuestId, newSession.user)
+            await linkGuestDataToAuthUser(targetGuestId, newSession.user)
+          }
+
+          if (previousGuestId && previousGuestId !== newSession.user.id) {
+            localStorage.setItem('levl_prev_guest_id', previousGuestId)
           }
 
           localStorage.setItem(LOCAL_USER_ID_KEY, newSession.user.id)

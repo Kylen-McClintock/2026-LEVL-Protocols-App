@@ -1649,7 +1649,7 @@ function TodayPageContent() {
         {calendarViewMode === 'today' && (
           <QuickHotkeyGrid
             date={dateStr}
-            localUserId={profile?.local_user_id || getLocalUserId()}
+            localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
             userProfile={profile}
           />
         )}
@@ -1659,7 +1659,7 @@ function TodayPageContent() {
           <div className="mb-6">
             <InfradianAdaptiveBanner
               status={infradianStatus}
-              localUserId={profile?.local_user_id || getLocalUserId()}
+              localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
               userProfile={profile}
               targetDate={dateStr}
               onAddModalityToToday={async (modalityName: string) => {

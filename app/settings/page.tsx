@@ -18,21 +18,26 @@ import BloodworkProfileCard from '@/components/profile/BloodworkProfileCard'
 import NegativeLongevityFactorsCard from '@/components/profile/NegativeLongevityFactorsCard'
 import TemperatureUnitSettingsCard from '@/components/profile/TemperatureUnitSettingsCard'
 import SupplementScannerModal from '@/components/modals/SupplementScannerModal'
+import { linkGuestDataToAuthUser } from '@/lib/auth/linkGuestData'
 
 export default function SettingsPage() {
   const { 
     user, 
     signOut, 
-    openAuthModal 
+    openAuthModal,
+    localUserId: authUserId,
+    loading: authLoading
   } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [outcomes, setOutcomes] = useState<OutcomeDimension[]>([])
   const [catalogModalities, setCatalogModalities] = useState<Modality[]>([])
   const [showSupplementScanner, setShowSupplementScanner] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncSuccess, setSyncSuccess] = useState(false)
 
   const load = async () => {
-    const localUserId = getLocalUserId()
+    const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
     const [data, outcomeData, modsData] = await Promise.all([
       getOrCreateUserProfile(localUserId),
       getOutcomeDimensions(),
@@ -45,8 +50,38 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
+    if (authLoading) return
     load()
-  }, [])
+
+    const handleAuthChange = () => {
+      load()
+    }
+    window.addEventListener('levl_auth_user_changed', handleAuthChange)
+    return () => {
+      window.removeEventListener('levl_auth_user_changed', handleAuthChange)
+    }
+  }, [authLoading, authUserId])
+
+  const handleManualSync = async () => {
+    if (!user) {
+      openAuthModal()
+      return
+    }
+    try {
+      setIsSyncing(true)
+      const cachedGuestId = typeof window !== 'undefined' ? (localStorage.getItem('levl_prev_guest_id') || 'ae563aa5-59e7-4bfd-8107-d0347acec2ac') : ''
+      if (cachedGuestId && user) {
+        await linkGuestDataToAuthUser(cachedGuestId, user)
+      }
+      await load()
+      setSyncSuccess(true)
+      setTimeout(() => setSyncSuccess(false), 3000)
+    } catch (e) {
+      console.error('Manual sync failed:', e)
+    } finally {
+      setIsSyncing(false)
+    }
+  }
 
   const handleReset = () => {
     if (confirm('Reset all demo data? This will clear your local user id.')) {
@@ -172,13 +207,24 @@ export default function SettingsPage() {
 
             <div className="flex items-center gap-2">
               {user ? (
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                >
-                  <LogOut size={13} /> Sign Out
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleManualSync}
+                    disabled={isSyncing}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                  >
+                    <RefreshCw size={13} className={isSyncing ? 'animate-spin' : ''} />
+                    <span>{syncSuccess ? '✓ Synced!' : isSyncing ? 'Syncing...' : 'Sync Cloud Data'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={signOut}
+                    className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <LogOut size={13} /> Sign Out
+                  </button>
+                </>
               ) : (
                 <button
                   type="button"
