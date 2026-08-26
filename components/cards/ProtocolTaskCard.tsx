@@ -1658,6 +1658,109 @@ export default function ProtocolTaskCard({
           {!isJustCompletedInline && (
             <p className="text-xs text-gray-400 mb-3">{modality.brief_description}</p>
           )}
+
+          {/* PENDING PRECISION EXECUTION LOGGER DIRECTLY ON EXPANDED CARD */}
+          {task.status === 'pending' && !isFutureTask && hasPrecisionLogUI && !showInlineOutcomes && (
+            <div className="mb-4 space-y-3">
+              <div className="p-3.5 bg-slate-950/90 border border-cyan-500/30 rounded-xl space-y-3 shadow-lg">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                    <Activity size={14} className="text-cyan-400" /> Precision Execution Log
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {modality.display_name || modality.name}
+                  </span>
+                </div>
+
+                {/* Render the specialized UI */}
+                {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                {isCardio && (
+                  <CardioExecutionLog 
+                    value={executionDetails} 
+                    onChange={setExecutionDetails} 
+                    lockedCardioType={lockedCardioType}
+                    specializedTraits={specializedTraits}
+                  />
+                )}
+                {isStrength && (
+                  <StrengthExecutionLog 
+                    value={executionDetails} 
+                    onChange={setExecutionDetails} 
+                    lockedExerciseName={lockedExerciseName}
+                    specializedTraits={specializedTraits}
+                  />
+                )}
+                {isFasting && (
+                  <FastingExecutionLog 
+                    value={executionDetails} 
+                    onChange={setExecutionDetails} 
+                    isMultiDay={
+                      modalityKey.includes('16:8') || modalityKey.includes('18:6') || modalityKey.includes('time-restricted') || modalityKey.includes('trf')
+                        ? false 
+                        : true
+                    }
+                  />
+                )}
+                {isNutritionMacro && <NutritionMacroExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                {isRedLight && <RedLightExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                {isCGM && <CGMExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                {isPhlebotomy && <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                {isPeptide && (
+                  <PeptideExecutionLog 
+                    value={executionDetails} 
+                    onChange={setExecutionDetails} 
+                    modality={modality} 
+                    modalityKey={modalityKey} 
+                    defaultDoseMcg={task.protocol_step?.dose_amount || 250} 
+                  />
+                )}
+                {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+
+                {/* Quick Complete Button from within the Precision Logger */}
+                <div className="flex items-center justify-between pt-2 border-t border-white/10 flex-wrap gap-2">
+                  <span className="text-[10px] text-slate-400">Log numbers &amp; complete session</span>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={async () => {
+                      setIsProcessing(true)
+                      try {
+                        let metrics: any = undefined
+                        if (executionDetails?.duration || executionDetails?.distance) {
+                          metrics = {}
+                          if (executionDetails.duration) metrics.duration_mins = parseFloat(executionDetails.duration)
+                          if (executionDetails.distance) metrics.distance = parseFloat(executionDetails.distance)
+                        }
+                        if (isPeptide && executionDetails?.injection_site) {
+                          saveInjectionSiteLog(modalityKey, executionDetails.injection_site)
+                        }
+                        await updateTaskExecutionDetails(task.id, executionDetails)
+                        
+                        if (currentRelevantOutcomes.length > 0) {
+                          setShowInlineOutcomes(true)
+                          setActiveOutcomePhase('post')
+                        } else {
+                          const logDate = new Date().toISOString()
+                          onStatusChange(task.id, 'completed', undefined, logDate, metrics, executionDetails)
+                        }
+                      } catch(err) {
+                        console.error('Error saving execution details:', err)
+                      } finally {
+                        setIsProcessing(false)
+                      }
+                    }}
+                    className="px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-950 bg-gradient-to-r from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200 rounded-lg shadow-md shadow-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 size={14} /> Complete Session &amp; Rate
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* COMPLETED DOSAGE & EXECUTION SUMMARY BANNER */}
           {task.status === 'completed' && (
@@ -1927,6 +2030,67 @@ export default function ProtocolTaskCard({
                   </div>
                 )
               })()}
+
+              {/* Precision Execution Log within Outcome Tracker */}
+              {activeOutcomePhase === 'post' && hasPrecisionLogUI && (
+                <div className="p-3.5 bg-slate-950/90 border border-cyan-500/30 rounded-xl space-y-3 shadow-lg">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                      <Activity size={14} className="text-cyan-400" /> Session Execution Numbers
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {modality.display_name || modality.name}
+                    </span>
+                  </div>
+
+                  {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isCardio && (
+                    <CardioExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      lockedCardioType={lockedCardioType}
+                      specializedTraits={specializedTraits}
+                    />
+                  )}
+                  {isStrength && (
+                    <StrengthExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      lockedExerciseName={lockedExerciseName}
+                      specializedTraits={specializedTraits}
+                    />
+                  )}
+                  {isFasting && (
+                    <FastingExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      isMultiDay={
+                        modalityKey.includes('16:8') || modalityKey.includes('18:6') || modalityKey.includes('time-restricted') || modalityKey.includes('trf')
+                          ? false 
+                          : true
+                      }
+                    />
+                  )}
+                  {isNutritionMacro && <NutritionMacroExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isRedLight && <RedLightExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isCGM && <CGMExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isPhlebotomy && <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isPeptide && (
+                    <PeptideExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      modality={modality} 
+                      modalityKey={modalityKey} 
+                      defaultDoseMcg={task.protocol_step?.dose_amount || 250} 
+                    />
+                  )}
+                  {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                </div>
+              )}
 
               {/* Sliders List */}
               <div className="space-y-4">

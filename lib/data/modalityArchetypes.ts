@@ -351,10 +351,15 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     cat.includes('hypertrophy') || 
     cat.includes('bodybuilding') || 
     cat.includes('calisthenics') || 
+    cat.includes('exercise') ||
+    cat.includes('fitness') ||
+    cat.includes('movement') ||
     name.includes('strength') || 
     name.includes('resistance') || 
     name.includes('weight') || 
     name.includes('lift') || 
+    name.includes('workout') ||
+    name.includes('exercise') ||
     name.includes('squat') || 
     name.includes('deadlift') || 
     name.includes('bench press') || 
