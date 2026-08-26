@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { DailyProtocolTask, Modality, ProtocolStep, Protocol, UserModalityHabit } from '@/lib/types'
-import { Check, CheckCircle2, X, Clock, AlertTriangle, Activity, ChevronDown, ChevronUp, ChevronRight, Microscope, Bookmark, User, Info, CalendarDays, RotateCcw, Sliders, Star, Sparkles, Archive, Trash2, ExternalLink, Edit3 } from 'lucide-react'
+import { Check, CheckCircle2, X, Clock, AlertTriangle, Activity, ChevronDown, ChevronUp, ChevronRight, Microscope, Bookmark, User, Info, CalendarDays, RotateCcw, Sliders, Star, Sparkles, Archive, Trash2, ExternalLink, Edit3, SkipForward } from 'lucide-react'
 import GeekMode from './GeekMode'
 import PersonalizeModalityModal from '../modals/PersonalizeModalityModal'
 import { DosageDetailModal } from '../modals/DosageDetailModal'
@@ -1699,7 +1699,7 @@ export default function ProtocolTaskCard({
           <div className="flex items-center gap-2 shrink-0">
 
             {task.status === 'pending' ? (
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 items-center">
                 <button 
                   onClick={(e) => { 
                     e.stopPropagation(); 
@@ -1707,22 +1707,10 @@ export default function ProtocolTaskCard({
                     else setShowSkipReason(true); 
                   }}
                   disabled={isFutureTask}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/10 text-levl-text-secondary hover:text-white transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                  title="Reschedule or skip session"
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/10 text-levl-text-secondary hover:text-white hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                  title="Snooze, reschedule, or skip session"
                 >
-                  <X size={14} />
-                </button>
-                <button 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (onOpenRescheduleModal) onOpenRescheduleModal(task);
-                    else onStatusChange(task.id, 'snoozed'); 
-                  }}
-                  disabled={isFutureTask}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/10 text-levl-text-secondary hover:text-white transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                  title="Snooze or reschedule session"
-                >
-                  <Clock size={12} />
+                  <SkipForward size={13} className="ml-0.5" />
                 </button>
                 <button 
                   onClick={(e) => { 
