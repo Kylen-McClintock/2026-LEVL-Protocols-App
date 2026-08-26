@@ -1286,7 +1286,7 @@ export default function PeptideSplitView({
 
             {/* Photo Upload Area */}
             <div className="space-y-2">
-              <label className="text-[10px] text-slate-400 font-bold uppercase block">Progress Photo (Compressed &amp; Secure in IndexedDB)</label>
+              <label className="text-[10px] text-slate-400 font-bold uppercase block">Progress Photo</label>
               <div className="border-2 border-dashed border-white/10 rounded-2xl p-4 text-center hover:border-cyan-500/50 transition-colors">
                 {uploadedPhotoUrl ? (
                   <div className="relative inline-block">
@@ -1299,14 +1299,43 @@ export default function PeptideSplitView({
                     </button>
                   </div>
                 ) : (
-                  <label className="cursor-pointer space-y-1 block">
+                  <div className="space-y-2">
                     <Upload size={20} className="text-cyan-400 mx-auto" />
                     <span className="text-xs text-slate-300 font-bold block">
-                      {isCompressingPhoto ? 'Compressing...' : 'Click to Upload Progress Photo'}
+                      {isCompressingPhoto ? 'Compressing...' : 'Add Progress Photo'}
                     </span>
-                    <span className="text-[10px] text-slate-500 block">PNG, JPG up to 15MB (Auto-compressed to ~120KB)</span>
-                    <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                  </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                      id="peptide-photo-browse"
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                      id="peptide-photo-camera"
+                    />
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      <label
+                        htmlFor="peptide-photo-camera"
+                        className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-black rounded-lg text-[10px] font-black inline-flex items-center gap-1.5 cursor-pointer shadow-md"
+                      >
+                        <Camera size={12} />
+                        <span>Take Live Photo</span>
+                      </label>
+                      <label
+                        htmlFor="peptide-photo-browse"
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white rounded-lg text-[10px] font-bold inline-flex items-center gap-1.5 cursor-pointer border border-white/15 shadow-md"
+                      >
+                        <Upload size={12} />
+                        <span>Browse Files</span>
+                      </label>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

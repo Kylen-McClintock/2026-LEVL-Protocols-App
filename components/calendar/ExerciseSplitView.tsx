@@ -939,7 +939,6 @@ export default function ExerciseSplitView({
                 >
                   <Upload size={22} className="mx-auto text-indigo-400 mb-1.5" />
                   <p className="text-xs font-bold text-white">Drag &amp; drop physique photo or browse</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Supports PNG, JPG, WebP, HEIC</p>
                   <input
                     type="file"
                     accept="image/*"
@@ -951,12 +950,34 @@ export default function ExerciseSplitView({
                     className="hidden"
                     id="physique-photo-input"
                   />
-                  <label
-                    htmlFor="physique-photo-input"
-                    className="mt-2.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold inline-block cursor-pointer shadow-md"
-                  >
-                    Select Photo
-                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={e => {
+                      if (e.target.files && e.target.files[0]) {
+                        handlePhotoFile(e.target.files[0])
+                      }
+                    }}
+                    className="hidden"
+                    id="physique-camera-input"
+                  />
+                  <div className="flex items-center justify-center gap-2 mt-2.5">
+                    <label
+                      htmlFor="physique-camera-input"
+                      className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-black rounded-lg text-[10px] font-black inline-flex items-center gap-1.5 cursor-pointer shadow-md"
+                    >
+                      <Camera size={12} />
+                      <span>Take Live Photo</span>
+                    </label>
+                    <label
+                      htmlFor="physique-photo-input"
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-md"
+                    >
+                      <Upload size={12} />
+                      <span>Browse Files</span>
+                    </label>
+                  </div>
                 </div>
               )}
             </div>

@@ -74,14 +74,15 @@ export default function PhysiqueVisionScannerModal({
   const [userNotes, setUserNotes] = useState<string>('')
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const cameraInputRef = useRef<HTMLInputElement | null>(null)
 
   if (!isOpen) return null
 
   const analysisSteps = [
-    'Applying client-side canvas downscaling (1200px @ 80% JPEG)...',
-    'Analyzing abdominal wall, linea alba, and serratus anterior depth...',
-    'Screening postural plumb line, scapular alignment & pelvic tilt...',
-    'Calculating Fat-Free Mass Index (FFMI) & 90% Confidence Intervals...'
+    'Optimizing photo resolution in-memory...',
+    'Analyzing abdominal wall, core definition, and muscle depth...',
+    'Screening postural alignment, shoulder balance & pelvic tilt...',
+    'Calculating lean muscle index & high-precision estimation range...'
   ]
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,11 +228,11 @@ export default function PhysiqueVisionScannerModal({
                   AI Physique Vision Engine
                 </h3>
                 <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
-                  Confidence CIs
+                  Precision Range
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Subcutaneous landmark scoring, posture screening &amp; FFMI cross-validation
+                Visual body landmark scoring, posture screening &amp; lean muscle analysis
               </p>
             </div>
           </div>
@@ -265,10 +266,19 @@ export default function PhysiqueVisionScannerModal({
           <div className="space-y-4">
             {/* Photo Capture & Upload Box */}
             <div className="space-y-2">
+              {/* Hidden File Inputs: One for Camera Roll / Files, One explicitly capturing Camera */}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -283,36 +293,59 @@ export default function PhysiqueVisionScannerModal({
                   <div className="absolute top-3 right-3 flex items-center gap-2">
                     <button
                       type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-black text-xs font-black flex items-center gap-1.5 backdrop-blur-md cursor-pointer transition-all shadow-md"
+                    >
+                      <Camera size={13} />
+                      <span>Retake Photo</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="px-3 py-1.5 rounded-xl bg-black/80 hover:bg-black text-white text-xs font-bold border border-white/20 flex items-center gap-1.5 backdrop-blur-md cursor-pointer transition-all"
                     >
-                      <RefreshCw size={12} />
-                      <span>Retake / Change</span>
+                      <Upload size={12} />
+                      <span>Choose File</span>
                     </button>
                   </div>
                   <div className="absolute bottom-2 left-3 px-2 py-0.5 rounded-md bg-black/70 border border-white/10 text-[10px] font-mono text-cyan-300 backdrop-blur-sm">
-                    ⚡ Auto-compressed in-memory (~160 KB)
+                    ⚡ Auto-optimized resolution (~160 KB)
                   </div>
                 </div>
               ) : (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-8 rounded-2xl border-2 border-dashed border-slate-700 hover:border-cyan-500/60 bg-slate-950/60 hover:bg-slate-900/40 transition-all text-center cursor-pointer flex flex-col items-center justify-center gap-3 group"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 group-hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center transition-all shadow-inner">
+                <div className="p-6 sm:p-8 rounded-2xl border-2 border-dashed border-slate-700 bg-slate-950/60 text-center flex flex-col items-center justify-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shadow-inner">
                     <Camera size={26} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-extrabold text-white group-hover:text-cyan-300 transition-colors">
-                      {isCompressing ? 'Compressing Photo...' : 'Snap or Upload Physique Photo'}
+                    <h4 className="text-sm sm:text-base font-extrabold text-white">
+                      {isCompressing ? 'Preparing Photo...' : 'Add Your Physique Photo'}
                     </h4>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Full torso front, side, or back relaxed pose with good lighting
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      Relaxed standing pose in front of a mirror or full torso view with good lighting
                     </p>
                   </div>
-                  <span className="text-[11px] font-bold text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
-                    Browse Camera Roll / Files
-                  </span>
+
+                  {/* Two Explicit Buttons: Take Photo (Camera) vs Camera Roll */}
+                  <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full max-w-md pt-1">
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-950/50 cursor-pointer"
+                    >
+                      <Camera size={16} />
+                      <span>Take Live Photo</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      <Upload size={15} />
+                      <span>Choose From Camera Roll</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -351,13 +384,13 @@ export default function PhysiqueVisionScannerModal({
                     <span className="absolute right-3.5 top-3 text-xs font-bold text-slate-500">lbs</span>
                   </div>
                   <div className="text-[11px] text-slate-400 flex-1 leading-snug">
-                    💡 Providing exact scale weight triggers <strong className="text-cyan-300 font-semibold">FFMI cross-validation</strong>, tightening confidence intervals to ±1.0%.
+                    💡 Entering your scale weight helps the AI analyze your muscle index and narrows the accuracy range down to ±1.0%.
                   </div>
                 </div>
               ) : (
                 <div className="text-xs text-cyan-300/90 bg-cyan-950/30 p-2.5 rounded-xl border border-cyan-500/30 flex items-center gap-2">
                   <Info size={14} className="shrink-0 text-cyan-400" />
-                  <span>AI will use 3D volumetric frame estimation to predict your weight (±7 lbs).</span>
+                  <span>AI will estimate your body weight from your photo frame (±7 lbs).</span>
                 </div>
               )}
             </div>
@@ -409,12 +442,12 @@ export default function PhysiqueVisionScannerModal({
               {isAnalyzing ? (
                 <>
                   <RefreshCw size={18} className="animate-spin text-black" />
-                  <span>Analyzing Physique Landmarks...</span>
+                  <span>Analyzing Visual Landmarks...</span>
                 </>
               ) : (
                 <>
                   <Sparkles size={18} />
-                  <span>Run AI Physique &amp; Body Fat Scan</span>
+                  <span>Run AI Body Fat &amp; Posture Scan</span>
                 </>
               )}
             </button>
@@ -440,7 +473,7 @@ export default function PhysiqueVisionScannerModal({
                     <span>Estimated Body Fat</span>
                   </span>
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                    {scanResult.confidence_tier.toUpperCase()} CONFIDENCE
+                    {scanResult.confidence_tier === 'high' ? 'High Precision (±1%)' : scanResult.confidence_tier === 'moderate' ? 'Moderate Precision' : 'Broad Estimate'}
                   </span>
                 </div>
 
@@ -448,8 +481,8 @@ export default function PhysiqueVisionScannerModal({
                   <span className="text-3xl sm:text-4xl font-black text-white font-mono tracking-tight">
                     {editBodyFat || scanResult.body_fat_pct}%
                   </span>
-                  <span className="text-xs text-cyan-400 font-mono">
-                    [90% CI: {scanResult.body_fat_ci.min}% — {scanResult.body_fat_ci.max}%]
+                  <span className="text-xs text-cyan-300 font-mono">
+                    (Range: {scanResult.body_fat_ci.min}% – {scanResult.body_fat_ci.max}%)
                   </span>
                 </div>
 
@@ -474,11 +507,11 @@ export default function PhysiqueVisionScannerModal({
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1">
                     <Scale size={13} className="text-blue-400" />
-                    <span>Body Mass &amp; FFMI</span>
+                    <span>Body Weight &amp; Muscle Index</span>
                   </span>
                   {scanResult.ffmi && (
                     <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                      FFMI: {scanResult.ffmi.toFixed(1)}
+                      Muscle Index: {scanResult.ffmi.toFixed(1)}
                     </span>
                   )}
                 </div>
@@ -489,20 +522,20 @@ export default function PhysiqueVisionScannerModal({
                   </span>
                   <span className="text-sm font-bold text-slate-400">lbs</span>
                   {scanResult.weight_ci && (
-                    <span className="text-[11px] text-slate-500 font-mono">
-                      (CI: {scanResult.weight_ci.min}–{scanResult.weight_ci.max})
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      (Range: {scanResult.weight_ci.min}–{scanResult.weight_ci.max} lbs)
                     </span>
                   )}
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
-                  <span className="text-slate-400">Skeletal Muscle:</span>
+                  <span className="text-slate-400">Muscle Mass:</span>
                   <span className="font-mono font-bold text-emerald-400">
                     {scanResult.skeletal_muscle_mass_pct}%
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Visceral Fat Grade:</span>
+                  <span className="text-slate-400">Visceral Fat Level:</span>
                   <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${getVisceralBadgeColor(scanResult.visceral_fat_grade)}`}>
                     Level {scanResult.visceral_fat_grade} / 10 ({scanResult.visceral_fat_grade <= 3 ? 'Optimal' : scanResult.visceral_fat_grade <= 6 ? 'Moderate' : 'Elevated'})
                   </span>
@@ -515,7 +548,7 @@ export default function PhysiqueVisionScannerModal({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                   <Shield size={14} className="text-purple-400" />
-                  <span>Clinical Posture &amp; Spinal Alignment Screen</span>
+                  <span>Posture &amp; Alignment Check</span>
                 </span>
               </div>
 
@@ -548,7 +581,7 @@ export default function PhysiqueVisionScannerModal({
 
               {scanResult.posture_assessment.corrective_cues && scanResult.posture_assessment.corrective_cues.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Corrective Movement Cues:</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Helpful Movement Tips:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {scanResult.posture_assessment.corrective_cues.map((cue, i) => (
                       <span key={i} className="text-[11px] font-medium text-purple-300 bg-purple-950/40 border border-purple-500/30 px-2.5 py-1 rounded-lg">
@@ -565,16 +598,16 @@ export default function PhysiqueVisionScannerModal({
               {/* Morphometrics */}
               <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Proportion &amp; Fluid Status
+                  Proportion &amp; Fluid
                 </span>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">V-Taper Ratio:</span>
+                  <span className="text-slate-400">V-Taper (Shoulder/Waist):</span>
                   <span className="font-mono font-bold text-cyan-300">
                     {scanResult.v_taper_ratio ? `${scanResult.v_taper_ratio.toFixed(2)}:1` : '1.45:1'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Subcutaneous Fluid:</span>
+                  <span className="text-slate-400">Water Retention:</span>
                   <span className="font-mono font-bold text-white capitalize">
                     {scanResult.fluid_retention_level.replace('_', ' ')}
                   </span>
@@ -584,7 +617,7 @@ export default function PhysiqueVisionScannerModal({
               {/* Landmarks */}
               <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Detected Visual Landmarks
+                  Detected Visual Highlights
                 </span>
                 <div className="flex flex-wrap gap-1">
                   {scanResult.anatomical_landmarks_detected.slice(0, 3).map((lm, idx) => (
