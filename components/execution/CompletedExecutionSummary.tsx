@@ -32,12 +32,16 @@ export default function CompletedExecutionSummary({ modalityType, loggingType, d
           )}
         </div>
         
-        {(details.duration || details.intensity) && (
-          <div className="flex gap-4 text-xs text-gray-300 mb-3 pb-2 border-b border-white/10">
-            {details.duration && <span>{details.duration} min</span>}
-            {details.intensity && <span>Intensity: {details.intensity}/10</span>}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-300 mb-3 pb-2 border-b border-white/10">
+          {details.duration && <span>{details.duration} min</span>}
+          {details.intensity && <span>Intensity: {details.intensity}/10 RPE</span>}
+          {details.bfr_pressure_mmhg && <span className="text-amber-300 font-medium">BFR: {details.bfr_pressure_mmhg} mmHg</span>}
+          {details.grip_force_lbs && <span className="text-emerald-300 font-medium">Grip: {details.grip_force_lbs} lbs ({details.grip_hand || 'both'})</span>}
+          {details.avg_hr && <span>Avg HR: {details.avg_hr} bpm</span>}
+          {details.max_hr && <span>Max HR: {details.max_hr} bpm</span>}
+          {details.active_calories && <span className="text-amber-400 font-medium">{details.active_calories} kcal</span>}
+          {details.strain && <span className="text-cyan-400 font-medium">Strain: {details.strain}</span>}
+        </div>
 
         <div className="space-y-1.5">
           {Object.entries(grouped).map(([lift, sets]: [string, any[]]) => {
@@ -53,7 +57,7 @@ export default function CompletedExecutionSummary({ modalityType, loggingType, d
             return (
               <div key={lift} className="flex justify-between text-xs">
                 <span className="font-semibold text-gray-300">{lift}</span>
-                <span className="text-gray-500">{summaryString}</span>
+                <span className="text-gray-400 font-mono">{summaryString}</span>
               </div>
             )
           })}
@@ -70,6 +74,8 @@ export default function CompletedExecutionSummary({ modalityType, loggingType, d
     details.distance || 
     details.watts || 
     details.elevation_ft ||
+    details.incline_pct ||
+    details.ruck_weight_lbs ||
     (modalityType && (
       modalityType.toLowerCase().includes('cardio') || 
       modalityType.toLowerCase().includes('run') || 
@@ -92,11 +98,18 @@ export default function CompletedExecutionSummary({ modalityType, loggingType, d
           {details.cardio_type && <span className="font-bold text-levl-accent">{details.cardio_type}</span>}
           {details.distance && <span>{details.distance} mi</span>}
           {details.duration && <span>{details.duration} min</span>}
+          {details.time_in_zone_2_min && <span className="text-emerald-400 font-medium">Zone 2: {details.time_in_zone_2_min}m</span>}
+          {details.incline_pct && <span className="text-amber-300 font-medium">Incline: {details.incline_pct}%</span>}
+          {details.ruck_weight_lbs && <span className="text-emerald-300 font-medium">Ruck Wt: {details.ruck_weight_lbs} lbs</span>}
+          {details.pace_500m && <span className="text-cyan-300 font-medium">Pace: {details.pace_500m}/500m</span>}
           {details.intensity && <span>Intensity: {details.intensity}/10</span>}
           {details.avg_hr && <span>Avg HR: {details.avg_hr} bpm</span>}
           {details.max_hr && <span>Max HR: {details.max_hr} bpm</span>}
           {details.watts && <span>Power: {details.watts} W</span>}
           {details.elevation_ft && <span>Elev: {details.elevation_ft} ft</span>}
+          {details.active_calories && <span className="text-amber-400 font-medium">{details.active_calories} kcal</span>}
+          {details.strain && <span className="text-cyan-400 font-medium">Strain: {details.strain}</span>}
+          {details.hr_recovery_1m && <span className="text-rose-400 font-medium">1m Drop: {details.hr_recovery_1m} bpm</span>}
         </div>
       </div>
     )

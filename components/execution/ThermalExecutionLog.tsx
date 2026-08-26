@@ -344,6 +344,23 @@ export default function ThermalExecutionLog({ value, onChange }: Props) {
           <Plus size={14} /> Add Custom Round
         </button>
       </div>
+
+      {/* Specialized Traits: Søberg Principle & Submersion Depth for Cold */}
+      {(value.exposure_type === 'cold_plunge' || value.exposure_type === 'contrast') && (
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/5">
+          <button
+            type="button"
+            onClick={() => onChange({ ...value, notes: value.notes?.includes('soberg') ? value.notes.replace('soberg', '') : `${value.notes || ''} soberg` })}
+            className={`flex-1 min-w-[140px] h-8 rounded-lg px-2.5 text-[10px] font-bold border transition-colors flex items-center justify-center gap-1.5 ${
+              value.notes?.includes('soberg')
+                ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
+                : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>❄️ Søberg Natural Warm-up</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

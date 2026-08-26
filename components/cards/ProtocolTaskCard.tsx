@@ -40,6 +40,7 @@ import { saveInjectionSiteLog } from '@/lib/peptides/reconstitutionEngine'
 import { useTemperatureUnit } from '@/lib/utils/useTemperatureUnit'
 import { isPreLoggableOutcome, hasAnyPreLoggableOutcome, getOutcomePhaseType } from '@/lib/utils/outcomePhaseRules'
 import { getPeakOnsetGuidance } from '@/lib/utils/peakOnsetGuidance'
+import { getModalityArchetype } from '@/lib/data/modalityArchetypes'
 import dynamic from 'next/dynamic'
 
 const CyclicSighingApplet = dynamic(() => import('../applets/CyclicSighingApplet'), {
@@ -579,30 +580,33 @@ export default function ProtocolTaskCard({
     return map
   }, [allOutcomes, userProfile])
 
-  // Modality peak effect window helper
+  // Modality Archetype & Specialized Trait Resolution
   const modalityKey = (modality.slug || modality.id || modality.name || '').toLowerCase()
-  const lType = (modality.logging_type || '') as string
-  const mType = (modality.modality_type || '').toLowerCase()
-  const mName = (modality.name || '').toLowerCase()
-  const mCat = (modality.category || '').toLowerCase()
+  const archetypeProfile = useMemo(() => getModalityArchetype(modality), [modality])
+  const {
+    archetype,
+    lockedExerciseName,
+    lockedCardioType,
+    specializedTraits
+  } = archetypeProfile
 
-  const isThermal = lType === 'thermal' || mType.includes('thermal') || mType.includes('sauna') || mType.includes('cold')
-  const isBreathwork = lType === 'breathwork' || lType === 'mindfulness' || mType.includes('breath') || mType.includes('meditation')
-  const isCardio = lType === 'cardio' || mType.includes('cardio') || mType.includes('run') || mType.includes('cycle')
-  const isStrength = lType === 'strength' || mType.includes('strength') || mType.includes('lift')
-  const isFasting = lType === 'fasting' || mType.includes('fast') || mName.includes('fast')
-  const isNutritionMacro = lType === 'nutrition_protein' || lType === 'nutrition' || mType.includes('nutrition') || mType.includes('protein')
-  const isRedLight = lType === 'red_light' || mType.includes('red light') || mType.includes('photobiomodulation')
-  const isCGM = lType === 'cgm' || mType.includes('cgm') || mType.includes('glucose')
-  const isSunlight = lType === 'sunlight' || mType.includes('sunlight')
-  const isSleepHygiene = lType === 'sleep' || mType.includes('sleep')
-  const isHydration = lType === 'hydration' || mType.includes('hydration') || mType.includes('electrolyte')
-  const isPhlebotomy = lType === 'phlebotomy' || mType.includes('blood') || mType.includes('phlebotomy')
-  const isPeptide = lType === 'peptide' || mType.includes('peptide') || mCat.includes('peptide') || mName.includes('bpc') || mName.includes('tb-500') || mName.includes('tb500') || mName.includes('cjc') || mName.includes('ipamorelin') || !!modality.peptide_metadata?.is_peptide
-  const isSupplement = (lType === 'supplement' || mType.includes('supplement') || mCat.includes('supplement')) && !isPeptide
-  const isSport = lType === 'sport' || mType.includes('sport') || mCat.includes('sport')
+  const isThermal = archetype === 'thermal'
+  const isBreathwork = archetype === 'breathwork'
+  const isCardio = archetype === 'cardio'
+  const isStrength = archetype === 'strength'
+  const isFasting = archetype === 'fasting'
+  const isNutritionMacro = archetype === 'nutrition_macro'
+  const isRedLight = archetype === 'red_light'
+  const isCGM = archetype === 'cgm'
+  const isSunlight = archetype === 'sunlight'
+  const isSleepHygiene = archetype === 'sleep'
+  const isHydration = archetype === 'hydration'
+  const isPhlebotomy = archetype === 'phlebotomy'
+  const isPeptide = archetype === 'peptide'
+  const isSupplement = archetype === 'supplement'
+  const isSport = archetype === 'sport'
 
-  const hasPrecisionLogUI = isThermal || isBreathwork || isCardio || isStrength || isFasting || isNutritionMacro || isRedLight || isCGM || isSunlight || isSleepHygiene || isHydration || isPhlebotomy || isPeptide || isSupplement || isSport
+  const hasPrecisionLogUI = archetype !== 'general'
 
   const peakWindowText = useMemo(() => {
     const name = (modality.display_name || modality.name || '').toLowerCase()
@@ -1710,8 +1714,22 @@ export default function ProtocolTaskCard({
                   {/* Render the specialized UI */}
                   {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isCardio && <CardioExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isStrength && <StrengthExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isCardio && (
+                    <CardioExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      lockedCardioType={lockedCardioType}
+                      specializedTraits={specializedTraits}
+                    />
+                  )}
+                  {isStrength && (
+                    <StrengthExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      lockedExerciseName={lockedExerciseName}
+                      specializedTraits={specializedTraits}
+                    />
+                  )}
                   {isFasting && (
                     <FastingExecutionLog 
                       value={executionDetails} 
@@ -2486,115 +2504,85 @@ export default function ProtocolTaskCard({
           )}
 
           {/* Execution Tracker (Only if pending OR editing) */}
-          {(task.status === 'pending' || isEditingExecution) && !isFutureTask && (() => {
-            const name = (modality.name || '').toLowerCase()
-            const cat = (modality.category || '').toLowerCase()
-            const logType = modality.logging_type
-            const modType = modality.modality_type
+          {(task.status === 'pending' || isEditingExecution) && !isFutureTask && (
+            <div className="mb-4 w-full">
+              {/* Top Quick Log Bar */}
+              <div className="flex items-center gap-3 w-full mb-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs uppercase tracking-wider text-levl-text-secondary font-bold">Log:</span>
+                  
+                  {/* Log Baseline (Before) Button: Rendered ONLY if the modality has pre-loggable acute outcomes */}
+                  {hasPreLoggableOutcomes && (
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setExpanded(true)
+                        setShowInlineOutcomes(true)
+                        setActiveOutcomePhase('pre')
+                      }}
+                      className="h-10 bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-semibold px-3.5 rounded-lg hover:bg-purple-500 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
+                      title="Log baseline bio-signals before starting modality"
+                    >
+                      <Activity size={13} className="text-purple-400" /> Log Baseline (Before)
+                    </button>
+                  )}
 
-            const isThermal = logType === 'thermal' || cat.includes('thermal') || name.includes('sauna') || name.includes('cold plunge') || name.includes('ice bath')
-            const isBreathwork = logType === 'breathwork' || logType === 'mindfulness' || name.includes('breath') || name.includes('meditat') || name.includes('sighing')
-            const isCardio = (logType === 'cardio' || cat.includes('cardio') || name.includes('vo2') || name.includes('run') || name.includes('cycle') || name.includes('hiit') || name.includes('vilpa')) && !name.includes('breath')
-            const isStrength = logType === 'strength' || name.includes('bfr') || name.includes('squat') || name.includes('raise') || name.includes('pushup') || name.includes('curl') || name.includes('step-up') || name.includes('handgrip')
-            const isFasting = logType === 'fasting' || modType === 'fasting' || cat.includes('fast') || name.includes('fasting') || name.includes('omad') || name.includes('trf') || name.includes('18:6') || name.includes('16:8')
-            
-            // Strict Domain Matches (Zero False Positives!)
-            const isNutritionMacro = name.includes('protein distribution') || name.includes('leucine threshold') || name.includes('protein synthesis timing')
-            const isRedLight = name.includes('red light') || name.includes('photobiomodulation')
-            const isCGM = name.includes('cgm') || name.includes('post_meal_glucose_walk') || name.includes('post-meal glucose walk')
-            const isSunlight = name.includes('morning sunlight') || name.includes('solar noon') || name.includes('optic flow')
-            const isSleepHygiene = name.includes('dark & cool sleep') || name.includes('mouth tape') || name.includes('thermal drop sleep')
-            const isHydration = name.includes('hydration target') || name.includes('electrolyte replacement')
-            const isPhlebotomy = name.includes('phlebotomy') || name.includes('blood donation')
-            const isPeptide = logType === 'peptide' || modType?.includes('peptide') || cat.includes('peptide') || name.includes('bpc') || name.includes('tb-500') || name.includes('tb500') || name.includes('cjc') || name.includes('ipamorelin') || !!modality.peptide_metadata?.is_peptide
-
-            // Dosed supplements, compounds, powders, and peptides (EXCLUDES general dietary habits, meal bowls & lifestyle guidelines)
-            const isSupplement = (
-              logType === 'supplement' || 
-              modType === 'supplement' || 
-              cat.includes('supplement') || 
-              cat.includes('nutraceutical') ||
-              name.includes('nmn') || name.includes('fisetin') || name.includes('quercetin') || name.includes('creatine') || 
-              name.includes('glycine') || name.includes('ashwagandha') || name.includes('resveratrol') || name.includes('theanine') || 
-              name.includes('alpha-gpc') || name.includes('taurine') || name.includes('magnesium') || name.includes('spermidine') || 
-              name.includes('gaba') || name.includes('berberine') || name.includes('apigenin') || name.includes('sulforaphane') || 
-              name.includes('tudca') || name.includes('acarbose') || name.includes('metformin') || name.includes('rapamycin') ||
-              name.includes('omega') || name.includes('coq10') || name.includes('vitamin') || name.includes('zinc') || name.includes('glp-1')
-            ) && !isNutritionMacro && !isFasting && !isPeptide && !name.includes('super veggie') && !name.includes('diet')
-            
-            const isSport = logType === 'sport'
-
-            const hasPrecisionLogUI = isThermal || isBreathwork || isCardio || isStrength || isFasting || isNutritionMacro || isRedLight || isCGM || isSunlight || isSleepHygiene || isHydration || isPhlebotomy || isPeptide || isSupplement || isSport
-
-            return (
-              <div className="mb-4 w-full">
-                {/* Top Quick Log Bar */}
-                <div className="flex items-center gap-3 w-full mb-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs uppercase tracking-wider text-levl-text-secondary font-bold">Log:</span>
-                    
-                    {/* Log Baseline (Before) Button: Rendered ONLY if the modality has pre-loggable acute outcomes */}
-                    {hasPreLoggableOutcomes && (
-                      <button 
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setExpanded(true)
-                          setShowInlineOutcomes(true)
-                          setActiveOutcomePhase('pre')
-                        }}
-                        className="h-10 bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-semibold px-3.5 rounded-lg hover:bg-purple-500 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
-                        title="Log baseline bio-signals before starting modality"
-                      >
-                        <Activity size={13} className="text-purple-400" /> Log Baseline (Before)
-                      </button>
-                    )}
-
-                    {/* GREEN Precision Complete / Precision Log Toggle Button (Rendered ONLY if precision UI exists) */}
-                    {hasPrecisionLogUI && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setShowPrecisionLog(!showPrecisionLog)
-                        }}
-                        className={`h-10 border text-xs font-bold px-3.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
-                          showPrecisionLog
-                            ? 'bg-emerald-500 text-white border-emerald-400 shadow-emerald-500/30'
-                            : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 hover:border-emerald-500/60'
-                        }`}
-                        title="Toggle detailed precision execution metrics & stack log"
-                      >
-                        <CheckCircle2 size={13} className={showPrecisionLog ? 'text-white' : 'text-emerald-400'} />
-                        <span>Precision Complete</span>
-                        {showPrecisionLog ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      </button>
-                    )}
-                  </div>
+                  {/* GREEN Precision Complete / Precision Log Toggle Button (Rendered ONLY if precision UI exists) */}
+                  {hasPrecisionLogUI && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowPrecisionLog(!showPrecisionLog)
+                      }}
+                      className={`h-10 border text-xs font-bold px-3.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
+                        showPrecisionLog
+                          ? 'bg-emerald-500 text-white border-emerald-400 shadow-emerald-500/30'
+                          : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 hover:border-emerald-500/60'
+                      }`}
+                      title="Toggle detailed precision execution metrics & stack log"
+                    >
+                      <CheckCircle2 size={13} className={showPrecisionLog ? 'text-white' : 'text-emerald-400'} />
+                      <span>Precision Complete</span>
+                      {showPrecisionLog ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                  )}
                 </div>
+              </div>
 
-                {/* Specialized Execution Logging UIs (Collapsed by default, opens via Precision Complete button) */}
-                {hasPrecisionLogUI && showPrecisionLog && (
-                  <div className="w-full mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                    {/* THERMAL EXPOSURE UI (Sauna, Cold Plunge, Ice Bath) */}
-                    {isThermal && (
-                      <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
+              {/* Specialized Execution Logging UIs (Collapsed by default, opens via Precision Complete button) */}
+              {hasPrecisionLogUI && showPrecisionLog && (
+                <div className="w-full mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  {/* THERMAL EXPOSURE UI (Sauna, Cold Plunge, Ice Bath) */}
+                  {isThermal && (
+                    <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />
+                  )}
 
-                    {/* BREATHWORK & MEDITATION UI */}
-                    {isBreathwork && (
-                      <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
+                  {/* BREATHWORK & MEDITATION UI */}
+                  {isBreathwork && (
+                    <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />
+                  )}
 
-                    {/* CARDIO & ENDURANCE UI (Zone 2, VO2 Max, Cycling, Running) */}
-                    {isCardio && (
-                      <CardioExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
+                  {/* CARDIO & ENDURANCE UI (Zone 2, VO2 Max, Cycling, Running) */}
+                  {isCardio && (
+                    <CardioExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      lockedCardioType={lockedCardioType}
+                      specializedTraits={specializedTraits}
+                    />
+                  )}
 
-                    {/* STRENGTH UI */}
-                    {isStrength && (
-                      <StrengthExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
+                  {/* STRENGTH UI */}
+                  {isStrength && (
+                    <StrengthExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      lockedExerciseName={lockedExerciseName}
+                      specializedTraits={specializedTraits}
+                    />
+                  )}
 
                     {/* FASTING & TIME-RESTRICTED FEEDING UI */}
                     {isFasting && (
@@ -2602,7 +2590,7 @@ export default function ProtocolTaskCard({
                         value={executionDetails} 
                         onChange={setExecutionDetails} 
                         isMultiDay={
-                          name.includes('16:8') || name.includes('18:6') || name.includes('time-restricted') || name.includes('trf')
+                          modalityKey.includes('16:8') || modalityKey.includes('18:6') || modalityKey.includes('time-restricted') || modalityKey.includes('trf')
                             ? false 
                             : true
                         }
@@ -2747,8 +2735,7 @@ export default function ProtocolTaskCard({
                   </div>
                 )}
               </div>
-            )
-          })()}
+            )}
           
           {/* Quick & Main Actions (For all tasks except immediate inline outcome tracking prompt) */}
           {!isJustCompletedInline && (
