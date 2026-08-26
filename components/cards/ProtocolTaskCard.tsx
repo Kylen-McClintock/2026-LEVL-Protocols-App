@@ -2689,9 +2689,10 @@ export default function ProtocolTaskCard({
                   e.stopPropagation()
                   setShowBoxApplet(true)
                 }}
-                className="w-full py-3.5 bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(6,182,212,0.35)] flex items-center justify-center gap-2 cursor-pointer border border-cyan-400/40"
+                className="w-full py-4 px-6 bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(6,182,212,0.4)] flex items-center justify-center gap-3 cursor-pointer border border-cyan-400/40 transform hover:scale-[1.01] active:scale-[0.99]"
               >
-                <Sparkles size={16} fill="currentColor" /> ▶ Start Box Breathing (Navy SEAL Method) (4 Min)
+                <Sparkles size={18} fill="currentColor" className="shrink-0 text-cyan-200" />
+                <span className="truncate sm:whitespace-normal">Start Box Breathing (Navy SEAL Method) • 4 Min</span>
               </button>
             </div>
           ) : (task.modality_id === 'cyclic_hyperventilation' || modality?.id?.includes('hyperventilation')) ? (
@@ -2702,9 +2703,10 @@ export default function ProtocolTaskCard({
                   e.stopPropagation()
                   setShowHyperApplet(true)
                 }}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-600 to-red-600 hover:from-amber-400 hover:to-red-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(245,158,11,0.35)] flex items-center justify-center gap-2 cursor-pointer border border-amber-400/40"
+                className="w-full py-4 px-6 bg-gradient-to-r from-amber-500 via-orange-600 to-red-600 hover:from-amber-400 hover:to-red-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(245,158,11,0.4)] flex items-center justify-center gap-3 cursor-pointer border border-amber-400/40 transform hover:scale-[1.01] active:scale-[0.99]"
               >
-                <Sparkles size={16} fill="currentColor" /> ▶ Start Cyclic Hyperventilation (Wim Hof Method) (10 Min)
+                <Sparkles size={18} fill="currentColor" className="shrink-0 text-amber-200" />
+                <span className="truncate sm:whitespace-normal">Start Cyclic Hyperventilation (Wim Hof) • 10 Min</span>
               </button>
             </div>
           ) : (task.modality_id === 'coherent_breathing' || modality?.id?.includes('coherent')) ? (
@@ -2715,9 +2717,10 @@ export default function ProtocolTaskCard({
                   e.stopPropagation()
                   setShowCoherentApplet(true)
                 }}
-                className="w-full py-3.5 bg-gradient-to-r from-blue-600 via-emerald-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.35)] flex items-center justify-center gap-2 cursor-pointer border border-blue-400/40"
+                className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 via-emerald-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(59,130,246,0.4)] flex items-center justify-center gap-3 cursor-pointer border border-blue-400/40 transform hover:scale-[1.01] active:scale-[0.99]"
               >
-                <Sparkles size={16} fill="currentColor" /> ▶ Start Coherent 5.5s Breathing (Max HRV) (10 Min)
+                <Sparkles size={18} fill="currentColor" className="shrink-0 text-blue-200" />
+                <span className="truncate sm:whitespace-normal">Start Coherent 5.5s Breathing (Max HRV) • 10 Min</span>
               </button>
             </div>
           ) : (task.modality_id === 'breathing_4_7_8' || 
@@ -2730,9 +2733,10 @@ export default function ProtocolTaskCard({
                   e.stopPropagation()
                   setShow478Applet(true)
                 }}
-                className="w-full py-3.5 bg-gradient-to-r from-purple-700 via-blue-600 to-emerald-600 hover:from-purple-600 hover:to-emerald-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(124,58,237,0.35)] flex items-center justify-center gap-2 cursor-pointer border border-purple-400/40"
+                className="w-full py-4 px-6 bg-gradient-to-r from-purple-700 via-blue-600 to-emerald-600 hover:from-purple-600 hover:to-emerald-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(124,58,237,0.4)] flex items-center justify-center gap-3 cursor-pointer border border-purple-400/40 transform hover:scale-[1.01] active:scale-[0.99]"
               >
-                <Sparkles size={16} fill="currentColor" /> ▶ Start 4-7-8 Relaxing Breathwork (5 Min)
+                <Sparkles size={18} fill="currentColor" className="shrink-0 text-purple-200" />
+                <span className="truncate sm:whitespace-normal">Start 4-7-8 Relaxing Breathwork • 5 Min</span>
               </button>
             </div>
           ) : (
@@ -2747,9 +2751,10 @@ export default function ProtocolTaskCard({
                     e.stopPropagation()
                     setShowBreathworkApplet(true)
                   }}
-                  className="w-full py-3.5 bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(37,99,235,0.35)] flex items-center justify-center gap-2 cursor-pointer border border-blue-400/40"
+                  className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(37,99,235,0.4)] flex items-center justify-center gap-3 cursor-pointer border border-blue-400/40 transform hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  <Sparkles size={16} fill="currentColor" /> ▶ Start Cyclic Sighing (Physiological Sigh) (5 Min)
+                  <Sparkles size={18} fill="currentColor" className="shrink-0 text-blue-200" />
+                  <span className="truncate sm:whitespace-normal">Start Cyclic Sighing (Physiological Sigh) • 5 Min</span>
                 </button>
               </div>
             )

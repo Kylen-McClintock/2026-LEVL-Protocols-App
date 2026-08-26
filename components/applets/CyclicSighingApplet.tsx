@@ -388,9 +388,10 @@ export default function CyclicSighingApplet({
 
           <button
             onClick={handleStartSession}
-            className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-extrabold text-sm uppercase tracking-wider rounded-xl transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-4 px-8 min-h-[52px] bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] flex items-center justify-center gap-3 cursor-pointer border border-indigo-400/40 transform hover:scale-[1.01] active:scale-[0.99]"
           >
-            <Play size={18} fill="currentColor" /> Begin 5-Min Session
+            <Play size={18} fill="currentColor" className="shrink-0" />
+            <span>Begin 5-Min Session</span>
           </button>
         </div>
       )}
@@ -478,7 +479,7 @@ export default function CyclicSighingApplet({
           <button
             onClick={handleFinishAndSave}
             disabled={isSaving}
-            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-extrabold text-sm uppercase tracking-wider rounded-xl transition-all shadow-[0_0_25px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+            className="w-full py-4 px-8 min-h-[52px] bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(16,185,129,0.4)] flex items-center justify-center gap-3 disabled:opacity-50 cursor-pointer transform hover:scale-[1.01] active:scale-[0.99]"
           >
             {isSaving ? 'Saving Bio-Feedback...' : 'Save & Close Session'}
           </button>

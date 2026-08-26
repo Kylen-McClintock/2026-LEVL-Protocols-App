@@ -360,9 +360,10 @@ export default function CoherentBreathingApplet({
 
           <button
             onClick={handleStartSession}
-            className="w-full py-4 bg-gradient-to-r from-blue-600 via-emerald-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-extrabold text-sm uppercase tracking-wider rounded-xl transition-all shadow-[0_0_25px_rgba(59,130,246,0.4)] flex items-center justify-center gap-2 cursor-pointer border border-blue-400/30"
+            className="w-full py-4 px-8 min-h-[52px] bg-gradient-to-r from-blue-600 via-emerald-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(59,130,246,0.4)] flex items-center justify-center gap-3 cursor-pointer border border-blue-400/40 transform hover:scale-[1.01] active:scale-[0.99]"
           >
-            <Play size={18} fill="currentColor" /> Begin 10-Min Coherent Session
+            <Play size={18} fill="currentColor" className="shrink-0" />
+            <span>Begin 10-Min Coherent Session</span>
           </button>
         </div>
       )}
@@ -447,7 +448,7 @@ export default function CoherentBreathingApplet({
           <button
             onClick={handleFinishAndSave}
             disabled={isSaving}
-            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-extrabold text-sm uppercase tracking-wider rounded-xl transition-all shadow-[0_0_25px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+            className="w-full py-4 px-8 min-h-[52px] bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(16,185,129,0.4)] flex items-center justify-center gap-3 disabled:opacity-50 cursor-pointer transform hover:scale-[1.01] active:scale-[0.99]"
           >
             {isSaving ? 'Saving Bio-Feedback...' : 'Save & Close'}
           </button>

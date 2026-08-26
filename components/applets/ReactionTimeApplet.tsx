@@ -117,8 +117,8 @@ export default function ReactionTimeApplet({ onComplete, onCancel }: ReactionTim
                 ? 'Tap anywhere to begin. When screen turns green, tap as fast as possible.'
                 : feedbackMsg}
             </p>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
-              <Play size={14} /> {trials.length === 0 ? 'Start Test (5 Trials)' : `Next Trial (${trials.length + 1}/${TOTAL_TRIALS})`}
+            <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-black uppercase tracking-wider">
+              <Play size={14} fill="currentColor" /> {trials.length === 0 ? 'Start Test (5 Trials)' : `Next Trial (${trials.length + 1}/${TOTAL_TRIALS})`}
             </div>
           </div>
         )}
