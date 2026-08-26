@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Calendar as CalendarIcon, Clock, Activity, CalendarDays, Bookmark, Target, TrendingUp, HelpCircle } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getProtocolTasksHistory, getOrCreateUserProfile, getDailyWellbeingHistory } from '@/lib/data'
 import { DailyProtocolTask, UserProfile, DailyWellbeingCheckin } from '@/lib/types'
@@ -10,6 +11,7 @@ import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, addWeeks, sub
 import BiologicalRhythmDashboard from '@/components/calendar/BiologicalRhythmDashboard'
 
 export default function SchedulePage() {
+  const { localUserId: authUserId, loading: authLoading } = useAuth()
   const [tasks, setTasks] = useState<DailyProtocolTask[]>([])
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [wellbeingLogs, setWellbeingLogs] = useState<DailyWellbeingCheckin[]>([])
@@ -17,8 +19,10 @@ export default function SchedulePage() {
   const [currentDate, setCurrentDate] = useState(new Date())
 
   useEffect(() => {
+    if (authLoading) return
+
     async function loadData() {
-      const localUserId = getLocalUserId()
+      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
       
       // Phase 1: Fetch active week for instant UI render (< 50ms)
       const weekStartStr = format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'yyyy-MM-dd')
@@ -54,8 +58,17 @@ export default function SchedulePage() {
           .catch(console.error)
       }
     }
+
     loadData()
-  }, [currentDate])
+
+    const handleAuthChange = () => {
+      loadData()
+    }
+    window.addEventListener('levl_auth_user_changed', handleAuthChange)
+    return () => {
+      window.removeEventListener('levl_auth_user_changed', handleAuthChange)
+    }
+  }, [currentDate, authLoading, authUserId])
 
   const nextWeek = () => setCurrentDate(addWeeks(currentDate, 1))
   const prevWeek = () => setCurrentDate(subWeeks(currentDate, 1))

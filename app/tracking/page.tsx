@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import {
   getOrCreateUserProfile,
@@ -82,6 +83,7 @@ interface ExtendedOutcomeSummary extends OutcomeAdherenceSummary {
 }
 
 export default function TrackingPage() {
+  const { localUserId: authUserId, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [outcomeDataList, setOutcomeDataList] = useState<ExtendedOutcomeSummary[]>([])
   const [wellbeingLogs, setWellbeingLogs] = useState<DailyWellbeingCheckin[]>([])
@@ -139,8 +141,10 @@ export default function TrackingPage() {
   }
 
   useEffect(() => {
+    if (authLoading) return
+
     async function load() {
-      const localUserId = getLocalUserId()
+      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
       const today = new Date().toISOString().split('T')[0]
       const thirtyDaysAgoDate = new Date()
       thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 30)
@@ -342,7 +346,15 @@ export default function TrackingPage() {
       setLoading(false)
     }
     load()
-  }, [])
+
+    const handleAuthChange = () => {
+      load()
+    }
+    window.addEventListener('levl_auth_user_changed', handleAuthChange)
+    return () => {
+      window.removeEventListener('levl_auth_user_changed', handleAuthChange)
+    }
+  }, [authLoading, authUserId])
 
   // Filtered outcomes list based on tabs & search
   const filteredOutcomes = useMemo(() => {

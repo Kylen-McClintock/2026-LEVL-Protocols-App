@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 import { 
   getProtocolByIdWithSteps, 
   getDailyProtocolTasks, 
@@ -63,6 +64,7 @@ function getOutcomesForModality(modality: any, allOutcomes: OutcomeDimension[]):
 }
 
 export default function ProtocolFocusPage() {
+  const { localUserId: authUserId, loading: authLoading } = useAuth()
   const params = useParams()
   const router = useRouter()
   const rawId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string) || ''
@@ -101,9 +103,11 @@ export default function ProtocolFocusPage() {
   const currentDateStr = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
+    if (authLoading) return
+
     async function loadData() {
       setIsLoading(true)
-      const localUserId = getLocalUserId()
+      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
 
       // 1. Fetch protocol with joined steps
       let protoData = await getProtocolByIdWithSteps(protocolId)
@@ -137,7 +141,15 @@ export default function ProtocolFocusPage() {
     if (protocolId) {
       loadData()
     }
-  }, [protocolId])
+
+    const handleAuthChange = () => {
+      if (protocolId) loadData()
+    }
+    window.addEventListener('levl_auth_user_changed', handleAuthChange)
+    return () => {
+      window.removeEventListener('levl_auth_user_changed', handleAuthChange)
+    }
+  }, [protocolId, authLoading, authUserId])
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     const localUserId = getLocalUserId()

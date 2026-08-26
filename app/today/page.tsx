@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { 
   getOrCreateUserProfile, 
@@ -94,6 +95,7 @@ function TodayPageContent() {
   const searchParams = useSearchParams()
   const dateParam = searchParams.get('date')
 
+  const { user: authUser, localUserId: authUserId, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [tasks, setTasks] = useState<DailyProtocolTask[]>([])
   const [allModalities, setAllModalities] = useState<Modality[]>([])
@@ -234,23 +236,25 @@ function TodayPageContent() {
   }
 
   const refreshTodayTasks = async () => {
-    const localUserId = getLocalUserId()
+    const localUserId = authUserId || getLocalUserId()
     const currentTasks = await getDailyProtocolTasks(localUserId, dateStr)
     setTasks(currentTasks)
   }
 
   useEffect(() => {
+    if (authLoading) return
+
     async function loadData() {
       try {
         setLoading(true)
-        const localUserId = getLocalUserId()
+        const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
         const userProfile = await getOrCreateUserProfile(localUserId)
         if (!userProfile) {
           router.push('/onboarding')
           return
         }
         if (!userProfile.display_name) {
-          userProfile.display_name = 'Protocol Optimizer'
+          userProfile.display_name = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || 'Protocol Optimizer'
         }
         setProfile(userProfile)
 
@@ -276,14 +280,22 @@ function TodayPageContent() {
       }
     }
     loadData()
-  }, [dateStr, router])
+
+    const handleAuthChange = () => {
+      loadData()
+    }
+    window.addEventListener('levl_auth_user_changed', handleAuthChange)
+    return () => {
+      window.removeEventListener('levl_auth_user_changed', handleAuthChange)
+    }
+  }, [dateStr, router, authLoading, authUserId])
 
   // Multi-day task loader for 3day, week, and month views
   useEffect(() => {
-    if (calendarViewMode === 'today') return
+    if (calendarViewMode === 'today' || authLoading) return
 
     async function loadMultiDay() {
-      const localUserId = getLocalUserId()
+      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
       let datesToLoad: string[] = []
 
       if (calendarViewMode === '3day') {
@@ -308,7 +320,7 @@ function TodayPageContent() {
     }
 
     loadMultiDay()
-  }, [calendarViewMode, currentDate, outcomesRefreshKey])
+  }, [calendarViewMode, currentDate, outcomesRefreshKey, authLoading, authUserId])
 
   const handleStatusChange = async (
     id: string, 

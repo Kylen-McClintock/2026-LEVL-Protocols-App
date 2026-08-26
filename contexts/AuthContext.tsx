@@ -72,6 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         localStorage.setItem(LOCAL_USER_ID_KEY, session.user.id)
         setLocalUserId(session.user.id)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('levl_auth_user_changed', { detail: session.user.id }))
+        }
       }
       setLoading(false)
     })
@@ -92,6 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(LOCAL_USER_ID_KEY, newSession.user.id)
           setLocalUserId(newSession.user.id)
           setIsAuthModalOpen(false)
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('levl_auth_user_changed', { detail: newSession.user.id }))
+          }
         }
       }
     )

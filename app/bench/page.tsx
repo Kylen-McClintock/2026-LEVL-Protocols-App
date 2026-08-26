@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getBenchItems, getBenchProtocols, createDailyTask, addProtocolToToday, removeFromBench, getOrCreateUserProfile, getDraftModalities, getDraftProtocols, getProtocols, getDailyProtocolTasks } from '@/lib/data'
 import { UserBenchItem, UserProfile, Modality, Protocol } from '@/lib/types'
@@ -16,6 +17,7 @@ import { calculateNextBestAction } from '@/lib/ranking/nextBestAction'
 import { format } from 'date-fns'
 
 export default function BenchPage() {
+  const { localUserId: authUserId, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [items, setItems] = useState<UserBenchItem[]>([])
   const [benchedProtocols, setBenchedProtocols] = useState<any[]>([])
@@ -30,7 +32,7 @@ export default function BenchPage() {
   const [editorType, setEditorType] = useState<'modality' | 'protocol'>('modality')
 
   const load = async () => {
-    const localUserId = getLocalUserId()
+    const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
     const todayStr = format(new Date(), 'yyyy-MM-dd')
 
     const [modData, protoData, profileData, draftModData, draftProtoData, masterProtocols, todayTasks] = await Promise.all([
@@ -99,17 +101,26 @@ export default function BenchPage() {
   }
 
   useEffect(() => {
+    if (authLoading) return
     load()
-  }, [])
+
+    const handleAuthChange = () => {
+      load()
+    }
+    window.addEventListener('levl_auth_user_changed', handleAuthChange)
+    return () => {
+      window.removeEventListener('levl_auth_user_changed', handleAuthChange)
+    }
+  }, [authLoading, authUserId])
 
   const handleAddToToday = async (modalityId: string) => {
-    const localUserId = getLocalUserId()
+    const localUserId = authUserId || getLocalUserId()
     const dateStr = new Date().toISOString().split('T')[0]
     await createDailyTask(localUserId, dateStr, modalityId)
   }
 
   const handleRemove = async (modalityId: string) => {
-    const localUserId = getLocalUserId()
+    const localUserId = authUserId || getLocalUserId()
     await removeFromBench(localUserId, modalityId)
   }
 
