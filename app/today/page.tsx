@@ -270,11 +270,6 @@ function TodayPageContent() {
           router.push('/onboarding')
           return
         }
-        if (!userProfile.display_name) {
-          userProfile.display_name = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || 'Protocol Optimizer'
-        }
-        setProfile(userProfile)
-
         const [currentTasks, outcomes, protocols, bench, todayCheckin, fetchedMods] = await Promise.all([
           getDailyProtocolTasks(localUserId, dateStr),
           getOutcomeDimensions(),
@@ -284,6 +279,7 @@ function TodayPageContent() {
           getModalities()
         ])
 
+        setProfile(userProfile)
         setTasks(currentTasks)
         setAllOutcomes(outcomes)
         setAvailableProtocols(protocols.map((p: any) => ({ id: p.id, name: p.name })))
@@ -1535,10 +1531,31 @@ function TodayPageContent() {
     })
   }
 
-  if (loading && !profile) {
+  if ((loading && tasks.length === 0) || authLoading || !profile) {
     return (
-      <div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">
-        Loading your stack...
+      <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 max-w-4xl mx-auto space-y-5 animate-pulse">
+        {/* Shimmer Header */}
+        <div className="flex items-center justify-between pt-2">
+          <div className="space-y-2">
+            <div className="h-6 w-40 bg-white/10 rounded-lg" />
+            <div className="h-3 w-56 bg-white/5 rounded" />
+          </div>
+          <div className="h-9 w-32 bg-white/10 rounded-xl" />
+        </div>
+
+        {/* Shimmer Date Nav */}
+        <div className="h-14 w-full bg-white/5 border border-white/5 rounded-2xl" />
+
+        {/* Shimmer Morning Check-in / Metrics Bar */}
+        <div className="h-24 w-full bg-white/5 border border-white/5 rounded-2xl" />
+
+        {/* Shimmer Task Cards */}
+        <div className="space-y-3 pt-2">
+          <div className="h-4 w-36 bg-white/10 rounded" />
+          <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
+          <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
+          <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
+        </div>
       </div>
     )
   }
@@ -2137,7 +2154,13 @@ function TodayPageContent() {
               )
             ) : (
               <div className="space-y-8">
-                {activeGroups.length === 0 ? (
+                {loading ? (
+                  <div className="space-y-3 animate-pulse">
+                    <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
+                    <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
+                    <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
+                  </div>
+                ) : activeGroups.length === 0 ? (
                   <div className="text-center p-8 bg-slate-950/60 border border-white/10 rounded-2xl text-gray-400 text-sm space-y-4 shadow-xl backdrop-blur-md">
                     <div className="space-y-1">
                       <p className="font-bold text-white text-base">You don't have any protocols scheduled for today.</p>
