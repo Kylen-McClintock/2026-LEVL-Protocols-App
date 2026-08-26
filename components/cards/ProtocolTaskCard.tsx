@@ -73,71 +73,174 @@ export function TimePickerWithAmPmToggle({
   onCommit?: (newTime24: string) => void
 }) {
   const [showQuickDropdown, setShowQuickDropdown] = useState(false)
+  const nativeInputRef = useRef<HTMLInputElement>(null)
+
   const [rawH, rawM] = (value || '12:00').split(':')
   const h24 = parseInt(rawH || '12', 10)
   const m = (rawM || '00').slice(0, 2)
 
   const period = h24 >= 12 ? 'PM' : 'AM'
   const h12 = h24 % 12 || 12
-  const display12 = `${String(h12).padStart(2, '0')}:${m}`
+  const formattedDisplay12 = `${String(h12).padStart(2, '0')}:${m}`
+
+  const [typedText, setTypedText] = useState(formattedDisplay12)
+  const [isTyping, setIsTyping] = useState(false)
+
+  useEffect(() => {
+    if (!isTyping) {
+      setTypedText(formattedDisplay12)
+    }
+  }, [formattedDisplay12, isTyping])
+
+  const commitTime = (new24: string) => {
+    onChange(new24)
+    if (onCommit) onCommit(new24)
+  }
 
   const toggleAmPm = (e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
     const newH24 = period === 'AM' ? (h24 + 12) % 24 : (h24 - 12 + 24) % 24
     const new24 = `${String(newH24).padStart(2, '0')}:${m}`
-    onChange(new24)
-    if (onCommit) onCommit(new24)
+    commitTime(new24)
   }
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNativeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
-    const parts = val.split(':')
-    if (parts.length === 2) {
-      let numH = parseInt(parts[0], 10)
-      const numM = parts[1].slice(0, 2)
-      if (!isNaN(numH) && numH >= 1 && numH <= 12) {
-        if (period === 'PM' && numH < 12) numH += 12
-        if (period === 'AM' && numH === 12) numH = 0
-        const new24 = `${String(numH).padStart(2, '0')}:${numM}`
-        onChange(new24)
-      }
+    if (val && val.includes(':')) {
+      commitTime(val)
     }
   }
 
-  const applyOffsetMins = (offsetMins: number) => {
+  const handleManualBlur = () => {
+    setIsTyping(false)
+    const cleaned = typedText.trim().replace(/[^0-9:]/g, '')
+    let newH = h12
+    let newM = m
+
+    if (cleaned.includes(':')) {
+      const [hPart, mPart] = cleaned.split(':')
+      const ph = parseInt(hPart, 10)
+      const pm = parseInt(mPart, 10)
+      if (!isNaN(ph) && ph >= 1 && ph <= 12) newH = ph
+      if (!isNaN(pm) && pm >= 0 && pm <= 59) newM = String(pm).padStart(2, '0')
+    } else {
+      const num = parseInt(cleaned, 10)
+      if (!isNaN(num)) {
+        if (num >= 1 && num <= 12) {
+          newH = num
+        } else if (num >= 100 && num <= 1259) {
+          const ph = Math.floor(num / 100)
+          const pm = num % 100
+          if (ph >= 1 && ph <= 12) newH = ph
+          if (pm >= 0 && pm <= 59) newM = String(pm).padStart(2, '0')
+        }
+      }
+    }
+
+    let finalH24 = newH
+    if (period === 'PM' && finalH24 < 12) finalH24 += 12
+    if (period === 'AM' && finalH24 === 12) finalH24 = 0
+    commitTime(`${String(finalH24).padStart(2, '0')}:${newM}`)
+  }
+
+  const adjustMinutes = (deltaMins: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    let totalMinutes = h24 * 60 + parseInt(m, 10) + deltaMins
+    if (totalMinutes < 0) totalMinutes += 1440
+    totalMinutes = totalMinutes % 1440
+    const newH = Math.floor(totalMinutes / 60)
+    const newMin = totalMinutes % 60
+    commitTime(`${String(newH).padStart(2, '0')}:${String(newMin).padStart(2, '0')}`)
+  }
+
+  const applyOffsetFromNow = (offsetMins: number) => {
     const d = new Date()
     d.setMinutes(d.getMinutes() - offsetMins)
     const hh = String(d.getHours()).padStart(2, '0')
     const mm = String(d.getMinutes()).padStart(2, '0')
-    const new24 = `${hh}:${mm}`
-    onChange(new24)
-    if (onCommit) onCommit(new24)
+    commitTime(`${hh}:${mm}`)
     setShowQuickDropdown(false)
+  }
+
+  const setDirectHour = (targetH12: number) => {
+    let targetH24 = targetH12
+    if (period === 'PM' && targetH24 < 12) targetH24 += 12
+    if (period === 'AM' && targetH24 === 12) targetH24 = 0
+    commitTime(`${String(targetH24).padStart(2, '0')}:${m}`)
+  }
+
+  const setDirectMinute = (targetMin: number) => {
+    commitTime(`${String(h24).padStart(2, '0')}:${String(targetMin).padStart(2, '0')}`)
   }
 
   return (
     <div className="relative flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-      <input 
-        type="text" 
-        pattern="[0-9]{2}:[0-9]{2}"
-        value={display12}
-        onChange={handleTextChange}
-        onBlur={() => {
-          if (onCommit) onCommit(value)
-        }}
-        className="bg-transparent text-sm font-bold text-white font-mono focus:outline-none w-14 text-center border-b border-emerald-400/50 px-0.5 py-0.5"
-      />
+      {/* Quick Stepper -15m */}
+      <button
+        type="button"
+        onClick={(e) => adjustMinutes(-15, e)}
+        className="text-[10px] font-bold px-1.5 py-1 rounded-md bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white border border-white/10 transition-colors cursor-pointer select-none active:scale-95 shrink-0"
+        title="15 minutes earlier"
+      >
+        -15m
+      </button>
+
+      {/* Main Interactive Time Display & Native Input Trigger */}
+      <div className="relative flex items-center bg-black/70 border border-emerald-500/40 rounded-lg px-2 py-0.5 shadow-inner">
+        <input 
+          type="text" 
+          inputMode="numeric"
+          value={isTyping ? typedText : formattedDisplay12}
+          onFocus={() => setIsTyping(true)}
+          onChange={(e) => setTypedText(e.target.value)}
+          onBlur={handleManualBlur}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleManualBlur()
+            }
+          }}
+          className="bg-transparent text-sm font-black text-white font-mono focus:outline-none w-12 text-center"
+          title="Type time (e.g. 8:30 or 11:15)"
+        />
+
+        {/* Native Mobile Time Picker Button (Opens iOS wheel / Android dialog) */}
+        <div className="relative ml-0.5 flex items-center">
+          <input
+            ref={nativeInputRef}
+            type="time"
+            value={value || '12:00'}
+            onChange={handleNativeChange}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer [color-scheme:dark] z-10"
+            title="Open system time picker"
+          />
+          <span className="text-emerald-400/80 hover:text-emerald-300 text-xs cursor-pointer pointer-events-none">
+            <Clock size={13} />
+          </span>
+        </div>
+      </div>
+
+      {/* Quick Stepper +15m */}
+      <button
+        type="button"
+        onClick={(e) => adjustMinutes(15, e)}
+        className="text-[10px] font-bold px-1.5 py-1 rounded-md bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white border border-white/10 transition-colors cursor-pointer select-none active:scale-95 shrink-0"
+        title="15 minutes later"
+      >
+        +15m
+      </button>
+
+      {/* AM / PM Toggle Pill */}
       <button
         type="button"
         onClick={toggleAmPm}
-        className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition-all cursor-pointer select-none shrink-0"
+        className="text-[11px] font-black px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition-all cursor-pointer select-none shrink-0 active:scale-95"
         title="Click to toggle AM / PM"
       >
         {period}
       </button>
 
-      {/* Dark-Themed Clock Dropdown Trigger */}
+      {/* Quick Menu Popover Toggle */}
       <div className="relative">
         <button
           type="button"
@@ -145,72 +248,138 @@ export function TimePickerWithAmPmToggle({
             e.stopPropagation()
             setShowQuickDropdown(!showQuickDropdown)
           }}
-          className="p-1 rounded-md text-emerald-400 hover:text-emerald-200 hover:bg-emerald-500/20 transition-colors cursor-pointer"
-          title="Click for quick time options"
+          className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+            showQuickDropdown 
+              ? 'bg-emerald-500 text-slate-950 border-emerald-400' 
+              : 'bg-black/60 text-emerald-400 hover:text-emerald-200 border-emerald-500/30 hover:bg-emerald-500/20'
+          }`}
+          title="Open quick time presets & dial"
         >
-          <Clock size={15} />
+          <Sliders size={13} />
         </button>
 
         {showQuickDropdown && (
-          <div className="absolute right-0 top-full mt-1.5 w-44 bg-slate-950 border border-emerald-500/40 rounded-xl shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 space-y-1">
-            <div className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider px-2 py-1 border-b border-emerald-500/20">
-              🕒 Quick Select Time
+          <div className="absolute right-0 top-full mt-2 w-72 bg-slate-950/95 backdrop-blur-xl border border-emerald-500/50 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.8)] p-3 z-50 animate-in fade-in zoom-in-95 space-y-3">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <Clock size={12} /> Quick Time Selector
+              </span>
+              <span className="text-xs font-mono font-bold text-white bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/40">
+                {formattedDisplay12} {period}
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={() => applyOffsetMins(0)}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-emerald-300 font-semibold hover:bg-emerald-500/20 rounded-lg transition-colors flex items-center justify-between"
-            >
-              <span>Right Now</span>
-              <span className="text-[10px] font-mono opacity-80">NOW</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => applyOffsetMins(15)}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-gray-200 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-between"
-            >
-              <span>15 Mins Ago</span>
-              <span className="text-[10px] font-mono text-gray-400">-15m</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => applyOffsetMins(30)}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-gray-200 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-between"
-            >
-              <span>30 Mins Ago</span>
-              <span className="text-[10px] font-mono text-gray-400">-30m</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => applyOffsetMins(60)}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-gray-200 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-between"
-            >
-              <span>1 Hour Ago</span>
-              <span className="text-[10px] font-mono text-gray-400">-1h</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => applyOffsetMins(120)}
-              className="w-full text-left px-2.5 py-1.5 text-xs text-gray-200 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-between"
-            >
-              <span>2 Hours Ago</span>
-              <span className="text-[10px] font-mono text-gray-400">-2h</span>
-            </button>
-            <div className="pt-1 border-t border-white/10">
-              <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block px-2 mb-1">
-                Custom Clock Time
-              </label>
+
+            {/* Quick Relative Time Presets */}
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                Relative Presets
+              </span>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => applyOffsetFromNow(0)}
+                  className="px-2 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-bold border border-emerald-500/30 transition-colors"
+                >
+                  ⚡ Right Now
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyOffsetFromNow(15)}
+                  className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-gray-200 text-[11px] font-semibold border border-white/10 transition-colors"
+                >
+                  -15m ago
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyOffsetFromNow(30)}
+                  className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-gray-200 text-[11px] font-semibold border border-white/10 transition-colors"
+                >
+                  -30m ago
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyOffsetFromNow(60)}
+                  className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-gray-200 text-[11px] font-semibold border border-white/10 transition-colors"
+                >
+                  -1h ago
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyOffsetFromNow(120)}
+                  className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-gray-200 text-[11px] font-semibold border border-white/10 transition-colors"
+                >
+                  -2h ago
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyOffsetFromNow(240)}
+                  className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-gray-200 text-[11px] font-semibold border border-white/10 transition-colors"
+                >
+                  -4h ago
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Hour Grid */}
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                Hour ({period})
+              </span>
+              <div className="grid grid-cols-6 gap-1">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((hNum) => {
+                  const isSelected = h12 === hNum
+                  return (
+                    <button
+                      key={hNum}
+                      type="button"
+                      onClick={() => setDirectHour(hNum)}
+                      className={`py-1 rounded-md text-xs font-mono font-bold transition-all ${
+                        isSelected
+                          ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                          : 'bg-white/5 text-gray-300 hover:bg-white/15 hover:text-white border border-white/5'
+                      }`}
+                    >
+                      {hNum}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Quick Minute Grid */}
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                Minutes
+              </span>
+              <div className="grid grid-cols-4 gap-1">
+                {[0, 15, 30, 45].map((minVal) => {
+                  const isSelected = parseInt(m, 10) === minVal
+                  return (
+                    <button
+                      key={minVal}
+                      type="button"
+                      onClick={() => setDirectMinute(minVal)}
+                      className={`py-1 rounded-md text-xs font-mono font-bold transition-all ${
+                        isSelected
+                          ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                          : 'bg-white/5 text-gray-300 hover:bg-white/15 hover:text-white border border-white/5'
+                      }`}
+                    >
+                      :{String(minVal).padStart(2, '0')}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Native Wheel Trigger */}
+            <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+              <span className="text-[10px] text-gray-400 font-semibold">Native System Clock:</span>
               <input
                 type="time"
-                value={value}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    onChange(e.target.value)
-                    if (onCommit) onCommit(e.target.value)
-                    setShowQuickDropdown(false)
-                  }
-                }}
-                className="w-full bg-slate-900 border border-emerald-500/40 rounded-lg px-2 py-1 text-xs text-white font-mono focus:outline-none [color-scheme:dark]"
+                value={value || '12:00'}
+                onChange={handleNativeChange}
+                className="bg-slate-900 border border-emerald-500/40 rounded-lg px-2 py-1 text-xs text-white font-mono focus:outline-none [color-scheme:dark] cursor-pointer"
               />
             </div>
           </div>
