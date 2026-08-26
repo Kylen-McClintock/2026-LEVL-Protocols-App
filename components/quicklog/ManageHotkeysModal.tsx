@@ -168,12 +168,12 @@ export default function ManageHotkeysModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
       <div
-        className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col justify-between"
+        className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        <div className="space-y-4">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        {/* Fixed Header */}
+        <div className="p-5 sm:p-6 pb-3 border-b border-white/10 shrink-0 space-y-3">
+          <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-black text-white flex items-center gap-2">
                 <Sliders size={18} className="text-orange-400" />
@@ -215,8 +215,10 @@ export default function ManageHotkeysModal({
               + Create Custom Hotkey
             </button>
           </div>
+        </div>
 
-          {/* TAB 1: Preset Library Grid */}
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 pt-4 pb-8 space-y-4">
           {tab === 'library' && (
             <div className="space-y-4">
               {/* 🛠️ User's Custom Hotkeys Section (Clean 2-Column Grid) */}
@@ -424,7 +426,7 @@ export default function ManageHotkeysModal({
 
           {/* TAB 2: Custom Hotkey Creator Form */}
           {tab === 'custom' && (
-            <form onSubmit={handleSaveCustomHotkey} className="space-y-3.5 p-4 rounded-2xl bg-black/40 border border-white/5">
+            <form id="custom-hotkey-form" onSubmit={handleSaveCustomHotkey} className="space-y-3.5 p-4 rounded-2xl bg-black/40 border border-white/5 pb-4">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                   Hotkey Name
@@ -527,35 +529,49 @@ export default function ManageHotkeysModal({
                   })}
                 </div>
               </div>
-
-              <button
-                type="submit"
-                className="w-full h-7 py-0 px-3 rounded-md bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-all shadow-md cursor-pointer mt-1.5 flex items-center justify-center gap-1 active:scale-95"
-              >
-                <Plus size={13} strokeWidth={3} />
-                <span>+ Add Custom Hotkey to Library</span>
-              </button>
             </form>
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10 mt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveAll}
-            className="px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-all shadow-lg cursor-pointer flex items-center gap-1.5"
-          >
-            <Check size={16} />
-            <span>Save &amp; Update Hotkeys ({selectedHotkeys.length})</span>
-          </button>
+        {/* Fixed Footer Actions */}
+        <div className="p-4 sm:p-5 border-t border-white/10 bg-slate-950/90 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
+          {tab === 'custom' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setTab('library')}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                ← Back to Library
+              </button>
+              <button
+                type="submit"
+                form="custom-hotkey-form"
+                className="px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-all shadow-lg cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <Plus size={15} strokeWidth={3} />
+                <span>+ Add Custom Hotkey to Library</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAll}
+                className="px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-all shadow-lg cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <Check size={16} />
+                <span>Save &amp; Update Hotkeys ({selectedHotkeys.length})</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
