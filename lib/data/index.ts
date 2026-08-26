@@ -12,7 +12,7 @@ import {
   ProtocolStep,
   UserModalityHabit
 } from '../types'
-import { resolveOptimalTimingSlot } from './resolveOptimalTiming'
+import { resolveOptimalTimingSlot, resolveSlotFromTimingString, parseMultiDoseTimingSlots } from './resolveOptimalTiming'
 
 // Persistent Catalog Cache Configuration (24 Hours TTL with SWR)
 const CATALOG_CACHE_PREFIX = 'levl_cat_v1_'
@@ -639,7 +639,7 @@ function hydrateTasksInMemory(
   modsMap: Map<string, Modality>,
   stepsMap: Map<string, any>,
   protocolsMap: Map<string, Protocol>,
-  benchMap: Map<string, { status: string; personal_notes?: string }>
+  benchMap: Map<string, { status: string; personal_notes?: string; custom_dose?: string; custom_timing?: string; notes?: string }>
 ): DailyProtocolTask[] {
   return rawTasks.map(task => {
     const t: any = { ...task }
@@ -675,21 +675,32 @@ function hydrateTasksInMemory(
       }]
     }
 
-    // Apply bench status override if pending
-    if (resolvedModId && benchMap.has(resolvedModId) && t.status === 'pending') {
+    // Apply bench status override if pending and merge custom personalization
+    if (resolvedModId && benchMap.has(resolvedModId)) {
       const bInfo = benchMap.get(resolvedModId)!
-      if (bInfo.status === 'eliminated') {
+      if (bInfo.status === 'eliminated' && t.status === 'pending') {
         t.status = 'contraindicated'
         t.status_reason = bInfo.personal_notes || 'Eliminated modality'
-      } else if (bInfo.status === 'benched' || bInfo.status === 'inactive') {
+      } else if ((bInfo.status === 'benched' || bInfo.status === 'inactive') && t.status === 'pending') {
         t.status = 'skipped'
         t.status_reason = 'Moved to Bench'
       }
+
+      // Merge custom_dose & custom_timing from benchItem if task does not have its own overrides
+      if (bInfo.custom_dose || bInfo.custom_timing || bInfo.notes) {
+        t.execution_details = {
+          ...(t.execution_details || {}),
+          custom_dose: t.execution_details?.custom_dose || bInfo.custom_dose,
+          custom_timing: t.execution_details?.custom_timing || bInfo.custom_timing,
+          notes: t.execution_details?.notes || bInfo.notes
+        }
+      }
     }
 
-    // Resolve optimal timing slot if missing or anytime
+    // Resolve optimal timing slot with custom timing priority
     const resolvedMod = t.protocol_step?.modality || t.loose_modality || (resolvedModId && modsMap.get(resolvedModId))
-    t.timing_slot = resolveOptimalTimingSlot(resolvedMod, t.protocol_step, t.timing_slot)
+    const effectiveCustomTiming = t.execution_details?.custom_timing || (resolvedModId && benchMap.get(resolvedModId)?.custom_timing)
+    t.timing_slot = resolveOptimalTimingSlot(resolvedMod, t.protocol_step, t.timing_slot, null, effectiveCustomTiming)
 
     // Ensure schedule_config is populated with intelligent defaults if not already present
     if (!t.execution_details?.schedule_config) {
@@ -711,7 +722,7 @@ export async function getDailyProtocolTasks(localUserId: string, date: string): 
     getCatalogMaps(),
     supabase
       .from('user_bench_items')
-      .select('modality_id, status, personal_notes')
+      .select('modality_id, status, personal_notes, custom_dose, custom_timing, notes')
       .eq('local_user_id', localUserId),
     supabase
       .from('daily_protocol_tasks')
@@ -725,7 +736,7 @@ export async function getDailyProtocolTasks(localUserId: string, date: string): 
     return []
   }
 
-  const benchMap = new Map<string, { status: string; personal_notes?: string }>()
+  const benchMap = new Map<string, { status: string; personal_notes?: string; custom_dose?: string; custom_timing?: string; notes?: string }>()
   if (benchData) {
     benchData.forEach((b: any) => {
       if (b.modality_id) benchMap.set(b.modality_id, b)
@@ -746,7 +757,7 @@ export async function getMultiDayProtocolTasks(
     getCatalogMaps(),
     supabase
       .from('user_bench_items')
-      .select('modality_id, status, personal_notes')
+      .select('modality_id, status, personal_notes, custom_dose, custom_timing, notes')
       .eq('local_user_id', localUserId),
     supabase
       .from('daily_protocol_tasks')
@@ -762,7 +773,7 @@ export async function getMultiDayProtocolTasks(
     return {}
   }
 
-  const benchMap = new Map<string, { status: string; personal_notes?: string }>()
+  const benchMap = new Map<string, { status: string; personal_notes?: string; custom_dose?: string; custom_timing?: string; notes?: string }>()
   if (benchData) {
     benchData.forEach((b: any) => {
       if (b.modality_id) benchMap.set(b.modality_id, b)
@@ -790,7 +801,7 @@ export async function getProtocolTasksHistory(localUserId: string, startDate: st
     getCatalogMaps(),
     supabase
       .from('user_bench_items')
-      .select('modality_id, status, personal_notes')
+      .select('modality_id, status, personal_notes, custom_dose, custom_timing, notes')
       .eq('local_user_id', localUserId),
     supabase
       .from('daily_protocol_tasks')
@@ -806,7 +817,7 @@ export async function getProtocolTasksHistory(localUserId: string, startDate: st
     return []
   }
 
-  const benchMap = new Map<string, { status: string; personal_notes?: string }>()
+  const benchMap = new Map<string, { status: string; personal_notes?: string; custom_dose?: string; custom_timing?: string; notes?: string }>()
   if (benchData) {
     benchData.forEach((b: any) => {
       if (b.modality_id) benchMap.set(b.modality_id, b)
@@ -4175,6 +4186,218 @@ export function getModalityScheduleConfig(modalityId: string, fallbackModality?:
   return null
 }
 
+export async function reconcileModalityScheduleAndFutureTasks(
+  localUserId: string,
+  modalityId: string,
+  options: {
+    customDose?: string
+    customTiming?: string
+    notes?: string
+    scheduleConfig?: ModalityScheduleConfig
+    fromDate?: string
+    protocolStepId?: string
+  }
+) {
+  if (!supabase || !localUserId || !modalityId) return false
+  
+  const fromDateStr = options.fromDate || format(new Date(), 'yyyy-MM-dd')
+  const { customDose, customTiming, notes, scheduleConfig } = options
+
+  // 1. Update/Upsert user_bench_items so the user's personalization is saved permanently
+  if (customDose !== undefined || customTiming !== undefined || notes !== undefined) {
+    await upsertBenchItemOverride(localUserId, modalityId, customDose || '', customTiming || '', notes)
+  }
+
+  // 2. Resolve primary timing slot from customTiming
+  const resolvedSlot = customTiming ? resolveSlotFromTimingString(customTiming) : (scheduleConfig?.timing_slot || 'anytime')
+
+  // 3. Compute active dates for the next 30 days based on scheduleConfig or cadence in customTiming
+  const [y, m, d] = fromDateStr.split('-').map(Number)
+  const localStartDate = new Date(y, m - 1, d, 12, 0, 0)
+  
+  const activeDateStrings = new Set<string>()
+  const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] // 0=Sun, 1=Mon...
+
+  if (scheduleConfig?.schedule_mode === 'specific_dates' && scheduleConfig.specific_dates?.length) {
+    scheduleConfig.specific_dates.forEach(dStr => {
+      if (dStr >= fromDateStr) activeDateStrings.add(dStr)
+    })
+    activeDateStrings.add(fromDateStr)
+  } else if (scheduleConfig?.schedule_mode === 'rest_interval' && scheduleConfig.rest_days_between !== undefined) {
+    const step = scheduleConfig.rest_days_between + 1
+    for (let i = 0; i <= 30; i += step) {
+      const tDate = new Date(localStartDate)
+      tDate.setDate(localStartDate.getDate() + i)
+      activeDateStrings.add(format(tDate, 'yyyy-MM-dd'))
+    }
+  } else if (scheduleConfig?.days_of_week && scheduleConfig.days_of_week.length > 0) {
+    const targetDays = scheduleConfig.days_of_week
+    for (let i = 0; i <= 30; i++) {
+      const tDate = new Date(localStartDate)
+      tDate.setDate(localStartDate.getDate() + i)
+      const dayName = DAYS_SHORT[tDate.getDay()]
+      if (targetDays.includes(dayName)) {
+        activeDateStrings.add(format(tDate, 'yyyy-MM-dd'))
+      }
+    }
+    if (targetDays.includes(DAYS_SHORT[localStartDate.getDay()])) {
+      activeDateStrings.add(fromDateStr)
+    }
+  } else if (customTiming) {
+    const lower = customTiming.toLowerCase()
+    let stepDays = 1
+    if (lower.includes('1x monthly') || lower.includes('monthly') || lower.includes('1x_month')) {
+      stepDays = 30
+    } else if (lower.includes('2x per month') || lower.includes('biweekly') || lower.includes('2x_month')) {
+      stepDays = 14
+    } else if (lower.includes('1x weekly') || lower.includes('1x_week') || lower.includes('weekly')) {
+      stepDays = 7
+    } else if (lower.includes('1–2x') || lower.includes('1-2x')) {
+      const targetDays = ['Tue', 'Fri']
+      for (let i = 0; i <= 30; i++) {
+        const tDate = new Date(localStartDate)
+        tDate.setDate(localStartDate.getDate() + i)
+        if (targetDays.includes(DAYS_SHORT[tDate.getDay()])) activeDateStrings.add(format(tDate, 'yyyy-MM-dd'))
+      }
+    } else if (lower.includes('3–4x') || lower.includes('3-4x')) {
+      const targetDays = ['Mon', 'Wed', 'Fri', 'Sat']
+      for (let i = 0; i <= 30; i++) {
+        const tDate = new Date(localStartDate)
+        tDate.setDate(localStartDate.getDate() + i)
+        if (targetDays.includes(DAYS_SHORT[tDate.getDay()])) activeDateStrings.add(format(tDate, 'yyyy-MM-dd'))
+      }
+    } else {
+      stepDays = 1
+    }
+
+    if (activeDateStrings.size === 0) {
+      for (let i = 0; i <= 30; i += stepDays) {
+        const tDate = new Date(localStartDate)
+        tDate.setDate(localStartDate.getDate() + i)
+        activeDateStrings.add(format(tDate, 'yyyy-MM-dd'))
+      }
+    }
+  } else {
+    for (let i = 0; i <= 30; i++) {
+      const tDate = new Date(localStartDate)
+      tDate.setDate(localStartDate.getDate() + i)
+      activeDateStrings.add(format(tDate, 'yyyy-MM-dd'))
+    }
+  }
+
+  // Always keep fromDate active if currently opened
+  activeDateStrings.add(fromDateStr)
+
+  // 4. Fetch all existing tasks for this modality from fromDateStr to 30 days out
+  const endDate = new Date(localStartDate)
+  endDate.setDate(localStartDate.getDate() + 30)
+  const endDateStr = format(endDate, 'yyyy-MM-dd')
+
+  const taskQuery = supabase
+    .from('daily_protocol_tasks')
+    .select('*')
+    .eq('local_user_id', localUserId)
+    .gte('scheduled_date', fromDateStr)
+    .lte('scheduled_date', endDateStr)
+
+  if (options.protocolStepId) {
+    taskQuery.eq('protocol_step_id', options.protocolStepId)
+  } else {
+    taskQuery.eq('modality_id', modalityId)
+  }
+
+  const { data: existingFutureTasks, error: fetchErr } = await taskQuery
+  if (fetchErr) {
+    console.warn('Error querying existing future tasks:', fetchErr)
+  }
+
+  const existingMap = new Map<string, any>()
+  const tasksToDeleteIds: string[] = []
+  const tasksToUpdateList: any[] = []
+
+  if (existingFutureTasks) {
+    existingFutureTasks.forEach((t: any) => {
+      const dateKey = t.scheduled_date
+      existingMap.set(dateKey, t)
+
+      // If this date is a REST day and the task is uncompleted (pending / snoozed), delete it so it won't show on rest days!
+      if (!activeDateStrings.has(dateKey) && dateKey !== fromDateStr && t.status !== 'completed') {
+        tasksToDeleteIds.push(t.id)
+      }
+    })
+  }
+
+  // 5. Delete rest-day tasks
+  if (tasksToDeleteIds.length > 0) {
+    await supabase.from('daily_protocol_tasks').delete().in('id', tasksToDeleteIds)
+  }
+
+  // 6. Update existing active tasks & create missing ones on active days
+  const tasksToInsert: any[] = []
+
+  activeDateStrings.forEach(targetDateStr => {
+    if (existingMap.has(targetDateStr)) {
+      const existing = existingMap.get(targetDateStr)
+      if (existing.status !== 'completed') {
+        tasksToUpdateList.push(existing.id)
+      }
+    } else {
+      tasksToInsert.push({
+        local_user_id: localUserId,
+        scheduled_date: targetDateStr,
+        modality_id: modalityId,
+        protocol_step_id: options.protocolStepId || null,
+        timing_slot: resolvedSlot,
+        status: 'pending',
+        execution_details: {
+          custom_dose: customDose,
+          custom_timing: customTiming,
+          notes: notes,
+          schedule_config: scheduleConfig
+        }
+      })
+    }
+  })
+
+  // Update existing pending tasks on active days
+  if (tasksToUpdateList.length > 0) {
+    const updatePayload: any = {}
+    if (resolvedSlot && resolvedSlot !== 'anytime') updatePayload.timing_slot = resolvedSlot
+    
+    const { data: currentTaskData } = await supabase
+      .from('daily_protocol_tasks')
+      .select('id, execution_details')
+      .in('id', tasksToUpdateList)
+
+    if (currentTaskData) {
+      for (const t of currentTaskData) {
+        const mergedDetails = {
+          ...(t.execution_details || {}),
+          ...(customDose !== undefined ? { custom_dose: customDose } : {}),
+          ...(customTiming !== undefined ? { custom_timing: customTiming } : {}),
+          ...(notes !== undefined ? { notes: notes } : {}),
+          ...(scheduleConfig !== undefined ? { schedule_config: scheduleConfig } : {})
+        }
+        await supabase
+          .from('daily_protocol_tasks')
+          .update({
+            ...updatePayload,
+            execution_details: mergedDetails
+          })
+          .eq('id', t.id)
+      }
+    }
+  }
+
+  // Insert missing tasks on active days
+  if (tasksToInsert.length > 0) {
+    await supabase.from('daily_protocol_tasks').insert(tasksToInsert)
+  }
+
+  clearUserHistoryCache()
+  return true
+}
+
 export async function updateModalityScheduleConfig(
   localUserId: string,
   taskId: string,
@@ -4191,15 +4414,11 @@ export async function updateModalityScheduleConfig(
 
   if (!task || fetchError) return false
 
-  const updatedDetails = {
-    ...(task.execution_details || {}),
-    schedule_config: config
-  }
+  const modalityKey = task.modality_id || task.protocol_step_id || taskId
 
   // Also persist to localStorage cache for real-time reactivity
   try {
     if (typeof window !== 'undefined') {
-      const modalityKey = task.modality_id || task.protocol_step_id || taskId
       localStorage.setItem(`levl_modality_sched_${modalityKey}`, JSON.stringify(config))
       window.dispatchEvent(new CustomEvent('levl_protocol_schedule_updated', { detail: { modalityKey, config } }))
     }
@@ -4207,33 +4426,27 @@ export async function updateModalityScheduleConfig(
     console.error('Error saving schedule config to localStorage:', e)
   }
 
-  if (!applyToFuture) {
+  if (applyToFuture && task.modality_id) {
+    return await reconcileModalityScheduleAndFutureTasks(localUserId, task.modality_id, {
+      scheduleConfig: config,
+      fromDate: task.scheduled_date,
+      protocolStepId: task.protocol_step_id || undefined,
+      customDose: task.execution_details?.custom_dose,
+      customTiming: task.execution_details?.custom_timing,
+      notes: task.execution_details?.notes
+    })
+  } else {
+    const updatedDetails = {
+      ...(task.execution_details || {}),
+      schedule_config: config
+    }
     const { error } = await supabase
       .from('daily_protocol_tasks')
       .update({
-        timing_slot: config.timing_slot,
+        timing_slot: config.timing_slot || task.timing_slot,
         execution_details: updatedDetails
       })
       .eq('id', taskId)
-    clearUserHistoryCache()
-    return !error
-  } else {
-    const query = supabase
-      .from('daily_protocol_tasks')
-      .update({
-        timing_slot: config.timing_slot,
-        execution_details: updatedDetails
-      })
-      .eq('local_user_id', localUserId)
-      .gte('scheduled_date', task.scheduled_date)
-
-    if (task.protocol_step_id) {
-      query.eq('protocol_step_id', task.protocol_step_id)
-    } else {
-      query.eq('modality_id', task.modality_id)
-    }
-
-    const { error } = await query
     clearUserHistoryCache()
     return !error
   }
@@ -4279,17 +4492,25 @@ export async function updateTaskExecutionDetails(taskId: string, detailsPatch: a
 
   const { data: task, error: fetchError } = await supabase
     .from('daily_protocol_tasks')
-    .select('execution_details')
+    .select('execution_details, timing_slot')
     .eq('id', taskId)
     .single()
 
   if (fetchError || !task) return false
 
   const updatedDetails = { ...(task.execution_details || {}), ...detailsPatch }
+  const updatePayload: any = { execution_details: updatedDetails }
+
+  if (detailsPatch.custom_timing) {
+    const slot = resolveSlotFromTimingString(detailsPatch.custom_timing)
+    if (slot && slot !== 'anytime') {
+      updatePayload.timing_slot = slot
+    }
+  }
 
   const { error } = await supabase
     .from('daily_protocol_tasks')
-    .update({ execution_details: updatedDetails })
+    .update(updatePayload)
     .eq('id', taskId)
 
   if (!error) {

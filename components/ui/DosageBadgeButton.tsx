@@ -7,9 +7,10 @@ import { resolveRecommendedDose, ProtocolDoseContext } from '@/lib/utils/resolve
 import { DosageDetailModal } from '../modals/DosageDetailModal'
 import ManageTaskModal from '../modals/ManageTaskModal'
 import { Sliders, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react'
-import { upsertBenchItemOverride } from '../../lib/data'
+import { upsertBenchItemOverride, reconcileModalityScheduleAndFutureTasks } from '../../lib/data'
 import { getLocalUserId } from '../../lib/local-user/getLocalUserId'
 import { useTemperatureUnit } from '../../lib/utils/useTemperatureUnit'
+import { format } from 'date-fns'
 
 interface DosageBadgeButtonProps {
   modality: Modality
@@ -86,7 +87,15 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
       onSavePersonalization(customDose, customTiming, notes)
     } else {
       const localUserId = getLocalUserId()
-      await upsertBenchItemOverride(localUserId, modality.id, customDose, customTiming, notes)
+      const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+      await reconcileModalityScheduleAndFutureTasks(localUserId, modality.id, {
+        customDose,
+        customTiming,
+        notes,
+        fromDate,
+        protocolStepId: task?.protocol_step_id || undefined,
+        scheduleConfig: task?.execution_details?.schedule_config
+      })
       if (onDoseChange) {
         onDoseChange(customDose, 0)
       }

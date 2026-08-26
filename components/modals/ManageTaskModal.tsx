@@ -48,7 +48,8 @@ import {
   ModalityScheduleConfig,
   deleteTask,
   updateTaskExecutionDetails,
-  upsertBenchItemOverride
+  upsertBenchItemOverride,
+  reconcileModalityScheduleAndFutureTasks
 } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getCircadianTipForModality } from '@/lib/utils/circadianTimingTips'
@@ -397,11 +398,14 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
       ? multiWeekSchedule.combinedDays
       : selectedDays
 
-    const finalTimingSlot = dosesPerDay === 1
-      ? selectedSlot
-      : dosesPerDay === 2
-      ? `${dose1Timing} & ${dose2Timing}`
-      : `${dose1Timing}, ${dose2Timing} & ${dose3Timing}`
+    let timingFormatted = selectedSlot
+    if (dosesPerDay === 2) {
+      timingFormatted = `2x Daily: Dose 1 (${dose1Timing}) + Dose 2 (${dose2Timing})`
+    } else if (dosesPerDay === 3) {
+      timingFormatted = `3x Daily: Dose 1 (${dose1Timing}) + Dose 2 (${dose2Timing}) + Dose 3 (${dose3Timing})`
+    }
+
+    const customTimingString = `${daysToSave.length}x/wk • ${timingFormatted}`
 
     const config: ModalityScheduleConfig = {
       schedule_mode: scheduleMode,
@@ -414,28 +418,36 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
       anchor_date: task?.scheduled_date || new Date().toISOString(),
       is_rolling_rotation: isRollingRotation,
       skip_policy: skipPolicy,
-      timing_slot: selectedSlot
+      timing_slot: dosesPerDay > 1 ? dose1Timing : selectedSlot
     }
 
     const finalFormattedDose = getEffectiveFormattedDose()
+    const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+    const effectiveModalityId = modality?.id || task?.modality_id || ''
 
-    // 1. Update schedule config & cadence
-    await updateModalityScheduleConfig(localUserId, modalityKey, config, applyToFuture)
-
-    // 2. Update execution details / dosage & notes
-    if (task?.id) {
-      const realId = task.id.includes('-split-') ? task.id.split('-split-')[0] : task.id
-      await updateTaskExecutionDetails(realId, {
-        custom_dose: finalFormattedDose,
-        custom_timing: `${daysToSave.length}x/wk • ${finalTimingSlot}`,
+    if (applyToFuture && effectiveModalityId) {
+      await reconcileModalityScheduleAndFutureTasks(localUserId, effectiveModalityId, {
+        customDose: finalFormattedDose,
+        customTiming: customTimingString,
         notes: personalNotes,
-        schedule_config: config
+        scheduleConfig: config,
+        fromDate,
+        protocolStepId: task?.protocol_step_id || undefined
       })
-    }
+    } else {
+      // 1. Update schedule config & cadence
+      await updateModalityScheduleConfig(localUserId, modalityKey, config, false)
 
-    // 3. Upsert bench item override if apply to future is checked
-    if ((applyToFuture || benchItem) && modality?.id) {
-      await upsertBenchItemOverride(localUserId, modality.id, finalFormattedDose, `${daysToSave.length}x/wk • ${finalTimingSlot}`, personalNotes)
+      // 2. Update execution details / dosage & notes
+      if (task?.id) {
+        const realId = task.id.includes('-split-') ? task.id.split('-split-')[0] : task.id
+        await updateTaskExecutionDetails(realId, {
+          custom_dose: finalFormattedDose,
+          custom_timing: customTimingString,
+          notes: personalNotes,
+          schedule_config: config
+        })
+      }
     }
 
     setIsProcessing(false)

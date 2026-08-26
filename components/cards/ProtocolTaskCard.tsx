@@ -9,7 +9,7 @@ import GeekMode from './GeekMode'
 import PersonalizeModalityModal from '../modals/PersonalizeModalityModal'
 import { DosageDetailModal } from '../modals/DosageDetailModal'
 import CustomizeModalityOutcomesModal from '../modals/CustomizeModalityOutcomesModal'
-import { addToBench, moveModalityToBench, eliminateModality, getBenchItem, saveOutcomeObservation, getTaskOutcomeObservations, upsertBenchItemOverride, updateTaskExecutionDetails } from '@/lib/data'
+import { addToBench, moveModalityToBench, eliminateModality, getBenchItem, saveOutcomeObservation, getTaskOutcomeObservations, upsertBenchItemOverride, updateTaskExecutionDetails, reconcileModalityScheduleAndFutureTasks } from '@/lib/data'
 import { ELIMINATION_REASON_OPTIONS } from '../views/ExpandedModalityDetailBanner'
 import { ModalityExecutionGuide } from '../modals/ModalityExecutionGuide'
 import { getModalityVideoInfo } from '@/lib/data/modalityVideos'
@@ -1349,11 +1349,15 @@ export default function ProtocolTaskCard({
               onOpenCustomizeOutcomes={() => setShowCustomizeOutcomesModal(true)}
               onSavePersonalization={async (customDose, customTiming, notes) => {
                 const localUserId = getLocalUserId()
-                await upsertBenchItemOverride(localUserId, modality.id, customDose, customTiming, notes)
-                if (task && task.id) {
-                  const realId = task.id.includes('-split-') ? task.id.split('-split-')[0] : task.id
-                  await updateTaskExecutionDetails(realId, { custom_dose: customDose, custom_timing: customTiming, notes })
-                }
+                const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+                await reconcileModalityScheduleAndFutureTasks(localUserId, modality.id, {
+                  customDose,
+                  customTiming,
+                  notes,
+                  fromDate,
+                  protocolStepId: task?.protocol_step_id || undefined,
+                  scheduleConfig: task?.execution_details?.schedule_config
+                })
                 window.location.reload()
               }}
               protocolContext={

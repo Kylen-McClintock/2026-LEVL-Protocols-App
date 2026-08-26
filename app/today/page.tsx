@@ -52,7 +52,7 @@ import { calculateDailyEfficacySummary } from '@/lib/data/historicalAnalysis'
 import { getScoredLongevityTips } from '@/lib/ranking/tipPersonalization'
 import { getMacroCategory } from '@/lib/utils/categories'
 import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
-import { resolveOptimalTimingSlot } from '@/lib/data/resolveOptimalTiming'
+import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
 
 function formatSlotName(str: string): string {
   if (!str) return 'Anytime'
@@ -78,38 +78,6 @@ const TIME_BLOCKS = [
   'anytime'
 ]
 
-interface MultiDoseSlot {
-  doseNumber: number
-  totalDoses: number
-  label: string
-  slot: string
-}
-
-function parseMultiDoseTimingSlots(timingStr?: string): MultiDoseSlot[] {
-  if (!timingStr) return []
-  const lower = timingStr.toLowerCase().trim()
-  
-  if (lower.includes('2x/day (morning & midday)') || lower.includes('2x/day (morning and midday)') || lower.includes('morning & midday')) {
-    return [
-      { doseNumber: 1, totalDoses: 2, label: 'Dose 1 (Morning)', slot: 'morning' },
-      { doseNumber: 2, totalDoses: 2, label: 'Dose 2 (Midday)', slot: 'midday' }
-    ]
-  }
-  if (lower.includes('2x/day (morning & evening)') || lower.includes('2x/day (morning and evening)') || lower.includes('morning & evening')) {
-    return [
-      { doseNumber: 1, totalDoses: 2, label: 'Dose 1 (Morning)', slot: 'morning' },
-      { doseNumber: 2, totalDoses: 2, label: 'Dose 2 (Evening)', slot: 'evening' }
-    ]
-  }
-  if (lower.includes('3x/day') || lower.includes('3x daily')) {
-    return [
-      { doseNumber: 1, totalDoses: 3, label: 'Dose 1 (Morning)', slot: 'morning' },
-      { doseNumber: 2, totalDoses: 3, label: 'Dose 2 (Midday)', slot: 'midday' },
-      { doseNumber: 3, totalDoses: 3, label: 'Dose 3 (Evening)', slot: 'evening' }
-    ]
-  }
-  return []
-}
 
 function parseLocalDate(dStr?: string | null): Date {
   if (!dStr) return new Date()
@@ -588,7 +556,8 @@ function TodayPageContent() {
       const benchItem = mId ? benchItems.find(b => b.modality_id === mId) : null
       
       const effectiveTiming = task.execution_details?.custom_timing || benchItem?.custom_timing || modality?.timing_summary || modality?.frequency || ''
-      const slots = parseMultiDoseTimingSlots(effectiveTiming)
+      const isSupplement = (modality?.category || '').toLowerCase().includes('supplement') || (modality?.modality_type || '').toLowerCase() === 'supplement'
+      const slots = parseMultiDoseTimingSlots(effectiveTiming, isSupplement)
 
       if (slots && slots.length >= 2) {
         const completedDoses: number[] = task.execution_details?.completed_doses || (task.status === 'completed' ? Array.from({ length: slots.length }, (_, i) => i + 1) : [])

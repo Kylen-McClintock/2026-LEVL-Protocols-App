@@ -51,5 +51,21 @@ Always provide SQL scripts that the user can manually copy and paste into their 
    Avoid triggering repetitive tool cascades (such as granular browser subagents that generate 30+ sequential micro-action permission dialogs). Keep operations batched, direct, and efficient so the user is never bombarded with dozens of IDE confirmation prompts.
 <!-- END:design-and-functionality-preservation-rules -->
 
+<!-- BEGIN:end-to-end-state-lifecycle-rules -->
+# End-to-End State Lifecycle & Future-Day Synchronization Standards
 
+1. **Full Vertical State Lifecycle Tracing**:
+   Whenever building or modifying any user control, modal, or input (e.g. dosage pills, timing dropdowns, session frequencies, cadence/rest days):
+   - **Step 1 (UI State)**: Modal internal state & user interactions.
+   - **Step 2 (Contract Serialization)**: Output string/payload MUST use standardized, shared serialization helpers—never ad-hoc or mismatched string patterns.
+   - **Step 3 (Database Persistence)**: Updates MUST update both JSONB details AND dedicated top-level columns (e.g. `timing_slot`), and MUST update all affected future rows across Supabase—never just the single active task ID.
+   - **Step 4 (Query Selection)**: All data fetchers (`getDailyProtocolTasks`, `getMultiDayProtocolTasks`, `getProtocolTasksHistory`) MUST explicitly SELECT all override columns (e.g. `custom_dose, custom_timing, notes` from `user_bench_items`).
+   - **Step 5 (In-Memory Hydration)**: `hydrateTasksInMemory` MUST guarantee user overrides take precedence over static modality defaults across all dates and views.
+   - **Step 6 (Timeline & Multi-Dose Grouping)**: Parsers (e.g. `parseMultiDoseTimingSlots`) MUST match the serialized formats and dynamically place each split session into its intended time block.
 
+2. **Idempotent Schedule & Rest Day Reconciliation**:
+   When recurring cadence, days of the week, or rest intervals change, always run a full future-schedule reconciliation (`reconcileModalityScheduleAndFutureTasks`):
+   - Prune/deactivate uncompleted pending tasks on rest days.
+   - Insert missing task rows on newly scheduled active days.
+   - Propagate updated custom dosage, custom timing, and timing slots across all active future dates.
+<!-- END:end-to-end-state-lifecycle-rules -->
