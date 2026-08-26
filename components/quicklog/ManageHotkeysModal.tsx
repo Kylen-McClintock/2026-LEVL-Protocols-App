@@ -78,7 +78,16 @@ export default function ManageHotkeysModal({
   const [customIncrement, setCustomIncrement] = useState('1')
   const [customGoal, setCustomGoal] = useState('')
   const [customIcon, setCustomIcon] = useState('Activity')
-  const [customIsNegative, setCustomIsNegative] = useState(false)
+  const [customPolarity, setCustomPolarity] = useState<'positive' | 'neutral' | 'negative'>('positive')
+
+  const getHotkeyPolarity = (h: QuickHotkeyConfig): 'positive' | 'neutral' | 'negative' => {
+    if (h.polarity) return h.polarity
+    if (h.is_neutral) return 'neutral'
+    if (h.is_negative) return 'negative'
+    if (h.color_theme === 'cyan' || h.color_theme === 'blue' || h.color_theme === 'slate' || h.color_theme === 'sky') return 'neutral'
+    if (h.color_theme === 'rose') return 'negative'
+    return 'positive'
+  }
 
   useEffect(() => {
     const loadCurrentAndCustom = async () => {
@@ -129,6 +138,11 @@ export default function ManageHotkeysModal({
     e.preventDefault()
     if (!customName.trim()) return
 
+    const isNeg = customPolarity === 'negative'
+    const isNeut = customPolarity === 'neutral'
+    const colorTheme: QuickHotkeyConfig['color_theme'] = 
+      customPolarity === 'negative' ? 'rose' : customPolarity === 'neutral' ? 'sky' : 'emerald'
+
     const newHotkey: QuickHotkeyConfig = {
       id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       name: customName.trim(),
@@ -137,8 +151,10 @@ export default function ManageHotkeysModal({
       unit: customUnit.trim() || 'count',
       default_increment: parseFloat(customIncrement) || 1,
       daily_goal: customGoal ? parseFloat(customGoal) : undefined,
-      is_negative: customIsNegative,
-      color_theme: customIsNegative ? 'rose' : 'orange',
+      is_negative: isNeg,
+      is_neutral: isNeut,
+      polarity: customPolarity,
+      color_theme: colorTheme,
       days_of_week: [...DEFAULT_ALL_DAYS],
       is_custom: true
     }
@@ -151,6 +167,7 @@ export default function ManageHotkeysModal({
     setCustomName('')
     setCustomGoal('')
     setCustomIncrement('1')
+    setCustomPolarity('positive')
     setTab('library')
   }
 
@@ -241,34 +258,59 @@ export default function ManageHotkeysModal({
                 {knownCustomHotkeys.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {knownCustomHotkeys.map(h => {
+                      const polarity = getHotkeyPolarity(h)
                       const isSelected = activeIds.has(h.id)
                       const IconC = AVAILABLE_ICONS.find(i => i.key === h.icon)?.icon || Activity
+
+                      const cardBg = isSelected
+                        ? polarity === 'negative'
+                          ? 'bg-rose-950/30 border-rose-500/50 shadow-sm'
+                          : polarity === 'neutral'
+                          ? 'bg-sky-950/30 border-sky-500/50 shadow-sm'
+                          : 'bg-emerald-950/30 border-emerald-500/50 shadow-sm'
+                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+
+                      const iconBg = isSelected
+                        ? polarity === 'negative'
+                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                          : polarity === 'neutral'
+                          ? 'bg-sky-500/20 text-sky-300 border-sky-500/30'
+                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                        : 'bg-slate-900 text-slate-400 border-slate-800'
+
+                      const badgeStyle = polarity === 'negative'
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                        : polarity === 'neutral'
+                        ? 'bg-sky-500/20 text-sky-300 border-sky-500/30'
+                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+
+                      const badgeText = polarity === 'negative' ? '🍷 Negative' : polarity === 'neutral' ? '⚖️ Neutral' : '🌟 Positive'
+
+                      const checkStyle = isSelected
+                        ? polarity === 'negative'
+                          ? 'bg-rose-500 border-rose-500 text-black'
+                          : polarity === 'neutral'
+                          ? 'bg-sky-400 border-sky-400 text-black'
+                          : 'bg-emerald-500 border-emerald-500 text-black'
+                        : 'border-slate-700 bg-slate-900 text-transparent'
 
                       return (
                         <div
                           key={h.id}
                           onClick={() => toggleHotkey(h)}
-                          className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
-                            isSelected
-                              ? 'bg-orange-950/30 border-orange-500/50 shadow-sm'
-                              : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                          }`}
+                          className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${cardBg}`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center border text-xs shrink-0 ${
-                                isSelected
-                                  ? 'bg-orange-500/20 text-orange-300 border-orange-500/30'
-                                  : 'bg-slate-900 text-slate-400 border-slate-800'
-                              }`}
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center border text-xs shrink-0 ${iconBg}`}
                             >
                               <IconC size={14} />
                             </div>
                             <div className="min-w-0">
                               <div className="text-xs font-bold text-white leading-tight truncate flex items-center gap-1">
                                 <span>{h.name}</span>
-                                <span className="text-[8px] px-1 py-0.2 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30 font-mono">
-                                  Custom
+                                <span className={`text-[8px] px-1 py-0.2 rounded border font-mono ${badgeStyle}`}>
+                                  {badgeText}
                                 </span>
                               </div>
                               <div className="text-[10px] text-slate-500 font-mono truncate">
@@ -288,11 +330,7 @@ export default function ManageHotkeysModal({
                             </button>
 
                             <div
-                              className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
-                                isSelected
-                                  ? 'bg-orange-500 border-orange-500 text-black'
-                                  : 'border-slate-700 bg-slate-900 text-transparent'
-                              }`}
+                              className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${checkStyle}`}
                             >
                               <Check size={12} strokeWidth={3} />
                             </div>
@@ -489,16 +527,43 @@ export default function ManageHotkeysModal({
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Habit Type
+                    Habit Nature / Polarity
                   </label>
-                  <select
-                    value={customIsNegative ? 'vice' : 'positive'}
-                    onChange={e => setCustomIsNegative(e.target.value === 'vice')}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-orange-500 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none"
-                  >
-                    <option value="positive">🌟 Positive / Performance</option>
-                    <option value="vice">🍷 Vice / Harm Reduction</option>
-                  </select>
+                  <div className="grid grid-cols-3 gap-1 p-0.5 rounded-xl bg-slate-950 border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setCustomPolarity('positive')}
+                      className={`py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        customPolarity === 'positive'
+                          ? 'bg-emerald-500 text-black shadow-md font-black'
+                          : 'text-slate-400 hover:text-emerald-300'
+                      }`}
+                    >
+                      <span>🌟 Positive</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomPolarity('neutral')}
+                      className={`py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        customPolarity === 'neutral'
+                          ? 'bg-sky-400 text-black shadow-md font-black'
+                          : 'text-slate-400 hover:text-sky-300'
+                      }`}
+                    >
+                      <span>⚖️ Neutral</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomPolarity('negative')}
+                      className={`py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        customPolarity === 'negative'
+                          ? 'bg-rose-500 text-black shadow-md font-black'
+                          : 'text-slate-400 hover:text-rose-300'
+                      }`}
+                    >
+                      <span>🍷 Negative</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 

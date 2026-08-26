@@ -137,8 +137,8 @@ export default function QuickHotkeysProfileCard({
       {/* Custom Hotkeys (if user has created any) */}
       {customHotkeys.length > 0 && (
         <div className="space-y-2 p-3 rounded-xl bg-orange-950/20 border border-orange-500/30">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
-            <Sparkles size={12} />
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+            <Sparkles size={12} className="text-orange-400" />
             <span>Your Custom Hotkeys</span>
           </span>
 
@@ -146,38 +146,52 @@ export default function QuickHotkeysProfileCard({
             {customHotkeys.map(h => {
               const isSelected = activeIds.has(h.id)
               const IconComp = ICON_MAP[h.icon] || Activity
+              const isNeg = h.is_negative || h.polarity === 'negative'
+              const isNeut = h.is_neutral || h.polarity === 'neutral' || h.color_theme === 'cyan' || h.color_theme === 'blue' || h.color_theme === 'slate' || h.color_theme === 'sky'
+
+              const cardBg = isSelected
+                ? isNeg
+                  ? 'bg-rose-950/40 border-rose-500/60 shadow-sm'
+                  : isNeut
+                  ? 'bg-sky-950/40 border-sky-500/60 shadow-sm'
+                  : 'bg-emerald-950/40 border-emerald-500/60 shadow-sm'
+                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 opacity-70'
+
+              const iconBg = isSelected
+                ? isNeg
+                  ? 'bg-rose-500/20 text-rose-300'
+                  : isNeut
+                  ? 'bg-sky-500/20 text-sky-300'
+                  : 'bg-emerald-500/20 text-emerald-300'
+                : 'bg-slate-900 text-slate-500'
+
+              const checkBg = isSelected
+                ? isNeg
+                  ? 'bg-rose-500 border-rose-500 text-black'
+                  : isNeut
+                  ? 'bg-sky-400 border-sky-400 text-black'
+                  : 'bg-emerald-500 border-emerald-500 text-black'
+                : 'border-slate-700 bg-slate-900 text-transparent'
 
               return (
                 <div
                   key={h.id}
                   onClick={() => handleToggle(h)}
-                  className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
-                    isSelected
-                      ? 'bg-orange-950/40 border-orange-500/60 shadow-sm'
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 opacity-70'
-                  }`}
+                  className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${cardBg}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <div
-                      className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs shrink-0 ${
-                        isSelected
-                          ? 'bg-orange-500/20 text-orange-300'
-                          : 'bg-slate-900 text-slate-500'
-                      }`}
+                      className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs shrink-0 ${iconBg}`}
                     >
                       <IconComp size={13} />
                     </div>
-                    <span className="text-xs font-bold text-white group-hover:text-orange-300 transition-colors truncate">
+                    <span className="text-xs font-bold text-white transition-colors truncate">
                       {h.name}
                     </span>
                   </div>
 
                   <div
-                    className={`w-4 h-4 rounded-md flex items-center justify-center border transition-colors shrink-0 ml-1.5 ${
-                      isSelected
-                        ? 'bg-orange-500 border-orange-500 text-black'
-                        : 'border-slate-700 bg-slate-900 text-transparent'
-                    }`}
+                    className={`w-4 h-4 rounded-md flex items-center justify-center border transition-colors shrink-0 ml-1.5 ${checkBg}`}
                   >
                     <Check size={10} strokeWidth={3} />
                   </div>

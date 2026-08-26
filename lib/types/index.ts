@@ -103,7 +103,9 @@ export interface QuickHotkeyConfig {
   default_increment: number
   daily_goal?: number
   is_negative?: boolean
-  color_theme: 'emerald' | 'cyan' | 'amber' | 'indigo' | 'rose' | 'purple' | 'blue' | 'orange'
+  is_neutral?: boolean
+  polarity?: 'positive' | 'neutral' | 'negative'
+  color_theme: 'emerald' | 'cyan' | 'amber' | 'indigo' | 'rose' | 'purple' | 'blue' | 'orange' | 'slate' | 'sky'
   bottle_size_oz?: number
   presets?: QuickHotkeyPreset[]
   days_of_week?: string[] // e.g. ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']

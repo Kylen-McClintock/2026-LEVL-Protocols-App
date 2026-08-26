@@ -277,6 +277,8 @@ export default function QuickHotkeyGrid({
               const progressPct = hotkey.daily_goal && !hotkey.is_negative
                 ? Math.min(100, Math.max(0, Math.round((totalVal / hotkey.daily_goal) * 100)))
                 : totalVal > 0 ? 100 : 0
+              const isNegative = hotkey.is_negative || hotkey.polarity === 'negative'
+              const isNeutral = hotkey.is_neutral || hotkey.polarity === 'neutral' || hotkey.color_theme === 'cyan' || hotkey.color_theme === 'blue' || hotkey.color_theme === 'slate' || hotkey.color_theme === 'sky'
               const isTapped = justTappedId === hotkey.id
 
           return (
@@ -284,11 +286,19 @@ export default function QuickHotkeyGrid({
               key={hotkey.id}
               className={`rounded-2xl border transition-all flex flex-col justify-between overflow-hidden relative select-none shadow-md ${
                 isTapped
-                  ? 'ring-2 ring-orange-400 scale-[0.98] bg-slate-800'
-                  : hotkey.is_negative
+                  ? isNegative
+                    ? 'ring-2 ring-rose-400 scale-[0.98] bg-slate-800'
+                    : isNeutral
+                    ? 'ring-2 ring-sky-400 scale-[0.98] bg-slate-800'
+                    : 'ring-2 ring-orange-400 scale-[0.98] bg-slate-800'
+                  : isNegative
                   ? totalVal > 0
                     ? 'bg-rose-950/20 border-rose-500/40 hover:border-rose-500/70'
                     : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
+                  : isNeutral
+                  ? totalVal > 0
+                    ? 'bg-sky-950/20 border-sky-500/40 hover:border-sky-500/70'
+                    : 'bg-slate-900/90 border-slate-800 hover:border-sky-500/40'
                   : isGoalReached
                   ? 'bg-emerald-950/20 border-emerald-500/40 hover:border-emerald-500/70'
                   : 'bg-slate-900/90 border-slate-800 hover:border-orange-500/40'
@@ -300,8 +310,10 @@ export default function QuickHotkeyGrid({
                   className={`absolute bottom-0 left-0 right-0 transition-all duration-500 rounded-bl-2xl ${
                     progressPct >= 100 ? 'rounded-tl-2xl' : ''
                   } ${
-                    hotkey.is_negative
+                    isNegative
                       ? 'bg-gradient-to-t from-rose-600 via-rose-500 to-red-400'
+                      : isNeutral
+                      ? 'bg-gradient-to-t from-sky-600 via-sky-500 to-cyan-400'
                       : hotkey.id === 'nutrition_macros'
                       ? 'bg-gradient-to-t from-emerald-600 via-emerald-500 to-teal-400'
                       : hotkey.id === 'protein_pulse'
@@ -316,15 +328,17 @@ export default function QuickHotkeyGrid({
               <button
                 type="button"
                 onClick={(e) => handleQuickTapIncrement(e, hotkey)}
-                className="w-full text-left p-2.5 pl-3.5 sm:p-3.5 sm:pl-4 flex-1 flex flex-col justify-between cursor-pointer hover:bg-white/[0.03] active:bg-orange-500/10 active:scale-[0.98] transition-all group/btn focus:outline-none"
+                className="w-full text-left p-2.5 pl-3.5 sm:p-3.5 sm:pl-4 flex-1 flex flex-col justify-between cursor-pointer hover:bg-white/[0.03] active:scale-[0.98] transition-all group/btn focus:outline-none"
                 title={`1-Click: Log +${hotkey.default_increment} ${hotkey.unit}`}
               >
                 {/* Top Row: Icon + 1-Tap Indicator Badge */}
                 <div className="flex items-start justify-between gap-1 w-full">
                   <div
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center border text-xs shrink-0 transition-colors ${
-                      hotkey.is_negative
+                      isNegative
                         ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+                        : isNeutral
+                        ? 'bg-sky-500/15 border-sky-500/30 text-sky-300'
                         : hotkey.id === 'nutrition_macros'
                         ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
                         : hotkey.id === 'protein_pulse'
@@ -337,8 +351,10 @@ export default function QuickHotkeyGrid({
 
                   <span
                     className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-mono font-black border transition-all flex items-center gap-0.5 shadow-sm ${
-                      hotkey.is_negative
+                      isNegative
                         ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 group-hover/btn:bg-rose-500 group-hover/btn:text-white'
+                        : isNeutral
+                        ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 group-hover/btn:bg-sky-400 group-hover/btn:text-black'
                         : hotkey.id === 'nutrition_macros'
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 group-hover/btn:bg-emerald-500 group-hover/btn:text-black'
                         : 'bg-orange-500/20 text-orange-300 border-orange-500/40 group-hover/btn:bg-orange-500 group-hover/btn:text-black'
@@ -360,13 +376,25 @@ export default function QuickHotkeyGrid({
                     </span>
                   </div>
 
-                  <div className="text-[11px] sm:text-xs font-bold text-slate-200 group-hover/btn:text-orange-300 transition-colors truncate leading-tight mt-0.5">
+                  <div className={`text-[11px] sm:text-xs font-bold text-slate-200 transition-colors truncate leading-tight mt-0.5 ${
+                    isNegative
+                      ? 'group-hover/btn:text-rose-300'
+                      : isNeutral
+                      ? 'group-hover/btn:text-sky-300'
+                      : 'group-hover/btn:text-orange-300'
+                  }`}>
                     {hotkey.name}
                   </div>
                 </div>
 
                 {/* Micro 1-Tap Hint */}
-                <div className="text-[9px] text-slate-500 group-hover/btn:text-orange-400 transition-colors font-semibold">
+                <div className={`text-[9px] transition-colors font-semibold ${
+                  isNegative
+                    ? 'text-slate-500 group-hover/btn:text-rose-400'
+                    : isNeutral
+                    ? 'text-slate-500 group-hover/btn:text-sky-400'
+                    : 'text-slate-500 group-hover/btn:text-orange-400'
+                }`}>
                   Tap to +{hotkey.default_increment} {hotkey.unit}
                 </div>
               </button>
@@ -381,7 +409,7 @@ export default function QuickHotkeyGrid({
                 title="Click for details, custom entries, or to change default amount"
               >
                 <span className="truncate mr-1">
-                  {hotkey.daily_goal && !hotkey.is_negative ? (
+                  {hotkey.daily_goal && !isNegative ? (
                     <>
                       {/* Desktop: Keep Goal Visible */}
                       <span className={`hidden sm:inline ${isGoalReached ? 'text-emerald-400 font-bold' : ''}`}>
@@ -397,7 +425,13 @@ export default function QuickHotkeyGrid({
                   )}
                 </span>
 
-                <span className="text-slate-500 group-hover/bot:text-orange-300 flex items-center gap-0.5 font-bold shrink-0">
+                <span className={`flex items-center gap-0.5 font-bold shrink-0 text-slate-500 ${
+                  isNegative
+                    ? 'group-hover/bot:text-rose-300'
+                    : isNeutral
+                    ? 'group-hover/bot:text-sky-300'
+                    : 'group-hover/bot:text-orange-300'
+                }`}>
                   <span>Details</span>
                   <ChevronRight size={11} />
                 </span>
