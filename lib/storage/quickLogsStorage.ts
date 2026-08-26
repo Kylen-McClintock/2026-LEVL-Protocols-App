@@ -130,15 +130,31 @@ export async function loadQuickLogsForDate(
   }
 
   // 2. Supabase Cloud Sync & Merge
-  if (supabase && effectiveUserId && effectiveUserId !== 'default') {
+  if (supabase && effectiveUserId) {
     try {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('outcome_preference_scores')
-        .eq('local_user_id', effectiveUserId)
-        .maybeSingle()
+      let cloudLogs: DailyQuickLogEntry[] | undefined = undefined
 
-      const cloudLogs: DailyQuickLogEntry[] = (profile?.outcome_preference_scores as any)?._daily_quick_logs?.[date]
+      if (effectiveUserId !== 'default') {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('outcome_preference_scores')
+          .eq('local_user_id', effectiveUserId)
+          .maybeSingle()
+
+        cloudLogs = (profile?.outcome_preference_scores as any)?._daily_quick_logs?.[date]
+      }
+
+      // If this device's profile has no cloud logs for date, check the primary seed profile
+      if (!cloudLogs || !Array.isArray(cloudLogs) || cloudLogs.length === 0) {
+        const { data: seedProf } = await supabase
+          .from('user_profiles')
+          .select('outcome_preference_scores')
+          .eq('local_user_id', 'ae563aa5-59e7-4bfd-8107-d0347acec2ac')
+          .maybeSingle()
+
+        cloudLogs = (seedProf?.outcome_preference_scores as any)?._daily_quick_logs?.[date]
+      }
+
       if (Array.isArray(cloudLogs) && cloudLogs.length > 0) {
         const map = new Map<string, DailyQuickLogEntry>()
         localEntries.forEach(e => map.set(e.id, e))
@@ -279,15 +295,31 @@ export async function getUserHotkeys(localUserId: string): Promise<QuickHotkeyCo
   }
 
   // 3. Supabase Cloud Profile Sync
-  if (supabase && effectiveUserId && effectiveUserId !== 'default') {
+  if (supabase && effectiveUserId) {
     try {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('outcome_preference_scores')
-        .eq('local_user_id', effectiveUserId)
-        .maybeSingle()
+      let cloudHotkeys: any = null
 
-      const cloudHotkeys = (profile?.outcome_preference_scores as any)?._custom_hotkeys
+      if (effectiveUserId !== 'default') {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('outcome_preference_scores')
+          .eq('local_user_id', effectiveUserId)
+          .maybeSingle()
+
+        cloudHotkeys = (profile?.outcome_preference_scores as any)?._custom_hotkeys
+      }
+
+      // If this device's profile is uncustomized, pull from the latest active seed profile
+      if (!cloudHotkeys || !Array.isArray(cloudHotkeys) || cloudHotkeys.length === 0) {
+        const { data: seedProf } = await supabase
+          .from('user_profiles')
+          .select('outcome_preference_scores')
+          .eq('local_user_id', 'ae563aa5-59e7-4bfd-8107-d0347acec2ac')
+          .maybeSingle()
+
+        cloudHotkeys = (seedProf?.outcome_preference_scores as any)?._custom_hotkeys
+      }
+
       if (Array.isArray(cloudHotkeys) && cloudHotkeys.length > 0) {
         if (typeof window !== 'undefined') {
           localStorage.setItem(`levl_user_hotkeys_${effectiveUserId}`, JSON.stringify(cloudHotkeys))
@@ -385,15 +417,31 @@ export async function getCustomCreatedHotkeys(localUserId: string): Promise<Quic
   }
 
   // 2. Supabase Cloud Sync
-  if (supabase && effectiveUserId && effectiveUserId !== 'default') {
+  if (supabase && effectiveUserId) {
     try {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('outcome_preference_scores')
-        .eq('local_user_id', effectiveUserId)
-        .maybeSingle()
+      let cloudCustom: QuickHotkeyConfig[] | undefined = undefined
 
-      const cloudCustom = (profile?.outcome_preference_scores as any)?._created_custom_hotkeys
+      if (effectiveUserId !== 'default') {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('outcome_preference_scores')
+          .eq('local_user_id', effectiveUserId)
+          .maybeSingle()
+
+        cloudCustom = (profile?.outcome_preference_scores as any)?._created_custom_hotkeys
+      }
+
+      // If this device's profile has no custom created hotkeys, check primary seed profile
+      if (!cloudCustom || !Array.isArray(cloudCustom) || cloudCustom.length === 0) {
+        const { data: seedProf } = await supabase
+          .from('user_profiles')
+          .select('outcome_preference_scores')
+          .eq('local_user_id', 'ae563aa5-59e7-4bfd-8107-d0347acec2ac')
+          .maybeSingle()
+
+        cloudCustom = (seedProf?.outcome_preference_scores as any)?._created_custom_hotkeys
+      }
+
       if (Array.isArray(cloudCustom) && cloudCustom.length > 0) {
         if (typeof window !== 'undefined') {
           localStorage.setItem(`levl_custom_created_hotkeys_${effectiveUserId}`, JSON.stringify(cloudCustom))
