@@ -28,6 +28,7 @@ import { QuickHotkeyConfig } from '@/lib/types'
 import { POPULAR_HOTKEY_LIBRARY } from '@/lib/quicklog/quickHotkeyLibrary'
 import {
   saveUserHotkeys,
+  getUserHotkeys,
   getCustomCreatedHotkeys,
   saveCustomCreatedHotkey,
   deleteCustomCreatedHotkey
@@ -66,7 +67,7 @@ export default function ManageHotkeysModal({
   onClose,
   onSaved
 }: ManageHotkeysModalProps) {
-  const [selectedHotkeys, setSelectedHotkeys] = useState<QuickHotkeyConfig[]>(activeHotkeys)
+  const [selectedHotkeys, setSelectedHotkeys] = useState<QuickHotkeyConfig[]>(activeHotkeys || [])
   const [knownCustomHotkeys, setKnownCustomHotkeys] = useState<QuickHotkeyConfig[]>([])
   const [tab, setTab] = useState<'library' | 'custom'>('library')
 
@@ -80,9 +81,17 @@ export default function ManageHotkeysModal({
   const [customIsNegative, setCustomIsNegative] = useState(false)
 
   useEffect(() => {
-    const loadCustom = async () => {
+    const loadCurrentAndCustom = async () => {
+      let current = activeHotkeys
+      if (!current || current.length === 0) {
+        current = await getUserHotkeys(localUserId)
+      }
+      if (current && current.length > 0) {
+        setSelectedHotkeys(current)
+      }
+
       const stored = await getCustomCreatedHotkeys(localUserId)
-      const activeCustom = activeHotkeys.filter(
+      const activeCustom = (current || []).filter(
         h => h.is_custom || h.id.startsWith('custom_') || !POPULAR_HOTKEY_LIBRARY.some(p => p.id === h.id)
       )
 
@@ -92,7 +101,7 @@ export default function ManageHotkeysModal({
 
       setKnownCustomHotkeys(Array.from(map.values()))
     }
-    loadCustom()
+    loadCurrentAndCustom()
   }, [localUserId, activeHotkeys])
 
   const activeIds = new Set(selectedHotkeys.map(h => h.id))
@@ -187,7 +196,7 @@ export default function ManageHotkeysModal({
           <div className="flex items-center gap-2 p-1 bg-black/40 border border-white/5 rounded-xl text-xs font-bold">
             <button
               onClick={() => setTab('library')}
-              className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+              className={`flex-1 h-7 py-0 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center ${
                 tab === 'library'
                   ? 'bg-orange-500 text-black shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -197,7 +206,7 @@ export default function ManageHotkeysModal({
             </button>
             <button
               onClick={() => setTab('custom')}
-              className={`flex-1 py-1.5 rounded-lg transition-all text-center cursor-pointer ${
+              className={`flex-1 h-7 py-0 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center ${
                 tab === 'custom'
                   ? 'bg-orange-500 text-black shadow-md'
                   : 'text-slate-400 hover:text-white'
@@ -211,13 +220,23 @@ export default function ManageHotkeysModal({
           {tab === 'library' && (
             <div className="space-y-4">
               {/* 🛠️ User's Custom Hotkeys Section (Clean 2-Column Grid) */}
-              {knownCustomHotkeys.length > 0 && (
-                <div className="space-y-2">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-orange-400 flex items-center gap-1.5">
                     <Sparkles size={13} className="text-orange-400" />
                     <span>Your Custom Hotkeys ({knownCustomHotkeys.filter(h => activeIds.has(h.id)).length} selected)</span>
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setTab('custom')}
+                    className="h-6 px-2.5 rounded-md bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/40 text-[10px] font-extrabold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                  >
+                    <Plus size={11} />
+                    <span>+ Custom Hotkey</span>
+                  </button>
+                </div>
 
+                {knownCustomHotkeys.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {knownCustomHotkeys.map(h => {
                       const isSelected = activeIds.has(h.id)
@@ -227,7 +246,7 @@ export default function ManageHotkeysModal({
                         <div
                           key={h.id}
                           onClick={() => toggleHotkey(h)}
-                          className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
+                          className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
                             isSelected
                               ? 'bg-orange-950/30 border-orange-500/50 shadow-sm'
                               : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
@@ -280,8 +299,20 @@ export default function ManageHotkeysModal({
                       )
                     })}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="p-3 rounded-xl bg-orange-950/10 border border-orange-500/20 flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-slate-400">No custom hotkeys yet. Create one to track custom supplements or habits.</span>
+                    <button
+                      type="button"
+                      onClick={() => setTab('custom')}
+                      className="h-6 px-2.5 rounded-md bg-orange-500 text-black font-extrabold text-[10px] flex items-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0"
+                    >
+                      <Plus size={11} />
+                      <span>+ Create</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* 🌟 Positive Habits */}
               <div className="space-y-2">
@@ -499,8 +530,9 @@ export default function ManageHotkeysModal({
 
               <button
                 type="submit"
-                className="w-full py-1.5 px-3 rounded-lg bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-all shadow-md cursor-pointer mt-1.5 flex items-center justify-center gap-1"
+                className="w-full h-7 py-0 px-3 rounded-md bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-all shadow-md cursor-pointer mt-1.5 flex items-center justify-center gap-1 active:scale-95"
               >
+                <Plus size={13} strokeWidth={3} />
                 <span>+ Add Custom Hotkey to Library</span>
               </button>
             </form>

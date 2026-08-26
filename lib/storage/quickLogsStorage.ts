@@ -132,11 +132,27 @@ export async function deleteQuickLogEntry(id: string, date: string): Promise<boo
  * Load user's customized hotkeys list
  */
 export async function getUserHotkeys(localUserId: string): Promise<QuickHotkeyConfig[]> {
+  const effectiveUserId = localUserId || 'default'
+
+  // 1. Fast, synchronous LocalStorage read
+  if (typeof window !== 'undefined') {
+    const local = localStorage.getItem(`levl_user_hotkeys_${effectiveUserId}`) || localStorage.getItem('levl_user_hotkeys_default') || localStorage.getItem('levl_user_hotkeys')
+    if (local) {
+      try {
+        const parsed = JSON.parse(local)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed
+        }
+      } catch (e) {}
+    }
+  }
+
+  // 2. IndexedDB read
   try {
     const db = await openQuickLogsDB()
     const tx = db.transaction(STORE_CONFIG, 'readonly')
     const store = tx.objectStore(STORE_CONFIG)
-    const request = store.get(localUserId)
+    const request = store.get(effectiveUserId)
 
     const result: { local_user_id: string; hotkeys: QuickHotkeyConfig[] } | undefined =
       await new Promise((resolve, reject) => {
@@ -145,20 +161,13 @@ export async function getUserHotkeys(localUserId: string): Promise<QuickHotkeyCo
       })
 
     if (result && result.hotkeys && result.hotkeys.length > 0) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`levl_user_hotkeys_${effectiveUserId}`, JSON.stringify(result.hotkeys))
+      }
       return result.hotkeys
     }
   } catch (err) {
     console.warn('Fallback loading user hotkeys:', err)
-  }
-
-  // LocalStorage check
-  if (typeof window !== 'undefined') {
-    const local = localStorage.getItem(`levl_user_hotkeys_${localUserId}`)
-    if (local) {
-      try {
-        return JSON.parse(local)
-      } catch (e) {}
-    }
   }
 
   return DEFAULT_STARTER_HOTKEYS
@@ -171,23 +180,29 @@ export async function saveUserHotkeys(
   localUserId: string,
   hotkeys: QuickHotkeyConfig[]
 ): Promise<boolean> {
+  const effectiveUserId = localUserId || 'default'
+
+  // 1. Instant synchronous write to localStorage + global event broadcast
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`levl_user_hotkeys_${effectiveUserId}`, JSON.stringify(hotkeys))
+    localStorage.setItem('levl_user_hotkeys_default', JSON.stringify(hotkeys))
+    localStorage.setItem('levl_user_hotkeys', JSON.stringify(hotkeys))
+    window.dispatchEvent(new CustomEvent('levl_hotkeys_config_updated', { detail: hotkeys }))
+  }
+
+  // 2. Persist to IndexedDB
   try {
     const db = await openQuickLogsDB()
     const tx = db.transaction(STORE_CONFIG, 'readwrite')
     const store = tx.objectStore(STORE_CONFIG)
-    store.put({ local_user_id: localUserId, hotkeys, updated_at: new Date().toISOString() })
+    store.put({ local_user_id: effectiveUserId, hotkeys, updated_at: new Date().toISOString() })
 
     await new Promise((resolve, reject) => {
       tx.oncomplete = resolve
       tx.onerror = () => reject(tx.error)
     })
   } catch (err) {
-    console.warn('Fallback saving user hotkeys:', err)
-  }
-
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(`levl_user_hotkeys_${localUserId}`, JSON.stringify(hotkeys))
-    window.dispatchEvent(new CustomEvent('levl_hotkeys_config_updated', { detail: hotkeys }))
+    console.warn('Fallback saving user hotkeys to IndexedDB:', err)
   }
 
   return true

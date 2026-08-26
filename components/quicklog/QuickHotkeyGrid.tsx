@@ -90,10 +90,15 @@ export default function QuickHotkeyGrid({
 
   const currentDayOfWeek = useMemo(() => {
     try {
-      const dateObj = new Date(date + 'T12:00:00')
-      return format(dateObj, 'EEE') // 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
+      const cleanDate = (date || '').split('T')[0]
+      const [y, m, d] = cleanDate.split('-').map(Number)
+      if (y && m && d) {
+        const dateObj = new Date(y, m - 1, d, 12, 0, 0)
+        return format(dateObj, 'EEE') // 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
+      }
+      return format(new Date(), 'EEE')
     } catch (e) {
-      return 'Mon'
+      return format(new Date(), 'EEE')
     }
   }, [date])
 
@@ -102,9 +107,12 @@ export default function QuickHotkeyGrid({
   }, [userProfile, date])
 
   const visibleHotkeys = useMemo(() => {
+    if (!hotkeys || hotkeys.length === 0) return []
     return hotkeys.filter(h => {
       if (!h.days_of_week || h.days_of_week.length === 0) return true
-      return h.days_of_week.includes(currentDayOfWeek)
+      const normalizedDays = h.days_of_week.map(d => d.slice(0, 3).toLowerCase())
+      const curShort = currentDayOfWeek.slice(0, 3).toLowerCase()
+      return normalizedDays.includes(curShort) || h.days_of_week.includes(currentDayOfWeek)
     })
   }, [hotkeys, currentDayOfWeek])
 
@@ -124,16 +132,23 @@ export default function QuickHotkeyGrid({
     reloadData()
 
     const handleUpdate = () => reloadData()
+    const handleHotkeysUpdated = (e: any) => {
+      if (e && e.detail && Array.isArray(e.detail) && e.detail.length > 0) {
+        setHotkeys(e.detail)
+      } else {
+        reloadData()
+      }
+    }
     const handleOpenNutrition = () => setIsNutritionModalOpen(true)
 
     window.addEventListener('levl_quicklog_updated', handleUpdate)
-    window.addEventListener('levl_hotkeys_config_updated', handleUpdate)
+    window.addEventListener('levl_hotkeys_config_updated', handleHotkeysUpdated)
     window.addEventListener('levl_nutrition_updated', handleUpdate)
     window.addEventListener('levl_open_nutrition_modal', handleOpenNutrition)
 
     return () => {
       window.removeEventListener('levl_quicklog_updated', handleUpdate)
-      window.removeEventListener('levl_hotkeys_config_updated', handleUpdate)
+      window.removeEventListener('levl_hotkeys_config_updated', handleHotkeysUpdated)
       window.removeEventListener('levl_nutrition_updated', handleUpdate)
       window.removeEventListener('levl_open_nutrition_modal', handleOpenNutrition)
     }
@@ -468,7 +483,6 @@ export default function QuickHotkeyGrid({
           onClose={() => setIsManageModalOpen(false)}
           onSaved={updated => {
             setHotkeys(updated)
-            reloadData()
           }}
         />
       )}
