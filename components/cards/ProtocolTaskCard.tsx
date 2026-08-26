@@ -312,6 +312,7 @@ export default function ProtocolTaskCard({
   const [showHyperApplet, setShowHyperApplet] = useState(false)
   const [showCoherentApplet, setShowCoherentApplet] = useState(false)
   const [showPrecisionLog, setShowPrecisionLog] = useState(false)
+  const lastCheckClickTimeRef = useRef<number>(0)
 
   const cardModalityId = task.modality_id || task.protocol_step?.modality_id || task.loose_modality?.id
 
@@ -796,33 +797,35 @@ export default function ProtocolTaskCard({
       setOutcomesSavedDone(true)
       setShowInlineOutcomes(false)
       
-      // Only complete task if saving post outcomes (or non-pre phase)
-      if (activeOutcomePhase !== 'pre') {
-        const loggedOutcomes = currentRelevantOutcomes.map(out => {
-          const preVal = editPreValues[out.id] ?? inlinePreValues[out.id] ?? baselineOutcomesMap[out.id]
-          const postVal = editPostValues[out.id] ?? inlinePostValues[out.id]
-          return {
-            outcomeId: out.id,
-            outcomeName: out.name,
-            directionality: out.directionality || 'higher_is_better',
-            preValue: preVal !== undefined ? Number(preVal) : undefined,
-            postValue: postVal !== undefined ? Number(postVal) : undefined
-          }
-        }).filter(o => o.preValue !== undefined || o.postValue !== undefined)
+      // Always complete task when saving inline outcomes (or clicking checkmark twice)
+      const loggedOutcomes = currentRelevantOutcomes.map(out => {
+        const preVal = editPreValues[out.id] ?? inlinePreValues[out.id] ?? baselineOutcomesMap[out.id]
+        const postVal = editPostValues[out.id] ?? inlinePostValues[out.id]
+        return {
+          outcomeId: out.id,
+          outcomeName: out.name,
+          directionality: out.directionality || 'higher_is_better',
+          preValue: preVal !== undefined ? Number(preVal) : undefined,
+          postValue: postVal !== undefined ? Number(postVal) : undefined
+        }
+      }).filter(o => o.preValue !== undefined || o.postValue !== undefined)
 
-        const rawDetails = (executionDetails && Object.keys(executionDetails).length > 0) ? executionDetails : task.execution_details || {}
-        const effectiveDetails = {
-          ...rawDetails,
-          logged_outcomes: loggedOutcomes
-        }
-        let metrics: any = undefined
-        if (effectiveDetails?.duration || effectiveDetails?.distance) {
-          metrics = {}
-          if (effectiveDetails.duration) metrics.duration_mins = parseFloat(effectiveDetails.duration)
-          if (effectiveDetails.distance) metrics.distance = parseFloat(effectiveDetails.distance)
-        }
-        onStatusChange(task.id, 'completed', undefined, undefined, metrics, effectiveDetails)
+      const rawDetails = (executionDetails && Object.keys(executionDetails).length > 0) ? executionDetails : task.execution_details || {}
+      const effectiveDetails = {
+        ...rawDetails,
+        logged_outcomes: loggedOutcomes
       }
+      let metrics: any = undefined
+      if (effectiveDetails?.duration || effectiveDetails?.distance) {
+        metrics = {}
+        if (effectiveDetails.duration) metrics.duration_mins = parseFloat(effectiveDetails.duration)
+        if (effectiveDetails.distance) metrics.distance = parseFloat(effectiveDetails.distance)
+      }
+      if (isPeptide) {
+        const site = effectiveDetails?.injection_site || 'abdomen_lower_right'
+        saveInjectionSiteLog(modalityKey, site)
+      }
+      onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails)
 
       if (onOutcomesSaved) {
         onOutcomesSaved(task.id)
@@ -1489,8 +1492,16 @@ export default function ProtocolTaskCard({
                       }
                       onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails);
                     } else {
-                      setExpanded(true);
-                      if (currentRelevantOutcomes.length > 0) {
+                      // TRACKED OUTCOME MODE:
+                      // If inline outcomes are ALREADY showing or if checkmark is clicked twice, complete immediately independent of how many outcomes have been tracked!
+                      const now = Date.now();
+                      const isDoubleTap = now - lastCheckClickTimeRef.current < 1500;
+                      lastCheckClickTimeRef.current = now;
+
+                      if (showInlineOutcomes || isDoubleTap) {
+                        handleSaveInlineOutcomes();
+                      } else if (currentRelevantOutcomes.length > 0) {
+                        setExpanded(true);
                         setShowInlineOutcomes(true);
                         setActiveOutcomePhase('post');
                       } else {
@@ -1505,7 +1516,7 @@ export default function ProtocolTaskCard({
                           const site = effectiveDetails?.injection_site || 'abdomen_lower_right'
                           saveInjectionSiteLog(modalityKey, site)
                         }
-                        onStatusChange(task.id, 'completed', undefined, undefined, metrics, effectiveDetails);
+                        onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails);
                       }
                     }
                   }}
@@ -1513,9 +1524,11 @@ export default function ProtocolTaskCard({
                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed ${
                     isRecentlyCompleted || (task.status as string) === 'completed'
                       ? 'bg-emerald-500 text-slate-950 scale-110 shadow-[0_0_15px_rgba(16,185,129,0.9)]'
+                      : showInlineOutcomes
+                      ? 'bg-emerald-500/30 border-2 border-emerald-400 text-emerald-300 ring-2 ring-emerald-400/50 hover:bg-emerald-500 hover:text-black animate-pulse'
                       : 'bg-levl-accent/20 border border-levl-accent text-levl-accent hover:bg-levl-accent hover:text-white'
                   }`}
-                  title={isFutureTask ? "Cannot complete future tasks" : completionMode === 'fast' ? "Complete modality instantly (Fast Mode)" : "Track outcomes & complete session"}
+                  title={isFutureTask ? "Cannot complete future tasks" : completionMode === 'fast' ? "Complete modality instantly (Fast Mode)" : showInlineOutcomes ? "Click again to complete session" : "Click once to track outcomes, or click twice to complete"}
                 >
                   <Check size={14} strokeWidth={isRecentlyCompleted || (task.status as string) === 'completed' ? 3 : 2} />
                 </button>
