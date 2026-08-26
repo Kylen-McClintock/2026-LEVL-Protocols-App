@@ -99,14 +99,19 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
         }, { onConflict: 'local_user_id' })
       }
     } else if (guestProfile) {
-      // Merge preferences and hotkey configs from guest into existing auth profile
+      // Merge preferences, hotkey configs, and daily click logs from guest into existing auth profile
       const guestPref = (guestProfile.outcome_preference_scores as any) || {}
       const authPref = (existingProfile.outcome_preference_scores as any) || {}
+      const mergedDailyLogs = {
+        ...(guestPref._daily_quick_logs || {}),
+        ...(authPref._daily_quick_logs || {})
+      }
       const mergedPref = {
         ...guestPref,
         ...authPref,
         _custom_hotkeys: authPref._custom_hotkeys || guestPref._custom_hotkeys,
-        _created_custom_hotkeys: authPref._created_custom_hotkeys || guestPref._created_custom_hotkeys
+        _created_custom_hotkeys: authPref._created_custom_hotkeys || guestPref._created_custom_hotkeys,
+        _daily_quick_logs: mergedDailyLogs
       }
 
       await supabase.from('user_profiles').update({

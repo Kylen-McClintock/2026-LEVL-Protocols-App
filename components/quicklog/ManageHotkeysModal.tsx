@@ -166,9 +166,9 @@ export default function ManageHotkeysModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
       <div
-        className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+        className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[90vh] overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Fixed Header */}
@@ -534,7 +534,7 @@ export default function ManageHotkeysModal({
         </div>
 
         {/* Fixed Footer Actions */}
-        <div className="p-4 sm:p-5 border-t border-white/10 bg-slate-950/90 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
+        <div className="p-4 sm:p-5 pb-7 sm:pb-5 border-t border-white/10 bg-slate-950/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
           {tab === 'custom' ? (
             <>
               <button

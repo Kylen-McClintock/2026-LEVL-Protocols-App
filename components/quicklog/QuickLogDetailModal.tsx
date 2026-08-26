@@ -144,14 +144,14 @@ export default function QuickLogDetailModal({
   }
 
   const handleDelete = async (entryId: string) => {
-    await deleteQuickLogEntry(entryId, date)
+    await deleteQuickLogEntry(entryId, date, localUserId)
     onLogsChanged()
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 pb-safe animate-in fade-in">
       <div
-        className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 pb-8 sm:pb-6 space-y-5 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header */}

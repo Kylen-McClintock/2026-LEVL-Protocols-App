@@ -32,10 +32,13 @@ function openQuickLogsDB(): Promise<IDBDatabase> {
   })
 }
 
+import { supabase } from '@/lib/supabase/client'
+
 /**
- * Save a single quick log entry into IndexedDB and LocalStorage fallback
+ * Save a single quick log entry into IndexedDB, LocalStorage, and Supabase Cloud
  */
 export async function saveQuickLogEntry(entry: DailyQuickLogEntry): Promise<boolean> {
+  // 1. Instant local IndexedDB write
   try {
     const db = await openQuickLogsDB()
     const tx = db.transaction(STORE_LOGS, 'readwrite')
@@ -46,34 +49,68 @@ export async function saveQuickLogEntry(entry: DailyQuickLogEntry): Promise<bool
       tx.oncomplete = resolve
       tx.onerror = () => reject(tx.error)
     })
-
-    // Also trigger window custom event for live cross-component sync
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('levl_quicklog_updated', { detail: entry }))
-    }
-
-    return true
   } catch (err) {
     console.warn('Falling back to localStorage for quick log:', err)
-    if (typeof window !== 'undefined') {
-      const key = `levl_quicklog_${entry.date}`
-      const existing: DailyQuickLogEntry[] = JSON.parse(localStorage.getItem(key) || '[]')
-      const filtered = existing.filter(e => e.id !== entry.id)
-      filtered.push(entry)
-      localStorage.setItem(key, JSON.stringify(filtered))
-      window.dispatchEvent(new CustomEvent('levl_quicklog_updated', { detail: entry }))
-    }
-    return true
   }
+
+  // 2. Instant LocalStorage fallback + UI event dispatch
+  if (typeof window !== 'undefined') {
+    const key = `levl_quicklog_${entry.date}`
+    const existing: DailyQuickLogEntry[] = JSON.parse(localStorage.getItem(key) || '[]')
+    const filtered = existing.filter(e => e.id !== entry.id)
+    filtered.push(entry)
+    localStorage.setItem(key, JSON.stringify(filtered))
+    window.dispatchEvent(new CustomEvent('levl_quicklog_updated', { detail: entry }))
+  }
+
+  // 3. Asynchronously sync to Supabase user profile for cross-device visibility
+  if (supabase && entry.local_user_id && entry.local_user_id !== 'default') {
+    try {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('outcome_preference_scores')
+        .eq('local_user_id', entry.local_user_id)
+        .maybeSingle()
+
+      const existingScores = (profile?.outcome_preference_scores as any) || {}
+      const dailyLogsMap = existingScores._daily_quick_logs || {}
+      const existingDateLogs: DailyQuickLogEntry[] = dailyLogsMap[entry.date] || []
+      const filteredDateLogs = existingDateLogs.filter(e => e.id !== entry.id)
+      filteredDateLogs.push(entry)
+
+      const updatedScores = {
+        ...existingScores,
+        _daily_quick_logs: {
+          ...dailyLogsMap,
+          [entry.date]: filteredDateLogs
+        }
+      }
+
+      await supabase
+        .from('user_profiles')
+        .upsert(
+          { local_user_id: entry.local_user_id, outcome_preference_scores: updatedScores, updated_at: new Date().toISOString() },
+          { onConflict: 'local_user_id' }
+        )
+    } catch (e) {
+      console.warn('Notice saving quick log to Supabase:', e)
+    }
+  }
+
+  return true
 }
 
 /**
- * Load all quick log entries for a given date
+ * Load all quick log entries for a given date from Local Storage and Supabase Cloud
  */
 export async function loadQuickLogsForDate(
   localUserId: string,
   date: string
 ): Promise<DailyQuickLogEntry[]> {
+  const effectiveUserId = localUserId || 'default'
+  let localEntries: DailyQuickLogEntry[] = []
+
+  // 1. Instant local read
   try {
     const db = await openQuickLogsDB()
     const tx = db.transaction(STORE_LOGS, 'readonly')
@@ -81,26 +118,68 @@ export async function loadQuickLogsForDate(
     const index = store.index('date')
     const request = index.getAll(date)
 
-    const entries: DailyQuickLogEntry[] = await new Promise((resolve, reject) => {
+    localEntries = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result || [])
       request.onerror = () => reject(request.error)
     })
-
-    return entries.sort((a, b) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime())
   } catch (err) {
-    console.warn('Fallback reading localStorage for quick logs:', err)
     if (typeof window !== 'undefined') {
       const key = `levl_quicklog_${date}`
-      return JSON.parse(localStorage.getItem(key) || '[]')
+      localEntries = JSON.parse(localStorage.getItem(key) || '[]')
     }
-    return []
   }
+
+  // 2. Supabase Cloud Sync & Merge
+  if (supabase && effectiveUserId && effectiveUserId !== 'default') {
+    try {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('outcome_preference_scores')
+        .eq('local_user_id', effectiveUserId)
+        .maybeSingle()
+
+      const cloudLogs: DailyQuickLogEntry[] = (profile?.outcome_preference_scores as any)?._daily_quick_logs?.[date]
+      if (Array.isArray(cloudLogs) && cloudLogs.length > 0) {
+        const map = new Map<string, DailyQuickLogEntry>()
+        localEntries.forEach(e => map.set(e.id, e))
+        cloudLogs.forEach(c => map.set(c.id, c))
+
+        // Backfill missing entries to local IndexedDB and localStorage
+        const merged = Array.from(map.values()).sort(
+          (a, b) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime()
+        )
+
+        if (typeof window !== 'undefined') {
+          const key = `levl_quicklog_${date}`
+          localStorage.setItem(key, JSON.stringify(merged))
+        }
+
+        try {
+          const db = await openQuickLogsDB()
+          const tx = db.transaction(STORE_LOGS, 'readwrite')
+          const store = tx.objectStore(STORE_LOGS)
+          cloudLogs.forEach(c => store.put(c))
+        } catch (e) {}
+
+        return merged
+      }
+    } catch (e) {
+      console.warn('Notice syncing quick logs from cloud:', e)
+    }
+  }
+
+  return localEntries.sort((a, b) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime())
 }
 
 /**
- * Delete a quick log entry by id
+ * Delete a quick log entry by id locally and from Supabase Cloud
  */
-export async function deleteQuickLogEntry(id: string, date: string): Promise<boolean> {
+export async function deleteQuickLogEntry(
+  id: string,
+  date: string,
+  localUserId?: string
+): Promise<boolean> {
+  // 1. Delete from IndexedDB
   try {
     const db = await openQuickLogsDB()
     const tx = db.transaction(STORE_LOGS, 'readwrite')
@@ -111,24 +190,51 @@ export async function deleteQuickLogEntry(id: string, date: string): Promise<boo
       tx.oncomplete = resolve
       tx.onerror = () => reject(tx.error)
     })
+  } catch (err) {}
 
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('levl_quicklog_updated', { detail: { id, deleted: true, date } }))
-    }
-    return true
-  } catch (err) {
-    if (typeof window !== 'undefined') {
-      const key = `levl_quicklog_${date}`
-      const existing: DailyQuickLogEntry[] = JSON.parse(localStorage.getItem(key) || '[]')
-      const filtered = existing.filter(e => e.id !== id)
-      localStorage.setItem(key, JSON.stringify(filtered))
-      window.dispatchEvent(new CustomEvent('levl_quicklog_updated', { detail: { id, deleted: true, date } }))
-    }
-    return true
+  // 2. Delete from LocalStorage + dispatch event
+  if (typeof window !== 'undefined') {
+    const key = `levl_quicklog_${date}`
+    const existing: DailyQuickLogEntry[] = JSON.parse(localStorage.getItem(key) || '[]')
+    const filtered = existing.filter(e => e.id !== id)
+    localStorage.setItem(key, JSON.stringify(filtered))
+    window.dispatchEvent(new CustomEvent('levl_quicklog_updated', { detail: { id, deleted: true, date } }))
   }
-}
 
-import { supabase } from '@/lib/supabase/client'
+  // 3. Delete from Supabase Cloud
+  const effectiveUserId = localUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '')
+  if (supabase && effectiveUserId && effectiveUserId !== 'default') {
+    try {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('outcome_preference_scores')
+        .eq('local_user_id', effectiveUserId)
+        .maybeSingle()
+
+      const existingScores = (profile?.outcome_preference_scores as any) || {}
+      const dailyLogsMap = existingScores._daily_quick_logs || {}
+      const existingDateLogs: DailyQuickLogEntry[] = dailyLogsMap[date] || []
+      const filteredDateLogs = existingDateLogs.filter(e => e.id !== id)
+
+      const updatedScores = {
+        ...existingScores,
+        _daily_quick_logs: {
+          ...dailyLogsMap,
+          [date]: filteredDateLogs
+        }
+      }
+
+      await supabase
+        .from('user_profiles')
+        .update({ outcome_preference_scores: updatedScores, updated_at: new Date().toISOString() })
+        .eq('local_user_id', effectiveUserId)
+    } catch (e) {
+      console.warn('Notice deleting quick log from cloud:', e)
+    }
+  }
+
+  return true
+}
 
 /**
  * Load user's customized hotkeys list
