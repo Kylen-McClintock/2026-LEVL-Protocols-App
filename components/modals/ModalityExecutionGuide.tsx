@@ -58,30 +58,32 @@ export const ModalityExecutionGuide: React.FC<ModalityExecutionGuideProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left bg-slate-900/60 hover:bg-slate-900 transition-colors cursor-pointer"
+        className="w-full flex items-center justify-between p-3 sm:p-4 text-left bg-slate-900/60 hover:bg-slate-900 transition-colors cursor-pointer"
       >
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30">
+        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+          <div className="p-1.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
             <ListOrdered size={16} />
           </div>
-          <div>
-            <h4 className="text-xs sm:text-sm font-extrabold text-white flex items-center gap-2">
-              <span>Step-by-Step Execution Guide</span>
-              {youtubeVideoId && (
-                <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-mono flex items-center gap-1">
-                  <Video size={11} className="text-red-400" /> Video Demo
-                </span>
-              )}
+          <div className="min-w-0">
+            <h4 className="text-xs sm:text-sm font-extrabold text-white truncate">
+              Step-by-Step Execution Guide
             </h4>
-            <p className="text-[11px] text-slate-400 font-medium">
+            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">
               Exact physical technique & pacing setup
             </p>
           </div>
         </div>
 
-        <div className="text-slate-400 flex items-center gap-1 text-xs font-bold">
-          <span>{isOpen ? 'Hide' : 'Show Steps'}</span>
-          {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        <div className="flex flex-col items-end gap-1 shrink-0 text-right">
+          {youtubeVideoId && (
+            <span className="text-[9px] sm:text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded-full font-mono flex items-center gap-1 shrink-0 font-bold">
+              <Video size={10} className="text-red-400" /> Video Demo
+            </span>
+          )}
+          <div className="text-slate-400 flex items-center gap-1 text-[11px] sm:text-xs font-bold">
+            <span>{isOpen ? 'Hide' : 'Show Steps'}</span>
+            {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </div>
         </div>
       </button>
 
