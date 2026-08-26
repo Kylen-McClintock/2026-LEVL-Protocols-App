@@ -1786,15 +1786,30 @@ export default function ProtocolTaskCard({
                 )}
                 {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
 
-                {/* Quick Complete Button from within the Precision Logger */}
-                <div className="flex items-center justify-between pt-2 border-t border-white/10 flex-wrap gap-2">
-                  <span className="text-[10px] text-slate-400">Log numbers &amp; complete session</span>
+                {/* COMPLETE & LOG SESSION ACTION BUTTON */}
+                <div className="flex items-center justify-between gap-3 pt-3 border-t border-emerald-500/20 flex-wrap">
+                  <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold">
+                    <Sparkles size={14} className="text-emerald-400 shrink-0" />
+                    <span>Log precision metrics &amp; launch outcome tracking</span>
+                  </div>
                   <button
                     type="button"
                     disabled={isProcessing}
-                    onClick={async () => {
+                    onClick={async (e) => {
+                      e.stopPropagation()
                       setIsProcessing(true)
                       try {
+                        const baseDateStr = task.scheduled_date
+                        let logDate = new Date()
+                        if (baseDateStr) {
+                          const [y, m, d] = baseDateStr.split('-').map(Number)
+                          if (y && m && d) {
+                            logDate = new Date(y, m - 1, d)
+                          }
+                        }
+                        const now = new Date()
+                        logDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0)
+
                         let metrics: any = undefined
                         if (executionDetails?.duration || executionDetails?.distance) {
                           metrics = {}
@@ -1810,8 +1825,7 @@ export default function ProtocolTaskCard({
                           setShowInlineOutcomes(true)
                           setActiveOutcomePhase('post')
                         } else {
-                          const logDate = new Date().toISOString()
-                          onStatusChange(task.id, 'completed', undefined, logDate, metrics, executionDetails)
+                          onStatusChange(task.id, 'completed', undefined, logDate.toISOString(), metrics, executionDetails)
                         }
                       } catch(err) {
                         console.error('Error saving execution details:', err)
@@ -1819,9 +1833,11 @@ export default function ProtocolTaskCard({
                         setIsProcessing(false)
                       }
                     }}
-                    className="px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-950 bg-gradient-to-r from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200 rounded-lg shadow-md shadow-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                    className="h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
                   >
-                    <CheckCircle2 size={14} /> Complete Session &amp; Rate
+                    <CheckCircle2 size={16} strokeWidth={2.5} />
+                    <span>Complete Session &amp; Rate Outcomes</span>
+                    <ChevronRight size={14} strokeWidth={2.5} />
                   </button>
                 </div>
               </div>
@@ -2733,197 +2749,6 @@ export default function ProtocolTaskCard({
             )
           )}
 
-          {/* Execution Tracker (Only if pending OR editing) */}
-          {(task.status === 'pending' || isEditingExecution) && !isFutureTask && (
-            <div className="mb-4 w-full">
-              {/* Baseline Pre-Session Trigger (Directly above execution log in modal) */}
-              {renderBaselineTrigger()}
-
-              {/* Specialized Execution Logging UIs (Rendered directly) */}
-              {hasPrecisionLogUI && (
-                <div className="w-full mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                  {/* THERMAL EXPOSURE UI (Sauna, Cold Plunge, Ice Bath) */}
-                  {isThermal && (
-                    <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                  )}
-
-                  {/* BREATHWORK & MEDITATION UI */}
-                  {isBreathwork && (
-                    <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                  )}
-
-                  {/* CARDIO & ENDURANCE UI (Zone 2, VO2 Max, Cycling, Running) */}
-                  {isCardio && (
-                    <CardioExecutionLog 
-                      value={executionDetails} 
-                      onChange={setExecutionDetails} 
-                      lockedCardioType={lockedCardioType}
-                      specializedTraits={specializedTraits}
-                    />
-                  )}
-
-                  {/* STRENGTH UI */}
-                  {isStrength && (
-                    <StrengthExecutionLog 
-                      value={executionDetails} 
-                      onChange={setExecutionDetails} 
-                      lockedExerciseName={lockedExerciseName}
-                      specializedTraits={specializedTraits}
-                    />
-                  )}
-
-                    {/* FASTING & TIME-RESTRICTED FEEDING UI */}
-                    {isFasting && (
-                      <FastingExecutionLog 
-                        value={executionDetails} 
-                        onChange={setExecutionDetails} 
-                        isMultiDay={
-                          modalityKey.includes('16:8') || modalityKey.includes('18:6') || modalityKey.includes('time-restricted') || modalityKey.includes('trf')
-                            ? false 
-                            : true
-                        }
-                      />
-                    )}
-
-                    {/* NUTRITION & PROTEIN DISTRIBUTION UI */}
-                    {isNutritionMacro && (
-                      <NutritionMacroExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
-
-                    {/* PHOTOBIOMODULATION / RED LIGHT UI */}
-                    {isRedLight && (
-                      <RedLightExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
-
-                    {/* CGM & GLUCOSE WALK UI */}
-                    {isCGM && (
-                      <CGMExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
-
-                    {/* SUNLIGHT & CIRCADIAN UI */}
-                    {isSunlight && (
-                      <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
-
-                    {/* SLEEP HYGIENE & ENVIRONMENT UI */}
-                    {isSleepHygiene && (
-                      <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
-
-                    {/* HYDRATION & ELECTROLYTE UI */}
-                    {isHydration && (
-                      <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
-
-                    {/* THERAPEUTIC PHLEBOTOMY / BLOOD DONATION UI */}
-                    {isPhlebotomy && (
-                      <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
-
-                    {/* PEPTIDE RECONSTITUTION & INJECTION ROTATION UI */}
-                    {isPeptide && (
-                      <PeptideExecutionLog 
-                        value={executionDetails} 
-                        onChange={setExecutionDetails} 
-                        modality={modality} 
-                        modalityKey={modalityKey} 
-                        defaultDoseMcg={task.protocol_step?.dose_amount || 250} 
-                      />
-                    )}
-
-                    {/* PRECISION SUPPLEMENT / STACK UI */}
-                    {isSupplement && (
-                      <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />
-                    )}
-
-                    {/* SPORT / GENERIC FALLBACK UI */}
-                    {isSport && (
-                      <div className="flex flex-col gap-2 mt-3 p-3 bg-black/20 rounded-lg border border-white/5 w-full">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="text-[10px] text-levl-text-secondary uppercase tracking-wider font-bold">
-                            Sport Execution
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 h-auto w-full">
-                          <div className="flex-1">
-                            <label className="text-[9px] text-gray-500 uppercase font-semibold ml-1">Duration (min)</label>
-                            <input 
-                              type="number" 
-                              value={executionDetails.duration || ''}
-                              onChange={(e) => setExecutionDetails({...executionDetails, duration: e.target.value})}
-                              className="w-full h-9 bg-white/5 border border-white/10 rounded-lg px-3 text-sm text-white focus:outline-none focus:border-levl-accent"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <label className="text-[9px] text-gray-500 uppercase font-semibold ml-1">
-                              Intensity (1-10)
-                            </label>
-                            <input 
-                              type="number" 
-                              min="1"
-                              max="10"
-                              value={executionDetails.intensity || ''}
-                              onChange={(e) => setExecutionDetails({...executionDetails, intensity: e.target.value})}
-                              className="w-full h-9 bg-white/5 border border-white/10 rounded-lg px-3 text-sm text-white focus:outline-none focus:border-levl-accent"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* COMPLETE & LOG SESSION ACTION BUTTON */}
-                    <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-emerald-500/20 flex-wrap">
-                      <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold">
-                        <Sparkles size={14} className="text-emerald-400 shrink-0" />
-                        <span>Log precision metrics & launch outcome tracking</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          const baseDateStr = task.scheduled_date
-                          let logDate = new Date()
-                          if (baseDateStr) {
-                            const [y, m, d] = baseDateStr.split('-').map(Number)
-                            if (y && m && d) {
-                              logDate = new Date(y, m - 1, d)
-                            }
-                          }
-                          const now = new Date()
-                          logDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0)
-                          let metrics: any = undefined
-                          if (executionDetails.duration || executionDetails.distance) {
-                            metrics = {}
-                            if (executionDetails.duration) metrics.duration_mins = parseFloat(executionDetails.duration)
-                            if (executionDetails.distance) metrics.distance = parseFloat(executionDetails.distance)
-                          }
-
-                          if (isPeptide && executionDetails?.injection_site) {
-                            saveInjectionSiteLog(modalityKey, executionDetails.injection_site)
-                          }
-
-                          await updateTaskExecutionDetails(task.id, executionDetails)
-
-                          setExpanded(true)
-                          if (currentRelevantOutcomes.length > 0) {
-                            setShowInlineOutcomes(true)
-                            setActiveOutcomePhase('post')
-                          } else {
-                            onStatusChange(task.id, 'completed', undefined, logDate.toISOString(), metrics, executionDetails)
-                          }
-                        }}
-                        className="h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
-                      >
-                        <CheckCircle2 size={16} strokeWidth={2.5} />
-                        <span>{task.status === 'completed' ? 'Update & Rate Outcomes' : 'Complete Session & Rate Outcomes'}</span>
-                        <ChevronRight size={14} strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          
           {/* Quick & Main Actions (For all tasks except immediate inline outcome tracking prompt) */}
           {!isJustCompletedInline && (
             <>
