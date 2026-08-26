@@ -546,6 +546,22 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
               else if (lower.includes('meal') || lower.includes('food')) setSelectedSlot('with_meal')
               else setSelectedSlot('morning')
             }}
+            onApplyMultiDose={(count, s1, s2, s3) => {
+              setDosesPerDay(count)
+              if (s1) setDose1Timing(s1)
+              if (s2) setDose2Timing(s2)
+              if (s3) setDose3Timing(s3)
+            }}
+            onApplyCadence={(mode, days, restDays, strategy) => {
+              setScheduleMode(mode)
+              if (days && days.length > 0) setSelectedDays(days)
+              if (restDays !== undefined && restDays !== null) setRestDaysBetween(restDays)
+              if (strategy) {
+                if (strategy === 'strict_fixed') setSkipPolicy('fixed')
+                else if (strategy === 'cascade_shift') setSkipPolicy('shift_sequence')
+                else setSkipPolicy('roll_forward')
+              }
+            }}
             onAppendNotes={(note) => {
               setPersonalNotes(prev => prev ? `${prev}\n\n${note}` : note)
             }}

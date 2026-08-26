@@ -463,6 +463,24 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
               setDose1Timing(matched.presetValue)
               if (matched.isCustom) setCustomTimingText(matched.customText)
             }}
+            onApplyMultiDose={(count, s1, s2, s3) => {
+              setDosesPerDay(count)
+              if (s1) {
+                const m1 = matchDefaultTimingPreset(s1)
+                setDose1Timing(m1.presetValue)
+                if (m1.isCustom) setCustomTimingText(m1.customText)
+              }
+              if (s2) setDose2Timing(s2)
+              if (s3) setDose3Timing(s3)
+              setIsTimingSectionExpanded(true)
+            }}
+            onApplyCadence={(mode, days, restDays) => {
+              if (days && days.length > 0 && days.length < 7) {
+                setWeeklyFrequency(`${days.length}x / week (${days.join(', ')})`)
+              } else if (restDays !== undefined && restDays !== null) {
+                setWeeklyFrequency(`Every ${restDays + 1} Days (${restDays}d rest)`)
+              }
+            }}
             onAppendNotes={(note) => {
               setPersonalNotes(prev => prev ? `${prev}\n\n${note}` : note)
             }}
