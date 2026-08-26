@@ -748,7 +748,7 @@ export default function ProtocolTaskCard({
     setActiveOutcomePhase('pre')
   }
 
-  const handleSaveInlineOutcomes = async () => {
+  const handleSaveInlineOutcomes = async (forceComplete?: boolean) => {
     setIsSavingOutcomes(true)
     try {
       const localUserId = getLocalUserId()
@@ -793,39 +793,52 @@ export default function ProtocolTaskCard({
       }
 
       const freshObs = await getTaskOutcomeObservations(localUserId, task.id, dateStr)
-      if (freshObs) setTaskObs(freshObs)
+      if (freshObs) {
+        setTaskObs(freshObs)
+        const baseMap: Record<string, number> = {}
+        freshObs.forEach((o: any) => {
+          if (o.phase === 'pre') {
+            baseMap[o.outcome_id] = o.value_0_10
+          }
+        })
+        setBaselineOutcomesMap(prev => ({ ...prev, ...baseMap }))
+      }
       setOutcomesSavedDone(true)
       setShowInlineOutcomes(false)
       
-      // Always complete task when saving inline outcomes (or clicking checkmark twice)
-      const loggedOutcomes = currentRelevantOutcomes.map(out => {
-        const preVal = editPreValues[out.id] ?? inlinePreValues[out.id] ?? baselineOutcomesMap[out.id]
-        const postVal = editPostValues[out.id] ?? inlinePostValues[out.id]
-        return {
-          outcomeId: out.id,
-          outcomeName: out.name,
-          directionality: out.directionality || 'higher_is_better',
-          preValue: preVal !== undefined ? Number(preVal) : undefined,
-          postValue: postVal !== undefined ? Number(postVal) : undefined
-        }
-      }).filter(o => o.preValue !== undefined || o.postValue !== undefined)
+      // ONLY complete task if saving post outcomes or forced via checkmark click
+      const shouldComplete = forceComplete || activeOutcomePhase !== 'pre'
 
-      const rawDetails = (executionDetails && Object.keys(executionDetails).length > 0) ? executionDetails : task.execution_details || {}
-      const effectiveDetails = {
-        ...rawDetails,
-        logged_outcomes: loggedOutcomes
+      if (shouldComplete) {
+        const loggedOutcomes = currentRelevantOutcomes.map(out => {
+          const preVal = editPreValues[out.id] ?? inlinePreValues[out.id] ?? baselineOutcomesMap[out.id]
+          const postVal = editPostValues[out.id] ?? inlinePostValues[out.id]
+          return {
+            outcomeId: out.id,
+            outcomeName: out.name,
+            directionality: out.directionality || 'higher_is_better',
+            preValue: preVal !== undefined ? Number(preVal) : undefined,
+            postValue: postVal !== undefined ? Number(postVal) : undefined
+          }
+        }).filter(o => o.preValue !== undefined || o.postValue !== undefined)
+
+        const rawDetails = (executionDetails && Object.keys(executionDetails).length > 0) ? executionDetails : task.execution_details || {}
+        const effectiveDetails = {
+          ...rawDetails,
+          logged_outcomes: loggedOutcomes
+        }
+        let metrics: any = undefined
+        if (effectiveDetails?.duration || effectiveDetails?.distance) {
+          metrics = {}
+          if (effectiveDetails.duration) metrics.duration_mins = parseFloat(effectiveDetails.duration)
+          if (effectiveDetails.distance) metrics.distance = parseFloat(effectiveDetails.distance)
+        }
+        if (isPeptide) {
+          const site = effectiveDetails?.injection_site || 'abdomen_lower_right'
+          saveInjectionSiteLog(modalityKey, site)
+        }
+        onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails)
       }
-      let metrics: any = undefined
-      if (effectiveDetails?.duration || effectiveDetails?.distance) {
-        metrics = {}
-        if (effectiveDetails.duration) metrics.duration_mins = parseFloat(effectiveDetails.duration)
-        if (effectiveDetails.distance) metrics.distance = parseFloat(effectiveDetails.distance)
-      }
-      if (isPeptide) {
-        const site = effectiveDetails?.injection_site || 'abdomen_lower_right'
-        saveInjectionSiteLog(modalityKey, site)
-      }
-      onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails)
 
       if (onOutcomesSaved) {
         onOutcomesSaved(task.id)
@@ -1499,7 +1512,7 @@ export default function ProtocolTaskCard({
                       lastCheckClickTimeRef.current = now;
 
                       if (showInlineOutcomes || isDoubleTap) {
-                        handleSaveInlineOutcomes();
+                        handleSaveInlineOutcomes(true);
                       } else if (currentRelevantOutcomes.length > 0) {
                         setExpanded(true);
                         setShowInlineOutcomes(true);
@@ -2041,7 +2054,7 @@ export default function ProtocolTaskCard({
               <div className="flex items-center gap-3 pt-1">
                 <button
                   type="button"
-                  onClick={handleSaveInlineOutcomes}
+                  onClick={() => handleSaveInlineOutcomes(activeOutcomePhase !== 'pre')}
                   disabled={isSavingOutcomes}
                   className="flex-1 px-3 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-emerald-900/40 flex items-center justify-center text-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
