@@ -245,6 +245,10 @@ export const modalityReferences: Record<string, { title: string; url: string; ty
     { title: "Primary Prevention of Cardiovascular Disease with a Mediterranean Diet Supplemented with Extra-Virgin Olive Oil", url: "https://pubmed.ncbi.nlm.nih.gov/23432189/", type: "RCT" },
     { title: "Oleocanthal, a phenolic derived from virgin olive oil: a review of the beneficial effects on inflammatory disease", url: "https://pubmed.ncbi.nlm.nih.gov/24915668/", type: "Review" }
   ],
+  'extra-virgin-olive-oil': [
+    { title: "Primary Prevention of Cardiovascular Disease with a Mediterranean Diet Supplemented with Extra-Virgin Olive Oil", url: "https://pubmed.ncbi.nlm.nih.gov/23432189/", type: "RCT" },
+    { title: "Oleocanthal, a phenolic derived from virgin olive oil: a review of the beneficial effects on inflammatory disease", url: "https://pubmed.ncbi.nlm.nih.gov/24915668/", type: "Review" }
+  ],
   'kefir': [
     { title: "The microbiome-gut-brain axis during health and disease", url: "https://pubmed.ncbi.nlm.nih.gov/25449097/", type: "Review" },
     { title: "Fermented milk (kefir) regulates the intestinal microbiota and prevents diet-induced obesity", url: "https://pubmed.ncbi.nlm.nih.gov/27856083/", type: "Experimental" }

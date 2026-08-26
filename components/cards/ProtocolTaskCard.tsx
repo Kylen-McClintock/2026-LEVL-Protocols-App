@@ -519,6 +519,7 @@ export default function ProtocolTaskCard({
   const isPeptideOrRiskyModality = useMemo(() => {
     const cat = (modality?.category || '').toLowerCase()
     const name = (modality?.name || modality?.display_name || '').toLowerCase()
+    if (name.includes('collagen')) return false
     return (
       cat.includes('peptide') ||
       cat.includes('hormone') ||

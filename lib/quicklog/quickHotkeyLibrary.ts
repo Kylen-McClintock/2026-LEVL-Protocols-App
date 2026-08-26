@@ -56,6 +56,38 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
       { label: 'Loading Dose (+10g)', amount: 10, notes: 'Split loading phase' }
     ]
   },
+  {
+    id: 'evoo_intake',
+    name: 'Extra Virgin Olive Oil (EVOO)',
+    icon: 'Sparkles',
+    category: 'nutrition',
+    unit: 'mL',
+    default_increment: 15,
+    daily_goal: 30,
+    is_negative: false,
+    color_theme: 'emerald',
+    presets: [
+      { label: '1 Tablespoon (+15 mL)', amount: 15, notes: 'Single culinary / polyphenol dose' },
+      { label: '2 Tablespoons (+30 mL)', amount: 30, notes: 'Daily Blueprint longevity target' },
+      { label: '3 Tablespoons (+45 mL)', amount: 45, notes: 'PREDIMED high-polyphenol cardiac dose' }
+    ]
+  },
+  {
+    id: 'collagen_powder',
+    name: 'Collagen Peptides Powder',
+    icon: 'Sparkles',
+    category: 'nutrition',
+    unit: 'g',
+    default_increment: 10,
+    daily_goal: 15,
+    is_negative: false,
+    color_theme: 'cyan',
+    presets: [
+      { label: '1 Scoop (+10g)', amount: 10, notes: 'Standard daily skin/joint dose' },
+      { label: '1.5 Scoops (+15g)', amount: 15, notes: 'Connective tissue repair' },
+      { label: '2 Scoops (+20g)', amount: 20, notes: 'Heavy training tendon loading' }
+    ]
+  },
 
   // 2. HYDRATION & ELECTROLYTES
   {

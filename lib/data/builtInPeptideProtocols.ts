@@ -1530,6 +1530,8 @@ export const collagen_peptides_modality: Modality = {
   default_timing_slot: 'morning',
   frequency: 'Daily',
   cadence_layer: 'daily',
+  effort_level: 'level_2',
+  difficulty: 'Level 2 - Easy',
   scientific_references: [
     {
       title: 'Shaw et al. (2017) Vitamin C-enriched gelatin supplementation before intermittent activity augments collagen synthesis',

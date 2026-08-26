@@ -59,26 +59,29 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
 
   const specializedTraits: SpecializedTraits = {}
 
-  // 1. PEPTIDES (Strict Priority)
+  // 1. PEPTIDES (Strict Priority - Excludes Oral Collagen Peptides Powder)
+  const isOralCollagen = name.includes('collagen')
   if (
-    logType === 'peptide' || 
-    modType.includes('peptide') || 
-    cat.includes('peptide') || 
-    name.includes('bpc') || 
-    name.includes('tb-500') || 
-    name.includes('tb500') || 
-    name.includes('cjc') || 
-    name.includes('ipamorelin') || 
-    name.includes('semaglutide') || 
-    name.includes('tirzepatide') || 
-    name.includes('retatrutide') || 
-    name.includes('nad+') || 
-    name.includes('glutathione') || 
-    name.includes('epithalon') || 
-    name.includes('mots-c') || 
-    name.includes('ss-31') || 
-    name.includes('ghk-cu') ||
-    !!modality.peptide_metadata?.is_peptide
+    !isOralCollagen && (
+      logType === 'peptide' || 
+      modType.includes('peptide') || 
+      cat.includes('peptide') || 
+      name.includes('bpc') || 
+      name.includes('tb-500') || 
+      name.includes('tb500') || 
+      name.includes('cjc') || 
+      name.includes('ipamorelin') || 
+      name.includes('semaglutide') || 
+      name.includes('tirzepatide') || 
+      name.includes('retatrutide') || 
+      name.includes('nad+') || 
+      name.includes('glutathione') || 
+      name.includes('epithalon') || 
+      name.includes('mots-c') || 
+      name.includes('ss-31') || 
+      name.includes('ghk-cu') ||
+      !!modality.peptide_metadata?.is_peptide
+    )
   ) {
     return {
       archetype: 'peptide',
@@ -161,11 +164,11 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     }
   }
 
-  // 5. NUTRITION MACROS & PROTEIN TIMING
+  // 5. NUTRITION MACROS & PROTEIN TIMING (Excludes Oral Collagen Supplement Powder)
   if (
     logType === 'nutrition_protein' || 
-    logType === 'nutrition' || 
-    cat.includes('nutrition') || 
+    (logType === 'nutrition' && !isOralCollagen) || 
+    (cat.includes('nutrition') && !isOralCollagen) || 
     name.includes('protein distribution') || 
     name.includes('leucine threshold') || 
     name.includes('protein synthesis') || 
@@ -436,7 +439,8 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     name.includes('alpha-gpc') || name.includes('taurine') || name.includes('magnesium') || name.includes('spermidine') || 
     name.includes('gaba') || name.includes('berberine') || name.includes('apigenin') || name.includes('sulforaphane') || 
     name.includes('tudca') || name.includes('acarbose') || name.includes('metformin') || name.includes('rapamycin') || 
-    name.includes('omega') || name.includes('coq10') || name.includes('vitamin') || name.includes('zinc')
+    name.includes('omega') || name.includes('coq10') || name.includes('vitamin') || name.includes('zinc') ||
+    name.includes('collagen') || name.includes('olive oil') || name.includes('evoo')
   )
 
   if (isSupplementMatch) {
