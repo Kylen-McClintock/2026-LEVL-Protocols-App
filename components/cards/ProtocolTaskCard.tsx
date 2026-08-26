@@ -1788,7 +1788,7 @@ export default function ProtocolTaskCard({
 
                 {/* COMPLETE & LOG SESSION ACTION BUTTON */}
                 <div className="flex items-center justify-between gap-3 pt-3 border-t border-emerald-500/20 flex-wrap">
-                  <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold">
+                  <div className="hidden sm:flex items-center gap-2 text-emerald-400 text-xs font-semibold">
                     <Sparkles size={14} className="text-emerald-400 shrink-0" />
                     <span>Log precision metrics &amp; launch outcome tracking</span>
                   </div>
@@ -1833,7 +1833,7 @@ export default function ProtocolTaskCard({
                         setIsProcessing(false)
                       }
                     }}
-                    className="h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+                    className="w-full sm:w-auto h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <CheckCircle2 size={16} strokeWidth={2.5} />
                     <span>Complete Session &amp; Rate Outcomes</span>
