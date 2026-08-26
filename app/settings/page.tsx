@@ -69,7 +69,7 @@ export default function SettingsPage() {
     }
     try {
       setIsSyncing(true)
-      const cachedGuestId = typeof window !== 'undefined' ? (localStorage.getItem('levl_prev_guest_id') || 'ae563aa5-59e7-4bfd-8107-d0347acec2ac') : ''
+      const cachedGuestId = typeof window !== 'undefined' ? (localStorage.getItem('levl_prev_guest_id') || '') : ''
       if (cachedGuestId && user) {
         await linkGuestDataToAuthUser(cachedGuestId, user)
       }

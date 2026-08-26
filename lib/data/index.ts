@@ -365,22 +365,10 @@ export async function getOrCreateUserProfile(localUserId: string): Promise<UserP
       return cached
     }
 
-    // Create a new profile (seeding hotkeys from active seed profile if available)
-    let initialScores: any = null
-    try {
-      const { data: seedProf } = await supabase
-        .from('user_profiles')
-        .select('outcome_preference_scores')
-        .eq('local_user_id', 'ae563aa5-59e7-4bfd-8107-d0347acec2ac')
-        .maybeSingle()
-      if (seedProf?.outcome_preference_scores) {
-        initialScores = seedProf.outcome_preference_scores
-      }
-    } catch (e) {}
-
+    // Create a clean new profile for this user
     const { data: newProfile, error: insertError } = await supabase
       .from('user_profiles')
-      .insert([{ local_user_id: localUserId, outcome_preference_scores: initialScores }])
+      .insert([{ local_user_id: localUserId, outcome_preference_scores: {} }])
       .select()
       .maybeSingle()
 

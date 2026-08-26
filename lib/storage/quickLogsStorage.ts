@@ -110,7 +110,7 @@ export async function loadQuickLogsForDate(
   const effectiveUserId = localUserId || 'default'
   let localEntries: DailyQuickLogEntry[] = []
 
-  // 1. Instant local read
+  // 1. Instant local read filtered strictly by effectiveUserId
   try {
     const db = await openQuickLogsDB()
     const tx = db.transaction(STORE_LOGS, 'readonly')
@@ -118,47 +118,40 @@ export async function loadQuickLogsForDate(
     const index = store.index('date')
     const request = index.getAll(date)
 
-    localEntries = await new Promise((resolve, reject) => {
+    const rawEntries: DailyQuickLogEntry[] = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result || [])
       request.onerror = () => reject(request.error)
     })
+    localEntries = rawEntries.filter(e => !e.local_user_id || e.local_user_id === effectiveUserId)
   } catch (err) {
     if (typeof window !== 'undefined') {
-      const key = `levl_quicklog_${date}`
-      localEntries = JSON.parse(localStorage.getItem(key) || '[]')
+      const key = `levl_quicklog_${effectiveUserId}_${date}`
+      const fallbackKey = `levl_quicklog_${date}`
+      const raw = localStorage.getItem(key) || localStorage.getItem(fallbackKey) || '[]'
+      const parsed: DailyQuickLogEntry[] = JSON.parse(raw)
+      localEntries = parsed.filter(e => !e.local_user_id || e.local_user_id === effectiveUserId)
     }
   }
 
-  // 2. Supabase Cloud Sync & Merge
-  if (supabase && effectiveUserId) {
+  // 2. Supabase Cloud Sync & Merge strictly for this effective user
+  if (supabase && effectiveUserId && effectiveUserId !== 'default') {
     try {
-      let cloudLogs: DailyQuickLogEntry[] | undefined = undefined
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('outcome_preference_scores')
+        .eq('local_user_id', effectiveUserId)
+        .maybeSingle()
 
-      if (effectiveUserId !== 'default') {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('outcome_preference_scores')
-          .eq('local_user_id', effectiveUserId)
-          .maybeSingle()
-
-        cloudLogs = (profile?.outcome_preference_scores as any)?._daily_quick_logs?.[date]
-      }
-
-      // If this device's profile has no cloud logs for date, check the primary seed profile
-      if (!cloudLogs || !Array.isArray(cloudLogs) || cloudLogs.length === 0) {
-        const { data: seedProf } = await supabase
-          .from('user_profiles')
-          .select('outcome_preference_scores')
-          .eq('local_user_id', 'ae563aa5-59e7-4bfd-8107-d0347acec2ac')
-          .maybeSingle()
-
-        cloudLogs = (seedProf?.outcome_preference_scores as any)?._daily_quick_logs?.[date]
-      }
+      const cloudLogs: DailyQuickLogEntry[] | undefined = (profile?.outcome_preference_scores as any)?._daily_quick_logs?.[date]
 
       if (Array.isArray(cloudLogs) && cloudLogs.length > 0) {
         const map = new Map<string, DailyQuickLogEntry>()
         localEntries.forEach(e => map.set(e.id, e))
-        cloudLogs.forEach(c => map.set(c.id, c))
+        cloudLogs.forEach(c => {
+          if (!c.local_user_id || c.local_user_id === effectiveUserId) {
+            map.set(c.id, c)
+          }
+        })
 
         // Backfill missing entries to local IndexedDB and localStorage
         const merged = Array.from(map.values()).sort(
@@ -166,7 +159,7 @@ export async function loadQuickLogsForDate(
         )
 
         if (typeof window !== 'undefined') {
-          const key = `levl_quicklog_${date}`
+          const key = `levl_quicklog_${effectiveUserId}_${date}`
           localStorage.setItem(key, JSON.stringify(merged))
         }
 
@@ -258,9 +251,9 @@ export async function deleteQuickLogEntry(
 export async function getUserHotkeys(localUserId: string): Promise<QuickHotkeyConfig[]> {
   const effectiveUserId = localUserId || 'default'
 
-  // 1. Fast, synchronous LocalStorage read
+  // 1. Fast, synchronous LocalStorage read for this exact user
   if (typeof window !== 'undefined') {
-    const local = localStorage.getItem(`levl_user_hotkeys_${effectiveUserId}`) || localStorage.getItem('levl_user_hotkeys_default') || localStorage.getItem('levl_user_hotkeys')
+    const local = localStorage.getItem(`levl_user_hotkeys_${effectiveUserId}`)
     if (local) {
       try {
         const parsed = JSON.parse(local)
@@ -271,7 +264,7 @@ export async function getUserHotkeys(localUserId: string): Promise<QuickHotkeyCo
     }
   }
 
-  // 2. IndexedDB read
+  // 2. IndexedDB read for this exact user
   try {
     const db = await openQuickLogsDB()
     const tx = db.transaction(STORE_CONFIG, 'readonly')
@@ -294,37 +287,20 @@ export async function getUserHotkeys(localUserId: string): Promise<QuickHotkeyCo
     console.warn('Fallback loading user hotkeys:', err)
   }
 
-  // 3. Supabase Cloud Profile Sync
-  if (supabase && effectiveUserId) {
+  // 3. Supabase Cloud Profile Sync for this exact user
+  if (supabase && effectiveUserId && effectiveUserId !== 'default') {
     try {
-      let cloudHotkeys: any = null
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('outcome_preference_scores')
+        .eq('local_user_id', effectiveUserId)
+        .maybeSingle()
 
-      if (effectiveUserId !== 'default') {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('outcome_preference_scores')
-          .eq('local_user_id', effectiveUserId)
-          .maybeSingle()
-
-        cloudHotkeys = (profile?.outcome_preference_scores as any)?._custom_hotkeys
-      }
-
-      // If this device's profile is uncustomized, pull from the latest active seed profile
-      if (!cloudHotkeys || !Array.isArray(cloudHotkeys) || cloudHotkeys.length === 0) {
-        const { data: seedProf } = await supabase
-          .from('user_profiles')
-          .select('outcome_preference_scores')
-          .eq('local_user_id', 'ae563aa5-59e7-4bfd-8107-d0347acec2ac')
-          .maybeSingle()
-
-        cloudHotkeys = (seedProf?.outcome_preference_scores as any)?._custom_hotkeys
-      }
+      const cloudHotkeys = (profile?.outcome_preference_scores as any)?._custom_hotkeys
 
       if (Array.isArray(cloudHotkeys) && cloudHotkeys.length > 0) {
         if (typeof window !== 'undefined') {
           localStorage.setItem(`levl_user_hotkeys_${effectiveUserId}`, JSON.stringify(cloudHotkeys))
-          localStorage.setItem('levl_user_hotkeys_default', JSON.stringify(cloudHotkeys))
-          localStorage.setItem('levl_user_hotkeys', JSON.stringify(cloudHotkeys))
         }
         return cloudHotkeys
       }
@@ -348,8 +324,6 @@ export async function saveUserHotkeys(
   // 1. Instant synchronous write to localStorage + global event broadcast
   if (typeof window !== 'undefined') {
     localStorage.setItem(`levl_user_hotkeys_${effectiveUserId}`, JSON.stringify(hotkeys))
-    localStorage.setItem('levl_user_hotkeys_default', JSON.stringify(hotkeys))
-    localStorage.setItem('levl_user_hotkeys', JSON.stringify(hotkeys))
     window.dispatchEvent(new CustomEvent('levl_hotkeys_config_updated', { detail: hotkeys }))
   }
 
@@ -390,7 +364,7 @@ export async function saveUserHotkeys(
           { onConflict: 'local_user_id' }
         )
     } catch (e) {
-      console.warn('Notice syncing hotkeys to Supabase:', e)
+      console.warn('Notice syncing user hotkeys to Supabase:', e)
     }
   }
 
@@ -398,12 +372,12 @@ export async function saveUserHotkeys(
 }
 
 /**
- * Load all user-created custom hotkeys (active or inactive)
+ * Load user's custom created hotkeys library
  */
 export async function getCustomCreatedHotkeys(localUserId: string): Promise<QuickHotkeyConfig[]> {
   const effectiveUserId = localUserId || 'default'
 
-  // 1. LocalStorage
+  // 1. Fast LocalStorage read for this exact user
   if (typeof window !== 'undefined') {
     const local = localStorage.getItem(`levl_custom_created_hotkeys_${effectiveUserId}`)
     if (local) {
@@ -416,31 +390,16 @@ export async function getCustomCreatedHotkeys(localUserId: string): Promise<Quic
     }
   }
 
-  // 2. Supabase Cloud Sync
-  if (supabase && effectiveUserId) {
+  // 2. Supabase Cloud Sync for this exact user
+  if (supabase && effectiveUserId && effectiveUserId !== 'default') {
     try {
-      let cloudCustom: QuickHotkeyConfig[] | undefined = undefined
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('outcome_preference_scores')
+        .eq('local_user_id', effectiveUserId)
+        .maybeSingle()
 
-      if (effectiveUserId !== 'default') {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('outcome_preference_scores')
-          .eq('local_user_id', effectiveUserId)
-          .maybeSingle()
-
-        cloudCustom = (profile?.outcome_preference_scores as any)?._created_custom_hotkeys
-      }
-
-      // If this device's profile has no custom created hotkeys, check primary seed profile
-      if (!cloudCustom || !Array.isArray(cloudCustom) || cloudCustom.length === 0) {
-        const { data: seedProf } = await supabase
-          .from('user_profiles')
-          .select('outcome_preference_scores')
-          .eq('local_user_id', 'ae563aa5-59e7-4bfd-8107-d0347acec2ac')
-          .maybeSingle()
-
-        cloudCustom = (seedProf?.outcome_preference_scores as any)?._created_custom_hotkeys
-      }
+      const cloudCustom: QuickHotkeyConfig[] | undefined = (profile?.outcome_preference_scores as any)?._created_custom_hotkeys
 
       if (Array.isArray(cloudCustom) && cloudCustom.length > 0) {
         if (typeof window !== 'undefined') {

@@ -259,10 +259,16 @@ export default function OnboardingPage() {
         }
       }
 
-      // 3. Smooth navigation to Today view
+      // 3. Mark onboarding completed and navigate to Today view
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('levl_onboarding_completed', 'true')
+      }
       window.location.href = '/today'
     } catch (err) {
       console.error('Error completing onboarding:', err)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('levl_onboarding_completed', 'true')
+      }
       window.location.href = '/today'
     }
   }

@@ -2,21 +2,24 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 
 export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    // getLocalUserId initializes it if missing, but we want to know if they actually have a profile.
-    // For MVP, we'll just check if it was newly created. Actually getLocalUserId creates it right away.
-    // Let's just always route to /today. The /today page can fetch the profile, and if it's missing, bounce to /onboarding.
-    router.replace('/today')
+    if (typeof window !== 'undefined') {
+      const isCompleted = localStorage.getItem('levl_onboarding_completed') === 'true'
+      if (isCompleted) {
+        router.replace('/today')
+      } else {
+        router.replace('/onboarding')
+      }
+    }
   }, [router])
 
   return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="animate-pulse text-levl-text-secondary">Loading...</div>
+    <div className="flex h-screen items-center justify-center bg-slate-950">
+      <div className="animate-pulse text-slate-400 font-bold text-sm">Loading LEVL Protocols...</div>
     </div>
   )
 }
