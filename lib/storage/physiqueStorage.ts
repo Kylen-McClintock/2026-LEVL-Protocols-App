@@ -1,3 +1,31 @@
+export interface PostureAssessment {
+  forward_head: 'none' | 'mild' | 'moderate' | 'pronounced'
+  rounded_shoulders: 'none' | 'mild' | 'moderate' | 'pronounced'
+  pelvic_tilt: 'neutral' | 'mild_anterior' | 'anterior' | 'posterior'
+  bilateral_asymmetry?: string
+  summary: string
+  corrective_cues?: string[]
+}
+
+export interface PhysiqueAnalysisResult {
+  body_fat_pct: number
+  body_fat_ci: { min: number; max: number }
+  estimated_weight_lbs?: number
+  weight_ci?: { min: number; max: number }
+  skeletal_muscle_mass_pct?: number
+  visceral_fat_grade: number // 1 to 10
+  ffmi?: number
+  v_taper_ratio?: number
+  waist_to_hip_ratio?: number
+  posture_assessment: PostureAssessment
+  fluid_retention_level: 'dry_lean' | 'normal' | 'mild_watery' | 'moderate_watery'
+  anatomical_landmarks_detected: string[]
+  confidence_score: number
+  confidence_tier: 'high' | 'moderate' | 'low'
+  key_observations: string[]
+  recommendation: string
+}
+
 export interface BodyCompositionRecord {
   id: string
   date: string
@@ -8,6 +36,17 @@ export interface BodyCompositionRecord {
   photo_url?: string
   photo_pose?: 'front' | 'side' | 'back' | 'flexed' | 'general'
   notes?: string
+  // Extended AI Vision Fields
+  ai_estimated?: boolean
+  confidence_score?: number
+  body_fat_ci?: { min: number; max: number }
+  weight_ci?: { min: number; max: number }
+  ffmi?: number
+  v_taper_ratio?: number
+  waist_to_hip_ratio?: number
+  posture_assessment?: PostureAssessment
+  fluid_retention_level?: 'dry_lean' | 'normal' | 'mild_watery' | 'moderate_watery'
+  analysis_result?: PhysiqueAnalysisResult
 }
 
 const DB_NAME = 'levl_physique_db'
@@ -39,8 +78,50 @@ import { compressAndDownscaleImage } from '@/lib/utils/imageCompression'
  * Compresses and downscales raw high-res smartphone/camera images to an optimized size
  * (e.g. 10MB -> ~120KB) to ensure lightning-fast UI rendering and unlimited storage headroom.
  */
-export async function compressPhysiqueImage(file: File, maxDimension = 1200, quality = 0.80): Promise<string> {
+export async function compressPhysiqueImage(file: File | Blob | string, maxDimension = 1200, quality = 0.80): Promise<string> {
   return compressAndDownscaleImage(file, { maxDimension, quality })
+}
+
+/**
+ * Calls the AI Vision endpoint to analyze physique, estimate BF% with CI, posture, and body metrics.
+ */
+export async function analyzePhysiquePhoto(
+  fileOrBase64: File | Blob | string,
+  userContext?: {
+    knownWeightLbs?: number | null
+    heightInches?: number | null
+    sex?: 'male' | 'female'
+    age?: number | null
+    pose?: string
+  }
+): Promise<PhysiqueAnalysisResult> {
+  // 1. Ensure client-side compression
+  const compressedBase64 = await compressAndDownscaleImage(fileOrBase64, {
+    maxDimension: 1200,
+    quality: 0.82
+  })
+
+  // 2. Transmit to serverless vision route
+  const formData = new FormData()
+  formData.append('image', compressedBase64)
+  if (userContext?.knownWeightLbs) formData.append('known_weight_lbs', userContext.knownWeightLbs.toString())
+  if (userContext?.heightInches) formData.append('height_inches', userContext.heightInches.toString())
+  if (userContext?.sex) formData.append('sex', userContext.sex)
+  if (userContext?.age) formData.append('age', userContext.age.toString())
+  if (userContext?.pose) formData.append('pose', userContext.pose)
+
+  const res = await fetch('/api/physique/analyze', {
+    method: 'POST',
+    body: formData
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || 'Failed to analyze physique photo.')
+  }
+
+  const json = await res.json()
+  return json.data as PhysiqueAnalysisResult
 }
 
 /**

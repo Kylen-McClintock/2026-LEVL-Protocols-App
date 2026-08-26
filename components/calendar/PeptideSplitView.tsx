@@ -58,6 +58,7 @@ import {
   savePhysiqueRecordToDB,
   compressPhysiqueImage
 } from '@/lib/storage/physiqueStorage'
+import PhysiqueVisionScannerModal from '@/components/modals/PhysiqueVisionScannerModal'
 import ManageTaskModal from '@/components/modals/ManageTaskModal'
 import ShareablePeptideReportModal from '@/components/modals/ShareablePeptideReportModal'
 import ProtocolActionModal from '@/components/modals/ProtocolActionModal'
@@ -112,6 +113,7 @@ export default function PeptideSplitView({
   // Body Composition & Progress Photos State
   const [bodyRecords, setBodyRecords] = useState<BodyCompositionRecord[]>([])
   const [showBodyCompModal, setShowBodyCompModal] = useState(false)
+  const [showVisionScannerModal, setShowVisionScannerModal] = useState(false)
   const [newWeight, setNewWeight] = useState('')
   const [newMusclePct, setNewMusclePct] = useState('')
   const [newBodyFatPct, setNewBodyFatPct] = useState('')
@@ -497,11 +499,19 @@ export default function PeptideSplitView({
           </button>
 
           <button
+            onClick={() => setShowVisionScannerModal(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-cyan-950/40 transition-all cursor-pointer"
+          >
+            <Sparkles size={13} className="text-cyan-200" />
+            <span>AI Vision Scan</span>
+          </button>
+
+          <button
             onClick={() => setShowBodyCompModal(true)}
             className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-white/10 transition-colors cursor-pointer"
           >
             <Camera size={13} />
-            <span>Log Physique</span>
+            <span>Manual Entry</span>
           </button>
         </div>
       </div>
@@ -1220,6 +1230,24 @@ export default function PeptideSplitView({
               </button>
             </div>
 
+            {/* AI Scanner Banner */}
+            <div className="p-3 rounded-xl bg-gradient-to-r from-cyan-950/60 to-indigo-950/60 border border-cyan-500/40 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 text-xs text-cyan-300">
+                <Sparkles size={16} className="text-cyan-400 shrink-0" />
+                <span className="leading-snug">Auto-estimate body fat % &amp; posture from a photo?</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBodyCompModal(false)
+                  setShowVisionScannerModal(true)
+                }}
+                className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-black text-[11px] font-black rounded-lg cursor-pointer shrink-0 shadow-sm transition-colors"
+              >
+                Launch AI
+              </button>
+            </div>
+
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="text-[10px] text-slate-400 font-bold uppercase block mb-1">Weight (lbs)</label>
@@ -1453,6 +1481,17 @@ export default function PeptideSplitView({
           </div>
         </div>
       )}
+
+      {/* 8. AI Physique Vision Scanner Modal */}
+      <PhysiqueVisionScannerModal
+        isOpen={showVisionScannerModal}
+        onClose={() => setShowVisionScannerModal(false)}
+        userProfile={userProfile}
+        onRecordSaved={async () => {
+          const updated = await loadPhysiqueRecords()
+          setBodyRecords(updated)
+        }}
+      />
     </div>
   )
 }

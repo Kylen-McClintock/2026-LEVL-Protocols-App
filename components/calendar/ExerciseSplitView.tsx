@@ -14,6 +14,7 @@ import {
   savePhysiqueRecordToDB,
   compressPhysiqueImage
 } from '@/lib/storage/physiqueStorage'
+import PhysiqueVisionScannerModal from '@/components/modals/PhysiqueVisionScannerModal'
 import { getOutcomeDimensions } from '@/lib/data'
 import ProtocolTaskCard from '@/components/cards/ProtocolTaskCard'
 import {
@@ -71,6 +72,7 @@ export default function ExerciseSplitView({
   // Body Composition Modal / State
   const [bodyRecords, setBodyRecords] = useState<BodyCompositionRecord[]>([])
   const [showBodyCompModal, setShowBodyCompModal] = useState(false)
+  const [showVisionScannerModal, setShowVisionScannerModal] = useState(false)
   const [newWeight, setNewWeight] = useState('')
   const [newMusclePct, setNewMusclePct] = useState('')
   const [newBodyFatPct, setNewBodyFatPct] = useState('')
@@ -649,13 +651,22 @@ export default function ExerciseSplitView({
               Body Composition &amp; Visual Physique Timeline
             </h3>
           </div>
-          <button
-            onClick={() => setShowBodyCompModal(true)}
-            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-md"
-          >
-            <Plus size={13} />
-            <span>Log Composition / Photo</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowVisionScannerModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-cyan-950/40"
+            >
+              <Sparkles size={13} className="text-cyan-200" />
+              <span>AI Vision Scan</span>
+            </button>
+            <button
+              onClick={() => setShowBodyCompModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600/80 hover:bg-indigo-500 text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <Plus size={13} />
+              <span>Manual Entry</span>
+            </button>
+          </div>
         </div>
 
         {bodyRecords.length > 0 ? (
@@ -807,6 +818,24 @@ export default function ExerciseSplitView({
               </div>
               <h2 className="text-lg font-black text-white">Record Physique Check-In</h2>
               <p className="text-xs text-slate-400">All fields are optional. Fill in any metric or attach a photo.</p>
+            </div>
+
+            {/* AI Scanner Banner */}
+            <div className="p-3 rounded-xl bg-gradient-to-r from-cyan-950/60 to-indigo-950/60 border border-cyan-500/40 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 text-xs text-cyan-300">
+                <Sparkles size={16} className="text-cyan-400 shrink-0" />
+                <span className="leading-snug">Auto-estimate body fat % &amp; posture from a photo?</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBodyCompModal(false)
+                  setShowVisionScannerModal(true)
+                }}
+                className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-black text-[11px] font-black rounded-lg cursor-pointer shrink-0 shadow-sm transition-colors"
+              >
+                Launch AI
+              </button>
             </div>
 
             {/* Metrics inputs (ALL OPTIONAL) */}
@@ -1078,6 +1107,17 @@ export default function ExerciseSplitView({
           </div>
         </div>
       )}
+
+      {/* 8. AI Physique Vision Scanner Modal */}
+      <PhysiqueVisionScannerModal
+        isOpen={showVisionScannerModal}
+        onClose={() => setShowVisionScannerModal(false)}
+        userProfile={userProfile}
+        onRecordSaved={async () => {
+          const updated = await loadPhysiqueRecords()
+          setBodyRecords(updated)
+        }}
+      />
     </div>
   )
 }
