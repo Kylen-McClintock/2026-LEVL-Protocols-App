@@ -38,6 +38,7 @@ import {
   saveDailyFastingOverride,
   DailyFastingOverride
 } from '@/lib/storage/nutritionStorage'
+import { compressAndDownscaleImage } from '@/lib/utils/imageCompression'
 
 interface NutritionFastingModalProps {
   date: string
@@ -148,47 +149,48 @@ export default function NutritionFastingModal({
     setStep('scanning')
 
     try {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const base64 = e.target?.result as string
-        setCapturedImageBase64(base64)
+      // 1. Client-Side Image Downscaling & Compression (max 1200px, 80% JPEG, ~150KB)
+      const compressedBase64 = await compressAndDownscaleImage(file, {
+        maxDimension: 1200,
+        quality: 0.80
+      })
+      setCapturedImageBase64(compressedBase64)
 
-        const formData = new FormData()
-        formData.append('image', base64)
+      // 2. Transmit lightweight payload to AI Vision endpoint
+      const formData = new FormData()
+      formData.append('image', compressedBase64)
 
-        const res = await fetch('/api/nutrition/scan', {
-          method: 'POST',
-          body: formData
-        })
+      const res = await fetch('/api/nutrition/scan', {
+        method: 'POST',
+        body: formData
+      })
 
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}))
-          throw new Error(errData.error || 'Failed to analyze meal image.')
-        }
-
-        const json = await res.json()
-        if (!json.success || !json.data) {
-          throw new Error('Invalid meal scan response format.')
-        }
-
-        const data: MealScanResult = json.data
-        setScanResult(data)
-        setPortionMultiplier(1.0)
-        setMealName(data.meal_name)
-        setCalories(data.calories)
-        setProtein(data.protein_g)
-        setCarbs(data.carbs_g)
-        setFiber(data.fiber_g)
-        setFat(data.fat_g)
-        setVeggieServings(data.veggie_servings)
-        setFruitServings(data.fruit_servings)
-        setIngredientsList(data.ingredients || [])
-        setNewIngredientInput('')
-        setMealTime(format(new Date(), 'HH:mm'))
-        setKeepPhotoInJournal(false) // Discard by default
-        setStep('review')
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || 'Failed to analyze meal image.')
       }
-      reader.readAsDataURL(file)
+
+      const json = await res.json()
+      if (!json.success || !json.data) {
+        throw new Error('Invalid meal scan response format.')
+      }
+
+      const data: MealScanResult = json.data
+      setScanResult(data)
+      setPortionMultiplier(1.0)
+      setMealName(data.meal_name)
+      setCalories(data.calories)
+      setProtein(data.protein_g)
+      setCarbs(data.carbs_g)
+      setFiber(data.fiber_g)
+      setFat(data.fat_g)
+      setVeggieServings(data.veggie_servings)
+      setFruitServings(data.fruit_servings)
+      setIngredientsList(data.ingredients || [])
+      setNewIngredientInput('')
+      setMealTime(format(new Date(), 'HH:mm'))
+      setKeepPhotoInJournal(false) // Discard by default
+      setStep('review')
     } catch (err: any) {
       console.error('Meal scanning error:', err)
       setErrorMsg(err.message || 'Error processing meal photo. Please try again.')

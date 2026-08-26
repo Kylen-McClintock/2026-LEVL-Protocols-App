@@ -38,16 +38,19 @@ export interface SupplementScanResult {
   confidence_score: number
 }
 
+import { compressAndDownscaleImage } from '@/lib/utils/imageCompression'
+
 /**
  * Uploads an image file or base64 data to Gemini Vision for supplement facts OCR
  */
 export async function scanSupplementImage(fileOrBase64: File | string): Promise<SupplementScanResult> {
+  const compressedBase64 = await compressAndDownscaleImage(fileOrBase64, {
+    maxDimension: 1200,
+    quality: 0.82
+  })
+
   const formData = new FormData()
-  if (typeof fileOrBase64 === 'string') {
-    formData.append('image', fileOrBase64)
-  } else {
-    formData.append('file', fileOrBase64)
-  }
+  formData.append('image', compressedBase64)
 
   const res = await fetch('/api/supplements/scan', {
     method: 'POST',

@@ -33,49 +33,14 @@ function openDB(): Promise<IDBDatabase> {
   })
 }
 
+import { compressAndDownscaleImage } from '@/lib/utils/imageCompression'
+
 /**
  * Compresses and downscales raw high-res smartphone/camera images to an optimized size
  * (e.g. 10MB -> ~120KB) to ensure lightning-fast UI rendering and unlimited storage headroom.
  */
-export async function compressPhysiqueImage(file: File, maxDimension = 1200, quality = 0.82): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = e => {
-      const img = new Image()
-      img.onload = () => {
-        let width = img.width
-        let height = img.height
-
-        if (width > height) {
-          if (width > maxDimension) {
-            height = Math.round((height * maxDimension) / width)
-            width = maxDimension
-          }
-        } else {
-          if (height > maxDimension) {
-            width = Math.round((width * maxDimension) / height)
-            height = maxDimension
-          }
-        }
-
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          return resolve(e.target?.result as string)
-        }
-
-        ctx.drawImage(img, 0, 0, width, height)
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality)
-        resolve(compressedDataUrl)
-      }
-      img.onerror = () => resolve(e.target?.result as string)
-      img.src = e.target?.result as string
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
+export async function compressPhysiqueImage(file: File, maxDimension = 1200, quality = 0.80): Promise<string> {
+  return compressAndDownscaleImage(file, { maxDimension, quality })
 }
 
 /**

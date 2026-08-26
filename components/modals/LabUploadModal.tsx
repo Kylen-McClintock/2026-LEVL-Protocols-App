@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { X, Upload, Check, AlertTriangle, FileText, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
 import { saveLabPanel } from '@/lib/data/bloodworkData'
+import { compressImageToFile } from '@/lib/utils/imageCompression'
 
 interface LabUploadModalProps {
   isOpen: boolean
@@ -82,7 +83,14 @@ export default function LabUploadModal({
     setSaveError(null)
     try {
       const formData = new FormData()
-      files.forEach(f => formData.append('files', f))
+      for (const f of files) {
+        if (f.type.startsWith('image/')) {
+          const compressed = await compressImageToFile(f, { maxDimension: 1200, quality: 0.80 })
+          formData.append('files', compressed)
+        } else {
+          formData.append('files', f)
+        }
+      }
 
       const res = await fetch('/api/labs/upload', {
         method: 'POST',
