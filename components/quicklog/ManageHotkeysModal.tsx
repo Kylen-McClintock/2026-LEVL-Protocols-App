@@ -499,9 +499,9 @@ export default function ManageHotkeysModal({
 
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-all shadow-md cursor-pointer mt-2"
+                className="w-full py-1.5 px-3 rounded-lg bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-all shadow-md cursor-pointer mt-1.5 flex items-center justify-center gap-1"
               >
-                + Add Custom Hotkey to Library
+                <span>+ Add Custom Hotkey to Library</span>
               </button>
             </form>
           )}

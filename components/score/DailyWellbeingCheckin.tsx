@@ -1553,10 +1553,10 @@ export default function DailyWellbeingCheckin({
           <div className="flex items-center gap-2">
             <div className={`w-2.5 h-2.5 rounded-full ${isNightlySaved ? 'bg-emerald-400' : 'bg-rose-400'} animate-pulse`} />
             <h3 className="font-bold text-sm text-white uppercase tracking-wider flex items-center gap-1.5">
-              <Moon size={15} className="text-rose-300" /> {isNightlySaved ? "✓ Nightly Check-in Complete" : "Today's Nightly Check-in"}
+              <Moon size={15} className="text-rose-300" /> Today's Nightly Check-in
             </h3>
             <span className="text-[10px] text-rose-300/80 font-semibold bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
-              {showNightlyCard ? '▲ Collapse' : isNightlySaved ? '▼ Edit Nightly Data' : '▼ Tap to Expand'}
+              {showNightlyCard ? '▲ Collapse' : isNightlySaved ? '▼ Edit' : '▼ Expand'}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -1880,9 +1880,7 @@ export default function DailyWellbeingCheckin({
               {isNightlySaved ? "Update Nightly Check-in" : "Log Today's Nightly Check-in"}
             </button>
           </div>
-        ) : (
-          <p className="text-xs text-rose-200/60 italic">Tap 'Expand Nightly Check-in' to record today's lifestyle exposures & last meal time.</p>
-        )}
+        ) : null}
       </div>
     )}
 
