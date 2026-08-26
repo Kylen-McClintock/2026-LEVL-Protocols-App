@@ -1995,39 +1995,54 @@ export default function ProtocolTaskCard({
           {showInlineOutcomes && currentRelevantOutcomes.length > 0 && (
             <div className="mb-4 bg-black/60 border border-purple-500/30 rounded-xl p-4 space-y-4 animate-in fade-in shadow-xl">
               
-              {/* Header Bar & Phase Tab Switcher */}
-              <div className="flex items-center justify-between border-b border-white/10 pb-3 flex-wrap gap-2">
-                <div className="flex items-center gap-3 flex-wrap">
+              {/* Header Bar: Title & Customize Tracked Outcomes */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-3 gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
                   <div className="flex items-center gap-2 text-white font-bold text-xs uppercase tracking-wider">
                     <Activity size={15} className="text-purple-400" /> Outcome Observations
                   </div>
-
-                  {/* Phase Tabs: Render Before/After tabs ONLY if modality has pre-loggable acute outcomes */}
-                  {hasPreLoggableOutcomes ? (
-                    <div className="flex items-center gap-1 bg-black/60 p-1 rounded-lg border border-white/15">
-                      <button
-                        type="button"
-                        onClick={() => setActiveOutcomePhase('pre')}
-                        className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${activeOutcomePhase === 'pre' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                      >
-                        Before Modality
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveOutcomePhase('post')}
-                        className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${activeOutcomePhase === 'post' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                      >
-                        After Modality
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
+                  {!hasPreLoggableOutcomes && (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wider">
                       Session Evaluation
                     </span>
                   )}
+                </div>
 
-                  {activeOutcomePhase === 'post' && (
-                    <div className="flex items-center gap-2 bg-black/60 border border-emerald-500/40 rounded-xl px-3 py-1.5 text-sm font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomizeOutcomesModal(true)}
+                  className="text-[11px] font-bold text-gray-200 hover:text-white bg-white/10 hover:bg-white/15 border border-white/20 px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sliders size={13} /> Edit Tracked Outcomes
+                </button>
+              </div>
+
+              {/* Controls Bar: Full Width Phase Tabs (Split 50/50) & Full Width Completed Time Picker */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
+                {/* Phase Tabs: 50/50 full width on mobile, auto width on desktop */}
+                {hasPreLoggableOutcomes && (
+                  <div className="w-full sm:w-auto grid grid-cols-2 gap-1 bg-black/60 p-1 rounded-xl border border-white/15">
+                    <button
+                      type="button"
+                      onClick={() => setActiveOutcomePhase('pre')}
+                      className={`w-full py-2 sm:py-1 px-3.5 rounded-lg text-xs font-bold text-center transition-all cursor-pointer ${activeOutcomePhase === 'pre' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      Before Modality
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveOutcomePhase('post')}
+                      className={`w-full py-2 sm:py-1 px-3.5 rounded-lg text-xs font-bold text-center transition-all cursor-pointer ${activeOutcomePhase === 'post' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      After Modality
+                    </button>
+                  </div>
+                )}
+
+                {/* Time Completed: Full width on mobile, auto on desktop */}
+                {activeOutcomePhase === 'post' && (
+                  <div className="w-full sm:w-auto flex items-center justify-between gap-3 bg-black/60 border border-emerald-500/40 rounded-xl px-3.5 py-1.5 text-sm font-semibold shadow-sm">
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => {
@@ -2052,42 +2067,32 @@ export default function ProtocolTaskCard({
                         className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
                         title="Click to reset completion time to current time (NOW)"
                       >
-                        <Clock size={16} />
+                        <Clock size={15} />
                         <span className="text-xs uppercase font-bold text-emerald-400/90 underline decoration-dotted">Now</span>
                       </button>
                       <span className="text-emerald-200 font-bold text-xs">Completed:</span>
-                      <TimePickerWithAmPmToggle
-                        value={completedTime}
-                        onChange={(new24) => setCompletedTime(new24)}
-                        onCommit={(new24) => {
-                          if (task.status === 'completed' && new24) {
-                            const [h, m] = new24.split(':')
-                            const baseDateStr = task.scheduled_date
-                            let d = new Date()
-                            if (baseDateStr) {
-                              const [y, mon, day] = baseDateStr.split('-').map(Number)
-                              if (y && mon && day) {
-                                d = new Date(y, mon - 1, day)
-                              }
-                            }
-                            d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0)
-                            onStatusChange(task.id, 'completed', undefined, d.toISOString(), undefined, executionDetails)
-                          }
-                        }}
-                      />
                     </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomizeOutcomesModal(true)}
-                    className="text-[11px] font-bold text-gray-200 hover:text-white bg-white/10 hover:bg-white/15 border border-white/20 px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Sliders size={13} /> Edit Tracked Outcomes
-                  </button>
-                </div>
+                    <TimePickerWithAmPmToggle
+                      value={completedTime}
+                      onChange={(new24) => setCompletedTime(new24)}
+                      onCommit={(new24) => {
+                        if (task.status === 'completed' && new24) {
+                          const [h, m] = new24.split(':')
+                          const baseDateStr = task.scheduled_date
+                          let d = new Date()
+                          if (baseDateStr) {
+                            const [y, mon, day] = baseDateStr.split('-').map(Number)
+                            if (y && mon && day) {
+                              d = new Date(y, mon - 1, day)
+                            }
+                          }
+                          d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0)
+                          onStatusChange(task.id, 'completed', undefined, d.toISOString(), undefined, executionDetails)
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Peak Onset & Best Time to Record Outcomes Guidance Banner */}
