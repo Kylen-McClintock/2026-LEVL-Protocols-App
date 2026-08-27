@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
+import { updateUserProfile } from '@/lib/data'
 
 /**
  * Automatically merges/migrates any guest local session data to the authenticated user's account in Supabase.
@@ -26,6 +27,23 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
       const guestObsRaw = localStorage.getItem(guestObsKey)
       if (guestObsRaw && !localStorage.getItem(authObsKey)) {
         localStorage.setItem(authObsKey, guestObsRaw)
+      }
+
+      // Bench items cache
+      const guestBenchKey = `levl_user_bench_${guestId}`
+      const authBenchKey = `levl_user_bench_${authUser.id}`
+      const guestBenchRaw = localStorage.getItem(guestBenchKey)
+      if (guestBenchRaw && !localStorage.getItem(authBenchKey)) {
+        localStorage.setItem(authBenchKey, guestBenchRaw)
+      }
+
+      // Daily tasks cache
+      const todayStr = new Date().toISOString().split('T')[0]
+      const guestTasksKey = `levl_daily_tasks_${guestId}_${todayStr}`
+      const authTasksKey = `levl_daily_tasks_${authUser.id}_${todayStr}`
+      const guestTasksRaw = localStorage.getItem(guestTasksKey)
+      if (guestTasksRaw && !localStorage.getItem(authTasksKey)) {
+        localStorage.setItem(authTasksKey, guestTasksRaw)
       }
 
       // Wellbeing checkins cache
@@ -59,44 +77,37 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
       // Update active local user ID
       localStorage.setItem('levl_local_user_id', authUser.id)
     } catch (e) {
-      console.warn('Notice re-indexing localStorage during auth link:', e)
+      console.warn('Notice mirroring local storage keys for auth user:', e)
     }
   }
 
   if (!supabase) return
 
   try {
-    // 2. Ensure user_profile exists and is migrated
-    const { data: existingProfile } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('local_user_id', authUser.id)
-      .maybeSingle()
-
+    // 2. Fetch guest profile and existing auth profile from Supabase
     const { data: guestProfile } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('local_user_id', guestId)
       .maybeSingle()
 
+    const { data: existingProfile } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('local_user_id', authUser.id)
+      .maybeSingle()
+
     if (!existingProfile) {
       if (guestProfile) {
         // Clone guest profile under the authenticated user's local_user_id
-        const newProfile = {
+        await updateUserProfile(authUser.id, {
           ...guestProfile,
-          id: undefined, // Let Supabase generate a clean UUID or use authUser.id
-          local_user_id: authUser.id,
-          display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || guestProfile.display_name || 'Protocol Optimizer',
-          updated_at: new Date().toISOString()
-        }
-        await supabase.from('user_profiles').upsert(newProfile, { onConflict: 'local_user_id' })
+          display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || guestProfile.display_name || 'Protocol Optimizer'
+        })
       } else {
-        await supabase.from('user_profiles').upsert({
-          local_user_id: authUser.id,
-          display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'Protocol Optimizer',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'local_user_id' })
+        await updateUserProfile(authUser.id, {
+          display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'Protocol Optimizer'
+        })
       }
     } else if (guestProfile) {
       // Merge preferences, hotkey configs, and daily click logs from guest into existing auth profile
@@ -114,12 +125,11 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
         _daily_quick_logs: mergedDailyLogs
       }
 
-      await supabase.from('user_profiles').update({
+      await updateUserProfile(authUser.id, {
         primary_goals: existingProfile.primary_goals?.length ? existingProfile.primary_goals : (guestProfile.primary_goals || existingProfile.primary_goals),
         outcome_preference_scores: mergedPref,
-        hardware_access: existingProfile.hardware_access?.length ? existingProfile.hardware_access : (guestProfile.hardware_access || existingProfile.hardware_access),
-        updated_at: new Date().toISOString()
-      }).eq('local_user_id', authUser.id)
+        hardware_access: existingProfile.hardware_access?.length ? existingProfile.hardware_access : (guestProfile.hardware_access || existingProfile.hardware_access)
+      })
     }
 
     // 3. Migrate all daily protocol tasks to the authenticated local_user_id
