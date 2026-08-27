@@ -2811,7 +2811,8 @@ export async function updateDailyTaskStatus(
   adherenceValue?: number,
   completedAt?: string,
   executionMetrics?: any,
-  executionDetails?: any
+  executionDetails?: any,
+  timingSlot?: string
 ) {
   if (!supabase) return null
   const isUuid = taskId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskId)
@@ -2826,6 +2827,7 @@ export async function updateDailyTaskStatus(
   if (completedAt !== undefined) updateData.completed_at = completedAt
   if (executionMetrics !== undefined) updateData.execution_metrics = executionMetrics
   if (executionDetails !== undefined) updateData.execution_details = executionDetails
+  if (timingSlot !== undefined) updateData.timing_slot = timingSlot
   
   const { data, error } = await supabase
     .from('daily_protocol_tasks')

@@ -476,8 +476,19 @@ function TodayPageContent() {
 
     try {
       if (action === 'snooze_later_today') {
-        // 1. Snooze 'Til Later today: Update status to 'snoozed'
-        await updateDailyTaskStatus(rescheduleTask.id, 'snoozed', 'Snoozed to Evening')
+        // 1. Snooze 'Til Later today: Update status to 'snoozed' AND assign to new timing slot
+        const slotToUse = newTimingSlot || 'evening'
+        const cleanSlotName = slotToUse.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+        await updateDailyTaskStatus(
+          rescheduleTask.id, 
+          'snoozed', 
+          `Snoozed to ${cleanSlotName}`, 
+          undefined, 
+          undefined, 
+          undefined, 
+          undefined, 
+          slotToUse
+        )
         await refreshTodayTasks()
       } else if (action === 'skip_session') {
         // 2. Skip completely for this cycle
