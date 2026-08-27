@@ -942,6 +942,23 @@ function TodayPageContent() {
     return entries
   }, [allCompletedTasks, completedSortBy, completedSortOrder, viewMode])
 
+  // Synchronize daily completion stats to global top sticky header
+  useEffect(() => {
+    if (isCurrentDay) {
+      const totalCount = dedupedTasks.length
+      const completedCount = allCompletedTasks.length
+      const statsPayload = { completed: completedCount, total: totalCount }
+      
+      try {
+        localStorage.setItem('levl_today_stats', JSON.stringify(statsPayload))
+      } catch (e) {}
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('levl_today_tasks_stats', { detail: statsPayload }))
+      }
+    }
+  }, [dedupedTasks.length, allCompletedTasks.length, isCurrentDay])
+
   const chronologicalGroups = useMemo(() => {
     const groups: Record<string, DedupedTask[]> = {}
     routineTasks.forEach(task => {

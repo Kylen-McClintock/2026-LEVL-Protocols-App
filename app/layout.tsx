@@ -48,6 +48,8 @@ export const metadata: Metadata = {
   },
 };
 
+import TopStickyHeader from "@/components/navigation/TopStickyHeader";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -85,18 +87,11 @@ export default function RootLayout({
             </nav>
           </aside>
 
-          {/* Mobile Top Logo Bar */}
-          <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-levl-border bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
-            <img 
-              src="/logo.png" 
-              alt="LEVL Protocols" 
-              className="h-7 w-auto object-contain"
-            />
-            <AuthStatusBadge />
-          </div>
+          {/* Dynamic Mobile Top Header */}
+          <TopStickyHeader />
 
           {/* Main Content Area */}
-          <main className="flex-1 min-h-screen min-w-0 w-full overflow-x-hidden">
+          <main className="flex-1 min-h-screen min-w-0 w-full overflow-x-hidden pt-[calc(env(safe-area-inset-top,0px)+52px)] md:pt-0">
             {children}
           </main>
 
