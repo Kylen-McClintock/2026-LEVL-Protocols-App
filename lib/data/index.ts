@@ -322,12 +322,43 @@ export async function getCatalogMaps() {
   return { modsMap, stepsMap, protocolsMap }
 }
 
+export function normalizeUserProfile(raw: any): UserProfile | null {
+  if (!raw) return null
+  const jsonPrefs = (typeof raw.outcome_preference_scores === 'object' && raw.outcome_preference_scores) ? raw.outcome_preference_scores : {}
+
+  return {
+    ...raw,
+    // Top-level overrides with fallback to JSONB
+    height_inches: raw.height_inches ?? jsonPrefs.height_inches ?? null,
+    ideal_wake_time: raw.ideal_wake_time ?? jsonPrefs.ideal_wake_time ?? null,
+    ideal_bedtime: raw.ideal_bedtime ?? jsonPrefs.ideal_bedtime ?? null,
+    chronotype: raw.chronotype ?? jsonPrefs.chronotype ?? null,
+    fitness_training_level: raw.fitness_training_level ?? jsonPrefs.fitness_training_level ?? null,
+    resistance_training_days: raw.resistance_training_days ?? jsonPrefs.resistance_training_days ?? null,
+    primary_workout_window: raw.primary_workout_window ?? jsonPrefs.primary_workout_window ?? null,
+    hardware_access: raw.hardware_access ?? jsonPrefs.hardware_access ?? null,
+    infradian_cycle_enabled: raw.infradian_cycle_enabled ?? jsonPrefs.infradian_cycle_enabled ?? false,
+    last_period_start_date: raw.last_period_start_date ?? jsonPrefs.last_period_start_date ?? null,
+    average_cycle_length_days: raw.average_cycle_length_days ?? jsonPrefs.average_cycle_length_days ?? null,
+    fasting_schedule: raw.fasting_schedule ?? jsonPrefs.fasting_schedule ?? null,
+    eating_window_start: raw.eating_window_start ?? jsonPrefs.eating_window_start ?? null,
+    eating_window_end: raw.eating_window_end ?? jsonPrefs.eating_window_end ?? null,
+    age: raw.age ?? jsonPrefs.age ?? null,
+    biological_sex: raw.biological_sex ?? jsonPrefs.biological_sex ?? null,
+    weight_lbs: raw.weight_lbs ?? jsonPrefs.weight_lbs ?? null,
+    body_fat_percentage: raw.body_fat_percentage ?? jsonPrefs.body_fat_percentage ?? null,
+    baseline_sleep_quality_0_10: raw.baseline_sleep_quality_0_10 ?? jsonPrefs.baseline_sleep_quality_0_10 ?? null,
+    dietary_pattern: raw.dietary_pattern ?? jsonPrefs.dietary_pattern ?? null,
+    outcome_preference_scores: jsonPrefs
+  }
+}
+
 export async function getOrCreateUserProfile(localUserId: string): Promise<UserProfile | null> {
   let cached: UserProfile | null = null
   if (typeof window !== 'undefined' && localUserId) {
     try {
       const raw = localStorage.getItem(`levl_user_profile_${localUserId}`)
-      if (raw) cached = JSON.parse(raw) as UserProfile
+      if (raw) cached = normalizeUserProfile(JSON.parse(raw))
     } catch (e) {}
   }
 
@@ -341,12 +372,23 @@ export async function getOrCreateUserProfile(localUserId: string): Promise<UserP
       .maybeSingle()
 
     if (data) {
+      const normalizedRemote = normalizeUserProfile(data)
+      // Merge: preserve any local cached values that are not null if remote is null
+      const merged = {
+        ...cached,
+        ...normalizedRemote,
+        outcome_preference_scores: {
+          ...(cached?.outcome_preference_scores || {}),
+          ...(normalizedRemote?.outcome_preference_scores || {})
+        }
+      } as UserProfile
+
       if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem(`levl_user_profile_${localUserId}`, JSON.stringify(data))
+          localStorage.setItem(`levl_user_profile_${localUserId}`, JSON.stringify(merged))
         } catch (e) {}
       }
-      return data as UserProfile
+      return merged
     }
 
     if (error && error.code !== 'PGRST116') {
@@ -356,12 +398,8 @@ export async function getOrCreateUserProfile(localUserId: string): Promise<UserP
 
     // If cached profile exists locally, persist it to Supabase
     if (cached) {
-      const { data: syncedProfile } = await supabase
-        .from('user_profiles')
-        .upsert({ ...cached, local_user_id: localUserId }, { onConflict: 'local_user_id' })
-        .select()
-        .maybeSingle()
-      if (syncedProfile) return syncedProfile as UserProfile
+      const synced = await updateUserProfile(localUserId, cached)
+      if (synced) return synced
       return cached
     }
 
@@ -377,80 +415,145 @@ export async function getOrCreateUserProfile(localUserId: string): Promise<UserP
       return cached
     }
 
-    if (newProfile && typeof window !== 'undefined') {
+    const normalizedNew = normalizeUserProfile(newProfile) || cached
+    if (normalizedNew && typeof window !== 'undefined') {
       try {
-        localStorage.setItem(`levl_user_profile_${localUserId}`, JSON.stringify(newProfile))
+        localStorage.setItem(`levl_user_profile_${localUserId}`, JSON.stringify(normalizedNew))
       } catch (e) {}
     }
 
-    return (newProfile as UserProfile) || cached
+    return normalizedNew
   } catch (err) {
     console.warn('Exception in getOrCreateUserProfile:', err)
     return cached
   }
 }
 
-export async function updateUserProfile(localUserId: string, updates: Partial<UserProfile>) {
+export async function updateUserProfile(localUserId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> {
+  let existingCache: Partial<UserProfile> = {}
   if (typeof window !== 'undefined' && localUserId) {
     try {
       const cacheKey = `levl_user_profile_${localUserId}`
       const existingRaw = localStorage.getItem(cacheKey)
-      const existing = existingRaw ? JSON.parse(existingRaw) : {}
-      const merged = { ...existing, ...updates, local_user_id: localUserId, updated_at: new Date().toISOString() }
-      localStorage.setItem(cacheKey, JSON.stringify(merged))
-      try {
-        window.dispatchEvent(new CustomEvent('levl_profile_updated', { detail: merged }))
-      } catch (e) {}
+      if (existingRaw) existingCache = JSON.parse(existingRaw)
     } catch (e) {}
   }
 
-  if (!supabase) return null
+  // Combine and serialize all rich/extended properties into outcome_preference_scores JSONB
+  const existingPrefs = existingCache.outcome_preference_scores || {}
+  const incomingPrefs = updates.outcome_preference_scores || {}
+
+  const mergedPrefs: Record<string, any> = {
+    ...existingPrefs,
+    ...incomingPrefs
+  }
+
+  // Explicitly mirror all extended attributes into JSONB
+  if (updates.height_inches !== undefined) mergedPrefs.height_inches = updates.height_inches
+  if (updates.ideal_wake_time !== undefined) mergedPrefs.ideal_wake_time = updates.ideal_wake_time
+  if (updates.ideal_bedtime !== undefined) mergedPrefs.ideal_bedtime = updates.ideal_bedtime
+  if (updates.chronotype !== undefined) mergedPrefs.chronotype = updates.chronotype
+  if (updates.fitness_training_level !== undefined) mergedPrefs.fitness_training_level = updates.fitness_training_level
+  if (updates.resistance_training_days !== undefined) mergedPrefs.resistance_training_days = updates.resistance_training_days
+  if (updates.primary_workout_window !== undefined) mergedPrefs.primary_workout_window = updates.primary_workout_window
+  if (updates.hardware_access !== undefined) mergedPrefs.hardware_access = updates.hardware_access
+  if (updates.infradian_cycle_enabled !== undefined) mergedPrefs.infradian_cycle_enabled = updates.infradian_cycle_enabled
+  if (updates.last_period_start_date !== undefined) mergedPrefs.last_period_start_date = updates.last_period_start_date
+  if (updates.average_cycle_length_days !== undefined) mergedPrefs.average_cycle_length_days = updates.average_cycle_length_days
+  if (updates.fasting_schedule !== undefined) mergedPrefs.fasting_schedule = updates.fasting_schedule
+  if (updates.eating_window_start !== undefined) mergedPrefs.eating_window_start = updates.eating_window_start
+  if (updates.eating_window_end !== undefined) mergedPrefs.eating_window_end = updates.eating_window_end
+  if (updates.age !== undefined) mergedPrefs.age = updates.age
+  if (updates.biological_sex !== undefined) mergedPrefs.biological_sex = updates.biological_sex
+  if (updates.weight_lbs !== undefined) mergedPrefs.weight_lbs = updates.weight_lbs
+  if (updates.body_fat_percentage !== undefined) mergedPrefs.body_fat_percentage = updates.body_fat_percentage
+  if (updates.baseline_sleep_quality_0_10 !== undefined) mergedPrefs.baseline_sleep_quality_0_10 = updates.baseline_sleep_quality_0_10
+  if (updates.dietary_pattern !== undefined) mergedPrefs.dietary_pattern = updates.dietary_pattern
+
+  const normalizedMerged = normalizeUserProfile({
+    ...existingCache,
+    ...updates,
+    local_user_id: localUserId,
+    outcome_preference_scores: mergedPrefs,
+    updated_at: new Date().toISOString()
+  }) as UserProfile
+
+  // 1. Immediately update localStorage and notify all mounted components
+  if (typeof window !== 'undefined' && localUserId) {
+    try {
+      const cacheKey = `levl_user_profile_${localUserId}`
+      localStorage.setItem(cacheKey, JSON.stringify(normalizedMerged))
+      window.dispatchEvent(new CustomEvent('levl_profile_updated', { detail: normalizedMerged }))
+    } catch (e) {}
+  }
+
+  if (!supabase) return normalizedMerged
 
   try {
-    const payload = {
+    // 2. Build verified safe SQL payload containing known root columns + serialized JSONB
+    const safePayload: Record<string, any> = {
       local_user_id: localUserId,
-      ...updates,
+      outcome_preference_scores: mergedPrefs,
       updated_at: new Date().toISOString()
     }
 
-    // 1. Try upserting by local_user_id
+    if (updates.display_name !== undefined) safePayload.display_name = updates.display_name
+    if (updates.primary_goals !== undefined) safePayload.primary_goals = updates.primary_goals
+    if (updates.health_conditions_text !== undefined) safePayload.health_conditions_text = updates.health_conditions_text
+    if (updates.medications_and_treatments_text !== undefined) safePayload.medications_and_treatments_text = updates.medications_and_treatments_text
+    if (updates.discipline_level_0_99 !== undefined) safePayload.discipline_level_0_99 = updates.discipline_level_0_99
+    if (updates.experimental_openness_0_99 !== undefined) safePayload.experimental_openness_0_99 = updates.experimental_openness_0_99
+    if (updates.weekly_time_budget_hours !== undefined) safePayload.weekly_time_budget_hours = updates.weekly_time_budget_hours
+    if (updates.weekly_spend_budget_usd !== undefined) safePayload.weekly_spend_budget_usd = updates.weekly_spend_budget_usd
+    if (updates.chronotype !== undefined) safePayload.chronotype = updates.chronotype
+    if (updates.risk_tolerance !== undefined) safePayload.risk_tolerance = updates.risk_tolerance
+    if (updates.longevity_personalization_coefficient !== undefined) safePayload.longevity_personalization_coefficient = updates.longevity_personalization_coefficient
+
+    // Known extended base columns
+    if (updates.age !== undefined) safePayload.age = updates.age
+    if (updates.biological_sex !== undefined) safePayload.biological_sex = updates.biological_sex
+    if (updates.weight_lbs !== undefined) safePayload.weight_lbs = updates.weight_lbs
+    if (updates.body_fat_percentage !== undefined) safePayload.body_fat_percentage = updates.body_fat_percentage
+    if (updates.baseline_sleep_quality_0_10 !== undefined) safePayload.baseline_sleep_quality_0_10 = updates.baseline_sleep_quality_0_10
+    if (updates.dietary_pattern !== undefined) safePayload.dietary_pattern = updates.dietary_pattern
+
+    // Primary upsert
     const { data: upsertData, error: upsertError } = await supabase
       .from('user_profiles')
-      .upsert(payload, { onConflict: 'local_user_id' })
+      .upsert(safePayload, { onConflict: 'local_user_id' })
       .select()
       .maybeSingle()
 
     if (!upsertError && upsertData) {
-      return upsertData as UserProfile
+      return normalizeUserProfile(upsertData)
     }
 
-    // 2. Try update by id if localUserId is UUID
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(localUserId)
-    if (isUuid) {
-      const { data: idData, error: idError } = await supabase
+    if (upsertError) {
+      console.warn('Primary upsert notice, trying fallback with core fields only:', upsertError)
+      // Fallback: If extended columns like age/weight_lbs are missing in remote DB, save core columns + JSONB
+      const fallbackPayload = {
+        local_user_id: localUserId,
+        outcome_preference_scores: mergedPrefs,
+        display_name: updates.display_name ?? existingCache.display_name ?? null,
+        primary_goals: updates.primary_goals ?? existingCache.primary_goals ?? null,
+        updated_at: new Date().toISOString()
+      }
+
+      const { data: fallbackData, error: fallbackError } = await supabase
         .from('user_profiles')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', localUserId)
+        .upsert(fallbackPayload, { onConflict: 'local_user_id' })
         .select()
         .maybeSingle()
 
-      if (!idError && idData) {
-        return idData as UserProfile
+      if (!fallbackError && fallbackData) {
+        return normalizeUserProfile(fallbackData)
       }
     }
 
-    // 3. Fallback direct update
-    const { data: directData } = await supabase
-      .from('user_profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('local_user_id', localUserId)
-      .select()
-      .maybeSingle()
-
-    return (directData as UserProfile) || null
+    return normalizedMerged
   } catch (err) {
-    console.warn('Notice updating profile:', err)
-    return null
+    console.warn('Exception in updateUserProfile:', err)
+    return normalizedMerged
   }
 }
 
