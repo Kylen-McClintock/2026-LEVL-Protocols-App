@@ -251,19 +251,10 @@ function TodayPageContent() {
         const userProfile = await getOrCreateUserProfile(localUserId)
 
         const hasCompletedOnboarding = typeof window !== 'undefined' && localStorage.getItem('levl_onboarding_completed') === 'true'
-        const hasExistingSetup = Boolean(
-          userProfile &&
-          ((userProfile.primary_goals && userProfile.primary_goals.length > 0) ||
-           (userProfile.display_name && userProfile.display_name !== 'Protocol Optimizer'))
-        )
 
-        if (!hasCompletedOnboarding && !hasExistingSetup) {
+        if (!hasCompletedOnboarding) {
           router.replace('/onboarding')
           return
-        }
-
-        if (hasExistingSetup && typeof window !== 'undefined') {
-          localStorage.setItem('levl_onboarding_completed', 'true')
         }
 
         if (!userProfile) {

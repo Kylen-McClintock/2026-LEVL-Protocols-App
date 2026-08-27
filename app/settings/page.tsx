@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { User, RefreshCw, Activity, Target, Bookmark, ChevronRight, Cloud, LogOut, Sparkles, Camera, BookOpen } from 'lucide-react'
+import { User, RefreshCw, Activity, Target, Bookmark, ChevronRight, Cloud, LogOut, Sparkles, Camera, BookOpen, RotateCcw, Dna } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getOrCreateUserProfile, getOutcomeDimensions, getModalities } from '@/lib/data'
@@ -150,6 +150,36 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
+        {/* Guided Protocol Calibration Walkthrough Card */}
+        <Link
+          href="/onboarding?mode=recalibrate"
+          className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/40 hover:border-emerald-400/70 shadow-xl transition-all block group relative overflow-hidden backdrop-blur-md"
+        >
+          <div className="absolute top-0 right-0 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 flex items-center justify-center font-bold shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                <Dna size={20} className="text-emerald-400" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-extrabold text-white group-hover:text-emerald-300 transition-colors">
+                    Guided Protocol Calibration &amp; Setup
+                  </h3>
+                  <span className="text-[9px] bg-emerald-950 border border-emerald-800 text-emerald-300 px-2 py-0.5 rounded-full font-mono font-bold uppercase">
+                    5-Step Wizard
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 line-clamp-1 mt-0.5">
+                  Walk back through your biometrics, circadian anchors, training schedule, and target outcomes with context explanations.
+                </p>
+              </div>
+            </div>
+            <div className="p-2 rounded-xl bg-emerald-950/60 border border-emerald-700/50 text-emerald-300 group-hover:text-white group-hover:bg-emerald-900 transition-all shrink-0">
+              <ChevronRight size={16} />
+            </div>
+          </div>
+        </Link>
         {/* LEVL Visual Feature Guide & App Tour Card */}
         <Link
           href="/guide"

@@ -1,14 +1,16 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useMemo, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { updateUserProfile, createDailyTask, getOrCreateUserProfile } from '@/lib/data'
 import { format } from 'date-fns'
 import { 
-  Sparkles, Check, ArrowRight, ShieldCheck, Zap, Moon, 
-  Brain, Dna, Dumbbell, Flame, Droplets, Watch, Pill, CheckCircle2, RefreshCw, 
-  Heart, Shield, Activity 
+  Sparkles, Check, ArrowRight, ArrowLeft, ShieldCheck, Zap, Moon, 
+  Brain, Dna, Dumbbell, Flame, Droplets, Watch, Pill, Activity, 
+  Heart, Shield, Clock, Sun, Sunrise, Sunset, Utensils, Award, 
+  RotateCcw, CheckCircle2, ChevronRight, Info, Eye
 } from 'lucide-react'
 
 interface ModalityOption {
@@ -17,214 +19,192 @@ interface ModalityOption {
   dose: string
   timing: string
   requiredHardware?: string
+  goalKey: string
 }
 
-interface GoalArchetype {
-  id: string
-  title: string
-  subtitle: string
-  icon: React.ReactNode
-  color: string
-  borderColor: string
-  bgGlow: string
-  modalities: ModalityOption[]
-}
-
-interface FunctionalOutcomeOption {
-  id: string
-  name: string
-  description: string
-  icon: React.ReactNode
-  color: string
-  matchedGoals: string[]
-}
-
-const GOAL_ARCHETYPES: GoalArchetype[] = [
-  {
-    id: 'sleep',
-    title: 'Deep Sleep & Recovery',
-    subtitle: 'Optimize sleep latency, HRV, and deep/REM restorative cycles',
-    icon: <Moon size={22} className="text-indigo-400" />,
-    color: 'text-indigo-400',
-    borderColor: 'border-indigo-500/40',
-    bgGlow: 'bg-indigo-500/10',
-    modalities: [
-      { id: 'morning_sunlight', name: 'Morning Sunlight & Circadian Anchor', dose: '10–15 mins within 60m of waking', timing: 'waking' },
-      { id: 'breathing_4_7_8', name: '4-7-8 Relaxing Wind-Down Breathwork', dose: '4 cycles (5 mins before bed)', timing: 'evening' },
-      { id: 'magnesium_glycinate', name: 'Magnesium Bisglycinate (Sleep Quality)', dose: '400mg with water 60m pre-bed', timing: 'evening', requiredHardware: 'supplements' },
-      { id: 'sauna_exposure', name: 'Evening Hyperthermic Sauna (Thermal Drop)', dose: '15–20 mins @ 174°F+ (90m pre-bed)', timing: 'evening', requiredHardware: 'sauna' }
-    ]
-  },
-  {
-    id: 'energy',
-    title: 'Mitochondrial Energy & Alertness',
-    subtitle: 'Crush afternoon brain fog and maximize cellular ATP generation',
-    icon: <Zap size={22} className="text-amber-400" />,
-    color: 'text-amber-400',
-    borderColor: 'border-amber-500/40',
-    bgGlow: 'bg-amber-500/10',
-    modalities: [
-      { id: 'cyclic_sighing', name: 'Cyclic Sighing (Physiological Sigh)', dose: '5 mins (2 quick inhales, 1 long exhale)', timing: 'morning_routine' },
-      { id: 'cold_water_immersion', name: 'Cold Plunge / Cold Water Immersion', dose: '2–3 mins @ 50°F–55°F (Søberg reheat)', timing: 'morning_routine', requiredHardware: 'cold_plunge' },
-      { id: 'creatine_monohydrate', name: 'Creatine Monohydrate (Cellular ATP)', dose: '5g with water in morning', timing: 'morning_routine', requiredHardware: 'supplements' }
-    ]
-  },
-  {
-    id: 'longevity',
-    title: 'Biological Age Reversal',
-    subtitle: 'Trigger cellular autophagy, reduce epigenetic age, and boost DNA repair',
-    icon: <Dna size={22} className="text-emerald-400" />,
-    color: 'text-emerald-400',
-    borderColor: 'border-emerald-500/40',
-    bgGlow: 'bg-emerald-500/10',
-    modalities: [
-      { id: 'intermittent_fasting_16_8', name: '16:8 Time-Restricted Feeding (TRF)', dose: '16h Fast / 8h Eating window', timing: 'afternoon' },
-      { id: 'post_meal_glucose_walk', name: 'Post-Meal Glucose Walk', dose: '15–20 mins brisk walk after largest meal', timing: 'evening' },
-      { id: 'extra-virgin-olive-oil', name: 'High-Polyphenol Extra Virgin Olive Oil', dose: '1–2 tbsp (>500mg/kg polyphenols)', timing: 'morning_routine', requiredHardware: 'supplements' }
-    ]
-  },
-  {
-    id: 'focus',
-    title: 'Cognitive Clarity & Peak Flow',
-    subtitle: 'Neurochemical optimization for laser focus and calm sustained drive',
-    icon: <Brain size={22} className="text-sky-400" />,
-    color: 'text-sky-400',
-    borderColor: 'border-sky-500/40',
-    bgGlow: 'bg-sky-500/10',
-    modalities: [
-      { id: 'box_breathing', name: 'Box Breathing (Navy SEAL Focus)', dose: '4 mins (4s in, 4s hold, 4s out, 4s hold)', timing: 'morning_routine' },
-      { id: 'morning_sunlight', name: 'Optic Flow & Horizon Morning Light', dose: '10–15 mins expansive visual field', timing: 'waking' },
-      { id: 'creatine_monohydrate', name: 'Creatine Monohydrate (Brain ATP)', dose: '5g with water in morning', timing: 'morning_routine', requiredHardware: 'supplements' }
-    ]
-  },
-  {
-    id: 'strength',
-    title: 'Muscle, Hypertrophy & Metabolism',
-    subtitle: 'Lean mass retention, progressive overload, and protein synthesis',
-    icon: <Dumbbell size={22} className="text-rose-400" />,
-    color: 'text-rose-400',
-    borderColor: 'border-rose-500/40',
-    bgGlow: 'bg-rose-500/10',
-    modalities: [
-      { id: 'ppl_push_day', name: 'Push / Resistance Hypertrophy Session', dose: '45–60 mins (RPE 7-9, 2-3 RIR)', timing: 'afternoon', requiredHardware: 'gym' },
-      { id: 'creatine_monohydrate', name: 'Creatine Monohydrate (Strength & Recovery)', dose: '5g daily with water', timing: 'morning_routine', requiredHardware: 'supplements' },
-      { id: 'post_meal_glucose_walk', name: 'Post-Meal Glycemic Walk', dose: '15 mins brisk walk post-nutrition', timing: 'evening' }
-    ]
-  }
+const STARTER_CATALOG: ModalityOption[] = [
+  { id: 'morning_sunlight', name: 'Morning Sunlight & Circadian Anchor', dose: '10–15 mins within 60m of waking', timing: 'waking', goalKey: 'sleep' },
+  { id: 'cyclic_sighing', name: 'Cyclic Sighing (Physiological Sigh)', dose: '5 mins (2 quick inhales, 1 long exhale)', timing: 'morning_routine', goalKey: 'energy' },
+  { id: 'creatine_monohydrate', name: 'Creatine Monohydrate (Cellular & Brain ATP)', dose: '5g daily with water', timing: 'morning_routine', requiredHardware: 'supplements', goalKey: 'energy' },
+  { id: 'extra-virgin-olive-oil', name: 'High-Polyphenol Extra Virgin Olive Oil', dose: '1–2 tbsp (>500mg/kg polyphenols)', timing: 'morning_routine', requiredHardware: 'supplements', goalKey: 'longevity' },
+  { id: 'intermittent_fasting_16_8', name: '16:8 Time-Restricted Feeding (TRF)', dose: '16h Fast / 8h Eating window', timing: 'afternoon', goalKey: 'longevity' },
+  { id: 'box_breathing', name: 'Box Breathing (Autonomic Focus)', dose: '4 mins (4s in, 4s hold, 4s out, 4s hold)', timing: 'morning_routine', goalKey: 'focus' },
+  { id: 'cold_water_immersion', name: 'Cold Plunge / Cold Water Immersion', dose: '2–3 mins @ 50°F–55°F (Søberg reheat)', timing: 'morning_routine', requiredHardware: 'cold_plunge', goalKey: 'energy' },
+  { id: 'sauna_exposure', name: 'Evening Hyperthermic Sauna (Thermal Drop)', dose: '15–20 mins @ 174°F+ (90m pre-bed)', timing: 'evening', requiredHardware: 'sauna', goalKey: 'sleep' },
+  { id: 'ppl_push_day', name: 'Resistance Hypertrophy Session', dose: '45–60 mins (RPE 7-9, 2-3 RIR)', timing: 'afternoon', requiredHardware: 'gym', goalKey: 'strength' },
+  { id: 'post_meal_glucose_walk', name: 'Post-Meal Glycemic Walk', dose: '15–20 mins brisk walk post-nutrition', timing: 'evening', goalKey: 'longevity' },
+  { id: 'breathing_4_7_8', name: '4-7-8 Relaxing Wind-Down Breathwork', dose: '4 cycles (5 mins before bed)', timing: 'evening', goalKey: 'sleep' },
+  { id: 'magnesium_glycinate', name: 'Magnesium Bisglycinate (Sleep Depth)', dose: '400mg with water 60m pre-bed', timing: 'evening', requiredHardware: 'supplements', goalKey: 'sleep' },
+  { id: 'melatonin_onset_dimming', name: '2-Hour Blue-Light Shielding', dose: 'Circadian dimming & amber glasses 120m pre-bed', timing: 'evening', goalKey: 'sleep' }
 ]
 
-const FUNCTIONAL_OUTCOMES: FunctionalOutcomeOption[] = [
-  { id: 'energy', name: 'Sustained Daily Energy', description: 'Eliminate afternoon brain fog & maximize cellular ATP generation', icon: <Zap size={18} className="text-amber-400" />, color: 'border-amber-500/30 bg-amber-500/10', matchedGoals: ['energy', 'longevity'] },
-  { id: 'sleep_quality', name: 'Deep Sleep Quality & Latency', description: 'Maximize restorative deep/REM sleep architecture & recovery', icon: <Moon size={18} className="text-indigo-400" />, color: 'border-indigo-500/30 bg-indigo-500/10', matchedGoals: ['sleep'] },
-  { id: 'focus', name: 'Mental Focus & Flow State', description: 'Laser cognitive clarity, drive & sustained attention span', icon: <Brain size={18} className="text-sky-400" />, color: 'border-sky-500/30 bg-sky-500/10', matchedGoals: ['focus'] },
-  { id: 'stress', name: 'Stress & Autonomic Regulation', description: 'High vagal tone, parasympathetic recovery & emotional calm', icon: <Heart size={18} className="text-emerald-400" />, color: 'border-emerald-500/30 bg-emerald-500/10', matchedGoals: ['sleep', 'focus'] },
-  { id: 'soreness', name: 'Physical Recovery & Soreness', description: 'Muscular repair, joint comfort & fast systemic recovery', icon: <Shield size={18} className="text-purple-400" />, color: 'border-purple-500/30 bg-purple-500/10', matchedGoals: ['strength', 'energy'] },
-  { id: 'strength', name: 'Strength & Muscular Power', description: 'Progressive overload retention & lean tissue synthesis', icon: <Dumbbell size={18} className="text-rose-400" />, color: 'border-rose-500/30 bg-rose-500/10', matchedGoals: ['strength'] },
-  { id: 'waking_restedness', name: 'Morning Waking Restedness', description: 'Wake up fully refreshed with optimal circadian cortisol timing', icon: <Sparkles size={18} className="text-cyan-400" />, color: 'border-cyan-500/30 bg-cyan-500/10', matchedGoals: ['sleep', 'energy'] },
-  { id: 'brain_fog', name: 'Brain Fog Reduction', description: 'Crisp neural processing speed & cerebral metabolic clearance', icon: <Activity size={18} className="text-teal-400" />, color: 'border-teal-500/30 bg-teal-500/10', matchedGoals: ['focus', 'energy', 'longevity'] },
-  { id: 'digestive_comfort', name: 'Metabolic & Gut Comfort', description: 'Stable post-meal glycemic response, satiety & digestion', icon: <Flame size={18} className="text-orange-400" />, color: 'border-orange-500/30 bg-orange-500/10', matchedGoals: ['longevity'] }
+// Database Parity: Exact matching IDs from Supabase outcome_dimensions table
+const FUNCTIONAL_OUTCOME_CATALOG = [
+  { id: 'energy', name: 'Energy', description: 'Perceived physical and mental energy levels throughout the day', icon: <Zap size={16} className="text-amber-400" /> },
+  { id: 'sleep_quality', name: 'Sleep Quality', description: 'Subjective restfulness and restorative deep sleep architecture', icon: <Moon size={16} className="text-indigo-400" /> },
+  { id: 'sleep_latency', name: 'Sleep Latency', description: 'Time it takes to fall asleep after getting into bed', icon: <Clock size={16} className="text-cyan-400" /> },
+  { id: 'mental_clarity', name: 'Mental Clarity', description: 'Clear, sharp thinking without mental fatigue or brain fog', icon: <Activity size={16} className="text-teal-400" /> },
+  { id: 'focus', name: 'Focus', description: 'Ability to sustain deep attention and enter cognitive flow state', icon: <Brain size={16} className="text-sky-400" /> },
+  { id: 'mood', name: 'Mood', description: 'Overall feeling of well-being, motivation, and emotional state', icon: <Sparkles size={16} className="text-yellow-400" /> },
+  { id: 'stress', name: 'Stress & Autonomic Tone', description: 'Resistance to stress, high vagal tone and parasympathetic calm', icon: <Heart size={16} className="text-emerald-400" /> },
+  { id: 'soreness', name: 'Soreness & Recovery', description: 'Muscular or joint recovery and lack of systemic inflammation', icon: <Shield size={16} className="text-purple-400" /> },
+  { id: 'strength', name: 'Strength & Power', description: 'Perceived physical power output and training work capacity', icon: <Dumbbell size={16} className="text-rose-400" /> },
+  { id: 'digestive_comfort', name: 'Digestive Comfort', description: 'Metabolic comfort, lack of bloating or post-meal distress', icon: <Flame size={16} className="text-orange-400" /> },
+  { id: 'waking_restedness', name: 'Waking Restedness', description: 'Feeling alert and refreshed upon waking with optimal cortisol timing', icon: <Sunrise size={16} className="text-emerald-400" /> }
 ]
 
-const EQUIPMENT_OPTIONS = [
-  { id: 'cold_plunge', label: 'Cold Plunge / Tub', icon: <Droplets size={16} className="text-cyan-400" /> },
-  { id: 'sauna', label: 'Sauna / Infrared', icon: <Flame size={16} className="text-amber-400" /> },
-  { id: 'gym', label: 'Weights / Gym Access', icon: <Dumbbell size={16} className="text-rose-400" /> },
-  { id: 'wearable', label: 'Wearable (Oura / Apple)', icon: <Watch size={16} className="text-purple-400" /> },
-  { id: 'supplements', label: 'Daily Supplements', icon: <Pill size={16} className="text-emerald-400" /> }
+const PRIMARY_GOAL_OPTIONS = [
+  { id: 'longevity', title: 'Biological Age Reversal', subtitle: 'Trigger cellular autophagy, reduce epigenetic age, and boost DNA repair', icon: <Dna size={20} className="text-emerald-400" />, color: 'emerald' },
+  { id: 'sleep', title: 'Deep Sleep & Recovery', subtitle: 'Optimize sleep latency, HRV, and deep/REM restorative cycles', icon: <Moon size={20} className="text-indigo-400" />, color: 'indigo' },
+  { id: 'energy', title: 'Mitochondrial Energy & Alertness', subtitle: 'Crush afternoon brain fog and maximize cellular ATP generation', icon: <Zap size={20} className="text-amber-400" />, color: 'amber' },
+  { id: 'focus', title: 'Cognitive Performance & Flow', subtitle: 'Neurochemical optimization for laser focus and sustained drive', icon: <Brain size={20} className="text-sky-400" />, color: 'sky' },
+  { id: 'strength', title: 'Muscle Hypertrophy & Metabolism', subtitle: 'Lean mass retention, progressive overload, and glucose disposal', icon: <Dumbbell size={20} className="text-rose-400" />, color: 'rose' },
+  { id: 'recovery', title: 'Athletic Recovery & Soreness', subtitle: 'Rapid tissue repair, joint mobility, and low systemic inflammation', icon: <Shield size={20} className="text-purple-400" />, color: 'purple' }
 ]
 
-export default function OnboardingPage() {
+const HARDWARE_OPTIONS = [
+  { id: 'cold_plunge', label: 'Cold Plunge / Tub', icon: <Droplets size={16} className="text-cyan-400" />, desc: 'Dedicated cold tub or ice bath access' },
+  { id: 'sauna', label: 'Sauna / Infrared', icon: <Flame size={16} className="text-amber-400" />, desc: 'Traditional dry sauna or infrared room' },
+  { id: 'gym', label: 'Weights / Gym Access', icon: <Dumbbell size={16} className="text-rose-400" />, desc: 'Barbells, dumbbells, cables or machines' },
+  { id: 'wearable', label: 'Biometric Wearable', icon: <Watch size={16} className="text-purple-400" />, desc: 'Oura Ring, Apple Watch, Whoop, or Garmin' },
+  { id: 'supplements', label: 'Daily Supplements', icon: <Pill size={16} className="text-emerald-400" />, desc: 'Nutraceuticals, vitamins, and amino acids' },
+  { id: 'cgm', label: 'Continuous Glucose Monitor (CGM)', icon: <Activity size={16} className="text-teal-400" />, desc: 'Dexcom, Freestyle Libre, or Levels sensor' }
+]
+
+const DIET_OPTIONS = [
+  { id: 'Omnivore', label: 'Omnivore' },
+  { id: 'Mediterranean', label: 'Mediterranean' },
+  { id: 'Intermittent Fasting', label: 'Intermittent Fasting' },
+  { id: 'Keto', label: 'Ketogenic / Low-Carb' },
+  { id: 'Vegetarian', label: 'Vegetarian' },
+  { id: 'Vegan', label: 'Plant-Based / Vegan' },
+  { id: 'Carnivore', label: 'Carnivore' },
+  { id: 'Paleo', label: 'Paleo' }
+]
+
+function OnboardingContent() {
   const router = useRouter()
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+  const searchParams = useSearchParams()
+  const isRecalibrateMode = searchParams?.get('mode') === 'recalibrate'
+
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true)
 
-  // Step 1: Goals & Name
+  // Step 1: Biological Profile & Demographics
   const [displayName, setDisplayName] = useState('')
-  const [selectedGoals, setSelectedGoals] = useState<string[]>(['longevity', 'energy'])
+  const [age, setAge] = useState<string>('34')
+  const [biologicalSex, setBiologicalSex] = useState<'Male' | 'Female' | 'Other'>('Male')
+  const [weightLbs, setWeightLbs] = useState<string>('175')
+  const [dietaryPattern, setDietaryPattern] = useState<string>('Omnivore')
 
-  // Step 2: Functional Outcomes to Track
-  const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>(['energy', 'sleep_quality', 'focus'])
+  // Step 2: Circadian Rhythm & Sleep Anchors
+  const [idealWakeTime, setIdealWakeTime] = useState<string>('06:30')
+  const [idealBedtime, setIdealBedtime] = useState<string>('22:30')
+  const [chronotype, setChronotype] = useState<string>('Intermediate')
 
-  // Step 3: Equipment / Hardware
-  const [selectedEquipment, setSelectedEquipment] = useState<string[]>(['wearable', 'supplements'])
+  // Step 3: Physical Training & Hardware Access
+  const [fitnessLevel, setFitnessLevel] = useState<string>('Intermediate')
+  const [trainingDays, setTrainingDays] = useState<string[]>(['Mon', 'Wed', 'Fri'])
+  const [workoutWindow, setWorkoutWindow] = useState<string>('afternoon')
+  const [selectedEquipment, setSelectedEquipment] = useState<string[]>(['wearable', 'supplements', 'gym'])
 
-  // Step 4: Starter Stack Modalities
+  // Step 4: Primary Goals & Functional Outcomes
+  const [selectedGoals, setSelectedGoals] = useState<string[]>(['longevity', 'energy', 'sleep'])
+  const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([
+    'energy', 'sleep_quality', 'mental_clarity', 'focus', 'soreness', 'waking_restedness'
+  ])
+
+  // Step 5: Starter Stack Selection
   const [selectedModalities, setSelectedModalities] = useState<Record<string, boolean>>({})
 
-  // Toggle Goal in Step 1
-  const handleToggleGoal = (goalId: string) => {
-    setSelectedGoals(prev => {
-      const next = prev.includes(goalId) 
-        ? prev.filter(g => g !== goalId) 
-        : [...prev, goalId]
-      const finalGoals = next.length === 0 ? [goalId] : next
-
-      // Auto-update default functional outcomes matching these goals
-      const autoOutcomes = new Set<string>()
-      finalGoals.forEach(g => {
-        FUNCTIONAL_OUTCOMES.forEach(o => {
-          if (o.matchedGoals.includes(g)) autoOutcomes.add(o.id)
-        })
-      })
-      if (autoOutcomes.size > 0) {
-        setSelectedOutcomes(Array.from(autoOutcomes))
+  // Hydrate existing answers if in recalibrate mode or if profile exists
+  useEffect(() => {
+    async function hydrate() {
+      try {
+        const localUserId = getLocalUserId()
+        const profile = await getOrCreateUserProfile(localUserId)
+        if (profile) {
+          if (profile.display_name && profile.display_name !== 'Protocol Optimizer') setDisplayName(profile.display_name)
+          if (profile.age) setAge(String(profile.age))
+          if (profile.biological_sex) setBiologicalSex(profile.biological_sex as any)
+          if (profile.weight_lbs) setWeightLbs(String(profile.weight_lbs))
+          if (profile.dietary_pattern) setDietaryPattern(profile.dietary_pattern)
+          if (profile.ideal_wake_time) setIdealWakeTime(profile.ideal_wake_time)
+          if (profile.ideal_bedtime) setIdealBedtime(profile.ideal_bedtime)
+          if (profile.chronotype) setChronotype(profile.chronotype)
+          if (profile.fitness_training_level) setFitnessLevel(profile.fitness_training_level)
+          if (profile.resistance_training_days && profile.resistance_training_days.length > 0) {
+            setTrainingDays(profile.resistance_training_days)
+          }
+          if (profile.primary_workout_window) setWorkoutWindow(profile.primary_workout_window)
+          if (profile.hardware_access && profile.hardware_access.length > 0) {
+            setSelectedEquipment(profile.hardware_access)
+          }
+          if (profile.primary_goals && profile.primary_goals.length > 0) {
+            setSelectedGoals(profile.primary_goals)
+          }
+          if (profile.outcome_preference_scores && Object.keys(profile.outcome_preference_scores).length > 0) {
+            setSelectedOutcomes(Object.keys(profile.outcome_preference_scores))
+          }
+        }
+      } catch (err) {
+        console.error('Error hydrating profile for calibration:', err)
+      } finally {
+        setIsLoadingProfile(false)
       }
+    }
+    hydrate()
+  }, [])
 
-      return finalGoals
+  // Calculate recommended starter stack based on Step 3 equipment and Step 4 goals
+  const recommendedModalities = useMemo(() => {
+    return STARTER_CATALOG.filter(mod => {
+      // Check goal alignment
+      const matchesGoal = selectedGoals.includes(mod.goalKey)
+      // Check hardware access requirement
+      const hasHardware = !mod.requiredHardware || selectedEquipment.includes(mod.requiredHardware)
+      return matchesGoal && hasHardware
     })
+  }, [selectedGoals, selectedEquipment])
+
+  const toggleDay = (day: string) => {
+    setTrainingDays(prev => 
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    )
   }
 
-  // Toggle Functional Outcome in Step 2
-  const toggleOutcome = (outcomeId: string) => {
-    setSelectedOutcomes(prev => {
-      const next = prev.includes(outcomeId)
-        ? prev.filter(id => id !== outcomeId)
-        : [...prev, outcomeId]
-      return next.length === 0 ? [outcomeId] : next
-    })
-  }
-
-  // Toggle Equipment in Step 3
   const toggleEquipment = (id: string) => {
     setSelectedEquipment(prev => 
       prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
     )
   }
 
-  // Filter recommended modalities based on goals AND selected equipment
-  const recommendedModalities = useMemo(() => {
-    const map = new Map<string, ModalityOption & { goalTitle: string }>()
-    
-    selectedGoals.forEach(gId => {
-      const archetype = GOAL_ARCHETYPES.find(a => a.id === gId)
-      if (archetype) {
-        archetype.modalities.forEach(m => {
-          if (m.requiredHardware && !selectedEquipment.includes(m.requiredHardware)) {
-            return
-          }
-          if (!map.has(m.id)) {
-            map.set(m.id, { ...m, goalTitle: archetype.title })
-          }
-        })
-      }
+  const toggleGoal = (id: string) => {
+    setSelectedGoals(prev => {
+      const next = prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
+      return next.length === 0 ? [id] : next
     })
+  }
 
-    return Array.from(map.values())
-  }, [selectedGoals, selectedEquipment])
+  const toggleOutcome = (id: string) => {
+    setSelectedOutcomes(prev => {
+      const next = prev.includes(id) ? prev.filter(o => o !== id) : [...prev, id]
+      return next.length === 0 ? [id] : next
+    })
+  }
 
-  // Toggle Modality Check in Step 4
-  const toggleModality = (modalityId: string) => {
+  const toggleModalityCheck = (id: string) => {
     setSelectedModalities(prev => ({
       ...prev,
-      [modalityId]: prev[modalityId] === undefined ? false : !prev[modalityId]
+      [id]: prev[id] === undefined ? false : !prev[id]
     }))
   }
 
-  const isModalityChecked = (modalityId: string) => {
-    return selectedModalities[modalityId] !== false
+  const isModalityChecked = (id: string) => {
+    return selectedModalities[id] !== false
   }
 
-  // Complete Onboarding and Launch Today
   const handleComplete = async () => {
     if (isSubmitting) return
     setIsSubmitting(true)
@@ -234,22 +214,32 @@ export default function OnboardingPage() {
       const todayStr = format(new Date(), 'yyyy-MM-dd')
       const nameToSave = displayName.trim() || 'Protocol Optimizer'
 
-      // Initialize outcome preference scores for all selected functional outcomes
+      // Map outcome preference scores (default 7/10 priority for checked outcomes)
       const outcomeScores: Record<string, number> = {}
       selectedOutcomes.forEach(id => {
-        outcomeScores[id] = 7 // Default balanced high priority
+        outcomeScores[id] = 7
       })
 
-      // 1. Ensure profile exists and save preferences
+      // 1. Ensure profile exists and persist all biological parameters
       await getOrCreateUserProfile(localUserId)
       await updateUserProfile(localUserId, {
         display_name: nameToSave,
-        primary_goals: selectedGoals,
+        age: age ? parseInt(age, 10) : undefined,
+        biological_sex: biologicalSex,
+        weight_lbs: weightLbs ? parseFloat(weightLbs) : undefined,
+        dietary_pattern: dietaryPattern,
+        ideal_wake_time: idealWakeTime,
+        ideal_bedtime: idealBedtime,
+        chronotype: chronotype,
+        fitness_training_level: fitnessLevel,
+        resistance_training_days: trainingDays,
+        primary_workout_window: workoutWindow,
         hardware_access: selectedEquipment,
+        primary_goals: selectedGoals,
         outcome_preference_scores: outcomeScores
       })
 
-      // 2. Insert recommended starter tasks
+      // 2. Schedule checked starter tasks for today
       const activeMods = recommendedModalities.filter(m => isModalityChecked(m.id))
       for (const mod of activeMods) {
         try {
@@ -259,22 +249,34 @@ export default function OnboardingPage() {
         }
       }
 
-      // 3. Mark onboarding completed and navigate to Today view
+      // 3. Mark onboarding completed in localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('levl_onboarding_completed', 'true')
       }
-      window.location.href = '/today'
+
+      // 4. Return to destination
+      if (isRecalibrateMode) {
+        window.location.href = '/settings'
+      } else {
+        window.location.href = '/today'
+      }
     } catch (err) {
-      console.error('Error completing onboarding:', err)
+      console.error('Error completing onboarding/calibration:', err)
       if (typeof window !== 'undefined') {
         localStorage.setItem('levl_onboarding_completed', 'true')
       }
-      window.location.href = '/today'
+      window.location.href = isRecalibrateMode ? '/settings' : '/today'
     }
   }
 
+  // Weight kg conversion
+  const weightKg = useMemo(() => {
+    const num = parseFloat(weightLbs)
+    return isNaN(num) ? 0 : Math.round((num * 0.45359237) * 10) / 10
+  }, [weightLbs])
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-x-hidden">
       {/* Background Ambient Glows */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px]" />
@@ -282,357 +284,670 @@ export default function OnboardingPage() {
       </div>
 
       <div className="w-full max-w-xl space-y-6">
-        {/* Step Indicator */}
+        {/* Recalibrate Mode Header Exit Link */}
+        {isRecalibrateMode && (
+          <div className="flex items-center justify-between bg-slate-900/80 border border-purple-500/30 px-4 py-2.5 rounded-2xl backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="text-purple-400" />
+              <span className="text-xs font-bold text-white">Guided Protocol Calibration</span>
+            </div>
+            <Link 
+              href="/settings" 
+              className="text-xs text-purple-300 hover:text-white transition-colors flex items-center gap-1 font-bold"
+            >
+              <span>Exit to Settings</span>
+              <ChevronRight size={14} />
+            </Link>
+          </div>
+        )}
+
+        {/* Step Progress Indicator Header */}
         <div className="space-y-3 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-extrabold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-extrabold uppercase tracking-wider">
             <Sparkles size={12} className="text-emerald-400" />
             <span>
-              {step === 1 ? 'Step 1 of 4: Primary Targets' 
-                : step === 2 ? 'Step 2 of 4: Functional Outcomes' 
-                : step === 3 ? 'Step 3 of 4: Equipment & Tools' 
-                : 'Step 4 of 4: Starter Stack'}
+              {step === 1 ? 'Step 1 of 5: Biometrics & Demographics' 
+                : step === 2 ? 'Step 2 of 5: Circadian Sleep Anchors' 
+                : step === 3 ? 'Step 3 of 5: Training & Equipment' 
+                : step === 4 ? 'Step 4 of 5: Goals & Outcomes' 
+                : 'Step 5 of 5: Calibrated Starter Stack'}
             </span>
           </div>
 
-          <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+          <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-purple-500 to-emerald-400 transition-all duration-500 ease-out"
-              style={{ width: `${(step / 4) * 100}%` }}
+              className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 transition-all duration-500 ease-out"
+              style={{ width: `${(step / 5) * 100}%` }}
             />
           </div>
         </div>
 
-        {/* STEP 1: Name & Goals */}
+        {/* ---------------------------------------------------- */}
+        {/* STEP 1: BIOLOGICAL PROFILE & DEMOGRAPHICS */}
+        {/* ---------------------------------------------------- */}
         {step === 1 && (
-          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
-            <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                What is your primary focus?
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-400">
-                Select 1–3 targets to customize your precision protocol stack.
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 backdrop-blur-md">
+            <div>
+              <h2 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+                <Dna className="text-emerald-400" size={24} />
+                <span>Biological Profile &amp; Demographics</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                Baseline physiological data to calibrate dosing, biomarkers, and aging models.
               </p>
             </div>
 
-            {/* Name Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                Your First Name / Handle
-              </label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="e.g. Alex"
-                className="w-full bg-black/60 border border-white/10 rounded-xl py-3 px-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all"
-              />
-            </div>
-
-            {/* Goal Archetypes */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
-                Select Your Optimization Targets
-              </label>
-              
-              <div className="grid grid-cols-1 gap-2.5">
-                {GOAL_ARCHETYPES.map((goal) => {
-                  const isSelected = selectedGoals.includes(goal.id)
-                  return (
-                    <button
-                      key={goal.id}
-                      type="button"
-                      onClick={() => handleToggleGoal(goal.id)}
-                      className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                        isSelected 
-                          ? `${goal.borderColor} ${goal.bgGlow} shadow-lg ring-1 ring-white/10` 
-                          : 'border-white/5 bg-black/40 hover:bg-white/5 text-slate-400'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${isSelected ? goal.borderColor : 'border-white/10 bg-black/50'}`}>
-                          {goal.icon}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className={`text-sm font-black ${isSelected ? 'text-white' : 'text-slate-300'}`}>
-                            {goal.title}
-                          </h3>
-                          <p className="text-[11px] text-slate-400 truncate max-w-[280px] sm:max-w-md mt-0.5">
-                            {goal.subtitle}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center border shrink-0 transition-colors ${
-                        isSelected ? 'bg-emerald-500 border-emerald-400 text-black' : 'border-white/20 bg-transparent'
-                      }`}>
-                        {isSelected && <Check size={14} strokeWidth={3} />}
-                      </div>
-                    </button>
-                  )
-                })}
+            {/* Context Explainer Box */}
+            <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-start gap-3 text-xs text-emerald-200/90 leading-relaxed">
+              <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-white block mb-0.5">How LEVL Uses This:</span>
+                Your age and biological sex calibrate personalized biomarker intervals and biological age reversal algorithms (PhenoAge/Calico). Your body weight dynamically scales precise mg/kg dosing across supplements, peptides, and fasting protocols.
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setStep(2)}
-              className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <span>Next: Select Outcomes to Track</span>
-              <ArrowRight size={16} />
-            </button>
+            <div className="space-y-4">
+              {/* Display Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Your Name or Handle
+                </label>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="e.g. Kylen or Protocol Optimizer"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+
+              {/* Age & Sex Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                    Chronological Age
+                  </label>
+                  <input
+                    type="number"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    placeholder="e.g. 34"
+                    min={18}
+                    max={120}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                    Biological Sex
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['Male', 'Female', 'Other'] as const).map(sex => (
+                      <button
+                        key={sex}
+                        type="button"
+                        onClick={() => setBiologicalSex(sex)}
+                        className={`py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          biologicalSex === sex
+                            ? 'bg-emerald-500/20 border-emerald-400 text-white shadow-md'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {sex}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Weight with KG conversion */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Body Weight (lbs)
+                  </label>
+                  {weightKg > 0 && (
+                    <span className="text-xs font-mono text-emerald-400 font-bold">
+                      ≈ {weightKg} kg (used for mg/kg dosing)
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="number"
+                  value={weightLbs}
+                  onChange={(e) => setWeightLbs(e.target.value)}
+                  placeholder="e.g. 175"
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+
+              {/* Dietary Baseline */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Baseline Dietary Pattern
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {DIET_OPTIONS.map(d => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setDietaryPattern(d.id)}
+                      className={`p-2.5 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer ${
+                        dietaryPattern === d.id
+                          ? 'bg-emerald-500/20 border-emerald-400 text-white shadow-md'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all"
+              >
+                <span>Continue to Circadian Anchors</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
           </div>
         )}
 
-        {/* STEP 2: Functional Outcomes to Track (Clean Multi-Select, No Sliders!) */}
+        {/* ---------------------------------------------------- */}
+        {/* STEP 2: CIRCADIAN RHYTHM & SLEEP ANCHORS */}
+        {/* ---------------------------------------------------- */}
         {step === 2 && (
-          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
-                  Biomarker Telemetry
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Which outcomes do you want tracked?
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-400">
-                Tap to toggle the physiological dimensions you want measured across your habits. (You can fine-tune 1–10 importance rankings in your profile later).
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 backdrop-blur-md">
+            <div>
+              <h2 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+                <Sun className="text-amber-400" size={24} />
+                <span>Circadian Rhythm &amp; Sleep Anchors</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                Synchronize your daily protocol timeline to your body's master internal clock.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
-              {FUNCTIONAL_OUTCOMES.map((outcome) => {
-                const isSelected = selectedOutcomes.includes(outcome.id)
-                return (
-                  <button
-                    key={outcome.id}
-                    type="button"
-                    onClick={() => toggleOutcome(outcome.id)}
-                    className={`p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                      isSelected 
-                        ? 'border-purple-500/50 bg-slate-950/80 shadow-md ring-1 ring-purple-500/30' 
-                        : 'border-white/5 bg-black/40 hover:bg-white/5 text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
-                        isSelected ? 'bg-purple-500/10 border-purple-500/30' : 'bg-black/50 border-white/10'
-                      }`}>
-                        {outcome.icon}
-                      </div>
-                      <div className="min-w-0">
-                        <span className={`text-xs font-bold block ${isSelected ? 'text-white' : 'text-slate-300'}`}>
-                          {outcome.name}
-                        </span>
-                        <span className="text-[11px] text-slate-400 block truncate max-w-[280px] sm:max-w-sm mt-0.5">
-                          {outcome.description}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border shrink-0 transition-colors ${
-                      isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-white/20 bg-transparent'
-                    }`}>
-                      {isSelected && <Check size={12} strokeWidth={3} />}
-                    </div>
-                  </button>
-                )
-              })}
+            {/* Context Explainer Box */}
+            <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200/90 leading-relaxed">
+              <Info size={16} className="text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-white block mb-0.5">How LEVL Uses This:</span>
+                LEVL aligns every daily protocol with your circadian biology—such as delaying caffeine intake 90–120m post-waking to clear adenosine, scheduling post-meal glucose walks, and triggering blue-light shielding 2 hours before bed.
+              </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="space-y-4">
+              {/* Wake & Bedtime Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                    <Sunrise size={16} />
+                    <span>Target Wake Time</span>
+                  </div>
+                  <input
+                    type="time"
+                    value={idealWakeTime}
+                    onChange={(e) => setIdealWakeTime(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-amber-400"
+                  />
+                  <span className="text-[10px] text-slate-400 block">
+                    Anchors morning light &amp; cortisol peak
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-indigo-300">
+                    <Moon size={16} />
+                    <span>Target Bedtime</span>
+                  </div>
+                  <input
+                    type="time"
+                    value={idealBedtime}
+                    onChange={(e) => setIdealBedtime(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-indigo-400"
+                  />
+                  <span className="text-[10px] text-slate-400 block">
+                    Triggers wind-down &amp; melatonin buffer
+                  </span>
+                </div>
+              </div>
+
+              {/* Chronotype Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Circadian Chronotype
+                </label>
+                <div className="space-y-2">
+                  {[
+                    { id: 'Early Bird', title: 'Early Bird / Lark', desc: 'Naturally wake early with peak cognitive energy in the morning; sleep by 9:30–10:30 PM', icon: <Sunrise size={18} className="text-amber-400" /> },
+                    { id: 'Intermediate', title: 'Intermediate / Neutral', desc: 'Balanced rhythm; wake 6:30–7:30 AM, peak focus midday, sleep by 10:30–11:30 PM', icon: <Sun size={18} className="text-yellow-400" /> },
+                    { id: 'Night Owl', title: 'Night Owl / Wolf', desc: 'Peak cognitive flow late afternoon & evening; sleep best after 11:30 PM', icon: <Moon size={18} className="text-indigo-400" /> }
+                  ].map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setChronotype(c.id)}
+                      className={`w-full p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                        chronotype === c.id
+                          ? 'bg-indigo-500/20 border-indigo-400 text-white shadow-md'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/40'
+                      }`}
+                    >
+                      <div className="mt-0.5 shrink-0">{c.icon}</div>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-bold block">{c.title}</span>
+                        <span className="text-[11px] text-slate-400 block mt-0.5">{c.desc}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="w-1/3 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
               >
-                ← Back
+                <ArrowLeft size={14} />
+                <span>Back</span>
               </button>
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className="w-2/3 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-indigo-500 hover:from-amber-400 hover:to-indigo-400 text-slate-950 font-extrabold text-sm shadow-xl flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
               >
-                <span>Next: Equipment &amp; Tools</span>
-                <ArrowRight size={15} />
+                <span>Continue to Training &amp; Hardware</span>
+                <ArrowRight size={16} />
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 3: Equipment / Hardware */}
+        {/* ---------------------------------------------------- */}
+        {/* STEP 3: PHYSICAL TRAINING & HARDWARE ACCESS */}
+        {/* ---------------------------------------------------- */}
         {step === 3 && (
-          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 uppercase">
-                  Hardware Filter
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                What equipment do you have?
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-400">
-                We will only recommend protocols that match your physical setup:
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 backdrop-blur-md">
+            <div>
+              <h2 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+                <Dumbbell className="text-rose-400" size={24} />
+                <span>Physical Training &amp; Hardware Access</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                Define your training frequency and available equipment to filter relevant protocols.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {EQUIPMENT_OPTIONS.map((item) => {
-                const isSelected = selectedEquipment.includes(item.id)
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => toggleEquipment(item.id)}
-                    className={`p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                      isSelected 
-                        ? 'border-purple-500/50 bg-purple-500/10 shadow-md ring-1 ring-purple-500/30' 
-                        : 'border-white/5 bg-black/40 hover:bg-white/5 text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-black/50 border border-white/10 flex items-center justify-center shrink-0">
-                        {item.icon}
-                      </div>
-                      <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-300'}`}>
-                        {item.label}
-                      </span>
-                    </div>
-
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border shrink-0 transition-colors ${
-                      isSelected ? 'bg-purple-500 border-purple-400 text-white' : 'border-white/20 bg-transparent'
-                    }`}>
-                      {isSelected && <Check size={12} strokeWidth={3} />}
-                    </div>
-                  </button>
-                )
-              })}
+            {/* Context Explainer Box */}
+            <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-500/30 flex items-start gap-3 text-xs text-rose-200/90 leading-relaxed">
+              <Info size={16} className="text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-white block mb-0.5">How LEVL Uses This:</span>
+                Ensures your daily timeline only suggests actionable protocols matching gear you actually own. It automatically coordinates pre/post-workout supplementation and active recovery around your designated training days.
+              </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="space-y-4">
+              {/* Fitness Level */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Training Experience
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {['Beginner', 'Intermediate', 'Advanced', 'Athlete'].map(lvl => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setFitnessLevel(lvl)}
+                      className={`p-2.5 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                        fitnessLevel === lvl
+                          ? 'bg-rose-500/20 border-rose-400 text-white shadow-md'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Workout Days per Week */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Active Workout Days
+                </label>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => toggleDay(day)}
+                      className={`py-2 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                        trainingDays.includes(day)
+                          ? 'bg-rose-500/20 border-rose-400 text-white shadow-sm'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Primary Workout Window */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Primary Workout Window
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'morning', label: 'Morning (6-9 AM)' },
+                    { id: 'midday', label: 'Midday (11-1 PM)' },
+                    { id: 'afternoon', label: 'Afternoon (3-6 PM)' },
+                    { id: 'evening', label: 'Evening (6-9 PM)' }
+                  ].map(w => (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => setWorkoutWindow(w.id)}
+                      className={`p-2.5 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                        workoutWindow === w.id
+                          ? 'bg-rose-500/20 border-rose-400 text-white shadow-md'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {w.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hardware & Equipment Access */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Available Gear &amp; Equipment
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {HARDWARE_OPTIONS.map(h => {
+                    const isSelected = selectedEquipment.includes(h.id)
+                    return (
+                      <button
+                        key={h.id}
+                        type="button"
+                        onClick={() => toggleEquipment(h.id)}
+                        className={`p-3 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-rose-500/15 border-rose-400 text-white shadow-md'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="mt-0.5 shrink-0">{h.icon}</div>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-xs font-bold block text-white">{h.label}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{h.desc}</span>
+                        </div>
+                        <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border ${
+                          isSelected ? 'bg-rose-500 border-rose-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                        }`}>
+                          {isSelected && <Check size={12} className="stroke-[3]" />}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="w-1/3 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
               >
-                ← Back
+                <ArrowLeft size={14} />
+                <span>Back</span>
               </button>
               <button
                 type="button"
                 onClick={() => setStep(4)}
-                className="w-2/3 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-purple-500 hover:from-rose-400 hover:to-purple-400 text-slate-950 font-extrabold text-sm shadow-xl flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
               >
-                <span>Curate My Protocol Stack</span>
-                <ArrowRight size={15} />
+                <span>Continue to Goals &amp; Outcomes</span>
+                <ArrowRight size={16} />
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 4: Curated Starter Protocols Stack */}
+        {/* ---------------------------------------------------- */}
+        {/* STEP 4: PRIMARY GOALS & FUNCTIONAL OUTCOMES */}
+        {/* ---------------------------------------------------- */}
         {step === 4 && (
-          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-purple-500/30 backdrop-blur-2xl shadow-2xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
-                  Hardware &amp; Goal Calibrated
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Your Starter Protocol Stack
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-400">
-                Evidence-based habits tailored to your goals and equipment. Toggle any you want in today&apos;s routine:
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 backdrop-blur-md">
+            <div>
+              <h2 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+                <Sparkles className="text-purple-400" size={24} />
+                <span>Primary Targets &amp; Functional Outcomes</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                Select your core longevity priorities and the daily subjective outcomes you care most about.
               </p>
             </div>
 
-            {/* Modalities Checklist */}
-            <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
-              {recommendedModalities.length === 0 ? (
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-xs text-slate-400 text-center">
-                  No modalities matched your specific filter. Go back to adjust goals or equipment.
-                </div>
-              ) : (
-                recommendedModalities.map((mod) => {
-                  const checked = isModalityChecked(mod.id)
-                  return (
-                    <div
-                      key={mod.id}
-                      onClick={() => toggleModality(mod.id)}
-                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
-                        checked 
-                          ? 'bg-slate-950/80 border-emerald-500/40 shadow-sm' 
-                          : 'bg-black/40 border-white/5 opacity-60'
-                      }`}
-                    >
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold text-white">
-                            {mod.name}
-                          </span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10">
-                            {mod.timing}
-                          </span>
+            {/* Context Explainer Box */}
+            <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex items-start gap-3 text-xs text-purple-200/90 leading-relaxed">
+              <Info size={16} className="text-purple-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-white block mb-0.5">How LEVL Uses This:</span>
+                Your selected targets train the AI Protocol Coach to highlight the highest-impact protocols. Your prioritized outcomes power your Daily Check-in feedback loop and fuel the Correlation Engine to prove what actually moves the needle.
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Primary Longevity Goals */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Core Longevity Targets (Pick 1-3)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {PRIMARY_GOAL_OPTIONS.map(g => {
+                    const isSelected = selectedGoals.includes(g.id)
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => toggleGoal(g.id)}
+                        className={`p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-purple-500/20 border-purple-400 text-white shadow-md'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="mt-0.5 shrink-0">{g.icon}</div>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-xs font-bold block text-white">{g.title}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5 line-clamp-2">{g.subtitle}</span>
                         </div>
-                        <p className="text-[11px] text-emerald-300/90 font-medium">
-                          🎯 {mod.dose}
-                        </p>
-                      </div>
+                        <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border ${
+                          isSelected ? 'bg-purple-500 border-purple-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                        }`}>
+                          {isSelected && <Check size={12} className="stroke-[3]" />}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
-                      <div className={`w-5 h-5 rounded-lg flex items-center justify-center border shrink-0 mt-0.5 transition-colors ${
-                        checked ? 'bg-emerald-500 border-emerald-400 text-black' : 'border-white/20 bg-transparent'
-                      }`}>
-                        {checked && <Check size={13} strokeWidth={3} />}
-                      </div>
-                    </div>
-                  )
-                })
-              )}
+              {/* Functional Outcome Dimensions (Database Parity) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  Prioritized Daily Outcomes (Tracked in Check-in)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {FUNCTIONAL_OUTCOME_CATALOG.map(o => {
+                    const isSelected = selectedOutcomes.includes(o.id)
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => toggleOutcome(o.id)}
+                        className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-500/15 border-emerald-400 text-white shadow-sm'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-300'
+                        }`}
+                      >
+                        <div className="mt-0.5 shrink-0">{o.icon}</div>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-xs font-bold block text-white">{o.name}</span>
+                          <span className="text-[10px] text-slate-400 block truncate">{o.description}</span>
+                        </div>
+                        <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
+                          isSelected ? 'bg-emerald-500 border-emerald-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                        }`}>
+                          {isSelected && <Check size={10} className="stroke-[3]" />}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2.5">
-              <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
-              <span>Ready to launch! These will appear on your Today timeline immediately.</span>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
+            <div className="pt-2 flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setStep(3)}
-                className="w-1/3 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
               >
-                ← Back
+                <ArrowLeft size={14} />
+                <span>Back</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep(5)}
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-emerald-400 hover:from-purple-400 hover:to-emerald-300 text-slate-950 font-extrabold text-sm shadow-xl flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
+              >
+                <span>Review Calibrated Starter Stack</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* STEP 5: TAILORED STARTER STACK ACTIVATION */}
+        {/* ---------------------------------------------------- */}
+        {step === 5 && (
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 backdrop-blur-md">
+            <div>
+              <h2 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+                <Zap className="text-emerald-400" size={24} />
+                <span>Your Calibrated Starter Stack</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+                Clinically validated starter protocols calibrated to your exact biometrics, equipment, and targets.
+              </p>
+            </div>
+
+            {/* Context Explainer Box */}
+            <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-start gap-3 text-xs text-emerald-200/90 leading-relaxed">
+              <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-white block mb-0.5">How LEVL Uses This:</span>
+                These protocols will be scheduled directly onto your Today timeline with clinically validated starter doses, circadian timing blocks, and single-tap precision logs.
+              </div>
+            </div>
+
+            {/* Starter Modalities List */}
+            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+              {recommendedModalities.map(mod => {
+                const checked = isModalityChecked(mod.id)
+                return (
+                  <button
+                    key={mod.id}
+                    type="button"
+                    onClick={() => toggleModalityCheck(mod.id)}
+                    className={`w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all cursor-pointer ${
+                      checked
+                        ? 'bg-slate-950/90 border-emerald-500/50 shadow-md'
+                        : 'bg-slate-950/40 border-slate-800 text-slate-500 opacity-60'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 border mt-0.5 ${
+                      checked ? 'bg-emerald-500 border-emerald-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                    }`}>
+                      {checked && <Check size={12} className="stroke-[3]" />}
+                    </div>
+
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs sm:text-sm font-bold text-white block truncate">
+                          {mod.name}
+                        </span>
+                        <span className="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded-full font-mono shrink-0">
+                          {mod.timing.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-400/90 font-mono">
+                        {mod.dose}
+                      </p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="pt-2 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setStep(4)}
+                className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <ArrowLeft size={14} />
+                <span>Back</span>
               </button>
               <button
                 type="button"
                 onClick={handleComplete}
                 disabled={isSubmitting}
-                className="w-2/3 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs sm:text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 text-slate-950 font-extrabold text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all disabled:opacity-50"
               >
-                {isSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <RefreshCw size={15} className="animate-spin" />
-                    <span>Launching Stack...</span>
-                  </div>
-                ) : (
-                  <>
-                    <span>Launch My Stack 🚀</span>
-                    <ArrowRight size={16} />
-                  </>
-                )}
+                <CheckCircle2 size={18} />
+                <span>
+                  {isSubmitting 
+                    ? 'Calibrating & Launching...' 
+                    : isRecalibrateMode 
+                      ? 'Save & Update Protocol Stack' 
+                      : 'Complete & Launch Today View'}
+                </span>
               </button>
             </div>
           </div>
         )}
-
-        {/* Security & Privacy Footer */}
-        <div className="text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
-          <ShieldCheck size={13} className="text-emerald-400" />
-          <span>Private, encrypted biometric engine. Customize anytime in settings.</span>
-        </div>
       </div>
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-sm font-bold animate-pulse">
+        Loading Calibration Wizard...
+      </div>
+    }>
+      <OnboardingContent />
+    </Suspense>
   )
 }
