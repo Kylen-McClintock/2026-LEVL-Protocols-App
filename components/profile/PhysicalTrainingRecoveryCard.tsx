@@ -81,41 +81,47 @@ export default function PhysicalTrainingRecoveryCard({ profile, onUpdated }: Phy
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
-  const toggleDay = (day: string) => {
-    setResistanceDays(prev => {
-      if (prev.includes(day)) {
-        return prev.filter(d => d !== day)
-      } else {
-        return [...prev, day]
-      }
-    })
-  }
-
-  // Calculate non-lifting rest/recovery days for cold plunge recommendations
-  const allDayIds = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const recoveryDays = allDayIds.filter(d => !resistanceDays.includes(d))
-
-  const handleSave = async () => {
+  const autoSave = async (updates: Partial<UserProfile>) => {
     setIsSaving(true)
     const updatedPrefs = {
       ...profile.outcome_preference_scores,
-      primary_workout_window: workoutWindow,
-      resistance_training_days: resistanceDays,
-      fitness_training_level: fitnessLevel
+      primary_workout_window: updates.primary_workout_window || workoutWindow,
+      resistance_training_days: updates.resistance_training_days || resistanceDays,
+      fitness_training_level: updates.fitness_training_level || fitnessLevel
     }
 
     const updated = await updateUserProfile(profile.local_user_id, {
-      primary_workout_window: workoutWindow,
-      resistance_training_days: resistanceDays,
-      fitness_training_level: fitnessLevel,
+      ...updates,
       outcome_preference_scores: updatedPrefs
     })
 
     setIsSaving(false)
     setSavedSuccess(true)
-    setTimeout(() => setSavedSuccess(false), 2500)
+    setTimeout(() => setSavedSuccess(false), 2000)
     if (updated && onUpdated) onUpdated(updated)
   }
+
+  const toggleDay = (day: string) => {
+    const nextDays = resistanceDays.includes(day)
+      ? resistanceDays.filter(d => d !== day)
+      : [...resistanceDays, day]
+    setResistanceDays(nextDays)
+    autoSave({ resistance_training_days: nextDays })
+  }
+
+  const handleSelectWindow = (windowId: string) => {
+    setWorkoutWindow(windowId)
+    autoSave({ primary_workout_window: windowId })
+  }
+
+  const handleSelectFitnessLevel = (lvlId: string) => {
+    setFitnessLevel(lvlId)
+    autoSave({ fitness_training_level: lvlId })
+  }
+
+  // Calculate non-lifting rest/recovery days for cold plunge recommendations
+  const allDayIds = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const recoveryDays = allDayIds.filter(d => !resistanceDays.includes(d))
 
   return (
     <div className="glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md shadow-xl space-y-5">
@@ -127,7 +133,7 @@ export default function PhysicalTrainingRecoveryCard({ profile, onUpdated }: Phy
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-              <span>Physical Training & Recovery Schedule</span>
+              <span>Physical Training &amp; Recovery Schedule</span>
             </h2>
             <p className="text-xs text-slate-400">
               Enforces the Cold Plunge Anti-Blunting rule and tailors exercise intensity
@@ -135,14 +141,17 @@ export default function PhysicalTrainingRecoveryCard({ profile, onUpdated }: Phy
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-3.5 py-2 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-400 hover:to-amber-500 text-black font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
-        >
-          {savedSuccess ? <Check size={14} /> : <Dumbbell size={14} />}
-          <span>{savedSuccess ? 'Saved!' : 'Save Schedule'}</span>
-        </button>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 border border-white/5 text-[11px] font-mono shrink-0">
+          {isSaving ? (
+            <span className="text-orange-400 font-bold animate-pulse">Saving...</span>
+          ) : savedSuccess ? (
+            <span className="text-emerald-400 font-bold flex items-center gap-1">
+              <Check size={12} /> Auto-saved
+            </span>
+          ) : (
+            <span className="text-slate-500 font-medium">Auto-saves on change</span>
+          )}
+        </div>
       </div>
 
       {/* Primary Workout Window */}
@@ -157,7 +166,7 @@ export default function PhysicalTrainingRecoveryCard({ profile, onUpdated }: Phy
             return (
               <div
                 key={w.id}
-                onClick={() => setWorkoutWindow(w.id)}
+                onClick={() => handleSelectWindow(w.id)}
                 className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                   isSelected
                     ? 'bg-orange-950/30 border-orange-500/50 text-white shadow-md'
@@ -214,7 +223,7 @@ export default function PhysicalTrainingRecoveryCard({ profile, onUpdated }: Phy
       <div className="space-y-2.5">
         <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
           <Flame size={14} className="text-orange-400" />
-          <span>Fitness & Cardio Training Level</span>
+          <span>Fitness &amp; Cardio Training Level</span>
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {FITNESS_LEVELS.map((lvl) => {
@@ -222,7 +231,7 @@ export default function PhysicalTrainingRecoveryCard({ profile, onUpdated }: Phy
             return (
               <div
                 key={lvl.id}
-                onClick={() => setFitnessLevel(lvl.id)}
+                onClick={() => handleSelectFitnessLevel(lvl.id)}
                 className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                   isSelected
                     ? 'bg-orange-950/30 border-orange-500/50 text-white shadow-md'

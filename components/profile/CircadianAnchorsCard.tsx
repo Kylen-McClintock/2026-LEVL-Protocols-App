@@ -98,25 +98,23 @@ export default function CircadianAnchorsCard({ profile, onUpdated }: CircadianAn
 
   const milestones = calculateMilestones()
 
-  const handleSave = async () => {
+  const autoSave = async (updates: Partial<UserProfile>) => {
     setIsSaving(true)
     const updatedPrefs = {
       ...profile.outcome_preference_scores,
-      ideal_wake_time: wakeTime,
-      ideal_bedtime: bedTime,
-      chronotype
+      ideal_wake_time: updates.ideal_wake_time || wakeTime,
+      ideal_bedtime: updates.ideal_bedtime || bedTime,
+      chronotype: updates.chronotype || chronotype
     }
 
     const updated = await updateUserProfile(profile.local_user_id, {
-      ideal_wake_time: wakeTime,
-      ideal_bedtime: bedTime,
-      chronotype,
+      ...updates,
       outcome_preference_scores: updatedPrefs
     })
 
     setIsSaving(false)
     setSavedSuccess(true)
-    setTimeout(() => setSavedSuccess(false), 2500)
+    setTimeout(() => setSavedSuccess(false), 2000)
     if (updated && onUpdated) onUpdated(updated)
   }
 
@@ -130,22 +128,25 @@ export default function CircadianAnchorsCard({ profile, onUpdated }: CircadianAn
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-              <span>Circadian & Chronobiology Anchors</span>
+              <span>Circadian &amp; Chronobiology Anchors</span>
             </h2>
             <p className="text-xs text-slate-400">
-              Drives your personalized daily Diurnal rhythm, sunlight, and caffeine cutoffs
+              Drives your personalized daily diurnal rhythm, sunlight, and caffeine cutoffs
             </p>
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
-        >
-          {savedSuccess ? <Check size={14} /> : <Clock size={14} />}
-          <span>{savedSuccess ? 'Saved!' : 'Save Anchors'}</span>
-        </button>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 border border-white/5 text-[11px] font-mono shrink-0">
+          {isSaving ? (
+            <span className="text-amber-400 font-bold animate-pulse">Saving...</span>
+          ) : savedSuccess ? (
+            <span className="text-emerald-400 font-bold flex items-center gap-1">
+              <Check size={12} /> Auto-saved
+            </span>
+          ) : (
+            <span className="text-slate-500 font-medium">Auto-saves on change</span>
+          )}
+        </div>
       </div>
 
       {/* Target Bed & Wake Times */}
@@ -158,7 +159,11 @@ export default function CircadianAnchorsCard({ profile, onUpdated }: CircadianAn
           <input
             type="time"
             value={wakeTime}
-            onChange={(e) => setWakeTime(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              setWakeTime(val)
+              autoSave({ ideal_wake_time: val })
+            }}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-amber-500"
           />
           <p className="text-[11px] text-slate-500">Anchors your morning sunlight and cortisol peak</p>
@@ -172,7 +177,11 @@ export default function CircadianAnchorsCard({ profile, onUpdated }: CircadianAn
           <input
             type="time"
             value={bedTime}
-            onChange={(e) => setBedTime(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              setBedTime(val)
+              autoSave({ ideal_bedtime: val })
+            }}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-indigo-500"
           />
           <p className="text-[11px] text-slate-500">Anchors your caffeine and metabolic fasting cutoffs</p>
@@ -190,7 +199,10 @@ export default function CircadianAnchorsCard({ profile, onUpdated }: CircadianAn
             return (
               <div
                 key={ct.id}
-                onClick={() => setChronotype(ct.id)}
+                onClick={() => {
+                  setChronotype(ct.id)
+                  autoSave({ chronotype: ct.id })
+                }}
                 className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
                   isSelected
                     ? 'bg-amber-950/30 border-amber-500/50 text-white shadow-md'

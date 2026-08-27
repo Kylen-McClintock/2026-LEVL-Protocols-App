@@ -70,35 +70,40 @@ export default function FastingFeedingCard({ profile, onUpdated }: FastingFeedin
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
-  const handleSelectSchedule = (schedId: string) => {
-    setSchedule(schedId)
-    const matched = FASTING_SCHEDULES.find(s => s.id === schedId)
-    if (matched) {
-      setWindowStart(matched.defaultStart)
-      setWindowEnd(matched.defaultEnd)
-    }
-  }
-
-  const handleSave = async () => {
+  const autoSave = async (updates: Partial<UserProfile>) => {
     setIsSaving(true)
     const updatedPrefs = {
       ...profile.outcome_preference_scores,
-      fasting_schedule: schedule,
-      eating_window_start: windowStart,
-      eating_window_end: windowEnd
+      fasting_schedule: updates.fasting_schedule || schedule,
+      eating_window_start: updates.eating_window_start || windowStart,
+      eating_window_end: updates.eating_window_end || windowEnd
     }
 
     const updated = await updateUserProfile(profile.local_user_id, {
-      fasting_schedule: schedule,
-      eating_window_start: windowStart,
-      eating_window_end: windowEnd,
+      ...updates,
       outcome_preference_scores: updatedPrefs
     })
 
     setIsSaving(false)
     setSavedSuccess(true)
-    setTimeout(() => setSavedSuccess(false), 2500)
+    setTimeout(() => setSavedSuccess(false), 2000)
     if (updated && onUpdated) onUpdated(updated)
+  }
+
+  const handleSelectSchedule = (schedId: string) => {
+    setSchedule(schedId)
+    const matched = FASTING_SCHEDULES.find(s => s.id === schedId)
+    const start = matched ? matched.defaultStart : windowStart
+    const end = matched ? matched.defaultEnd : windowEnd
+    if (matched) {
+      setWindowStart(start)
+      setWindowEnd(end)
+    }
+    autoSave({
+      fasting_schedule: schedId,
+      eating_window_start: start,
+      eating_window_end: end
+    })
   }
 
   return (
@@ -111,7 +116,7 @@ export default function FastingFeedingCard({ profile, onUpdated }: FastingFeedin
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-              <span>Fasting & Eating Window Schedule</span>
+              <span>Fasting &amp; Eating Window Schedule</span>
             </h2>
             <p className="text-xs text-slate-400">
               Sorts your supplements into Fasted vs. Fed (Lipid Carrier) protocols
@@ -119,14 +124,17 @@ export default function FastingFeedingCard({ profile, onUpdated }: FastingFeedin
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-3.5 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-black font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
-        >
-          {savedSuccess ? <Check size={14} /> : <Clock size={14} />}
-          <span>{savedSuccess ? 'Saved!' : 'Save Window'}</span>
-        </button>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 border border-white/5 text-[11px] font-mono shrink-0">
+          {isSaving ? (
+            <span className="text-teal-400 font-bold animate-pulse">Saving...</span>
+          ) : savedSuccess ? (
+            <span className="text-emerald-400 font-bold flex items-center gap-1">
+              <Check size={12} /> Auto-saved
+            </span>
+          ) : (
+            <span className="text-slate-500 font-medium">Auto-saves on change</span>
+          )}
+        </div>
       </div>
 
       {/* Fasting Schedule Archetypes */}
@@ -172,7 +180,11 @@ export default function FastingFeedingCard({ profile, onUpdated }: FastingFeedin
           <input
             type="time"
             value={windowStart}
-            onChange={(e) => setWindowStart(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              setWindowStart(val)
+              autoSave({ eating_window_start: val })
+            }}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-teal-500"
           />
           <p className="text-[11px] text-slate-500">Marks the opening of your nutrient absorption phase</p>
@@ -186,10 +198,14 @@ export default function FastingFeedingCard({ profile, onUpdated }: FastingFeedin
           <input
             type="time"
             value={windowEnd}
-            onChange={(e) => setWindowEnd(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value
+              setWindowEnd(val)
+              autoSave({ eating_window_end: val })
+            }}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
           />
-          <p className="text-[11px] text-slate-500">Marks the start of cellular fasting & autophagy</p>
+          <p className="text-[11px] text-slate-500">Marks the start of cellular fasting &amp; autophagy</p>
         </div>
       </div>
 

@@ -32,16 +32,26 @@ export default function NegativeLongevityFactorsCard({
     scores.negative_caffeine === 0 ? 'never' : scores.negative_caffeine === 3 ? 'rarely' : scores.negative_caffeine === 8 ? 'frequent' : 'skip'
   )
 
-  const handleSave = async () => {
+  const autoSave = async (updatedFields: {
+    alcohol?: string
+    nicotine?: string
+    sitting?: string
+    caffeine?: string
+  }) => {
     setSaving(true)
     try {
       const localUserId = getLocalUserId()
+      const alc = updatedFields.alcohol !== undefined ? updatedFields.alcohol : alcohol
+      const nic = updatedFields.nicotine !== undefined ? updatedFields.nicotine : nicotine
+      const sit = updatedFields.sitting !== undefined ? updatedFields.sitting : sitting
+      const caf = updatedFields.caffeine !== undefined ? updatedFields.caffeine : caffeine
+
       const updatedScores = {
         ...scores,
-        negative_alcohol: alcohol === 'none' ? 0 : (alcohol === 'occasional' ? 3 : (alcohol === 'moderate' ? 6 : (alcohol === 'frequent' ? 9 : undefined))),
-        negative_nicotine: nicotine === 'none' ? 0 : (nicotine !== 'skip' ? 7 : undefined),
-        negative_sitting: sitting === 'under_4h' ? 1 : (sitting === '4_7h' ? 4 : (sitting === '8_10h' ? 8 : (sitting === 'over_10h' ? 10 : undefined))),
-        negative_caffeine: caffeine === 'never' ? 0 : (caffeine === 'rarely' ? 3 : (caffeine !== 'skip' ? 8 : undefined))
+        negative_alcohol: alc === 'none' ? 0 : (alc === 'occasional' ? 3 : (alc === 'moderate' ? 6 : (alc === 'frequent' ? 9 : undefined))),
+        negative_nicotine: nic === 'none' ? 0 : (nic !== 'skip' ? 7 : undefined),
+        negative_sitting: sit === 'under_4h' ? 1 : (sit === '4_7h' ? 4 : (sit === '8_10h' ? 8 : (sit === 'over_10h' ? 10 : undefined))),
+        negative_caffeine: caf === 'never' ? 0 : (caf === 'rarely' ? 3 : (caf !== 'skip' ? 8 : undefined))
       }
 
       const updated = await updateUserProfile(localUserId, {
@@ -81,9 +91,22 @@ export default function NegativeLongevityFactorsCard({
           </div>
         </div>
 
-        <button type="button" className="text-slate-400 hover:text-white p-1">
-          {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 border border-white/5 text-[10px] font-mono shrink-0">
+            {saving ? (
+              <span className="text-rose-400 font-bold animate-pulse">Saving...</span>
+            ) : saved ? (
+              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                <Check size={11} /> Auto-saved
+              </span>
+            ) : (
+              <span className="text-slate-500 font-medium">Auto-saves</span>
+            )}
+          </div>
+          <button type="button" className="text-slate-400 hover:text-white p-1">
+            {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+        </div>
       </div>
 
       {isOpen && (
@@ -96,7 +119,11 @@ export default function NegativeLongevityFactorsCard({
               </label>
               <select
                 value={alcohol}
-                onChange={(e) => setAlcohol(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setAlcohol(val)
+                  autoSave({ alcohol: val })
+                }}
                 className="w-full bg-black/60 border border-white/20 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-rose-500"
               >
                 <option value="skip">-- Skip / Not Tracked --</option>
@@ -114,7 +141,11 @@ export default function NegativeLongevityFactorsCard({
               </label>
               <select
                 value={nicotine}
-                onChange={(e) => setNicotine(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setNicotine(val)
+                  autoSave({ nicotine: val })
+                }}
                 className="w-full bg-black/60 border border-white/20 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-amber-500"
               >
                 <option value="skip">-- Skip / Not Tracked --</option>
@@ -132,7 +163,11 @@ export default function NegativeLongevityFactorsCard({
               </label>
               <select
                 value={sitting}
-                onChange={(e) => setSitting(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setSitting(val)
+                  autoSave({ sitting: val })
+                }}
                 className="w-full bg-black/60 border border-white/20 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-blue-500"
               >
                 <option value="skip">-- Skip / Not Tracked --</option>
@@ -150,7 +185,11 @@ export default function NegativeLongevityFactorsCard({
               </label>
               <select
                 value={caffeine}
-                onChange={(e) => setCaffeine(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setCaffeine(val)
+                  autoSave({ caffeine: val })
+                }}
                 className="w-full bg-black/60 border border-white/20 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-amber-500"
               >
                 <option value="skip">-- Skip / Not Tracked --</option>
@@ -160,24 +199,6 @@ export default function NegativeLongevityFactorsCard({
                 <option value="daily">Daily after 2-4 PM</option>
               </select>
             </div>
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              {saved ? (
-                <>
-                  <Check size={13} strokeWidth={3} />
-                  <span>Saved</span>
-                </>
-              ) : (
-                <span>{saving ? 'Saving...' : 'Save Risk Audit'}</span>
-              )}
-            </button>
           </div>
         </div>
       )}

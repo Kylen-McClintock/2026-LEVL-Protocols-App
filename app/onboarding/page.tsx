@@ -129,6 +129,8 @@ function OnboardingContent() {
   // Step 5: Starter Stack Selection
   const [selectedModalities, setSelectedModalities] = useState<Record<string, boolean>>({})
 
+  const hasHydratedRef = React.useRef(false)
+
   // Hydrate existing answers if in recalibrate mode or if profile exists
   useEffect(() => {
     async function hydrate() {
@@ -167,10 +169,60 @@ function OnboardingContent() {
         console.error('Error hydrating profile for calibration:', err)
       } finally {
         setIsLoadingProfile(false)
+        setTimeout(() => {
+          hasHydratedRef.current = true
+        }, 150)
       }
     }
     hydrate()
   }, [])
+
+  // Continuously auto-save all onboarding selections so data is NEVER lost navigating between pages
+  useEffect(() => {
+    if (isLoadingProfile || !hasHydratedRef.current) return
+
+    const saveProgress = async () => {
+      try {
+        const localUserId = getLocalUserId()
+        if (!localUserId) return
+
+        const totalHeightInches = (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
+        const outcomeScores: Record<string, number> = {}
+        selectedOutcomes.forEach(id => {
+          outcomeScores[id] = 7
+        })
+
+        await updateUserProfile(localUserId, {
+          display_name: displayName.trim() || undefined,
+          age: age ? parseInt(age, 10) : undefined,
+          biological_sex: biologicalSex,
+          height_inches: totalHeightInches > 0 ? totalHeightInches : undefined,
+          weight_lbs: weightLbs ? parseFloat(weightLbs) : undefined,
+          dietary_pattern: dietaryPattern,
+          ideal_wake_time: idealWakeTime,
+          ideal_bedtime: idealBedtime,
+          chronotype: chronotype,
+          fitness_training_level: fitnessLevel,
+          resistance_training_days: trainingDays,
+          primary_workout_window: workoutWindow,
+          hardware_access: selectedEquipment,
+          primary_goals: selectedGoals,
+          outcome_preference_scores: outcomeScores
+        })
+      } catch (e) {
+        console.warn('Auto-save onboarding progress notice:', e)
+      }
+    }
+
+    const timer = setTimeout(saveProgress, 400)
+    return () => clearTimeout(timer)
+  }, [
+    displayName, age, biologicalSex, heightFeet, heightInches, weightLbs, dietaryPattern,
+    idealWakeTime, idealBedtime, chronotype,
+    fitnessLevel, trainingDays, workoutWindow, selectedEquipment,
+    selectedGoals, selectedOutcomes,
+    isLoadingProfile
+  ])
 
   // Calculate recommended starter stack based on Step 3 equipment and Step 4 goals
   const recommendedModalities = useMemo(() => {

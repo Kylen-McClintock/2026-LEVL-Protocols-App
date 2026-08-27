@@ -56,9 +56,16 @@ export default function SettingsPage() {
     const handleAuthChange = () => {
       load()
     }
+    const handleProfileUpdate = (e: any) => {
+      if (e.detail) {
+        setProfile(prev => prev ? { ...prev, ...e.detail } : e.detail)
+      }
+    }
     window.addEventListener('levl_auth_user_changed', handleAuthChange)
+    window.addEventListener('levl_profile_updated', handleProfileUpdate)
     return () => {
       window.removeEventListener('levl_auth_user_changed', handleAuthChange)
+      window.removeEventListener('levl_profile_updated', handleProfileUpdate)
     }
   }, [authLoading, authUserId])
 

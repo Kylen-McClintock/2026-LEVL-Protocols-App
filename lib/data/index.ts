@@ -398,6 +398,9 @@ export async function updateUserProfile(localUserId: string, updates: Partial<Us
       const existing = existingRaw ? JSON.parse(existingRaw) : {}
       const merged = { ...existing, ...updates, local_user_id: localUserId, updated_at: new Date().toISOString() }
       localStorage.setItem(cacheKey, JSON.stringify(merged))
+      try {
+        window.dispatchEvent(new CustomEvent('levl_profile_updated', { detail: merged }))
+      } catch (e) {}
     } catch (e) {}
   }
 

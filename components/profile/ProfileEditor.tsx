@@ -20,9 +20,6 @@ type ProfileEditorProps = {
 }
 
 export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps) {
-  const isDirtyRef = useRef(false)
-  const isSyncingFromPropsRef = useRef(false)
-
   const [goals, setGoals] = useState<string[]>(profile.primary_goals || [])
   const [preferences, setPreferences] = useState<Record<string, number>>(
     profile.outcome_preference_scores || {}
@@ -89,6 +86,10 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
   const [lastPeriodStartDate, setLastPeriodStartDate] = useState<string>(profile.last_period_start_date || '')
   const [cycleLengthDays, setCycleLengthDays] = useState<number>(profile.average_cycle_length_days || 28)
 
+  const hasMountedRef = useRef(false)
+  const isSyncingFromPropsRef = useRef(false)
+  const [savedSuccess, setSavedSuccess] = useState(false)
+
   // Sync state when profile prop changes externally (e.g. from onboarding or recalibration)
   useEffect(() => {
     isSyncingFromPropsRef.current = true
@@ -115,15 +116,15 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
     if (profile.last_period_start_date) setLastPeriodStartDate(profile.last_period_start_date)
     if (profile.average_cycle_length_days) setCycleLengthDays(profile.average_cycle_length_days)
     
-    // Reset dirty flag after sync
     setTimeout(() => {
       isSyncingFromPropsRef.current = false
-    }, 100)
+      hasMountedRef.current = true
+    }, 150)
   }, [profile])
 
-  // Auto-save logic ONLY when user made changes (isDirtyRef === true)
+  // Guaranteed Auto-save effect on any user state modification
   useEffect(() => {
-    if (!isDirtyRef.current || isSyncingFromPropsRef.current) return
+    if (!hasMountedRef.current || isSyncingFromPropsRef.current) return
 
     const save = async () => {
       setIsSaving(true)
@@ -156,7 +157,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
         discipline_level_0_99: enableComplexity ? complexity : null as any,
         experimental_openness_0_99: enableEvidence ? evidence : null as any,
         risk_tolerance: enableSafety ? riskMapping[safetyIndex as keyof typeof riskMapping] : null as any,
-        age: age ? parseInt(age) : null as any,
+        age: age ? parseInt(age, 10) : null as any,
         height_inches: totalHeightInches > 0 ? totalHeightInches : null as any,
         weight_lbs: weight ? parseFloat(weight) : null as any,
         body_fat_percentage: bodyFat ? parseFloat(bodyFat) : null as any,
@@ -167,10 +168,12 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
         last_period_start_date: isFemaleEligible && enableInfradian && lastPeriodStartDate ? lastPeriodStartDate : null as any,
         average_cycle_length_days: isFemaleEligible && enableInfradian ? cycleLengthDays : null as any
       })
-      setTimeout(() => setIsSaving(false), 500)
+      setIsSaving(false)
+      setSavedSuccess(true)
+      setTimeout(() => setSavedSuccess(false), 2000)
     }
     
-    const timeout = setTimeout(save, 800)
+    const timeout = setTimeout(save, 400)
     return () => clearTimeout(timeout)
   }, [
     goals, preferences, 
@@ -185,12 +188,6 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
     negAlcohol, negNicotine, negSitting, negCaffeine, negScreens, negLateMeal, negSugar,
     profile.local_user_id
   ])
-
-  const markDirty = () => {
-    if (!isSyncingFromPropsRef.current) {
-      isDirtyRef.current = true
-    }
-  }
 
   const toggleGoal = (goal: string) => {
     setGoals(prev => 
@@ -212,7 +209,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
 
   const addPreference = (id: string) => {
     if (id && !preferences[id]) {
-      setPreferences(prev => ({ ...prev, [id]: 5 })) // Default to 5/10
+      setPreferences(prev => ({ ...prev, [id]: 7 })) // Default to 7/10
     }
   }
 
@@ -223,7 +220,17 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
     <div className="space-y-6">
       <div className="flex justify-between items-center text-xs">
         <span className="text-levl-text-secondary">Your ranking profile drives the Explore tab recommendations.</span>
-        <span className={`transition-opacity ${isSaving ? 'opacity-100 text-levl-accent' : 'opacity-0'} font-bold`}>Saving...</span>
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 border border-white/5 text-[11px] font-mono shrink-0">
+          {isSaving ? (
+            <span className="text-levl-accent font-bold animate-pulse">Saving...</span>
+          ) : savedSuccess ? (
+            <span className="text-emerald-400 font-bold flex items-center gap-1">
+              ✓ Auto-saved
+            </span>
+          ) : (
+            <span className="text-slate-500 font-medium">Auto-saves on change</span>
+          )}
+        </div>
       </div>
 
       {/* Primary Goals */}
@@ -259,7 +266,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
             <input 
               type="number" 
               value={age} 
-              onChange={e => { markDirty(); setAge(e.target.value); }} 
+              onChange={e => setAge(e.target.value)} 
               placeholder="e.g. 35" 
               className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" 
             />
@@ -269,7 +276,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
             <input 
               type="number" 
               value={bodyFat} 
-              onChange={e => { markDirty(); setBodyFat(e.target.value); }} 
+              onChange={e => setBodyFat(e.target.value)} 
               placeholder="e.g. 15" 
               className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" 
             />
@@ -292,7 +299,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
                 <input
                   type="number"
                   value={heightFeet}
-                  onChange={e => { markDirty(); setHeightFeet(e.target.value); }}
+                  onChange={e => setHeightFeet(e.target.value)}
                   placeholder="5"
                   min={3}
                   max={7}
@@ -304,7 +311,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
                 <input
                   type="number"
                   value={heightInches}
-                  onChange={e => { markDirty(); setHeightInches(e.target.value); }}
+                  onChange={e => setHeightInches(e.target.value)}
                   placeholder="10"
                   min={0}
                   max={11}
@@ -327,7 +334,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
             <input 
               type="number" 
               value={weight} 
-              onChange={e => { markDirty(); setWeight(e.target.value); }} 
+              onChange={e => setWeight(e.target.value)} 
               placeholder="e.g. 175" 
               className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" 
             />
@@ -340,7 +347,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
             {['Male', 'Female', 'Other'].map(opt => (
               <button 
                 key={opt} 
-                onClick={() => { markDirty(); setSexSelection(opt); }} 
+                onClick={() => setSexSelection(opt)} 
                 className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${sexSelection === opt ? 'bg-levl-accent text-white border-levl-accent' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
               >
                 {opt}
@@ -351,7 +358,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
             <input 
               type="text" 
               value={customSex} 
-              onChange={e => { markDirty(); setCustomSex(e.target.value); }} 
+              onChange={e => setCustomSex(e.target.value)} 
               placeholder="Specify..." 
               className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white mt-2 outline-none" 
             />

@@ -76,32 +76,30 @@ export default function HardwareAccessCard({ profile, onUpdated }: HardwareAcces
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
-  const toggleItem = (itemId: string) => {
-    setHardware(prev => {
-      if (prev.includes(itemId)) {
-        return prev.filter(id => id !== itemId)
-      } else {
-        return [...prev, itemId]
-      }
-    })
-  }
-
-  const handleSave = async () => {
+  const autoSave = async (updatedHardware: string[]) => {
     setIsSaving(true)
     const updatedPrefs = {
       ...profile.outcome_preference_scores,
-      hardware_access: hardware
+      hardware_access: updatedHardware
     }
 
     const updated = await updateUserProfile(profile.local_user_id, {
-      hardware_access: hardware,
+      hardware_access: updatedHardware,
       outcome_preference_scores: updatedPrefs
     })
 
     setIsSaving(false)
     setSavedSuccess(true)
-    setTimeout(() => setSavedSuccess(false), 2500)
+    setTimeout(() => setSavedSuccess(false), 2000)
     if (updated && onUpdated) onUpdated(updated)
+  }
+
+  const toggleItem = (itemId: string) => {
+    const nextHardware = hardware.includes(itemId)
+      ? hardware.filter(id => id !== itemId)
+      : [...hardware, itemId]
+    setHardware(nextHardware)
+    autoSave(nextHardware)
   }
 
   return (
@@ -114,7 +112,7 @@ export default function HardwareAccessCard({ profile, onUpdated }: HardwareAcces
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-              <span>Biohacking Hardware & Facility Access</span>
+              <span>Biohacking Hardware &amp; Facility Access</span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                 {hardware.length}/{HARDWARE_ITEMS.length} Available
               </span>
@@ -125,14 +123,17 @@ export default function HardwareAccessCard({ profile, onUpdated }: HardwareAcces
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
-        >
-          {savedSuccess ? <Check size={14} /> : <SlidersHorizontal size={14} />}
-          <span>{savedSuccess ? 'Saved!' : 'Save Equipment'}</span>
-        </button>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 border border-white/5 text-[11px] font-mono shrink-0">
+          {isSaving ? (
+            <span className="text-purple-400 font-bold animate-pulse">Saving...</span>
+          ) : savedSuccess ? (
+            <span className="text-emerald-400 font-bold flex items-center gap-1">
+              <Check size={12} /> Auto-saved
+            </span>
+          ) : (
+            <span className="text-slate-500 font-medium">Auto-saves on change</span>
+          )}
+        </div>
       </div>
 
       {/* Hardware Checklist Grid */}
