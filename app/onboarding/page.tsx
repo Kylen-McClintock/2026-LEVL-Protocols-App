@@ -10,7 +10,8 @@ import {
   Sparkles, Check, ArrowRight, ArrowLeft, ShieldCheck, Zap, Moon, 
   Brain, Dna, Dumbbell, Flame, Droplets, Watch, Pill, Activity, 
   Heart, Shield, Clock, Sun, Sunrise, Sunset, Utensils, Award, 
-  RotateCcw, CheckCircle2, ChevronRight, Info, Eye
+  RotateCcw, CheckCircle2, ChevronRight, Info, Eye, Camera, FileText,
+  Sliders, Thermometer
 } from 'lucide-react'
 
 interface ModalityOption {
@@ -38,19 +39,27 @@ const STARTER_CATALOG: ModalityOption[] = [
   { id: 'melatonin_onset_dimming', name: '2-Hour Blue-Light Shielding', dose: 'Circadian dimming & amber glasses 120m pre-bed', timing: 'evening', goalKey: 'sleep' }
 ]
 
-// Database Parity: Exact matching IDs from Supabase outcome_dimensions table
-const FUNCTIONAL_OUTCOME_CATALOG = [
-  { id: 'energy', name: 'Energy', description: 'Perceived physical and mental energy levels throughout the day', icon: <Zap size={16} className="text-amber-400" /> },
-  { id: 'sleep_quality', name: 'Sleep Quality', description: 'Subjective restfulness and restorative deep sleep architecture', icon: <Moon size={16} className="text-indigo-400" /> },
-  { id: 'sleep_latency', name: 'Sleep Latency', description: 'Time it takes to fall asleep after getting into bed', icon: <Clock size={16} className="text-cyan-400" /> },
-  { id: 'mental_clarity', name: 'Mental Clarity', description: 'Clear, sharp thinking without mental fatigue or brain fog', icon: <Activity size={16} className="text-teal-400" /> },
-  { id: 'focus', name: 'Focus', description: 'Ability to sustain deep attention and enter cognitive flow state', icon: <Brain size={16} className="text-sky-400" /> },
-  { id: 'mood', name: 'Mood', description: 'Overall feeling of well-being, motivation, and emotional state', icon: <Sparkles size={16} className="text-yellow-400" /> },
-  { id: 'stress', name: 'Stress & Autonomic Tone', description: 'Resistance to stress, high vagal tone and parasympathetic calm', icon: <Heart size={16} className="text-emerald-400" /> },
-  { id: 'soreness', name: 'Soreness & Recovery', description: 'Muscular or joint recovery and lack of systemic inflammation', icon: <Shield size={16} className="text-purple-400" /> },
-  { id: 'strength', name: 'Strength & Power', description: 'Perceived physical power output and training work capacity', icon: <Dumbbell size={16} className="text-rose-400" /> },
-  { id: 'digestive_comfort', name: 'Digestive Comfort', description: 'Metabolic comfort, lack of bloating or post-meal distress', icon: <Flame size={16} className="text-orange-400" /> },
-  { id: 'waking_restedness', name: 'Waking Restedness', description: 'Feeling alert and refreshed upon waking with optimal cortisol timing', icon: <Sunrise size={16} className="text-emerald-400" /> }
+// Database Parity: Grouped into biological tracking time horizons
+const MORNING_CORE_OUTCOMES = [
+  { id: 'sleep_quality', name: 'Sleep Quality', description: 'Restorative deep sleep architecture and subjective restfulness', icon: <Moon size={16} className="text-indigo-400" /> },
+  { id: 'sleep_latency', name: 'Sleep Latency', description: 'Time it took to fall asleep after lights out', icon: <Clock size={16} className="text-cyan-400" /> },
+  { id: 'waking_restedness', name: 'Waking Restedness', description: 'Feeling refreshed and alert upon waking with natural cortisol timing', icon: <Sunrise size={16} className="text-emerald-400" /> },
+  { id: 'mood', name: 'Morning Mood', description: 'Baseline emotional state and optimism upon waking', icon: <Sparkles size={16} className="text-yellow-400" /> },
+  { id: 'energy', name: 'Morning Readiness & Energy', description: 'Starting physical and mental energy to launch your day', icon: <Zap size={16} className="text-amber-400" /> }
+]
+
+const EVENING_CORE_OUTCOMES = [
+  { id: 'energy', name: 'Daily Sustained Energy', description: 'Overall physical stamina and freedom from afternoon crashes across the whole day', icon: <Zap size={16} className="text-amber-400" /> },
+  { id: 'focus', name: 'Full-Day Cognitive Focus', description: 'Deep attention span, productivity, and flow state throughout the day', icon: <Brain size={16} className="text-sky-400" /> },
+  { id: 'mental_clarity', name: 'Mental Clarity & Sharpness', description: 'Clear thinking, memory recall, and freedom from brain fog', icon: <Activity size={16} className="text-teal-400" /> },
+  { id: 'stress', name: 'Daily Stress & Autonomic Tone', description: 'Stress resilience, parasympathetic calm, and evening nervous system recovery', icon: <Heart size={16} className="text-emerald-400" /> },
+  { id: 'mood', name: 'Overall Daily Well-Being', description: 'Cumulative feeling of satisfaction, mood stability, and motivation', icon: <Sparkles size={16} className="text-yellow-400" /> },
+  { id: 'digestive_comfort', name: 'Digestive & Metabolic Comfort', description: 'Gut comfort, lack of post-meal bloating, and clean energy uptake', icon: <Flame size={16} className="text-orange-400" /> }
+]
+
+const PROTOCOL_TRIGGERED_OUTCOMES = [
+  { id: 'soreness', name: 'Muscular Soreness & Recovery', description: 'Muscular or joint recovery and low inflammation (prompted post-training)', icon: <Shield size={16} className="text-purple-400" /> },
+  { id: 'strength', name: 'Strength & Power Output', description: 'Physical work capacity and strength output (prompted post-training)', icon: <Dumbbell size={16} className="text-rose-400" /> }
 ]
 
 const PRIMARY_GOAL_OPTIONS = [
@@ -95,6 +104,8 @@ function OnboardingContent() {
   const [displayName, setDisplayName] = useState('')
   const [age, setAge] = useState<string>('34')
   const [biologicalSex, setBiologicalSex] = useState<'Male' | 'Female' | 'Other'>('Male')
+  const [heightFeet, setHeightFeet] = useState<string>('5')
+  const [heightInches, setHeightInches] = useState<string>('10')
   const [weightLbs, setWeightLbs] = useState<string>('175')
   const [dietaryPattern, setDietaryPattern] = useState<string>('Omnivore')
 
@@ -112,7 +123,7 @@ function OnboardingContent() {
   // Step 4: Primary Goals & Functional Outcomes
   const [selectedGoals, setSelectedGoals] = useState<string[]>(['longevity', 'energy', 'sleep'])
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([
-    'energy', 'sleep_quality', 'mental_clarity', 'focus', 'soreness', 'waking_restedness'
+    'energy', 'sleep_quality', 'mental_clarity', 'focus', 'soreness', 'waking_restedness', 'stress', 'mood'
   ])
 
   // Step 5: Starter Stack Selection
@@ -128,6 +139,10 @@ function OnboardingContent() {
           if (profile.display_name && profile.display_name !== 'Protocol Optimizer') setDisplayName(profile.display_name)
           if (profile.age) setAge(String(profile.age))
           if (profile.biological_sex) setBiologicalSex(profile.biological_sex as any)
+          if (profile.height_inches) {
+            setHeightFeet(String(Math.floor(profile.height_inches / 12)))
+            setHeightInches(String(profile.height_inches % 12))
+          }
           if (profile.weight_lbs) setWeightLbs(String(profile.weight_lbs))
           if (profile.dietary_pattern) setDietaryPattern(profile.dietary_pattern)
           if (profile.ideal_wake_time) setIdealWakeTime(profile.ideal_wake_time)
@@ -220,12 +235,15 @@ function OnboardingContent() {
         outcomeScores[id] = 7
       })
 
+      const totalHeightInches = (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
+
       // 1. Ensure profile exists and persist all biological parameters
       await getOrCreateUserProfile(localUserId)
       await updateUserProfile(localUserId, {
         display_name: nameToSave,
         age: age ? parseInt(age, 10) : undefined,
         biological_sex: biologicalSex,
+        height_inches: totalHeightInches > 0 ? totalHeightInches : undefined,
         weight_lbs: weightLbs ? parseFloat(weightLbs) : undefined,
         dietary_pattern: dietaryPattern,
         ideal_wake_time: idealWakeTime,
@@ -274,6 +292,15 @@ function OnboardingContent() {
     const num = parseFloat(weightLbs)
     return isNaN(num) ? 0 : Math.round((num * 0.45359237) * 10) / 10
   }, [weightLbs])
+
+  // Height cm conversion
+  const totalInches = useMemo(() => {
+    return (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
+  }, [heightFeet, heightInches])
+
+  const heightCm = useMemo(() => {
+    return totalInches > 0 ? Math.round((totalInches * 2.54) * 10) / 10 : 0
+  }, [totalInches])
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-x-hidden">
@@ -342,7 +369,7 @@ function OnboardingContent() {
               <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold text-white block mb-0.5">How LEVL Uses This:</span>
-                Your age and biological sex calibrate personalized biomarker intervals and biological age reversal algorithms (PhenoAge/Calico). Your body weight dynamically scales precise mg/kg dosing across supplements, peptides, and fasting protocols.
+                Your age and biological sex calibrate personalized biomarker intervals and biological age reversal algorithms (PhenoAge/Calico). Your height and weight scale precise mg/kg dosing across supplements, peptides, and fasting windows.
               </div>
             </div>
 
@@ -401,25 +428,68 @@ function OnboardingContent() {
                 </div>
               </div>
 
-              {/* Weight with KG conversion */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Body Weight (lbs)
-                  </label>
-                  {weightKg > 0 && (
-                    <span className="text-xs font-mono text-emerald-400 font-bold">
-                      ≈ {weightKg} kg (used for mg/kg dosing)
-                    </span>
-                  )}
+              {/* Height & Weight Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Height */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                      Height
+                    </label>
+                    {heightCm > 0 && (
+                      <span className="text-xs font-mono text-emerald-400 font-bold">
+                        ≈ {heightCm} cm
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2.5 focus-within:border-emerald-500">
+                      <input
+                        type="number"
+                        value={heightFeet}
+                        onChange={(e) => setHeightFeet(e.target.value)}
+                        placeholder="5"
+                        min={3}
+                        max={7}
+                        className="w-full bg-transparent text-sm text-white focus:outline-none"
+                      />
+                      <span className="text-xs text-slate-400 font-mono">ft</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2.5 focus-within:border-emerald-500">
+                      <input
+                        type="number"
+                        value={heightInches}
+                        onChange={(e) => setHeightInches(e.target.value)}
+                        placeholder="10"
+                        min={0}
+                        max={11}
+                        className="w-full bg-transparent text-sm text-white focus:outline-none"
+                      />
+                      <span className="text-xs text-slate-400 font-mono">in</span>
+                    </div>
+                  </div>
                 </div>
-                <input
-                  type="number"
-                  value={weightLbs}
-                  onChange={(e) => setWeightLbs(e.target.value)}
-                  placeholder="e.g. 175"
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                />
+
+                {/* Weight */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                      Body Weight (lbs)
+                    </label>
+                    {weightKg > 0 && (
+                      <span className="text-xs font-mono text-emerald-400 font-bold">
+                        ≈ {weightKg} kg (dosing)
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    value={weightLbs}
+                    onChange={(e) => setWeightLbs(e.target.value)}
+                    placeholder="e.g. 175"
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
               </div>
 
               {/* Dietary Baseline */}
@@ -752,7 +822,7 @@ function OnboardingContent() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Primary Longevity Goals */}
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
@@ -788,38 +858,132 @@ function OnboardingContent() {
                 </div>
               </div>
 
-              {/* Functional Outcome Dimensions (Database Parity) */}
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Prioritized Daily Outcomes (Tracked in Check-in)
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {FUNCTIONAL_OUTCOME_CATALOG.map(o => {
-                    const isSelected = selectedOutcomes.includes(o.id)
-                    return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() => toggleOutcome(o.id)}
-                        className={`p-3 rounded-2xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-emerald-500/15 border-emerald-400 text-white shadow-sm'
-                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-300'
-                        }`}
-                      >
-                        <div className="mt-0.5 shrink-0">{o.icon}</div>
-                        <div className="min-w-0 flex-1">
-                          <span className="text-xs font-bold block text-white">{o.name}</span>
-                          <span className="text-[10px] text-slate-400 block truncate">{o.description}</span>
-                        </div>
-                        <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
-                          isSelected ? 'bg-emerald-500 border-emerald-400 text-slate-950' : 'border-slate-700 bg-slate-900'
-                        }`}>
-                          {isSelected && <Check size={10} className="stroke-[3]" />}
-                        </div>
-                      </button>
-                    )
-                  })}
+              {/* Categorized Functional Outcomes */}
+              <div className="space-y-4 pt-2 border-t border-slate-800">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-0.5">
+                    Prioritized Daily Outcomes (Database Parity)
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Grouped by when LEVL asks for your log. Evening ratings reflect your cumulative overall feeling across the entire day.
+                  </p>
+                </div>
+
+                {/* 1. MORNING CORE CHECK-IN */}
+                <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-indigo-500/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sunrise size={14} className="text-indigo-400" />
+                      <span>🌅 Morning Check-in (Waking State &amp; Sleep Depth)</span>
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400">Fast 10s Log</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {MORNING_CORE_OUTCOMES.map(o => {
+                      const isSelected = selectedOutcomes.includes(o.id)
+                      return (
+                        <button
+                          key={`morning_${o.id}`}
+                          type="button"
+                          onClick={() => toggleOutcome(o.id)}
+                          className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-indigo-500/15 border-indigo-400/80 text-white shadow-sm'
+                              : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-300'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">{o.icon}</div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold block text-white">{o.name}</span>
+                            <span className="text-[10px] text-slate-400 block truncate">{o.description}</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
+                            isSelected ? 'bg-indigo-500 border-indigo-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                          }`}>
+                            {isSelected && <Check size={10} className="stroke-[3]" />}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. EVENING CORE CHECK-IN (Full-Day Reflection) */}
+                <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-amber-500/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sunset size={14} className="text-amber-400" />
+                      <span>🌙 Evening Check-in (Full-Day Cumulative Reflection)</span>
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400">Nightly Review</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {EVENING_CORE_OUTCOMES.map(o => {
+                      const isSelected = selectedOutcomes.includes(o.id)
+                      return (
+                        <button
+                          key={`evening_${o.id}`}
+                          type="button"
+                          onClick={() => toggleOutcome(o.id)}
+                          className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-amber-500/15 border-amber-400/80 text-white shadow-sm'
+                              : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-300'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">{o.icon}</div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold block text-white">{o.name}</span>
+                            <span className="text-[10px] text-slate-400 block truncate">{o.description}</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
+                            isSelected ? 'bg-amber-500 border-amber-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                          }`}>
+                            {isSelected && <Check size={10} className="stroke-[3]" />}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. PROTOCOL-TRIGGERED (Inline / Post-Execution) */}
+                <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-purple-500/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Zap size={14} className="text-purple-400" />
+                      <span>⚡ Protocol-Triggered (Logged Post-Activity)</span>
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400">Contextual Logs</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {PROTOCOL_TRIGGERED_OUTCOMES.map(o => {
+                      const isSelected = selectedOutcomes.includes(o.id)
+                      return (
+                        <button
+                          key={`triggered_${o.id}`}
+                          type="button"
+                          onClick={() => toggleOutcome(o.id)}
+                          className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-purple-500/15 border-purple-400/80 text-white shadow-sm'
+                              : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-300'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">{o.icon}</div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold block text-white">{o.name}</span>
+                            <span className="text-[10px] text-slate-400 block truncate">{o.description}</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
+                            isSelected ? 'bg-purple-500 border-purple-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                          }`}>
+                            {isSelected && <Check size={10} className="stroke-[3]" />}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
@@ -846,7 +1010,7 @@ function OnboardingContent() {
         )}
 
         {/* ---------------------------------------------------- */}
-        {/* STEP 5: TAILORED STARTER STACK ACTIVATION */}
+        {/* STEP 5: TAILORED STARTER STACK & SETTINGS DISCOVERY */}
         {/* ---------------------------------------------------- */}
         {step === 5 && (
           <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 backdrop-blur-md">
@@ -870,7 +1034,7 @@ function OnboardingContent() {
             </div>
 
             {/* Starter Modalities List */}
-            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
               {recommendedModalities.map(mod => {
                 const checked = isModalityChecked(mod.id)
                 return (
@@ -878,7 +1042,7 @@ function OnboardingContent() {
                     key={mod.id}
                     type="button"
                     onClick={() => toggleModalityCheck(mod.id)}
-                    className={`w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all cursor-pointer ${
+                    className={`w-full p-3.5 rounded-2xl border text-left flex items-start gap-3.5 transition-all cursor-pointer ${
                       checked
                         ? 'bg-slate-950/90 border-emerald-500/50 shadow-md'
                         : 'bg-slate-950/40 border-slate-800 text-slate-500 opacity-60'
@@ -906,6 +1070,49 @@ function OnboardingContent() {
                   </button>
                 )
               })}
+            </div>
+
+            {/* ADVANCED PERSONALIZATION PREVIEW (Non-blocking Discovery Card) */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/40 border border-indigo-500/30 space-y-3 shadow-inner">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-indigo-400" />
+                  <span>Available Anytime in Settings (Optional Superpowers)</span>
+                </span>
+                <span className="text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono font-bold uppercase">
+                  Profile Hub
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                When you're ready to take personalization deeper, you can unlock advanced tools anytime in your Profile &amp; Settings:
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center gap-2 text-slate-300">
+                  <FileText size={14} className="text-emerald-400 shrink-0" />
+                  <span className="truncate">Upload Bloodwork</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center gap-2 text-slate-300">
+                  <Activity size={14} className="text-purple-400 shrink-0" />
+                  <span className="truncate">PhenoAge Clocks</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center gap-2 text-slate-300">
+                  <Camera size={14} className="text-sky-400 shrink-0" />
+                  <span className="truncate">AI Label Scanner</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center gap-2 text-slate-300">
+                  <Pill size={14} className="text-amber-400 shrink-0" />
+                  <span className="truncate">Peptide Cycles</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center gap-2 text-slate-300">
+                  <Clock size={14} className="text-rose-400 shrink-0" />
+                  <span className="truncate">Fasting Timers</span>
+                </div>
+                <div className="p-2 rounded-xl bg-black/40 border border-white/5 flex items-center gap-2 text-slate-300">
+                  <Thermometer size={14} className="text-cyan-400 shrink-0" />
+                  <span className="truncate">°F / °C Units</span>
+                </div>
+              </div>
             </div>
 
             <div className="pt-2 flex items-center justify-between gap-3">

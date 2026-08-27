@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { UserProfile, OutcomeDimension } from '@/lib/types'
 import { updateUserProfile } from '@/lib/data'
 import { Activity, Target, Wallet, X, Plus, ChevronDown, ChevronUp } from 'lucide-react'
@@ -20,6 +20,9 @@ type ProfileEditorProps = {
 }
 
 export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps) {
+  const isDirtyRef = useRef(false)
+  const isSyncingFromPropsRef = useRef(false)
+
   const [goals, setGoals] = useState<string[]>(profile.primary_goals || [])
   const [preferences, setPreferences] = useState<Record<string, number>>(
     profile.outcome_preference_scores || {}
@@ -50,6 +53,12 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
 
   // Advanced Biomarker States
   const [age, setAge] = useState<string>(profile.age?.toString() || '')
+  const [heightFeet, setHeightFeet] = useState<string>(
+    profile.height_inches ? Math.floor(profile.height_inches / 12).toString() : '5'
+  )
+  const [heightInches, setHeightInches] = useState<string>(
+    profile.height_inches ? (profile.height_inches % 12).toString() : '10'
+  )
   const [weight, setWeight] = useState<string>(profile.weight_lbs?.toString() || '')
   const [bodyFat, setBodyFat] = useState<string>(profile.body_fat_percentage?.toString() || '')
   const [sleepQuality, setSleepQuality] = useState<number>(profile.baseline_sleep_quality_0_10 || 5)
@@ -74,13 +83,48 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
   const [negScreens, setNegScreens] = useState<string>(preferences['neg_screens'] !== undefined ? String(preferences['neg_screens']) : 'skip')
   const [negLateMeal, setNegLateMeal] = useState<string>(preferences['neg_late_meal'] !== undefined ? String(preferences['neg_late_meal']) : 'skip')
   const [negSugar, setNegSugar] = useState<string>(preferences['neg_sugar'] !== undefined ? String(preferences['neg_sugar']) : 'skip')
+  
   // Infradian Cycle States (Only relevant for Female < 52)
   const [enableInfradian, setEnableInfradian] = useState<boolean>(profile.infradian_cycle_enabled || false)
   const [lastPeriodStartDate, setLastPeriodStartDate] = useState<string>(profile.last_period_start_date || '')
   const [cycleLengthDays, setCycleLengthDays] = useState<number>(profile.average_cycle_length_days || 28)
 
-  // Auto-save logic
+  // Sync state when profile prop changes externally (e.g. from onboarding or recalibration)
   useEffect(() => {
+    isSyncingFromPropsRef.current = true
+    if (profile.primary_goals) setGoals(profile.primary_goals)
+    if (profile.outcome_preference_scores) setPreferences(profile.outcome_preference_scores)
+    if (profile.age != null) setAge(profile.age.toString())
+    if (profile.height_inches != null) {
+      setHeightFeet(Math.floor(profile.height_inches / 12).toString())
+      setHeightInches((profile.height_inches % 12).toString())
+    }
+    if (profile.weight_lbs != null) setWeight(profile.weight_lbs.toString())
+    if (profile.body_fat_percentage != null) setBodyFat(profile.body_fat_percentage.toString())
+    if (profile.biological_sex) {
+      const isCustom = !['Male', 'Female'].includes(profile.biological_sex)
+      setSexSelection(isCustom ? 'Other' : profile.biological_sex)
+      setCustomSex(isCustom ? profile.biological_sex : '')
+    }
+    if (profile.dietary_pattern) {
+      const isCustomD = !standardDiets.includes(profile.dietary_pattern)
+      setDietSelection(isCustomD ? 'Other' : profile.dietary_pattern)
+      setCustomDiet(isCustomD ? profile.dietary_pattern : '')
+    }
+    if (profile.infradian_cycle_enabled != null) setEnableInfradian(profile.infradian_cycle_enabled)
+    if (profile.last_period_start_date) setLastPeriodStartDate(profile.last_period_start_date)
+    if (profile.average_cycle_length_days) setCycleLengthDays(profile.average_cycle_length_days)
+    
+    // Reset dirty flag after sync
+    setTimeout(() => {
+      isSyncingFromPropsRef.current = false
+    }, 100)
+  }, [profile])
+
+  // Auto-save logic ONLY when user made changes (isDirtyRef === true)
+  useEffect(() => {
+    if (!isDirtyRef.current || isSyncingFromPropsRef.current) return
+
     const save = async () => {
       setIsSaving(true)
       
@@ -102,6 +146,8 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
         neg_sugar: negSugar
       }
 
+      const totalHeightInches = (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
+
       await updateUserProfile(profile.local_user_id, {
         primary_goals: goals,
         outcome_preference_scores: updatedPref,
@@ -111,6 +157,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
         experimental_openness_0_99: enableEvidence ? evidence : null as any,
         risk_tolerance: enableSafety ? riskMapping[safetyIndex as keyof typeof riskMapping] : null as any,
         age: age ? parseInt(age) : null as any,
+        height_inches: totalHeightInches > 0 ? totalHeightInches : null as any,
         weight_lbs: weight ? parseFloat(weight) : null as any,
         body_fat_percentage: bodyFat ? parseFloat(bodyFat) : null as any,
         baseline_sleep_quality_0_10: enableSleep ? sleepQuality : null as any,
@@ -132,12 +179,18 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
     enableComplexity, complexity, 
     enableEvidence, evidence, 
     enableSafety, safetyIndex,
-    age, weight, bodyFat, sleepQuality, enableSleep,
+    age, heightFeet, heightInches, weight, bodyFat, sleepQuality, enableSleep,
     sexSelection, customSex, dietSelection, customDiet,
     enableInfradian, lastPeriodStartDate, cycleLengthDays,
     negAlcohol, negNicotine, negSitting, negCaffeine, negScreens, negLateMeal, negSugar,
     profile.local_user_id
   ])
+
+  const markDirty = () => {
+    if (!isSyncingFromPropsRef.current) {
+      isDirtyRef.current = true
+    }
+  }
 
   const toggleGoal = (goal: string) => {
     setGoals(prev => 
@@ -198,35 +251,110 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
       {/* Advanced Biomarkers */}
       <div className="glass-card p-4 rounded-xl space-y-4">
         <h3 className="font-bold flex items-center gap-2"><Activity size={18} className="text-levl-accent" /> Biomarkers & Lifestyle</h3>
-        <p className="text-xs text-levl-text-secondary">All fields are optional but help the engine make personalized recommendations.</p>
+        <p className="text-xs text-levl-text-secondary">All fields are optional but help the engine calibrate mg/kg dosing, BMI, and PhenoAge biological age.</p>
         
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">Age</label>
-            <input type="number" value={age} onChange={e => setAge(e.target.value)} placeholder="e.g. 35" className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" />
+            <label className="block text-xs font-medium text-gray-400 mb-1">Chronological Age</label>
+            <input 
+              type="number" 
+              value={age} 
+              onChange={e => { markDirty(); setAge(e.target.value); }} 
+              placeholder="e.g. 35" 
+              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" 
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1">Body Fat %</label>
-            <input type="number" value={bodyFat} onChange={e => setBodyFat(e.target.value)} placeholder="e.g. 15" className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" />
+            <input 
+              type="number" 
+              value={bodyFat} 
+              onChange={e => { markDirty(); setBodyFat(e.target.value); }} 
+              placeholder="e.g. 15" 
+              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" 
+            />
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1">Weight (lbs)</label>
-          <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="e.g. 170" className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" />
+        {/* Height & Weight Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-gray-400">Height</label>
+              {((parseInt(heightFeet || '0') * 12) + parseInt(heightInches || '0')) > 0 && (
+                <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                  ≈ {Math.round((((parseInt(heightFeet || '0') * 12) + parseInt(heightInches || '0')) * 2.54) * 10) / 10} cm
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 focus-within:border-levl-accent">
+                <input
+                  type="number"
+                  value={heightFeet}
+                  onChange={e => { markDirty(); setHeightFeet(e.target.value); }}
+                  placeholder="5"
+                  min={3}
+                  max={7}
+                  className="w-full bg-transparent text-sm text-white focus:outline-none"
+                />
+                <span className="text-xs text-slate-400 font-mono">ft</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 focus-within:border-levl-accent">
+                <input
+                  type="number"
+                  value={heightInches}
+                  onChange={e => { markDirty(); setHeightInches(e.target.value); }}
+                  placeholder="10"
+                  min={0}
+                  max={11}
+                  className="w-full bg-transparent text-sm text-white focus:outline-none"
+                />
+                <span className="text-xs text-slate-400 font-mono">in</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-gray-400">Weight (lbs)</label>
+              {parseFloat(weight) > 0 && (
+                <span className="text-[11px] font-mono text-emerald-400 font-bold">
+                  ≈ {Math.round((parseFloat(weight) * 0.45359237) * 10) / 10} kg
+                </span>
+              )}
+            </div>
+            <input 
+              type="number" 
+              value={weight} 
+              onChange={e => { markDirty(); setWeight(e.target.value); }} 
+              placeholder="e.g. 175" 
+              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" 
+            />
+          </div>
         </div>
 
         <div className="space-y-2 pt-2 border-t border-white/5">
           <label className="block text-xs font-medium text-gray-400 mb-1">Biological Sex</label>
           <div className="flex gap-2">
             {['Male', 'Female', 'Other'].map(opt => (
-              <button key={opt} onClick={() => setSexSelection(opt)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${sexSelection === opt ? 'bg-levl-accent text-white border-levl-accent' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}>
+              <button 
+                key={opt} 
+                onClick={() => { markDirty(); setSexSelection(opt); }} 
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${sexSelection === opt ? 'bg-levl-accent text-white border-levl-accent' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+              >
                 {opt}
               </button>
             ))}
           </div>
           {sexSelection === 'Other' && (
-            <input type="text" value={customSex} onChange={e => setCustomSex(e.target.value)} placeholder="Specify..." className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white mt-2 outline-none" />
+            <input 
+              type="text" 
+              value={customSex} 
+              onChange={e => { markDirty(); setCustomSex(e.target.value); }} 
+              placeholder="Specify..." 
+              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white mt-2 outline-none" 
+            />
           )}
         </div>
 

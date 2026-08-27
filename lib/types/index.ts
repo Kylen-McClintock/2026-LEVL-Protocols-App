@@ -15,6 +15,7 @@ export type UserProfile = {
   longevity_personalization_coefficient: number
   age?: number
   biological_sex?: string
+  height_inches?: number
   weight_lbs?: number
   body_fat_percentage?: number
   baseline_sleep_quality_0_10?: number
