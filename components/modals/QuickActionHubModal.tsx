@@ -6,7 +6,9 @@ import {
   FileText, Activity, Layers, ArrowRight, BookOpen, ShieldCheck, Dumbbell 
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { format } from 'date-fns'
 import CreateCustomModalityModal from './CreateCustomModalityModal'
+import EnrollProtocolModal from './EnrollProtocolModal'
 import AdHocLoggerModal from './AdHocLoggerModal'
 import Breathing478Applet from '@/components/applets/Breathing478Applet'
 import BoxBreathingApplet from '@/components/applets/BoxBreathingApplet'
@@ -29,12 +31,13 @@ export default function QuickActionHubModal({
   const localUserId = authUserId || getLocalUserId()
 
   const [showCreateCustom, setShowCreateCustom] = useState(false)
+  const [showEnrollProtocol, setShowEnrollProtocol] = useState(false)
   const [showAdHocLog, setShowAdHocLog] = useState(false)
   const [showHotkeysModal, setShowHotkeysModal] = useState(false)
   const [show478Breathing, setShow478Breathing] = useState(false)
   const [showBoxBreathing, setShowBoxBreathing] = useState(false)
 
-  if (!isOpen && !showCreateCustom && !showAdHocLog && !showHotkeysModal && !show478Breathing && !showBoxBreathing) {
+  if (!isOpen && !showCreateCustom && !showEnrollProtocol && !showAdHocLog && !showHotkeysModal && !show478Breathing && !showBoxBreathing) {
     return null
   }
 
@@ -119,7 +122,34 @@ export default function QuickActionHubModal({
                 <ArrowRight size={16} className="text-slate-500 group-hover:text-sky-300 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
               </button>
 
-              {/* Option 3: Log Unscheduled / Ad-Hoc Dose */}
+              {/* Option 3: Enroll in Protocol Stack */}
+              <button
+                onClick={() => {
+                  onClose()
+                  setShowEnrollProtocol(true)
+                }}
+                className="w-full text-left p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-sky-500/10 border border-emerald-500/30 hover:border-emerald-400/60 hover:bg-emerald-500/15 transition-all group flex items-center justify-between cursor-pointer"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300 group-hover:scale-105 transition-transform">
+                    <BookOpen size={20} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-white group-hover:text-emerald-200 transition-colors flex items-center gap-1.5">
+                      Enroll in Protocol Stack
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-mono font-medium">
+                        STACKS
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      Adopt verified stacks (Blueprint 2026, Huberman, Sinclair, Attia)
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight size={16} className="text-slate-500 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+              </button>
+
+              {/* Option 4: Log Unscheduled / Ad-Hoc Dose */}
               <button
                 onClick={() => {
                   onClose()
@@ -225,6 +255,19 @@ export default function QuickActionHubModal({
         <CreateCustomModalityModal
           isOpen={showCreateCustom}
           onClose={() => setShowCreateCustom(false)}
+        />
+      )}
+
+      {showEnrollProtocol && (
+        <EnrollProtocolModal
+          isOpen={showEnrollProtocol}
+          onClose={() => setShowEnrollProtocol(false)}
+          dateStr={format(new Date(), 'yyyy-MM-dd')}
+          onProtocolEnrolled={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+            }
+          }}
         />
       )}
 
