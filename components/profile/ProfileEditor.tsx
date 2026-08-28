@@ -267,8 +267,8 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
               type="number" 
               value={age} 
               onChange={e => setAge(e.target.value)} 
-              placeholder="e.g. 35" 
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" 
+              placeholder="" 
+              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white placeholder:text-slate-700 focus:border-levl-accent outline-none" 
             />
           </div>
           <div>
@@ -277,8 +277,8 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
               type="number" 
               value={bodyFat} 
               onChange={e => setBodyFat(e.target.value)} 
-              placeholder="e.g. 15" 
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" 
+              placeholder="" 
+              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white placeholder:text-slate-700 focus:border-levl-accent outline-none" 
             />
           </div>
         </div>
@@ -300,10 +300,10 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
                   type="number"
                   value={heightFeet}
                   onChange={e => setHeightFeet(e.target.value)}
-                  placeholder="5"
+                  placeholder=""
                   min={3}
                   max={7}
-                  className="w-full bg-transparent text-sm text-white focus:outline-none"
+                  className="w-full bg-transparent text-sm text-white focus:outline-none placeholder:text-slate-700"
                 />
                 <span className="text-xs text-slate-400 font-mono">ft</span>
               </div>
@@ -312,10 +312,10 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
                   type="number"
                   value={heightInches}
                   onChange={e => setHeightInches(e.target.value)}
-                  placeholder="10"
+                  placeholder=""
                   min={0}
                   max={11}
-                  className="w-full bg-transparent text-sm text-white focus:outline-none"
+                  className="w-full bg-transparent text-sm text-white focus:outline-none placeholder:text-slate-700"
                 />
                 <span className="text-xs text-slate-400 font-mono">in</span>
               </div>
@@ -335,8 +335,8 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
               type="number" 
               value={weight} 
               onChange={e => setWeight(e.target.value)} 
-              placeholder="e.g. 175" 
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-levl-accent outline-none" 
+              placeholder="" 
+              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white placeholder:text-slate-700 focus:border-levl-accent outline-none" 
             />
           </div>
         </div>

@@ -450,10 +450,10 @@ function OnboardingContent() {
                     type="number"
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
-                    placeholder="e.g. 34"
+                    placeholder=""
                     min={18}
                     max={120}
-                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-sm text-white placeholder:text-slate-700 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
 
@@ -500,10 +500,10 @@ function OnboardingContent() {
                         type="number"
                         value={heightFeet}
                         onChange={(e) => setHeightFeet(e.target.value)}
-                        placeholder="5"
+                        placeholder=""
                         min={3}
                         max={7}
-                        className="w-full bg-transparent text-sm text-white focus:outline-none"
+                        className="w-full bg-transparent text-sm text-white focus:outline-none placeholder:text-slate-700"
                       />
                       <span className="text-xs text-slate-400 font-mono">ft</span>
                     </div>
@@ -512,10 +512,10 @@ function OnboardingContent() {
                         type="number"
                         value={heightInches}
                         onChange={(e) => setHeightInches(e.target.value)}
-                        placeholder="10"
+                        placeholder=""
                         min={0}
                         max={11}
-                        className="w-full bg-transparent text-sm text-white focus:outline-none"
+                        className="w-full bg-transparent text-sm text-white focus:outline-none placeholder:text-slate-700"
                       />
                       <span className="text-xs text-slate-400 font-mono">in</span>
                     </div>
@@ -538,8 +538,8 @@ function OnboardingContent() {
                     type="number"
                     value={weightLbs}
                     onChange={(e) => setWeightLbs(e.target.value)}
-                    placeholder="e.g. 175"
-                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder=""
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 text-sm text-white placeholder:text-slate-700 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
               </div>
