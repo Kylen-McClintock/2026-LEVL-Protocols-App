@@ -3,12 +3,13 @@
 import React, { useState } from 'react'
 import { 
   X, Plus, Sparkles, Zap, Flame, Wind, Droplets, 
-  FileText, Activity, Layers, ArrowRight, BookOpen, ShieldCheck, Dumbbell 
+  FileText, Activity, Layers, ArrowRight, BookOpen, ShieldCheck, Dumbbell, Mic 
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import CreateCustomModalityModal from './CreateCustomModalityModal'
 import EnrollProtocolModal from './EnrollProtocolModal'
+import VoiceLogModal from './VoiceLogModal'
 import AdHocLoggerModal from './AdHocLoggerModal'
 import Breathing478Applet from '@/components/applets/Breathing478Applet'
 import BoxBreathingApplet from '@/components/applets/BoxBreathingApplet'
@@ -30,6 +31,7 @@ export default function QuickActionHubModal({
   const { localUserId: authUserId } = useAuth()
   const localUserId = authUserId || getLocalUserId()
 
+  const [showVoiceLog, setShowVoiceLog] = useState(false)
   const [showCreateCustom, setShowCreateCustom] = useState(false)
   const [showEnrollProtocol, setShowEnrollProtocol] = useState(false)
   const [showAdHocLog, setShowAdHocLog] = useState(false)
@@ -37,7 +39,7 @@ export default function QuickActionHubModal({
   const [show478Breathing, setShow478Breathing] = useState(false)
   const [showBoxBreathing, setShowBoxBreathing] = useState(false)
 
-  if (!isOpen && !showCreateCustom && !showEnrollProtocol && !showAdHocLog && !showHotkeysModal && !show478Breathing && !showBoxBreathing) {
+  if (!isOpen && !showVoiceLog && !showCreateCustom && !showEnrollProtocol && !showAdHocLog && !showHotkeysModal && !show478Breathing && !showBoxBreathing) {
     return null
   }
 
@@ -70,7 +72,34 @@ export default function QuickActionHubModal({
             {/* Action Grid */}
             <div className="p-4 sm:p-5 overflow-y-auto space-y-2.5 flex-1">
               
-              {/* Option 1: AI Longevity Coach */}
+              {/* Option 1: Voice Protocol Log */}
+              <button
+                onClick={() => {
+                  onClose()
+                  setShowVoiceLog(true)
+                }}
+                className="w-full text-left p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/20 via-indigo-500/15 to-sky-500/15 border border-purple-500/40 hover:border-purple-400/70 hover:bg-purple-500/25 transition-all group flex items-center justify-between cursor-pointer shadow-lg shadow-purple-500/10"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/30 to-sky-500/30 border border-purple-500/50 flex items-center justify-center text-purple-300 group-hover:scale-105 transition-transform shadow-md shadow-purple-500/20">
+                    <Mic size={20} className="text-purple-200" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-white group-hover:text-purple-200 transition-colors flex items-center gap-1.5">
+                      Voice Protocol Log
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/30 border border-purple-500/40 text-purple-300 font-mono font-bold">
+                        ✦ VOICE AI
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      Speak naturally to log doses, sauna, workouts, and symptoms
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight size={16} className="text-slate-500 group-hover:text-purple-300 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+              </button>
+
+              {/* Option 2: AI Longevity Coach */}
               <button
                 onClick={() => {
                   onClose()
@@ -97,7 +126,7 @@ export default function QuickActionHubModal({
                 <ArrowRight size={16} className="text-slate-500 group-hover:text-purple-300 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
               </button>
 
-              {/* Option 2: Create Custom Modality from Scratch */}
+              {/* Option 3: Create Custom Modality from Scratch */}
               <button
                 onClick={() => {
                   onClose()
@@ -251,6 +280,18 @@ export default function QuickActionHubModal({
       )}
 
       {/* Sub-Modals */}
+      {showVoiceLog && (
+        <VoiceLogModal
+          isOpen={showVoiceLog}
+          onClose={() => setShowVoiceLog(false)}
+          onLoggedSuccess={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+            }
+          }}
+        />
+      )}
+
       {showCreateCustom && (
         <CreateCustomModalityModal
           isOpen={showCreateCustom}
