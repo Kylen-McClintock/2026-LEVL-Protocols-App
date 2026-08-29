@@ -44,17 +44,16 @@ const MORNING_CORE_OUTCOMES = [
   { id: 'sleep_quality', name: 'Sleep Quality', description: 'Restorative deep sleep architecture and subjective restfulness', icon: <Moon size={16} className="text-indigo-400" /> },
   { id: 'sleep_latency', name: 'Sleep Latency', description: 'Time it took to fall asleep after lights out', icon: <Clock size={16} className="text-cyan-400" /> },
   { id: 'waking_restedness', name: 'Waking Restedness', description: 'Feeling refreshed and alert upon waking with natural cortisol timing', icon: <Sunrise size={16} className="text-emerald-400" /> },
-  { id: 'mood', name: 'Morning Mood', description: 'Baseline emotional state and optimism upon waking', icon: <Sparkles size={16} className="text-yellow-400" /> },
-  { id: 'energy', name: 'Morning Readiness & Energy', description: 'Starting physical and mental energy to launch your day', icon: <Zap size={16} className="text-amber-400" /> }
+  { id: 'mood', name: 'Morning Mood', description: 'Baseline emotional state and optimism upon waking (moment-in-time check)', icon: <Sparkles size={16} className="text-yellow-400" /> },
+  { id: 'energy', name: 'Morning Readiness & Energy', description: 'Starting physical and mental energy upon waking (moment-in-time check)', icon: <Zap size={16} className="text-amber-400" /> }
 ]
 
 const EVENING_CORE_OUTCOMES = [
-  { id: 'energy', name: 'Daily Sustained Energy', description: 'Overall physical stamina and freedom from afternoon crashes across the whole day', icon: <Zap size={16} className="text-amber-400" /> },
-  { id: 'focus', name: 'Full-Day Cognitive Focus', description: 'Deep attention span, productivity, and flow state throughout the day', icon: <Brain size={16} className="text-sky-400" /> },
-  { id: 'mental_clarity', name: 'Mental Clarity & Sharpness', description: 'Clear thinking, memory recall, and freedom from brain fog', icon: <Activity size={16} className="text-teal-400" /> },
+  { id: 'energy', name: 'Overall Daily Energy', description: 'Cumulative physical stamina and freedom from afternoon crashes across the whole day', icon: <Zap size={16} className="text-amber-400" /> },
+  { id: 'focus', name: 'Full-Day Focus & Mental Clarity', description: 'Deep attention span, productivity, clear thinking, and flow state throughout the day', icon: <Brain size={16} className="text-sky-400" /> },
   { id: 'stress', name: 'Daily Stress & Autonomic Tone', description: 'Stress resilience, parasympathetic calm, and evening nervous system recovery', icon: <Heart size={16} className="text-emerald-400" /> },
-  { id: 'mood', name: 'Overall Daily Well-Being', description: 'Cumulative feeling of satisfaction, mood stability, and motivation', icon: <Sparkles size={16} className="text-yellow-400" /> },
-  { id: 'digestive_comfort', name: 'Digestive & Metabolic Comfort', description: 'Gut comfort, lack of post-meal bloating, and clean energy uptake', icon: <Flame size={16} className="text-orange-400" /> }
+  { id: 'mood', name: 'Overall Daily Well-Being', description: 'Cumulative feeling of satisfaction, mood stability, and motivation across the day', icon: <Sparkles size={16} className="text-yellow-400" /> },
+  { id: 'digestive_comfort', name: 'Digestive & Metabolic Comfort', description: 'Gut comfort, lack of post-meal bloating, and clean energy uptake across meals', icon: <Flame size={16} className="text-orange-400" /> }
 ]
 
 const PROTOCOL_TRIGGERED_OUTCOMES = [
@@ -123,7 +122,7 @@ function OnboardingContent() {
   // Step 4: Primary Goals & Functional Outcomes
   const [selectedGoals, setSelectedGoals] = useState<string[]>(['longevity', 'energy', 'sleep'])
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([
-    'energy', 'sleep_quality', 'mental_clarity', 'focus', 'soreness', 'waking_restedness', 'stress', 'mood'
+    'energy', 'sleep_quality', 'focus', 'soreness', 'waking_restedness', 'stress', 'mood', 'digestive_comfort'
   ])
 
   // Step 5: Starter Stack Selection

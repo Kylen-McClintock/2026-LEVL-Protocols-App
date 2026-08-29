@@ -341,7 +341,11 @@ export default function DailyWellbeingCheckin({
     const val = prefs ? (prefs[key] ?? prefs[id]) : undefined
     if (val === undefined) {
       // Default recommended items if no explicit preference set yet
-      return ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep'].includes(id)
+      if (mode === 'morning') {
+        return ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep', 'waking_restedness'].includes(id)
+      } else {
+        return ['mood', 'energy', 'stress', 'focus', 'focus_score', 'mental_clarity', 'digestive_comfort'].includes(id)
+      }
     }
     return val >= 7
   }
@@ -1294,7 +1298,7 @@ export default function DailyWellbeingCheckin({
                   return (
                     <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-white font-bold">{isNightly ? 'Overall Mood Today' : 'Morning Mood'}</span>
+                        <span className="text-white font-bold">{isNightly ? 'Overall Mood Today' : 'Morning Mood (Current)'}</span>
                         <div className="flex items-center gap-1.5">
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
                             {colorCfg.qualityLabel}
@@ -1329,7 +1333,7 @@ export default function DailyWellbeingCheckin({
                   return (
                     <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-white font-bold">{isNightly ? 'Overall Energy Today' : 'Morning Energy'}</span>
+                        <span className="text-white font-bold">{isNightly ? 'Overall Daily Energy' : 'Morning Readiness & Energy (Current)'}</span>
                         <div className="flex items-center gap-1.5">
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
                             {colorCfg.qualityLabel}
@@ -1364,7 +1368,7 @@ export default function DailyWellbeingCheckin({
                   return (
                     <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-white font-bold">{isNightly ? 'Overall Stress Today' : 'Current Stress'}</span>
+                        <span className="text-white font-bold">{isNightly ? 'Overall Stress Today' : 'Current Morning Stress'}</span>
                         <div className="flex items-center gap-1.5">
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
                             {colorCfg.qualityLabel}
@@ -1437,7 +1441,7 @@ export default function DailyWellbeingCheckin({
                     <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-white font-bold flex items-center gap-1">
-                          🧠 Mental Focus & Clarity
+                          🧠 {isNightly ? 'Overall Focus & Mental Clarity Today' : 'Current Mental Focus & Clarity'}
                         </span>
                         <div className="flex items-center gap-1.5">
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
