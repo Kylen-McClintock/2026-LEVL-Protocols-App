@@ -2,10 +2,17 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { 
-  X, Mic, MicOff, Square, Sparkles, CheckCircle2, Volume2, 
-  VolumeX, AlertCircle, Play, RotateCcw, ArrowRight, ShieldCheck, Flame 
+  X, Mic, Square, Sparkles, CheckCircle2, Volume2, 
+  VolumeX, AlertCircle, RotateCcw, ArrowRight, ShieldCheck, Flame, 
+  Activity, Star, Plus, Check 
 } from 'lucide-react'
-import { updateDailyTaskStatus, getDailyProtocolTasks } from '@/lib/data'
+import { 
+  updateDailyTaskStatus, 
+  getDailyProtocolTasks, 
+  getModalities, 
+  logAdHocSession, 
+  saveOutcomeObservation 
+} from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { useAuth } from '@/contexts/AuthContext'
 import { format } from 'date-fns'
@@ -17,6 +24,17 @@ interface VoiceLogModalProps {
 }
 
 type PersonaType = 'coach' | 'friend' | 'scientist' | 'trainer' | 'minimalist'
+
+interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  text: string
+  completedNames?: string[]
+  adHocNames?: string[]
+  outcomes?: { outcome_id: string; rating_0_10: number; notes?: string }[]
+  deviations?: string
+  timestamp: string
+}
 
 const PERSONAS: { id: PersonaType; label: string; icon: string; desc: string }[] = [
   { id: 'coach', label: 'The Coach', icon: '⚡', desc: 'Direct, metric-driven, performance & recovery focused' },
@@ -43,38 +61,44 @@ export default function VoiceLogModal({
   const [enableSpokenResponse, setEnableSpokenResponse] = useState(false)
   const [selectedPersona, setSelectedPersona] = useState<PersonaType>('coach')
 
-  // Result state
-  const [resultData, setResultData] = useState<{
-    transcript: string
-    completed_task_ids: string[]
-    completed_modality_names: string[]
-    ad_hoc_items?: { name: string; dose?: string }[]
-    deviations_and_symptoms?: string
-    ai_response_text: string
-  } | null>(null)
-
+  // Multi-turn conversation messages
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  
   const [todayTasks, setTodayTasks] = useState<any[]>([])
+  const [catalogModalities, setCatalogModalities] = useState<any[]>([])
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const animFrameRef = useRef<number | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const chatScrollRef = useRef<HTMLDivElement | null>(null)
 
-  // Fetch today's tasks on open for context
+  // Fetch today's tasks and full modality catalog on open
   useEffect(() => {
     if (isOpen) {
       const todayStr = format(new Date(), 'yyyy-MM-dd')
-      getDailyProtocolTasks(localUserId, todayStr).then(tasks => {
+      Promise.all([
+        getDailyProtocolTasks(localUserId, todayStr),
+        getModalities()
+      ]).then(([tasks, mods]) => {
         if (tasks) setTodayTasks(tasks)
+        if (mods) setCatalogModalities(mods)
       })
-      setResultData(null)
+      setMessages([])
       setErrorMsg(null)
     } else {
       stopRecording()
     }
   }, [isOpen, localUserId])
+
+  // Auto-scroll chat thread to bottom
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
+    }
+  }, [messages, isProcessing])
 
   // Timer counter
   useEffect(() => {
@@ -93,7 +117,6 @@ export default function VoiceLogModal({
 
   const startRecording = async () => {
     setErrorMsg(null)
-    setResultData(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       
@@ -142,7 +165,7 @@ export default function VoiceLogModal({
         }
       }
 
-      recorder.start(250) // collect chunks
+      recorder.start(250)
       setIsRecording(true)
     } catch (err: any) {
       console.error('Microphone access error:', err)
@@ -162,9 +185,14 @@ export default function VoiceLogModal({
     setErrorMsg(null)
 
     try {
+      const todayStr = format(new Date(), 'yyyy-MM-dd')
+      const conversationHistory = messages.map(m => ({ role: m.role, text: m.text }))
+
       const formData = new FormData()
       formData.append('file', blob, 'voicelog.webm')
       formData.append('todayTasks', JSON.stringify(todayTasks))
+      formData.append('catalogModalities', JSON.stringify(catalogModalities))
+      formData.append('history', JSON.stringify(conversationHistory))
       formData.append('persona', selectedPersona)
 
       const response = await fetch('/api/voice/log', {
@@ -179,12 +207,20 @@ export default function VoiceLogModal({
 
       const res = await response.json()
       if (res.data) {
-        setResultData(res.data)
+        const data = res.data
 
-        // Automatically mark matched tasks as completed in DB
-        if (res.data.completed_task_ids && res.data.completed_task_ids.length > 0) {
-          const notesText = res.data.deviations_and_symptoms || undefined
-          for (const taskId of res.data.completed_task_ids) {
+        // 1. Add User speech message
+        const userMsg: ChatMessage = {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          text: data.transcript,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+
+        // 2. Perform Database Task Completions
+        if (data.completed_task_ids && data.completed_task_ids.length > 0) {
+          const notesText = data.deviations_and_symptoms || undefined
+          for (const taskId of data.completed_task_ids) {
             await updateDailyTaskStatus(
               taskId,
               'completed',
@@ -195,20 +231,70 @@ export default function VoiceLogModal({
               { notes: notesText }
             )
           }
-
-          // Trigger real-time stats broadcast to top header and Today view
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('levl_bench_updated'))
-            window.dispatchEvent(new CustomEvent('levl_protocol_schedule_updated', { detail: { updated: true } }))
-          }
-          if (onLoggedSuccess) onLoggedSuccess()
         }
 
-        // If spoken audio feedback is enabled, speak response using Web Speech Synthesis
+        // 3. Log Ad-Hoc Sessions if user completed un-scheduled items
+        const loggedAdHocNames: string[] = []
+        if (data.ad_hoc_items && data.ad_hoc_items.length > 0) {
+          for (const adHoc of data.ad_hoc_items) {
+            const matchedMod = catalogModalities.find(m => 
+              m.name.toLowerCase().includes(adHoc.name.toLowerCase()) || 
+              adHoc.name.toLowerCase().includes(m.name.toLowerCase())
+            )
+            if (matchedMod) {
+              await logAdHocSession(
+                localUserId, 
+                matchedMod.id, 
+                new Date().toISOString(), 
+                { custom_dose: adHoc.dose, user_notes: data.deviations_and_symptoms }
+              )
+              loggedAdHocNames.push(`${matchedMod.name} ${adHoc.dose ? `(${adHoc.dose})` : ''}`)
+            }
+          }
+        }
+
+        // 4. Save Outcome Observations (Energy, Soreness, Sleep, Mood)
+        if (data.outcomes_observed && data.outcomes_observed.length > 0) {
+          for (const outcome of data.outcomes_observed) {
+            await saveOutcomeObservation(
+              localUserId,
+              outcome.outcome_id,
+              'post',
+              outcome.rating_0_10,
+              todayStr,
+              undefined,
+              undefined,
+              outcome.notes || data.deviations_and_symptoms
+            )
+          }
+        }
+
+        // 5. Trigger Real-Time App-Wide Stats Updates
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+          window.dispatchEvent(new CustomEvent('levl_protocol_schedule_updated', { detail: { updated: true } }))
+        }
+        if (onLoggedSuccess) onLoggedSuccess()
+
+        // 6. Add Assistant Response message
+        const assistantMsg: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          role: 'assistant',
+          text: data.ai_response_text,
+          completedNames: data.completed_modality_names,
+          adHocNames: loggedAdHocNames.length > 0 ? loggedAdHocNames : undefined,
+          outcomes: data.outcomes_observed,
+          deviations: data.deviations_and_symptoms,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+
+        setMessages(prev => [...prev, userMsg, assistantMsg])
+
+        // 7. Spoken voice synthesis if enabled
         if (enableSpokenResponse && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          const textToSpeak = res.data.ai_response_text
+          const textToSpeak = data.ai_response_text
           if (textToSpeak) {
-            window.speechSynthesis.cancel() // clear any prior
+            window.speechSynthesis.cancel()
             const utterance = new SpeechSynthesisUtterance(textToSpeak)
             utterance.rate = selectedPersona === 'trainer' ? 1.15 : (selectedPersona === 'minimalist' ? 1.1 : 1.05)
             utterance.pitch = selectedPersona === 'friend' ? 1.05 : 1.0
@@ -233,23 +319,23 @@ export default function VoiceLogModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800/90 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[75] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800/90 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[88vh] max-h-[750px] animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800/80 bg-slate-950/80 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800/80 bg-slate-950/80 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-r from-purple-500 via-indigo-500 to-sky-500 flex items-center justify-center text-white shadow-md shadow-purple-500/20">
               <Mic size={17} />
             </div>
             <div>
               <h2 className="text-base font-semibold text-white flex items-center gap-1.5">
-                Voice Protocol Log
+                Voice Protocol Companion
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 font-mono font-bold">
-                  ✦ GEMINI AI
+                  ✦ GEMINI
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">Speak naturally to log doses, durations, and symptoms</p>
+              <p className="text-xs text-slate-400">Speak naturally to check off tasks, log doses & track outcomes</p>
             </div>
           </div>
           <button
@@ -260,8 +346,42 @@ export default function VoiceLogModal({
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-5 overflow-y-auto space-y-5 flex-1">
+        {/* Persona & Voice Response Bar */}
+        <div className="px-5 py-2.5 bg-slate-950/90 border-b border-slate-800/70 flex items-center justify-between shrink-0 text-xs">
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-slate-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={enableSpokenResponse}
+                onChange={(e) => setEnableSpokenResponse(e.target.checked)}
+                className="w-3.5 h-3.5 rounded text-purple-500 focus:ring-purple-500 bg-slate-900 border-slate-700"
+              />
+              <span className="font-medium flex items-center gap-1">
+                {enableSpokenResponse ? <Volume2 size={13} className="text-purple-400" /> : <VolumeX size={13} className="text-slate-500" />}
+                Voice Audio Feedback
+              </span>
+            </label>
+          </div>
+
+          {/* Persona Switcher Dropdown / Pills */}
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] text-slate-500 hidden sm:inline">Persona:</span>
+            <select
+              value={selectedPersona}
+              onChange={(e) => setSelectedPersona(e.target.value as PersonaType)}
+              className="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-purple-300 font-medium outline-none cursor-pointer"
+            >
+              {PERSONAS.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.icon} {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Scrollable Conversation Thread */}
+        <div ref={chatScrollRef} className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
           {errorMsg && (
             <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs flex items-start gap-2">
               <AlertCircle size={16} className="shrink-0 mt-0.5" />
@@ -269,223 +389,180 @@ export default function VoiceLogModal({
             </div>
           )}
 
-          {/* Interactive Recording Area */}
-          {!resultData ? (
-            <div className="flex flex-col items-center justify-center py-6 space-y-4">
-              
-              {/* Pulsing Audio Waveform Indicator */}
-              <div className="h-16 flex items-center justify-center gap-1.5">
-                {isRecording ? (
-                  audioLevel.map((lvl, idx) => (
-                    <div
-                      key={idx}
-                      className="w-2 rounded-full bg-gradient-to-t from-purple-500 to-sky-400 transition-all duration-75"
-                      style={{ height: `${lvl}px` }}
-                    />
-                  ))
-                ) : (
-                  <div className="flex items-center gap-1 text-slate-500 text-xs">
-                    {[12, 18, 10, 24, 16, 10, 14, 20].map((h, idx) => (
-                      <div key={idx} className="w-1.5 rounded-full bg-slate-800" style={{ height: `${h}px` }} />
-                    ))}
-                  </div>
-                )}
+          {/* Empty State / Prompt Suggestions */}
+          {messages.length === 0 && !isProcessing && (
+            <div className="flex flex-col items-center justify-center h-full py-8 text-center space-y-3 text-slate-400">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-300">
+                <Sparkles size={24} />
               </div>
-
-              {/* Central Mic Record Button */}
-              <button
-                type="button"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={isProcessing}
-                className={`relative w-20 h-20 rounded-full flex items-center justify-center text-white transition-all shadow-xl cursor-pointer ${
-                  isRecording
-                    ? 'bg-red-500 hover:bg-red-600 scale-105 shadow-red-500/30 animate-pulse'
-                    : 'bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 hover:scale-105 shadow-purple-500/25'
-                }`}
-              >
-                {isRecording ? (
-                  <Square size={28} className="fill-white" />
-                ) : (
-                  <Mic size={32} />
-                )}
-              </button>
-
-              {/* Status & Timer */}
-              <div className="text-center">
-                {isRecording ? (
-                  <div className="space-y-1">
-                    <span className="text-sm font-mono font-bold text-red-400 flex items-center justify-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" />
-                      Recording {formatTimer(recordingSeconds)}
-                    </span>
-                    <p className="text-xs text-slate-400">Tap to stop and analyze</p>
-                  </div>
-                ) : isProcessing ? (
-                  <div className="space-y-1">
-                    <span className="text-sm font-medium text-sky-400 flex items-center justify-center gap-1.5">
-                      <Sparkles size={16} className="animate-spin" />
-                      Gemini Multimodal Ingesting...
-                    </span>
-                    <p className="text-xs text-slate-400">Transcribing & matching Today's tasks</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <span className="text-sm font-semibold text-white">
-                      Tap to Speak Protocol Check-In
-                    </span>
-                    <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                      "I just took my DeepCell and magnesium, did 15m in the sauna but got out early because I felt lightheaded."
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Spoken Voice Response Checkbox & Persona Selector */}
-              <div className="w-full pt-4 border-t border-slate-800/80 space-y-3">
-                <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 cursor-pointer hover:bg-slate-950 transition-all">
-                  <input
-                    type="checkbox"
-                    checked={enableSpokenResponse}
-                    onChange={(e) => setEnableSpokenResponse(e.target.checked)}
-                    className="w-4 h-4 rounded text-purple-500 focus:ring-purple-500 bg-slate-900 border-slate-700"
-                  />
-                  <div className="flex-1">
-                    <div className="text-xs font-semibold text-white flex items-center gap-1.5">
-                      {enableSpokenResponse ? <Volume2 size={14} className="text-purple-400" /> : <VolumeX size={14} className="text-slate-500" />}
-                      Enable Spoken AI Voice Response
-                      <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      LEVL will speak its biological feedback aloud via browser neural audio
-                    </div>
-                  </div>
-                </label>
-
-                {/* 5 Persona Selector (Visible only when audio response is enabled) */}
-                {enableSpokenResponse && (
-                  <div className="p-3 rounded-xl bg-slate-950 border border-purple-500/25 space-y-2 animate-in fade-in duration-200">
-                    <div className="text-[11px] font-semibold text-purple-300 uppercase tracking-wider">
-                      Select AI Companion Persona:
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                      {PERSONAS.map(p => (
-                        <button
-                          type="button"
-                          key={p.id}
-                          onClick={() => setSelectedPersona(p.id)}
-                          className={`p-2 rounded-lg border text-left text-xs transition-all cursor-pointer ${
-                            selectedPersona === p.id
-                              ? 'bg-purple-500/20 border-purple-500/60 text-white font-semibold shadow-sm'
-                              : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1">
-                            <span>{p.icon}</span>
-                            <span className="truncate">{p.label}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-            </div>
-          ) : (
-            /* Parsed Result Display */
-            <div className="space-y-4 animate-in fade-in duration-300">
-              
-              {/* Transcript Card */}
-              <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1">
-                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                  Recognized Transcript:
-                </div>
-                <p className="text-xs text-slate-200 italic leading-relaxed">
-                  "{resultData.transcript}"
+              <div>
+                <h3 className="text-sm font-semibold text-white">Start a Protocol Voice Log</h3>
+                <p className="text-xs text-slate-400 max-w-sm mt-1">
+                  Hold or tap the mic below to log your doses, sessions, subjective energy ratings, or workout notes.
                 </p>
               </div>
-
-              {/* Completed Tasks Box */}
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2">
-                <div className="text-xs font-semibold text-emerald-300 flex items-center gap-1.5">
-                  <CheckCircle2 size={15} />
-                  <span>Tasks Automatically Completed on Today:</span>
-                </div>
-                {resultData.completed_modality_names.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {resultData.completed_modality_names.map((name, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-200 text-xs font-medium border border-emerald-500/30"
-                      >
-                        ✓ {name}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400">No scheduled Today tasks matched.</p>
-                )}
-
-                {/* Ad-hoc Items */}
-                {resultData.ad_hoc_items && resultData.ad_hoc_items.length > 0 && (
-                  <div className="pt-2 border-t border-emerald-500/20 text-xs text-slate-300 space-y-1">
-                    <span className="text-[11px] text-slate-400 font-mono">Additional Unscheduled Items:</span>
-                    {resultData.ad_hoc_items.map((item, idx) => (
-                      <div key={idx} className="text-xs text-emerald-300">
-                        • {item.name} {item.dose && `(${item.dose})`}
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 text-left max-w-xs space-y-1">
+                <span className="text-[10px] font-mono text-purple-400 uppercase tracking-wider block">Example Phrases:</span>
+                <p>• "Took my DeepCell and magnesium, energy is an 8 out of 10 today."</p>
+                <p>• "Did 15 mins in the sauna but got out early because I felt lightheaded."</p>
+                <p>• "Legs are feeling pretty sore from yesterday's workout, maybe 6/10."</p>
               </div>
-
-              {/* Deviations & Symptoms */}
-              {resultData.deviations_and_symptoms && (
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
-                  <span className="font-bold block mb-0.5 text-amber-300">Notes & Symptoms Logged:</span>
-                  {resultData.deviations_and_symptoms}
-                </div>
-              )}
-
-              {/* AI Persona Response Card */}
-              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/15 via-indigo-500/10 to-sky-500/10 border border-purple-500/40 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="text-[11px] font-semibold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles size={13} />
-                    LEVL Companion ({PERSONAS.find(p => p.id === selectedPersona)?.label}):
-                  </div>
-                  {enableSpokenResponse && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono">
-                      🔊 Spoken
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-white leading-relaxed">
-                  {resultData.ai_response_text}
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setResultData(null)}
-                  className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
-                >
-                  <RotateCcw size={14} />
-                  Log Another
-                </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
-                >
-                  Done
-                </button>
-              </div>
-
             </div>
           )}
+
+          {/* Render Multi-Turn Messages */}
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+              
+              {/* User Bubble */}
+              {msg.role === 'user' ? (
+                <div className="max-w-[85%] p-3.5 rounded-2xl rounded-br-sm bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs shadow-md space-y-1">
+                  <p className="leading-relaxed">"{msg.text}"</p>
+                  <span className="text-[10px] text-purple-200/80 block text-right font-mono">{msg.timestamp}</span>
+                </div>
+              ) : (
+                /* Assistant AI Response Card */
+                <div className="max-w-[92%] p-4 rounded-2xl rounded-bl-sm bg-slate-950 border border-purple-500/30 text-white text-xs shadow-lg space-y-2.5 animate-in fade-in duration-200">
+                  
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+                    <span className="font-semibold text-purple-300 flex items-center gap-1.5 text-[11px]">
+                      <Sparkles size={13} />
+                      LEVL Companion ({PERSONAS.find(p => p.id === selectedPersona)?.label})
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">{msg.timestamp}</span>
+                  </div>
+
+                  {/* AI Response Text */}
+                  <p className="text-xs text-slate-100 leading-relaxed">
+                    {msg.text}
+                  </p>
+
+                  {/* Badges / Database Changes */}
+                  <div className="space-y-1.5 pt-1">
+                    {/* Completed Tasks */}
+                    {msg.completedNames && msg.completedNames.length > 0 && (
+                      <div className="flex flex-wrap gap-1 items-center">
+                        <span className="text-[10px] font-mono text-emerald-400 font-bold mr-1">Completed:</span>
+                        {msg.completedNames.map((cName, idx) => (
+                          <span key={idx} className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[11px] font-medium border border-emerald-500/30 flex items-center gap-1">
+                            <Check size={10} strokeWidth={3} />
+                            {cName}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Ad-Hoc Items */}
+                    {msg.adHocNames && msg.adHocNames.length > 0 && (
+                      <div className="flex flex-wrap gap-1 items-center">
+                        <span className="text-[10px] font-mono text-sky-400 font-bold mr-1">Ad-Hoc:</span>
+                        {msg.adHocNames.map((aName, idx) => (
+                          <span key={idx} className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-[11px] font-medium border border-sky-500/30 flex items-center gap-1">
+                            <Plus size={10} strokeWidth={3} />
+                            {aName}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Outcome Observations */}
+                    {msg.outcomes && msg.outcomes.length > 0 && (
+                      <div className="flex flex-wrap gap-1 items-center">
+                        <span className="text-[10px] font-mono text-amber-400 font-bold mr-1">Tracked:</span>
+                        {msg.outcomes.map((o, idx) => (
+                          <span key={idx} className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[11px] font-medium border border-amber-500/30 flex items-center gap-1">
+                            <Star size={10} className="fill-amber-400" />
+                            {o.outcome_id.replace('_', ' ')}: {o.rating_0_10}/10
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Deviations & Symptoms */}
+                    {msg.deviations && (
+                      <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200">
+                        <span className="font-bold text-amber-300">Observation: </span>
+                        {msg.deviations}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Processing Loading Bubble */}
+          {isProcessing && (
+            <div className="flex items-start">
+              <div className="p-3.5 rounded-2xl bg-slate-950 border border-purple-500/30 text-xs text-sky-400 flex items-center gap-2 shadow-md">
+                <Sparkles size={15} className="animate-spin text-purple-400" />
+                <span>Gemini analyzing voice & updating protocols...</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Voice Controller */}
+        <div className="p-4 border-t border-slate-800/80 bg-slate-950/95 shrink-0 flex items-center justify-between gap-3">
+          
+          {/* Live Waveform or Status Info */}
+          <div className="flex-1 flex items-center gap-2">
+            {isRecording ? (
+              <div className="flex items-center gap-1">
+                {audioLevel.map((lvl, idx) => (
+                  <div
+                    key={idx}
+                    className="w-1.5 rounded-full bg-gradient-to-t from-purple-500 to-sky-400 transition-all duration-75"
+                    style={{ height: `${lvl * 0.7}px` }}
+                  />
+                ))}
+                <span className="text-xs font-mono font-bold text-red-400 ml-2 animate-pulse">
+                  {formatTimer(recordingSeconds)}
+                </span>
+              </div>
+            ) : (
+              <span className="text-xs text-slate-400 truncate">
+                {messages.length > 0 ? "Tap mic to reply to companion..." : "Tap mic and speak your protocol..."}
+              </span>
+            )}
+          </div>
+
+          {/* Record Trigger Button */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isProcessing}
+              className={`h-12 px-5 rounded-2xl flex items-center justify-center gap-2 text-white font-bold text-xs transition-all shadow-lg cursor-pointer ${
+                isRecording
+                  ? 'bg-red-500 hover:bg-red-600 shadow-red-500/30 animate-pulse'
+                  : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-sky-400 shadow-purple-500/25'
+              }`}
+            >
+              {isRecording ? (
+                <>
+                  <Square size={16} className="fill-white" />
+                  <span>Stop</span>
+                </>
+              ) : (
+                <>
+                  <Mic size={18} />
+                  <span>{messages.length > 0 ? "Reply by Voice" : "Hold / Tap to Speak"}</span>
+                </>
+              )}
+            </button>
+
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-12 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all cursor-pointer"
+              >
+                Done
+              </button>
+            )}
+          </div>
 
         </div>
 
