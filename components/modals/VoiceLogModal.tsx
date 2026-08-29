@@ -4,14 +4,15 @@ import React, { useState, useRef, useEffect } from 'react'
 import { 
   X, Mic, Square, Sparkles, CheckCircle2, Volume2, 
   VolumeX, AlertCircle, RotateCcw, ArrowRight, ShieldCheck, Flame, 
-  Activity, Star, Plus, Check 
+  Activity, Star, Plus, Check, HelpCircle, FileText 
 } from 'lucide-react'
 import { 
   updateDailyTaskStatus, 
   getDailyProtocolTasks, 
   getModalities, 
   logAdHocSession, 
-  saveOutcomeObservation 
+  saveOutcomeObservation,
+  updateTaskExecutionDetails
 } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { useAuth } from '@/contexts/AuthContext'
@@ -25,13 +26,24 @@ interface VoiceLogModalProps {
 
 type PersonaType = 'coach' | 'friend' | 'scientist' | 'trainer' | 'minimalist'
 
+interface PendingConfirmation {
+  id: string
+  recognized_term: string
+  suggested_modality_id?: string
+  suggested_modality_name: string
+  suggested_dose?: string
+  confirmed?: boolean
+}
+
 interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   text: string
   completedNames?: string[]
   adHocNames?: string[]
+  pendingConfirmations?: PendingConfirmation[]
   outcomes?: { outcome_id: string; rating_0_10: number; notes?: string }[]
+  taskNotes?: { modality_name: string; note: string }[]
   deviations?: string
   timestamp: string
 }
@@ -75,7 +87,7 @@ export default function VoiceLogModal({
   const audioContextRef = useRef<AudioContext | null>(null)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
 
-  // Fetch today's tasks and full modality catalog on open
+  // Fetch today's tasks and modality catalog on open
   useEffect(() => {
     if (isOpen) {
       const todayStr = format(new Date(), 'yyyy-MM-dd')
@@ -188,10 +200,24 @@ export default function VoiceLogModal({
       const todayStr = format(new Date(), 'yyyy-MM-dd')
       const conversationHistory = messages.map(m => ({ role: m.role, text: m.text }))
 
+      // Compact payload to prevent HTTP 413 Payload Too Large
+      const compactTodayTasks = todayTasks.map(t => ({
+        id: t.id,
+        name: t.loose_modality?.name || t.protocol_step?.modality?.name || t.protocol_step?.name || t.modality?.name || t.name || t.title || 'Modality',
+        dose: t.execution_details?.custom_dose || t.loose_modality?.dose_or_exposure || t.protocol_step?.modality?.dose_or_exposure || '',
+        timing_slot: t.timing_slot || 'anytime',
+        completed: t.status === 'completed'
+      }))
+
+      const compactCatalog = catalogModalities.slice(0, 100).map((m: any) => ({
+        id: m.id,
+        name: m.name
+      }))
+
       const formData = new FormData()
       formData.append('file', blob, 'voicelog.webm')
-      formData.append('todayTasks', JSON.stringify(todayTasks))
-      formData.append('catalogModalities', JSON.stringify(catalogModalities))
+      formData.append('todayTasks', JSON.stringify(compactTodayTasks))
+      formData.append('catalogModalities', JSON.stringify(compactCatalog))
       formData.append('history', JSON.stringify(conversationHistory))
       formData.append('persona', selectedPersona)
 
@@ -202,7 +228,7 @@ export default function VoiceLogModal({
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}))
-        throw new Error(errJson.error || `Server responded with ${response.status}`)
+        throw new Error(errJson.error || `Server error (${response.status})`)
       }
 
       const res = await response.json()
@@ -217,10 +243,13 @@ export default function VoiceLogModal({
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
 
-        // 2. Perform Database Task Completions
+        // 2. Perform High-Confidence Database Task Completions
         if (data.completed_task_ids && data.completed_task_ids.length > 0) {
-          const notesText = data.deviations_and_symptoms || undefined
           for (const taskId of data.completed_task_ids) {
+            // Find modality specific note if present
+            const matchedNoteObj = data.task_notes?.find((tn: any) => tn.task_id === taskId)
+            const specificNote = matchedNoteObj?.note || data.deviations_and_symptoms || undefined
+            
             await updateDailyTaskStatus(
               taskId,
               'completed',
@@ -228,7 +257,7 @@ export default function VoiceLogModal({
               undefined,
               new Date().toISOString(),
               undefined,
-              { notes: notesText }
+              { notes: specificNote }
             )
           }
         }
@@ -242,18 +271,19 @@ export default function VoiceLogModal({
               adHoc.name.toLowerCase().includes(m.name.toLowerCase())
             )
             if (matchedMod) {
+              const noteText = adHoc.note || data.deviations_and_symptoms
               await logAdHocSession(
                 localUserId, 
                 matchedMod.id, 
                 new Date().toISOString(), 
-                { custom_dose: adHoc.dose, user_notes: data.deviations_and_symptoms }
+                { custom_dose: adHoc.dose, user_notes: noteText }
               )
               loggedAdHocNames.push(`${matchedMod.name} ${adHoc.dose ? `(${adHoc.dose})` : ''}`)
             }
           }
         }
 
-        // 4. Save Outcome Observations (Energy, Soreness, Sleep, Mood)
+        // 4. Save Outcome Observations (Energy, Soreness, Sleep, Mood, Recovery)
         if (data.outcomes_observed && data.outcomes_observed.length > 0) {
           for (const outcome of data.outcomes_observed) {
             await saveOutcomeObservation(
@@ -276,21 +306,33 @@ export default function VoiceLogModal({
         }
         if (onLoggedSuccess) onLoggedSuccess()
 
-        // 6. Add Assistant Response message
+        // 6. Format Pending Confirmations if fuzzy matches exist
+        const pendingItems: PendingConfirmation[] = (data.pending_confirmations || []).map((p: any, idx: number) => ({
+          id: `pend-${Date.now()}-${idx}`,
+          recognized_term: p.recognized_term,
+          suggested_modality_id: p.suggested_modality_id,
+          suggested_modality_name: p.suggested_modality_name,
+          suggested_dose: p.suggested_dose,
+          confirmed: false
+        }))
+
+        // 7. Add Assistant Response message
         const assistantMsg: ChatMessage = {
           id: `ai-${Date.now()}`,
           role: 'assistant',
           text: data.ai_response_text,
           completedNames: data.completed_modality_names,
           adHocNames: loggedAdHocNames.length > 0 ? loggedAdHocNames : undefined,
+          pendingConfirmations: pendingItems.length > 0 ? pendingItems : undefined,
           outcomes: data.outcomes_observed,
+          taskNotes: data.task_notes,
           deviations: data.deviations_and_symptoms,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
 
         setMessages(prev => [...prev, userMsg, assistantMsg])
 
-        // 7. Spoken voice synthesis if enabled
+        // 8. Spoken voice synthesis if enabled
         if (enableSpokenResponse && typeof window !== 'undefined' && 'speechSynthesis' in window) {
           const textToSpeak = data.ai_response_text
           if (textToSpeak) {
@@ -308,6 +350,72 @@ export default function VoiceLogModal({
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  // Handle 1-Tap Confirmation of Fuzzy Matched Modality
+  const handleConfirmPending = async (msgId: string, pendingId: string, item: PendingConfirmation) => {
+    try {
+      // Find matching modality ID or scheduled task ID
+      const candidateId = item.suggested_modality_id || catalogModalities.find(m => 
+        m.name.toLowerCase().includes(item.suggested_modality_name.toLowerCase())
+      )?.id
+
+      const scheduledTask = todayTasks.find(t => {
+        const name = t.loose_modality?.name || t.protocol_step?.modality?.name || t.protocol_step?.name
+        return name && name.toLowerCase().includes(item.suggested_modality_name.toLowerCase())
+      })
+
+      if (scheduledTask) {
+        await updateDailyTaskStatus(
+          scheduledTask.id, 
+          'completed', 
+          undefined, 
+          undefined, 
+          new Date().toISOString(), 
+          undefined, 
+          { custom_dose: item.suggested_dose }
+        )
+      } else if (candidateId) {
+        await logAdHocSession(
+          localUserId, 
+          candidateId, 
+          new Date().toISOString(), 
+          { custom_dose: item.suggested_dose }
+        )
+      }
+
+      // Update message state
+      setMessages(prev => prev.map(m => {
+        if (m.id === msgId && m.pendingConfirmations) {
+          return {
+            ...m,
+            completedNames: [...(m.completedNames || []), item.suggested_modality_name],
+            pendingConfirmations: m.pendingConfirmations.map(p => p.id === pendingId ? { ...p, confirmed: true } : p)
+          }
+        }
+        return m
+      }))
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+        window.dispatchEvent(new CustomEvent('levl_protocol_schedule_updated', { detail: { updated: true } }))
+      }
+      if (onLoggedSuccess) onLoggedSuccess()
+    } catch (e) {
+      console.error('Error confirming suggested modality:', e)
+    }
+  }
+
+  const handleDismissPending = (msgId: string, pendingId: string) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id === msgId && m.pendingConfirmations) {
+        return {
+          ...m,
+          pendingConfirmations: m.pendingConfirmations.filter(p => p.id !== pendingId)
+        }
+      }
+      return m
+    }))
   }
 
   if (!isOpen) return null
@@ -335,7 +443,7 @@ export default function VoiceLogModal({
                   ✦ GEMINI
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">Speak naturally to check off tasks, log doses & track outcomes</p>
+              <p className="text-xs text-slate-400">Speak naturally to check off tasks, log doses & track feelings</p>
             </div>
           </div>
           <button
@@ -363,7 +471,7 @@ export default function VoiceLogModal({
             </label>
           </div>
 
-          {/* Persona Switcher Dropdown / Pills */}
+          {/* Persona Switcher Dropdown */}
           <div className="flex items-center gap-1">
             <span className="text-[11px] text-slate-500 hidden sm:inline">Persona:</span>
             <select
@@ -396,16 +504,16 @@ export default function VoiceLogModal({
                 <Sparkles size={24} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-white">Start a Protocol Voice Log</h3>
+                <h3 className="text-sm font-semibold text-white">Natural Speech Protocol Logging</h3>
                 <p className="text-xs text-slate-400 max-w-sm mt-1">
-                  Hold or tap the mic below to log your doses, sessions, subjective energy ratings, or workout notes.
+                  Speak normally without robotic numbers. The AI calibrates your energy, mood, soreness, and protocol notes automatically.
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 text-left max-w-xs space-y-1">
-                <span className="text-[10px] font-mono text-purple-400 uppercase tracking-wider block">Example Phrases:</span>
-                <p>• "Took my DeepCell and magnesium, energy is an 8 out of 10 today."</p>
-                <p>• "Did 15 mins in the sauna but got out early because I felt lightheaded."</p>
-                <p>• "Legs are feeling pretty sore from yesterday's workout, maybe 6/10."</p>
+                <span className="text-[10px] font-mono text-purple-400 uppercase tracking-wider block">Natural Language Examples:</span>
+                <p>• "Took my DeepCell with coffee and feel fantastic today."</p>
+                <p>• "Did 20 mins in the sauna, but felt tired this morning."</p>
+                <p>• "Legs are pretty sore from squats, took 5g of creatine."</p>
               </div>
             </div>
           )}
@@ -438,8 +546,9 @@ export default function VoiceLogModal({
                   </p>
 
                   {/* Badges / Database Changes */}
-                  <div className="space-y-1.5 pt-1">
-                    {/* Completed Tasks */}
+                  <div className="space-y-2 pt-1">
+                    
+                    {/* High-Confidence Completed Tasks */}
                     {msg.completedNames && msg.completedNames.length > 0 && (
                       <div className="flex flex-wrap gap-1 items-center">
                         <span className="text-[10px] font-mono text-emerald-400 font-bold mr-1">Completed:</span>
@@ -465,15 +574,68 @@ export default function VoiceLogModal({
                       </div>
                     )}
 
+                    {/* Pending Fuzzy Match Confirmation Cards */}
+                    {msg.pendingConfirmations && msg.pendingConfirmations.length > 0 && (
+                      <div className="space-y-1.5 p-2 rounded-xl bg-purple-500/10 border border-purple-500/25">
+                        <div className="text-[10px] font-mono text-purple-300 font-semibold flex items-center gap-1">
+                          <HelpCircle size={11} />
+                          Did you mean to log this?
+                        </div>
+                        {msg.pendingConfirmations.map((p) => (
+                          <div key={p.id} className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-slate-900/80 border border-purple-500/20 text-xs">
+                            <div>
+                              <span className="text-white font-medium">{p.suggested_modality_name}</span>
+                              {p.suggested_dose && <span className="text-slate-400 ml-1">({p.suggested_dose})</span>}
+                              <span className="text-[10px] text-purple-400 block">"{p.recognized_term}"</span>
+                            </div>
+                            {p.confirmed ? (
+                              <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                                <Check size={12} strokeWidth={3} /> Confirmed
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => handleConfirmPending(msg.id, p.id, p)}
+                                  className="px-2 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-semibold border border-emerald-500/30 transition-colors cursor-pointer"
+                                >
+                                  ✓ Confirm
+                                </button>
+                                <button
+                                  onClick={() => handleDismissPending(msg.id, p.id)}
+                                  className="px-1.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 text-[10px] transition-colors cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Outcome Observations */}
                     {msg.outcomes && msg.outcomes.length > 0 && (
                       <div className="flex flex-wrap gap-1 items-center">
-                        <span className="text-[10px] font-mono text-amber-400 font-bold mr-1">Tracked:</span>
+                        <span className="text-[10px] font-mono text-amber-400 font-bold mr-1">Calibrated:</span>
                         {msg.outcomes.map((o, idx) => (
-                          <span key={idx} className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[11px] font-medium border border-amber-500/30 flex items-center gap-1">
+                          <span key={idx} className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[11px] font-medium border border-amber-500/30 flex items-center gap-1" title={o.notes}>
                             <Star size={10} className="fill-amber-400" />
                             {o.outcome_id.replace('_', ' ')}: {o.rating_0_10}/10
                           </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Modality Specific Notes */}
+                    {msg.taskNotes && msg.taskNotes.length > 0 && (
+                      <div className="space-y-1">
+                        {msg.taskNotes.map((tn, idx) => (
+                          <div key={idx} className="p-1.5 rounded-lg bg-sky-500/10 border border-sky-500/20 text-[11px] text-sky-200 flex items-start gap-1.5">
+                            <FileText size={12} className="shrink-0 mt-0.5 text-sky-400" />
+                            <span>
+                              <strong className="text-sky-300">{tn.modality_name} Note:</strong> {tn.note}
+                            </span>
+                          </div>
                         ))}
                       </div>
                     )}
