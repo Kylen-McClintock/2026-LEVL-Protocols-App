@@ -556,8 +556,9 @@ export default function ProtocolActionModal({
             </div>
           </div>
         ) : (
-          /* TAB 1: Adjust Protocol & Scope Selection */
-          <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
+          <>
+          {/* TAB 1: Adjust Protocol & Scope Selection */}
+          <div className="p-5 space-y-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-800">
             
             {/* Scope Selection: Entire Protocol vs Specific Modalities */}
             <div className="space-y-2">
@@ -788,59 +789,60 @@ export default function ProtocolActionModal({
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/80 transition"
               />
             </div>
+          </div>
 
-            {/* Action Toolbar */}
-            <div className="flex flex-col gap-2 pt-2 border-t border-slate-800">
+          {/* Sticky Action Toolbar (Always visible at bottom above screen bezel/nav) */}
+          <div className="flex flex-col gap-2.5 p-4 border-t border-slate-800 bg-slate-950 shrink-0">
+            <button
+              type="button"
+              onClick={handleConfirmAction}
+              disabled={isProcessing || (scope === 'custom' && selectedModalityIds.size === 0)}
+              className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg disabled:opacity-50 active:scale-95 touch-manipulation ${
+                actionType === 'eliminate'
+                  ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30'
+                  : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
+              }`}
+            >
+              {actionType === 'eliminate' ? (
+                <>
+                  <Trash2 size={15} /> Confirm Elimination ({scope === 'all' ? 'All' : selectedModalityIds.size})
+                </>
+              ) : (
+                <>
+                  <Archive size={15} /> Confirm Move to Bench ({scope === 'all' ? 'All' : selectedModalityIds.size})
+                </>
+              )}
+            </button>
+
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={handleConfirmAction}
-                disabled={isProcessing || (scope === 'custom' && selectedModalityIds.size === 0)}
-                className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg disabled:opacity-50 ${
-                  actionType === 'eliminate'
-                    ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30'
-                    : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
-                }`}
+                onClick={onClose}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer text-center active:scale-95 touch-manipulation"
               >
-                {actionType === 'eliminate' ? (
-                  <>
-                    <Trash2 size={14} /> Confirm Elimination ({scope === 'all' ? 'All' : selectedModalityIds.size})
-                  </>
-                ) : (
-                  <>
-                    <Archive size={14} /> Confirm Move to Bench ({scope === 'all' ? 'All' : selectedModalityIds.size})
-                  </>
-                )}
+                Cancel
               </button>
 
-              <div className="flex items-center gap-2">
+              {actionType === 'eliminate' ? (
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer text-center"
+                  onClick={() => setActionType('bench')}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-purple-950/90 hover:bg-purple-900 text-purple-200 font-bold text-xs border border-purple-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 touch-manipulation"
                 >
-                  Cancel
+                  <Archive size={14} /> Move to Bench Instead
                 </button>
-
-                {actionType === 'eliminate' ? (
-                  <button
-                    type="button"
-                    onClick={() => setActionType('bench')}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-purple-950/90 hover:bg-purple-900 text-purple-200 font-bold text-xs border border-purple-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                  >
-                    <Archive size={14} /> Move to Bench Instead
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setActionType('eliminate')}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-red-950/90 hover:bg-red-900 text-red-200 font-bold text-xs border border-red-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                  >
-                    <Trash2 size={14} /> Eliminate Entirely Instead
-                  </button>
-                )}
-              </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActionType('eliminate')}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-950/90 hover:bg-red-900 text-red-200 font-bold text-xs border border-red-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 touch-manipulation"
+                >
+                  <Trash2 size={14} /> Eliminate Entirely Instead
+                </button>
+              )}
             </div>
           </div>
+          </>
         )}
       </div>
     </div>,

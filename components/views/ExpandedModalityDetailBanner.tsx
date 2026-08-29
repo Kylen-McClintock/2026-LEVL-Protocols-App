@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { DailyProtocolTask } from '@/lib/types'
 import { 
@@ -46,6 +47,11 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
   const [showGeekMode, setShowGeekMode] = useState(false)
   const [isDisclaimerExpanded, setIsDisclaimerExpanded] = useState(false)
   const [actionModalType, setActionModalType] = useState<'bench' | 'eliminate' | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Elimination reason state
   const [selectedReasons, setSelectedReasons] = useState<string[]>([])
@@ -125,94 +131,116 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
   return (
     <div className="w-full my-2.5 bg-slate-950 border border-teal-500/80 rounded-2xl p-4 sm:p-5 shadow-[0_0_30px_rgba(20,184,166,0.15)] ring-1 ring-teal-500/40 animate-in fade-in zoom-in-95 duration-200 space-y-4 relative">
       
-      {/* Action Confirmation Modal with Multi-Select Reasons (Bench or Eliminate) */}
-      {actionModalType && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-          <div className={`bg-slate-900 border ${actionModalType === 'eliminate' ? 'border-red-500/50' : 'border-purple-500/50'} p-5 sm:p-6 rounded-3xl max-w-xl w-full space-y-4 shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto`}>
-            <div className="flex items-center space-x-3 border-b border-slate-800 pb-3">
-              <div className={`p-3 rounded-2xl border shrink-0 ${actionModalType === 'eliminate' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-purple-500/20 text-purple-300 border-purple-500/30'}`}>
-                {actionModalType === 'eliminate' ? <Trash2 size={24} /> : <Archive size={24} />}
+      {/* Full-Screen Action Confirmation Takeover Modal with Multi-Select Reasons (Bench or Eliminate) */}
+      {actionModalType && mounted && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (e.target === e.currentTarget) setActionModalType(null)
+          }}
+        >
+          <div 
+            className={`relative w-full max-w-lg bg-slate-950 border ${actionModalType === 'eliminate' ? 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.25)]' : 'border-purple-500/50 shadow-[0_0_50px_rgba(168,85,247,0.25)]'} rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col my-auto max-h-[90vh] overflow-hidden space-y-4`}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-3">
+                <div className={`p-2.5 rounded-2xl border shrink-0 ${actionModalType === 'eliminate' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-purple-500/20 text-purple-300 border-purple-500/30'}`}>
+                  {actionModalType === 'eliminate' ? <Trash2 size={22} /> : <Archive size={22} />}
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white leading-tight">
+                    {actionModalType === 'eliminate' ? `Eliminate "${modName}" Entirely?` : `Move "${modName}" to Bench?`}
+                  </h3>
+                  <p className={`text-xs font-medium ${actionModalType === 'eliminate' ? 'text-red-300/90' : 'text-purple-300/90'}`}>
+                    {actionModalType === 'eliminate' ? 'Active Timeline & Schedule Removal' : 'Saved on Bench for Future Use'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-extrabold text-white leading-tight">
-                  {actionModalType === 'eliminate' ? `Eliminate "${modName}" Entirely?` : `Move "${modName}" to Bench?`}
-                </h3>
-                <p className={`text-xs font-medium ${actionModalType === 'eliminate' ? 'text-red-300/90' : 'text-purple-300/90'}`}>
-                  {actionModalType === 'eliminate' ? 'Active Timeline & Schedule Removal' : 'Saved on Bench for Future Use'}
+              <button 
+                type="button"
+                onClick={() => setActionModalType(null)}
+                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Scrollable Modal Body */}
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1 pb-2">
+              <div className="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs text-slate-300 leading-relaxed">
+                <p>
+                  {actionModalType === 'eliminate' 
+                    ? <>Eliminating <strong className="text-white">{modName}</strong> removes it completely from your active daily timeline and protocol schedule.</>
+                    : <>Moving <strong className="text-white">{modName}</strong> to your Bench removes it from your active daily timeline while keeping it safely saved on your personal Bench.</>
+                  }
+                </p>
+                <p className="text-slate-400 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  💡 <strong className="text-teal-300">Don't worry:</strong> {actionModalType === 'eliminate' ? 'This modality will still be available in your Protocol Library whenever you wish to re-enroll.' : 'You can re-add this benched modality to your active schedule at any time.'}
                 </p>
               </div>
-            </div>
 
-            <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs text-slate-300 leading-relaxed">
-              <p>
-                {actionModalType === 'eliminate' 
-                  ? <>Eliminating <strong className="text-white">{modName}</strong> removes it completely from your active daily timeline and protocol schedule.</>
-                  : <>Moving <strong className="text-white">{modName}</strong> to your Bench removes it from your active daily timeline while keeping it safely saved on your personal Bench.</>
-                }
-              </p>
-              <p className="text-slate-400 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                💡 <strong className="text-teal-300">Don't worry:</strong> {actionModalType === 'eliminate' ? 'This modality will still be available in your Protocol Library whenever you wish to re-enroll.' : 'You can re-add this benched modality to your active schedule at any time.'}
-              </p>
-            </div>
+              {/* Multi-Select Common Reasons (0 to All) */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider block">
+                  Why are you {actionModalType === 'eliminate' ? 'eliminating' : 'benching'} this modality? (Select 0 or more)
+                </span>
 
-            {/* Multi-Select Common Reasons (0 to All) */}
-            <div className="space-y-2">
-              <span className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider block">
-                Why are you {actionModalType === 'eliminate' ? 'eliminating' : 'benching'} this modality? (Select 0 or more)
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {ELIMINATION_REASON_OPTIONS.map((opt) => {
-                  const isSelected = selectedReasons.includes(opt.label)
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => toggleReason(opt.label)}
-                      className={`p-2.5 rounded-xl border text-left flex items-center justify-between text-xs font-semibold transition-all cursor-pointer ${
-                        isSelected
-                          ? actionModalType === 'eliminate'
-                            ? 'bg-red-950/90 border-red-500 text-white ring-1 ring-red-500/60 shadow-md'
-                            : 'bg-purple-950/90 border-purple-500 text-white ring-1 ring-purple-500/60 shadow-md'
-                          : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:border-slate-700'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2 truncate pr-1">
-                        <span>{opt.icon}</span>
-                        <span className="truncate">{opt.label}</span>
-                      </span>
-                      {isSelected && (
-                        <span className={`w-4 h-4 rounded-full text-white flex items-center justify-center shrink-0 ${actionModalType === 'eliminate' ? 'bg-red-500' : 'bg-purple-500'}`}>
-                          <Check size={10} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ELIMINATION_REASON_OPTIONS.map((opt) => {
+                    const isSelected = selectedReasons.includes(opt.label)
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => toggleReason(opt.label)}
+                        className={`p-2.5 rounded-xl border text-left flex items-center justify-between text-xs font-semibold transition-all cursor-pointer active:scale-95 touch-manipulation ${
+                          isSelected
+                            ? actionModalType === 'eliminate'
+                              ? 'bg-red-950/90 border-red-500 text-white ring-1 ring-red-500/60 shadow-md'
+                              : 'bg-purple-950/90 border-purple-500 text-white ring-1 ring-purple-500/60 shadow-md'
+                            : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 truncate pr-1">
+                          <span>{opt.icon}</span>
+                          <span className="truncate">{opt.label}</span>
                         </span>
-                      )}
-                    </button>
-                  )
-                })}
+                        {isSelected && (
+                          <span className={`w-4 h-4 rounded-full text-white flex items-center justify-center shrink-0 ${actionModalType === 'eliminate' ? 'bg-red-500' : 'bg-purple-500'}`}>
+                            <Check size={10} />
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Custom Notes Field */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-400 block">
+                  Additional Notes or Explanation (Optional)
+                </label>
+                <textarea
+                  value={customNote}
+                  onChange={(e) => setCustomNote(e.target.value)}
+                  placeholder="e.g. Taking a break for travel; switching to Berberine..."
+                  rows={2}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/80 transition"
+                />
               </div>
             </div>
 
-            {/* Custom Notes Field */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-400 block">
-                Additional Notes or Explanation (Optional)
-              </label>
-              <textarea
-                value={customNote}
-                onChange={(e) => setCustomNote(e.target.value)}
-                placeholder="e.g. Taking a break for travel; switching to Berberine..."
-                rows={2}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/80 transition"
-              />
-            </div>
-
-            {/* Confirmation Buttons */}
-            <div className="flex flex-col gap-2 pt-2 border-t border-slate-800">
+            {/* Action Toolbar (Sticky at bottom of modal to ensure buttons are NEVER covered) */}
+            <div className="flex flex-col gap-2.5 pt-3 border-t border-slate-800 bg-slate-950 shrink-0">
               {/* Full Width Primary Action */}
               <button
                 type="button"
                 onClick={handleConfirmAction}
-                className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg ${
+                className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-95 touch-manipulation ${
                   actionModalType === 'eliminate'
                     ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30'
                     : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
@@ -220,11 +248,11 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
               >
                 {actionModalType === 'eliminate' ? (
                   <>
-                    <Trash2 size={14} /> Confirm Elimination
+                    <Trash2 size={15} /> Confirm Elimination
                   </>
                 ) : (
                   <>
-                    <Archive size={14} /> Confirm Move to Bench
+                    <Archive size={15} /> Confirm Move to Bench
                   </>
                 )}
               </button>
@@ -234,7 +262,7 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
                 <button
                   type="button"
                   onClick={() => setActionModalType(null)}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer text-center"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer text-center active:scale-95 touch-manipulation"
                 >
                   Cancel
                 </button>
@@ -243,7 +271,7 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
                   <button
                     type="button"
                     onClick={() => setActionModalType('bench')}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-purple-950/90 hover:bg-purple-900 text-purple-200 font-bold text-xs border border-purple-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-purple-950/90 hover:bg-purple-900 text-purple-200 font-bold text-xs border border-purple-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 touch-manipulation"
                   >
                     <Archive size={14} /> Move to Bench Instead
                   </button>
@@ -251,7 +279,7 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
                   <button
                     type="button"
                     onClick={() => setActionModalType('eliminate')}
-                    className="flex-1 py-2.5 px-4 rounded-xl bg-red-950/90 hover:bg-red-900 text-red-200 font-bold text-xs border border-red-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-red-950/90 hover:bg-red-900 text-red-200 font-bold text-xs border border-red-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 touch-manipulation"
                   >
                     <Trash2 size={14} /> Eliminate Entirely Instead
                   </button>
@@ -259,7 +287,8 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Top Header: Title, Category Badge, and Close Button */}

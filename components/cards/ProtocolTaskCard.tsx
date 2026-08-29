@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { DailyProtocolTask, Modality, ProtocolStep, Protocol, UserModalityHabit } from '@/lib/types'
@@ -548,6 +549,11 @@ export default function ProtocolTaskCard({
   const [benchItem, setBenchItem] = useState<UserBenchItem | null>(initialBenchItem || null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [benched, setBenched] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const isJustCompletedInline = isRecentlyCompleted && !outcomesSavedDone
 
@@ -3131,137 +3137,166 @@ export default function ProtocolTaskCard({
         </div>
       )}
 
-      {/* Custom Action Confirmation Drawer with Multi-Select Reason Pills */}
-      {actionModalType && (
-        <div className={`p-4 bg-slate-950 border-t ${actionModalType === 'eliminate' ? 'border-red-500/40' : 'border-purple-500/40'} rounded-b-xl animate-in fade-in slide-in-from-top-2 space-y-3`} onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-            <div className="flex items-center gap-2">
-              {actionModalType === 'eliminate' ? <Trash2 className="w-4 h-4 text-red-400" /> : <Archive className="w-4 h-4 text-purple-400" />}
-              <h4 className="text-sm font-extrabold text-white">
-                {actionModalType === 'eliminate' ? `Eliminate "${modality.display_name || modality.name}" Entirely?` : `Move "${modality.display_name || modality.name}" to Bench?`}
-              </h4>
-            </div>
-            <button 
-              onClick={() => setActionModalType(null)}
-              className="text-slate-400 hover:text-white p-1"
-            >
-              <X size={14} />
-            </button>
-          </div>
-
-          <p className="text-xs text-slate-300 leading-relaxed bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
-            {actionModalType === 'eliminate' ? (
-              <>Eliminating this modality removes it completely from your active daily timeline. 💡 <strong className="text-teal-300">Don't worry:</strong> It remains safely saved in your <span className="text-white font-bold">Protocol Library</span> whenever you want to re-add it.</>
-            ) : (
-              <>Moving this modality to your Bench removes it from your active daily timeline while keeping it safely saved on your personal Bench. 💡 <strong className="text-teal-300">Don't worry:</strong> You can re-add it to your schedule anytime.</>
-            )}
-          </p>
-
-          {/* Multi-Select Common Reasons (0 to All) */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-              Why are you {actionModalType === 'eliminate' ? 'eliminating' : 'benching'} this modality? (Select 0 or more)
-            </span>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {ELIMINATION_REASON_OPTIONS.map((opt) => {
-                const isSelected = selectedEliminationReasons.includes(opt.label)
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => toggleEliminationReason(opt.label)}
-                    className={`p-2 rounded-lg border text-left flex items-center justify-between text-[11px] font-semibold transition-all cursor-pointer ${
-                      isSelected
-                        ? actionModalType === 'eliminate'
-                          ? 'bg-red-950/90 border-red-500 text-white ring-1 ring-red-500/60 shadow-md'
-                          : 'bg-purple-950/90 border-purple-500 text-white ring-1 ring-purple-500/60 shadow-md'
-                        : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <span className="flex items-center gap-1.5 truncate pr-1">
-                      <span>{opt.icon}</span>
-                      <span className="truncate">{opt.label}</span>
-                    </span>
-                    {isSelected && (
-                      <span className={`w-3.5 h-3.5 rounded-full text-white flex items-center justify-center shrink-0 ${actionModalType === 'eliminate' ? 'bg-red-500' : 'bg-purple-500'}`}>
-                        <Check size={9} />
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Custom Note Field */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 block">
-              Additional Notes or Explanation (Optional)
-            </label>
-            <input 
-              type="text" 
-              value={eliminateReason}
-              onChange={e => setEliminateReason(e.target.value)}
-              placeholder="e.g. Taking a break for travel; switching to Berberine..."
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/80"
-            />
-          </div>
-
-          {/* Action Toolbar */}
-          <div className="flex flex-col gap-2 pt-2 border-t border-slate-800">
-            {/* Full Width Primary Action */}
-            <button
-              type="button"
-              onClick={handleConfirmAction}
-              disabled={isProcessing}
-              className={`w-full py-2.5 px-4 rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg disabled:opacity-50 ${
-                actionModalType === 'eliminate'
-                  ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30'
-                  : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
-              }`}
-            >
-              {actionModalType === 'eliminate' ? (
-                <>
-                  <Trash2 size={14} /> Confirm Elimination
-                </>
-              ) : (
-                <>
-                  <Archive size={14} /> Confirm Move to Bench
-                </>
-              )}
-            </button>
-
-            {/* Side-by-Side Cancel & Secondary Alternative */}
-            <div className="flex items-center gap-2">
-              <button
+      {/* Full-Screen Action Confirmation Takeover Modal (Bench or Eliminate) */}
+      {actionModalType && mounted && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (e.target === e.currentTarget) setActionModalType(null)
+          }}
+        >
+          <div 
+            className={`relative w-full max-w-lg bg-slate-950 border ${actionModalType === 'eliminate' ? 'border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.25)]' : 'border-purple-500/50 shadow-[0_0_50px_rgba(168,85,247,0.25)]'} rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col my-auto max-h-[90vh] overflow-hidden space-y-4`}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-3">
+                <div className={`p-2.5 rounded-2xl border shrink-0 ${actionModalType === 'eliminate' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-purple-500/20 text-purple-300 border-purple-500/30'}`}>
+                  {actionModalType === 'eliminate' ? <Trash2 size={22} /> : <Archive size={22} />}
+                </div>
+                <div>
+                  <h4 className="text-base font-extrabold text-white leading-tight">
+                    {actionModalType === 'eliminate' ? `Eliminate "${modality.display_name || modality.name}" Entirely?` : `Move "${modality.display_name || modality.name}" to Bench?`}
+                  </h4>
+                  <p className={`text-xs font-medium ${actionModalType === 'eliminate' ? 'text-red-300/90' : 'text-purple-300/90'}`}>
+                    {actionModalType === 'eliminate' ? 'Active Timeline & Schedule Removal' : 'Saved on Bench for Future Use'}
+                  </p>
+                </div>
+              </div>
+              <button 
                 type="button"
                 onClick={() => setActionModalType(null)}
-                className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer text-center"
+                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition cursor-pointer"
               >
-                Cancel
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Scrollable Modal Body */}
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1 pb-2">
+              <div className="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs text-slate-300 leading-relaxed">
+                <p>
+                  {actionModalType === 'eliminate' ? (
+                    <>Eliminating <strong className="text-white">{modality.display_name || modality.name}</strong> removes it completely from your active daily timeline and protocol schedule.</>
+                  ) : (
+                    <>Moving <strong className="text-white">{modality.display_name || modality.name}</strong> to your Bench removes it from your active daily timeline while keeping it safely saved on your personal Bench.</>
+                  )}
+                </p>
+                <p className="text-slate-400 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  💡 <strong className="text-teal-300">Don't worry:</strong> {actionModalType === 'eliminate' ? 'You can re-add this modality from your Protocol Library anytime.' : 'You can re-add this benched modality to your schedule anytime.'}
+                </p>
+              </div>
+
+              {/* Multi-Select Common Reasons (0 to All) */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-extrabold text-slate-300 uppercase tracking-wider block">
+                  Why are you {actionModalType === 'eliminate' ? 'eliminating' : 'benching'} this modality? (Select 0 or more)
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ELIMINATION_REASON_OPTIONS.map((opt) => {
+                    const isSelected = selectedEliminationReasons.includes(opt.label)
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => toggleEliminationReason(opt.label)}
+                        className={`p-2.5 rounded-xl border text-left flex items-center justify-between text-xs font-semibold transition-all cursor-pointer active:scale-95 touch-manipulation ${
+                          isSelected
+                            ? actionModalType === 'eliminate'
+                              ? 'bg-red-950/90 border-red-500 text-white ring-1 ring-red-500/60 shadow-md'
+                              : 'bg-purple-950/90 border-purple-500 text-white ring-1 ring-purple-500/60 shadow-md'
+                            : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 truncate pr-1">
+                          <span>{opt.icon}</span>
+                          <span className="truncate">{opt.label}</span>
+                        </span>
+                        {isSelected && (
+                          <span className={`w-4 h-4 rounded-full text-white flex items-center justify-center shrink-0 ${actionModalType === 'eliminate' ? 'bg-red-500' : 'bg-purple-500'}`}>
+                            <Check size={10} />
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Custom Note Field */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-400 block">
+                  Additional Notes or Explanation (Optional)
+                </label>
+                <textarea 
+                  value={eliminateReason}
+                  onChange={e => setEliminateReason(e.target.value)}
+                  placeholder="e.g. Taking a break for travel; switching to Berberine..."
+                  rows={2}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/80"
+                />
+              </div>
+            </div>
+
+            {/* Action Toolbar (Sticky at bottom of modal to ensure buttons are NEVER covered) */}
+            <div className="flex flex-col gap-2.5 pt-3 border-t border-slate-800 bg-slate-950 shrink-0">
+              {/* Full Width Primary Action */}
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                disabled={isProcessing}
+                className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg disabled:opacity-50 active:scale-95 touch-manipulation ${
+                  actionModalType === 'eliminate'
+                    ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30'
+                    : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
+                }`}
+              >
+                {actionModalType === 'eliminate' ? (
+                  <>
+                    <Trash2 size={15} /> Confirm Elimination
+                  </>
+                ) : (
+                  <>
+                    <Archive size={15} /> Confirm Move to Bench
+                  </>
+                )}
               </button>
 
-              {actionModalType === 'eliminate' ? (
+              {/* Side-by-Side Cancel & Secondary Alternative */}
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setActionModalType('bench')}
-                  className="flex-1 py-2 px-3 rounded-xl bg-purple-950/90 hover:bg-purple-900 text-purple-200 font-bold text-xs border border-purple-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  onClick={() => setActionModalType(null)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition cursor-pointer text-center active:scale-95 touch-manipulation"
                 >
-                  <Archive size={13} /> Move to Bench Instead
+                  Cancel
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setActionModalType('eliminate')}
-                  className="flex-1 py-2 px-3 rounded-xl bg-red-950/90 hover:bg-red-900 text-red-200 font-bold text-xs border border-red-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                >
-                  <Trash2 size={13} /> Eliminate Entirely Instead
-                </button>
-              )}
+
+                {actionModalType === 'eliminate' ? (
+                  <button
+                    type="button"
+                    onClick={() => setActionModalType('bench')}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-purple-950/90 hover:bg-purple-900 text-purple-200 font-bold text-xs border border-purple-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 touch-manipulation"
+                  >
+                    <Archive size={14} /> Move to Bench Instead
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setActionModalType('eliminate')}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-red-950/90 hover:bg-red-900 text-red-200 font-bold text-xs border border-red-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 touch-manipulation"
+                  >
+                    <Trash2 size={14} /> Eliminate Entirely Instead
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Unified Master Dosage & Schedule Studio Modal */}
