@@ -51,10 +51,10 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
   // Advanced Biomarker States
   const [age, setAge] = useState<string>(profile.age?.toString() || '')
   const [heightFeet, setHeightFeet] = useState<string>(
-    profile.height_inches ? Math.floor(profile.height_inches / 12).toString() : '5'
+    profile.height_inches ? Math.floor(profile.height_inches / 12).toString() : ''
   )
   const [heightInches, setHeightInches] = useState<string>(
-    profile.height_inches ? (profile.height_inches % 12).toString() : '10'
+    profile.height_inches ? (profile.height_inches % 12).toString() : ''
   )
   const [weight, setWeight] = useState<string>(profile.weight_lbs?.toString() || '')
   const [bodyFat, setBodyFat] = useState<string>(profile.body_fat_percentage?.toString() || '')

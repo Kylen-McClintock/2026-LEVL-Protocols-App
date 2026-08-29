@@ -102,11 +102,11 @@ function OnboardingContent() {
 
   // Step 1: Biological Profile & Demographics
   const [displayName, setDisplayName] = useState('')
-  const [age, setAge] = useState<string>('34')
+  const [age, setAge] = useState<string>('')
   const [biologicalSex, setBiologicalSex] = useState<'Male' | 'Female' | 'Other'>('Male')
-  const [heightFeet, setHeightFeet] = useState<string>('5')
-  const [heightInches, setHeightInches] = useState<string>('10')
-  const [weightLbs, setWeightLbs] = useState<string>('175')
+  const [heightFeet, setHeightFeet] = useState<string>('')
+  const [heightInches, setHeightInches] = useState<string>('')
+  const [weightLbs, setWeightLbs] = useState<string>('')
   const [dietaryPattern, setDietaryPattern] = useState<string>('Omnivore')
 
   // Step 2: Circadian Rhythm & Sleep Anchors
@@ -435,7 +435,7 @@ function OnboardingContent() {
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="e.g. Kylen or Protocol Optimizer"
+                  placeholder=""
                   className="w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
                 />
               </div>
@@ -605,60 +605,50 @@ function OnboardingContent() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              {/* Wake & Bedtime Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
-                    <Sunrise size={16} />
-                    <span>Target Wake Time</span>
-                  </div>
-                  <input
-                    type="time"
-                    value={idealWakeTime}
-                    onChange={(e) => setIdealWakeTime(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-amber-400"
-                  />
-                  <span className="text-[10px] text-slate-400 block">
-                    Anchors morning light &amp; cortisol peak
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-indigo-300">
-                    <Moon size={16} />
-                    <span>Target Bedtime</span>
-                  </div>
-                  <input
-                    type="time"
-                    value={idealBedtime}
-                    onChange={(e) => setIdealBedtime(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-indigo-400"
-                  />
-                  <span className="text-[10px] text-slate-400 block">
-                    Triggers wind-down &amp; melatonin buffer
-                  </span>
-                </div>
-              </div>
-
-              {/* Chronotype Selector */}
+            <div className="space-y-5">
+              {/* 1. Chronotype Selector (First) */}
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  Circadian Chronotype
+                  1. Select Your Circadian Chronotype
                 </label>
                 <div className="space-y-2">
                   {[
-                    { id: 'Early Bird', title: 'Early Bird / Lark', desc: 'Naturally wake early with peak cognitive energy in the morning; sleep by 9:30–10:30 PM', icon: <Sunrise size={18} className="text-amber-400" /> },
-                    { id: 'Intermediate', title: 'Intermediate / Neutral', desc: 'Balanced rhythm; wake 6:30–7:30 AM, peak focus midday, sleep by 10:30–11:30 PM', icon: <Sun size={18} className="text-yellow-400" /> },
-                    { id: 'Night Owl', title: 'Night Owl / Wolf', desc: 'Peak cognitive flow late afternoon & evening; sleep best after 11:30 PM', icon: <Moon size={18} className="text-indigo-400" /> }
+                    { 
+                      id: 'Early Bird', 
+                      title: 'Early Bird / Lark (Lion)', 
+                      desc: 'Naturally wake early with peak cognitive energy in the morning; calibrated bedtime 9:30 PM, wake 5:30 AM', 
+                      icon: <Sunrise size={18} className="text-amber-400" />,
+                      wake: '05:30',
+                      bed: '21:30'
+                    },
+                    { 
+                      id: 'Intermediate', 
+                      title: 'Intermediate / Neutral (Bear)', 
+                      desc: 'Balanced solar rhythm; calibrated bedtime 10:30 PM, wake 6:30 AM', 
+                      icon: <Sun size={18} className="text-yellow-400" />,
+                      wake: '06:30',
+                      bed: '22:30'
+                    },
+                    { 
+                      id: 'Night Owl', 
+                      title: 'Night Owl / Wolf', 
+                      desc: 'Peak focus late afternoon & evening; calibrated bedtime 12:00 AM midnight, wake 8:00 AM', 
+                      icon: <Moon size={18} className="text-indigo-400" />,
+                      wake: '08:00',
+                      bed: '00:00'
+                    }
                   ].map(c => (
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => setChronotype(c.id)}
+                      onClick={() => {
+                        setChronotype(c.id)
+                        setIdealWakeTime(c.wake)
+                        setIdealBedtime(c.bed)
+                      }}
                       className={`w-full p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
                         chronotype === c.id
-                          ? 'bg-indigo-500/20 border-indigo-400 text-white shadow-md'
+                          ? 'bg-indigo-500/20 border-indigo-400 text-white shadow-md shadow-indigo-500/10'
                           : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/40'
                       }`}
                     >
@@ -669,6 +659,52 @@ function OnboardingContent() {
                       </div>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* 2. Wake & Bedtime Grid (Second - for fine-tuning) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  2. Dial in Your Exact Target Times
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                        <Sunrise size={16} />
+                        <span>Target Wake Time</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-amber-400 font-semibold">{idealWakeTime}</span>
+                    </div>
+                    <input
+                      type="time"
+                      value={idealWakeTime}
+                      onChange={(e) => setIdealWakeTime(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-amber-400"
+                    />
+                    <span className="text-[10px] text-slate-400 block">
+                      Anchors morning light, hydration &amp; cortisol peak
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-bold text-indigo-300">
+                        <Moon size={16} />
+                        <span>Target Bedtime</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-indigo-400 font-semibold">{idealBedtime}</span>
+                    </div>
+                    <input
+                      type="time"
+                      value={idealBedtime}
+                      onChange={(e) => setIdealBedtime(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-indigo-400"
+                    />
+                    <span className="text-[10px] text-slate-400 block">
+                      Triggers wind-down, thermal drop &amp; melatonin buffer
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
