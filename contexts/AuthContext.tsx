@@ -42,10 +42,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Initialize or fetch current active user
   useEffect(() => {
     // 1. Get current local user ID from localStorage or generate one
-    let storedId = localStorage.getItem(LOCAL_USER_ID_KEY)
-    if (!storedId) {
+    let storedId = ''
+    try {
+      storedId = localStorage.getItem(LOCAL_USER_ID_KEY) || ''
+      if (!storedId) {
+        storedId = uuidv4()
+        localStorage.setItem(LOCAL_USER_ID_KEY, storedId)
+      }
+    } catch (e) {
       storedId = uuidv4()
-      localStorage.setItem(LOCAL_USER_ID_KEY, storedId)
     }
     setLocalUserId(storedId)
 
@@ -61,49 +66,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (e) {}
     }
 
-    // 3. Check active session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        const prevId = localStorage.getItem(LOCAL_USER_ID_KEY)
-        const cachedGuestId = localStorage.getItem('levl_prev_guest_id')
-        const targetGuestId = (prevId && prevId !== session.user.id) ? prevId : cachedGuestId
-        if (targetGuestId && targetGuestId !== session.user.id) {
-          await linkGuestDataToAuthUser(targetGuestId, session.user)
-        }
-        if (prevId && prevId !== session.user.id) {
-          localStorage.setItem('levl_prev_guest_id', prevId)
-        }
-        localStorage.setItem(LOCAL_USER_ID_KEY, session.user.id)
-        setLocalUserId(session.user.id)
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('levl_auth_user_changed', { detail: session.user.id }))
-        }
-      }
+    // 3. Safety fallback timer so iOS/slow networks never stay in loading state forever
+    const safetyTimer = setTimeout(() => {
       setLoading(false)
-    })
+    }, 1500)
 
-    // 4. Listen for auth state changes
+    // 4. Check active session
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        clearTimeout(safetyTimer)
+        setSession(session)
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          try {
+            const prevId = localStorage.getItem(LOCAL_USER_ID_KEY)
+            const cachedGuestId = localStorage.getItem('levl_prev_guest_id')
+            const targetGuestId = (prevId && prevId !== session.user.id) ? prevId : cachedGuestId
+            if (targetGuestId && targetGuestId !== session.user.id) {
+              await linkGuestDataToAuthUser(targetGuestId, session.user).catch(() => {})
+            }
+            if (prevId && prevId !== session.user.id) {
+              localStorage.setItem('levl_prev_guest_id', prevId)
+            }
+            localStorage.setItem(LOCAL_USER_ID_KEY, session.user.id)
+          } catch (err) {}
+          setLocalUserId(session.user.id)
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('levl_auth_user_changed', { detail: session.user.id }))
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('Supabase auth session check failed:', err)
+      })
+      .finally(() => {
+        clearTimeout(safetyTimer)
+        setLoading(false)
+      })
+
+    // 5. Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         setSession(newSession)
         setUser(newSession?.user ?? null)
 
         if (newSession?.user) {
-          const previousGuestId = localStorage.getItem(LOCAL_USER_ID_KEY)
-          const cachedGuestId = localStorage.getItem('levl_prev_guest_id')
-          const targetGuestId = (previousGuestId && previousGuestId !== newSession.user.id) ? previousGuestId : cachedGuestId
-          if (targetGuestId && targetGuestId !== newSession.user.id) {
-            // Automatically migrate guest data to the authenticated account
-            await linkGuestDataToAuthUser(targetGuestId, newSession.user)
-          }
+          try {
+            const previousGuestId = localStorage.getItem(LOCAL_USER_ID_KEY)
+            const cachedGuestId = localStorage.getItem('levl_prev_guest_id')
+            const targetGuestId = (previousGuestId && previousGuestId !== newSession.user.id) ? previousGuestId : cachedGuestId
+            if (targetGuestId && targetGuestId !== newSession.user.id) {
+              // Automatically migrate guest data to the authenticated account
+              await linkGuestDataToAuthUser(targetGuestId, newSession.user).catch(() => {})
+            }
 
-          if (previousGuestId && previousGuestId !== newSession.user.id) {
-            localStorage.setItem('levl_prev_guest_id', previousGuestId)
-          }
+            if (previousGuestId && previousGuestId !== newSession.user.id) {
+              localStorage.setItem('levl_prev_guest_id', previousGuestId)
+            }
 
-          localStorage.setItem(LOCAL_USER_ID_KEY, newSession.user.id)
+            localStorage.setItem(LOCAL_USER_ID_KEY, newSession.user.id)
+          } catch (err) {}
+
           setLocalUserId(newSession.user.id)
           setIsAuthModalOpen(false)
           if (typeof window !== 'undefined') {
@@ -114,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     )
 
     return () => {
+      clearTimeout(safetyTimer)
       subscription.unsubscribe()
     }
   }, [])

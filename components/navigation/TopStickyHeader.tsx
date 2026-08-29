@@ -107,7 +107,14 @@ export default function TopStickyHeader() {
 
             {/* Cloud Sync Indicator */}
             {authLoading ? (
-              <div className="w-2 h-2 rounded-full bg-slate-600 animate-pulse ml-0.5" />
+              <button
+                onClick={openAuthModal}
+                title="Checking Cloud Connection..."
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-800/60 border border-slate-700/60 text-slate-400 text-[10px] font-mono hover:bg-slate-800 transition-all cursor-pointer"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" />
+                <span className="hidden sm:inline">Connecting</span>
+              </button>
             ) : user ? (
               <button
                 onClick={() => router.push('/settings#cloud-sync')}
