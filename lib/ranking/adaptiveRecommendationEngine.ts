@@ -436,6 +436,30 @@ export function evaluateUserAdherenceState(
     return effort.level >= 4
   }).length
 
+  // Distinct logged/scheduled dates tracking
+  const distinctScheduledDates = new Set(activeEvaluatedTasks.map(t => t.scheduled_date).filter(Boolean)).size
+  const distinctLoggedDays = new Set(
+    activeEvaluatedTasks
+      .filter(t => t.status === 'completed' || t.status === 'skipped' || t.status === 'missed')
+      .map(t => t.scheduled_date)
+      .filter(Boolean)
+  ).size
+
+  // Initial Consistency Guard: Do NOT recommend skipping or benching modalities in the first 3-5 days
+  if (distinctLoggedDays < 3 && distinctScheduledDates < 3) {
+    return {
+      status: 'balanced',
+      completionRate,
+      totalScheduled,
+      totalCompleted,
+      totalMissedOrSkipped,
+      highFrictionSkippedCount,
+      streakDays,
+      summaryHeadline: '🌱 Building Protocol Momentum',
+      summaryDetails: `Establishing your baseline routine (${distinctLoggedDays > 0 ? distinctLoggedDays : 1} active day${distinctLoggedDays > 1 ? 's' : ''}). Log your first 3–5 days to build consistency and unlock adaptive 80/20 optimizations.`
+    }
+  }
+
   if (completionRate >= 75 || streakDays >= 10) {
     return {
       status: 'thriving',
@@ -529,6 +553,19 @@ export function generateEightyTwentySimplificationRecommendation(
   benchedModalityIds?: Set<string>
 ): EightyTwentySimplificationRecommendation | null {
   if (!activeTasks || activeTasks.length === 0) return null
+
+  // Minimum History Guard: Enforce at least 3 distinct days of tracking history before suggesting 80/20 de-escalation/skipping
+  const distinctScheduledDates = new Set(activeTasks.map(t => t.scheduled_date).filter(Boolean)).size
+  const distinctLoggedDays = new Set(
+    activeTasks
+      .filter(t => t.status === 'completed' || t.status === 'skipped' || t.status === 'missed')
+      .map(t => t.scheduled_date)
+      .filter(Boolean)
+  ).size
+
+  if (distinctScheduledDates < 3 && distinctLoggedDays < 3) {
+    return null
+  }
 
   // Map active modalities and find the highest friction item with missed sessions
   const activeModsMap = new Map<string, { modality: Modality; missedCount: number; effortLevel: number }>()

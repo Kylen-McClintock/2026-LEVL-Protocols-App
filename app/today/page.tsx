@@ -388,10 +388,9 @@ function TodayPageContent() {
       return t
     }))
 
-    for (const uuid of targetUuids) {
-      const existingTask = tasks.find(t => t.id === uuid)
-      const finalDetails = executionDetails !== undefined ? executionDetails : existingTask?.execution_details
-      await updateDailyTaskStatus(uuid, status, reason, undefined, effectiveCompletedAt, executionMetrics, finalDetails)
+    // Tactile feedback on mobile devices
+    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      try { navigator.vibrate(12) } catch (e) {}
     }
 
     if (status === 'completed') {
@@ -404,6 +403,19 @@ function TodayPageContent() {
         setCompletionToast(null)
       }, 4000)
     }
+
+    // Asynchronous background persistence (does not block instant UI responsiveness)
+    ;(async () => {
+      try {
+        for (const uuid of targetUuids) {
+          const existingTask = tasks.find(t => t.id === uuid)
+          const finalDetails = executionDetails !== undefined ? executionDetails : existingTask?.execution_details
+          await updateDailyTaskStatus(uuid, status, reason, undefined, effectiveCompletedAt, executionMetrics, finalDetails)
+        }
+      } catch (err) {
+        console.error('Error saving task status to database:', err)
+      }
+    })()
   }
 
   const handleWellbeingSave = async (
@@ -464,58 +476,93 @@ function TodayPageContent() {
     if (!rescheduleTask || !profile) return
     const localUserId = profile.local_user_id
     const modalityId = rescheduleTask.modality_id || rescheduleTask.protocol_step?.modality_id
+    const targetTaskId = rescheduleTask.id
+    const slotToUse = newTimingSlot || 'evening'
+    const cleanSlotName = slotToUse.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 
-    try {
-      if (action === 'snooze_later_today') {
-        // 1. Snooze 'Til Later today: Update status to 'snoozed' AND assign to new timing slot
-        const slotToUse = newTimingSlot || 'evening'
-        const cleanSlotName = slotToUse.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-        await updateDailyTaskStatus(
-          rescheduleTask.id, 
-          'snoozed', 
-          `Snoozed to ${cleanSlotName}`, 
-          undefined, 
-          undefined, 
-          undefined, 
-          undefined, 
-          slotToUse
-        )
-        await refreshTodayTasks()
-      } else if (action === 'skip_session') {
-        // 2. Skip completely for this cycle
-        await updateDailyTaskStatus(rescheduleTask.id, 'skipped', 'Skipped')
-        await refreshTodayTasks()
-      } else if (action === 'slide_forward') {
-        // 3. Push to tomorrow (slide split)
-        const tomorrow = format(addDays(parseLocalDate(dateStr), 1), 'yyyy-MM-dd')
-        if (modalityId) {
-          await createDailyTask(localUserId, tomorrow, modalityId)
-        }
-        await updateDailyTaskStatus(rescheduleTask.id, 'skipped', 'Rescheduled to Tomorrow')
-        await refreshTodayTasks()
-      } else if (action === 'swap_rest_day') {
-        // 4. Swap with rest day (shift forward 2 days)
-        const targetDate = format(addDays(parseLocalDate(dateStr), 2), 'yyyy-MM-dd')
-        if (modalityId) {
-          await createDailyTask(localUserId, targetDate, modalityId)
-        }
-        await updateDailyTaskStatus(rescheduleTask.id, 'skipped', 'Swapped with Rest Day')
-        await refreshTodayTasks()
-      } else if (action === 'custom_date' && customDateStr) {
-        // 5. Reschedule to custom selected date
-        if (modalityId) {
-          await createDailyTask(localUserId, customDateStr, modalityId)
-        }
-        await updateDailyTaskStatus(rescheduleTask.id, 'skipped', `Rescheduled to ${customDateStr}`)
-        await refreshTodayTasks()
-      }
-    } catch (err) {
-      console.error('Error executing reschedule action:', err)
-    } finally {
-      setIsRescheduleModalOpen(false)
-      setRescheduleTask(null)
-      setRescheduleModality(null)
+    // 1. INSTANT OPTIMISTIC UI STATE UPDATE (0ms delay)
+    let updatedStatus: any = 'skipped'
+    let updatedReason: string = 'Skipped'
+    let updatedSlot = rescheduleTask.timing_slot
+
+    if (action === 'snooze_later_today') {
+      updatedStatus = 'snoozed'
+      updatedReason = `Snoozed to ${cleanSlotName}`
+      updatedSlot = slotToUse
+    } else if (action === 'skip_session') {
+      updatedStatus = 'skipped'
+      updatedReason = 'Skipped'
+    } else if (action === 'slide_forward') {
+      updatedStatus = 'skipped'
+      updatedReason = 'Rescheduled to Tomorrow'
+    } else if (action === 'swap_rest_day') {
+      updatedStatus = 'skipped'
+      updatedReason = 'Swapped with Rest Day'
+    } else if (action === 'custom_date' && customDateStr) {
+      updatedStatus = 'skipped'
+      updatedReason = `Rescheduled to ${customDateStr}`
     }
+
+    setTasks(prev => prev.map(t => {
+      if (t.id === targetTaskId || t.id.startsWith(targetTaskId + '-split-')) {
+        return {
+          ...t,
+          status: updatedStatus,
+          status_reason: updatedReason,
+          timing_slot: updatedSlot
+        }
+      }
+      return t
+    }))
+
+    // Tactile haptic feedback
+    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      try { navigator.vibrate(15) } catch (e) {}
+    }
+
+    // Instantly close modal so user experiences instant 0ms latency
+    setIsRescheduleModalOpen(false)
+    setRescheduleTask(null)
+    setRescheduleModality(null)
+
+    // 2. Asynchronous background persistence
+    ;(async () => {
+      try {
+        if (action === 'snooze_later_today') {
+          await updateDailyTaskStatus(
+            targetTaskId, 
+            'snoozed', 
+            `Snoozed to ${cleanSlotName}`, 
+            undefined, 
+            undefined, 
+            undefined, 
+            undefined, 
+            slotToUse
+          )
+        } else if (action === 'skip_session') {
+          await updateDailyTaskStatus(targetTaskId, 'skipped', 'Skipped')
+        } else if (action === 'slide_forward') {
+          const tomorrow = format(addDays(parseLocalDate(dateStr), 1), 'yyyy-MM-dd')
+          if (modalityId) {
+            await createDailyTask(localUserId, tomorrow, modalityId)
+          }
+          await updateDailyTaskStatus(targetTaskId, 'skipped', 'Rescheduled to Tomorrow')
+        } else if (action === 'swap_rest_day') {
+          const targetDate = format(addDays(parseLocalDate(dateStr), 2), 'yyyy-MM-dd')
+          if (modalityId) {
+            await createDailyTask(localUserId, targetDate, modalityId)
+          }
+          await updateDailyTaskStatus(targetTaskId, 'skipped', 'Swapped with Rest Day')
+        } else if (action === 'custom_date' && customDateStr) {
+          if (modalityId) {
+            await createDailyTask(localUserId, customDateStr, modalityId)
+          }
+          await updateDailyTaskStatus(targetTaskId, 'skipped', `Rescheduled to ${customDateStr}`)
+        }
+      } catch (err) {
+        console.error('Error executing reschedule action in background:', err)
+      }
+    })()
   }
 
   const handleMoveToBench = async (taskOrModalityId: DailyProtocolTask | string) => {
@@ -532,11 +579,29 @@ function TodayPageContent() {
     }
 
     if (mId) {
-      const { moveModalityToBench, getBenchItems } = await import('@/lib/data')
-      await moveModalityToBench(localUserId, mId, taskId)
-      await refreshTodayTasks()
-      const bItems = await getBenchItems(localUserId)
-      setBenchItems(bItems)
+      // Instant optimistic UI update
+      setTasks(prev => prev.filter(t => (t.modality_id || t.protocol_step?.modality_id) !== mId))
+      setBenchItems(prev => [
+        ...prev.filter((b: any) => b.modality_id !== mId), 
+        { 
+          id: 'temp_' + mId, 
+          modality_id: mId, 
+          status: 'benched', 
+          local_user_id: localUserId, 
+          pinned: false, 
+          added_at: new Date().toISOString() 
+        }
+      ])
+
+      try {
+        const { moveModalityToBench, getBenchItems } = await import('@/lib/data')
+        await moveModalityToBench(localUserId, mId, taskId)
+        const bItems = await getBenchItems(localUserId)
+        setBenchItems(bItems)
+      } catch (err) {
+        console.error('Error benching modality:', err)
+        await refreshTodayTasks()
+      }
     }
   }
 
@@ -545,11 +610,29 @@ function TodayPageContent() {
     const mId = task.modality_id || task.protocol_step?.modality_id
     if (mId) {
       const localUserId = profile.local_user_id
-      const { eliminateModality } = await import('@/lib/data')
-      await eliminateModality(localUserId, mId, task.id, reason, selectedReasons)
-      await refreshTodayTasks()
-      const bItems = await getBenchItems(localUserId)
-      setBenchItems(bItems)
+      // Instant optimistic UI update
+      setTasks(prev => prev.filter(t => (t.modality_id || t.protocol_step?.modality_id) !== mId))
+      setBenchItems(prev => [
+        ...prev.filter((b: any) => b.modality_id !== mId), 
+        { 
+          id: 'temp_' + mId, 
+          modality_id: mId, 
+          status: 'eliminated', 
+          local_user_id: localUserId, 
+          pinned: false, 
+          added_at: new Date().toISOString() 
+        }
+      ])
+
+      try {
+        const { eliminateModality, getBenchItems } = await import('@/lib/data')
+        await eliminateModality(localUserId, mId, task.id, reason, selectedReasons)
+        const bItems = await getBenchItems(localUserId)
+        setBenchItems(bItems)
+      } catch (err) {
+        console.error('Error eliminating modality:', err)
+        await refreshTodayTasks()
+      }
     }
   }
 

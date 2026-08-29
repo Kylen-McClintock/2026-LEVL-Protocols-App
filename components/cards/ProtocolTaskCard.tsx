@@ -1707,7 +1707,7 @@ export default function ProtocolTaskCard({
                     else setShowSkipReason(true); 
                   }}
                   disabled={isFutureTask}
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/10 text-levl-text-secondary hover:text-white hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/10 text-levl-text-secondary hover:text-white hover:bg-white/10 hover:border-white/20 active:scale-90 active:opacity-80 transition-all disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer shrink-0 touch-manipulation"
                   title="Snooze, reschedule, or skip session"
                 >
                   <SkipForward size={13} className="ml-0.5" />
@@ -1761,7 +1761,7 @@ export default function ProtocolTaskCard({
                     }
                   }}
                   disabled={isFutureTask}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer disabled:opacity-20 disabled:cursor-not-allowed ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 active:opacity-85 touch-manipulation disabled:opacity-20 disabled:cursor-not-allowed ${
                     isRecentlyCompleted || (task.status as string) === 'completed'
                       ? 'bg-emerald-500 text-slate-950 scale-110 shadow-[0_0_15px_rgba(16,185,129,0.9)]'
                       : showInlineOutcomes

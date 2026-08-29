@@ -88,9 +88,10 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
   // 3. Dynamically generate either Next Best Action (Progression) OR 80/20 Simplification (De-escalation)
   const recommendation = useMemo(() => {
     if (adherenceEval.status === 'struggling') {
-      return generateEightyTwentySimplificationRecommendation(tasks, allModalities, benchedModalityIds)
+      const deescalationRec = generateEightyTwentySimplificationRecommendation(tasks, allModalities, benchedModalityIds)
+      if (deescalationRec) return deescalationRec
     }
-    // Default to Next Best Action if balanced or thriving
+    // Default to Next Best Action if balanced, thriving, or building baseline consistency
     return generateNextBestActionRecommendation(allModalities, activeModalityIds, userProfile)
   }, [adherenceEval.status, tasks, allModalities, activeModalityIds, userProfile, benchedModalityIds])
 
