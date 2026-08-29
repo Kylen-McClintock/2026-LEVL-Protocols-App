@@ -308,13 +308,10 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
 ]
 
 /**
- * Default starter set auto-populated for fresh profiles
+ * Default starter set auto-populated for fresh profiles (Top 3 Essentials)
  */
 export const DEFAULT_STARTER_HOTKEYS: QuickHotkeyConfig[] = [
-  POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'nutrition_macros')!,
   POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'water_intake')!,
   POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'coffee_caffeine')!,
-  POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'outside_sunlight')!,
-  POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'mindful_break')!,
-  POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'alcohol_drink')!
+  POPULAR_HOTKEY_LIBRARY.find(h => h.id === 'nutrition_macros')!
 ]

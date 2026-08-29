@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { updateUserProfile, createDailyTask, getOrCreateUserProfile } from '@/lib/data'
+import { saveUserHotkeys } from '@/lib/storage/quickLogsStorage'
+import { POPULAR_HOTKEY_LIBRARY, DEFAULT_STARTER_HOTKEYS } from '@/lib/quicklog/quickHotkeyLibrary'
 import { format } from 'date-fns'
 import { 
   Sparkles, Check, ArrowRight, ArrowLeft, ShieldCheck, Zap, Moon, 
@@ -24,14 +26,13 @@ interface ModalityOption {
 }
 
 const STARTER_CATALOG: ModalityOption[] = [
-  { id: 'morning_sunlight', name: 'Morning Sunlight & Circadian Anchor', dose: '10–15 mins within 60m of waking', timing: 'waking', goalKey: 'sleep' },
-  { id: 'cyclic_sighing', name: 'Cyclic Sighing (Physiological Sigh)', dose: '5 mins (2 quick inhales, 1 long exhale)', timing: 'morning_routine', goalKey: 'energy' },
-  { id: 'creatine_monohydrate', name: 'Creatine Monohydrate (Cellular & Brain ATP)', dose: '5g daily with water', timing: 'morning_routine', requiredHardware: 'supplements', goalKey: 'energy' },
-  { id: 'extra-virgin-olive-oil', name: 'High-Polyphenol Extra Virgin Olive Oil', dose: '1–2 tbsp (>500mg/kg polyphenols)', timing: 'morning_routine', requiredHardware: 'supplements', goalKey: 'longevity' },
-  { id: 'intermittent_fasting_16_8', name: '16:8 Time-Restricted Feeding (TRF)', dose: '16h Fast / 8h Eating window', timing: 'afternoon', goalKey: 'longevity' },
-  { id: 'box_breathing', name: 'Box Breathing (Autonomic Focus)', dose: '4 mins (4s in, 4s hold, 4s out, 4s hold)', timing: 'morning_routine', goalKey: 'focus' },
-  { id: 'cold_water_immersion', name: 'Cold Plunge / Cold Water Immersion', dose: '2–3 mins @ 50°F–55°F (Søberg reheat)', timing: 'morning_routine', requiredHardware: 'cold_plunge', goalKey: 'energy' },
-  { id: 'sauna_exposure', name: 'Evening Hyperthermic Sauna (Thermal Drop)', dose: '15–20 mins @ 174°F+ (90m pre-bed)', timing: 'evening', requiredHardware: 'sauna', goalKey: 'sleep' },
+  { id: 'morning_sunlight', name: 'Morning Optic Sunlight & Photons', dose: '10–15 mins outdoors within 60m of waking', timing: 'morning', goalKey: 'energy' },
+  { id: 'water_electrolytes', name: 'Baseline Hydration + Electrolytes', dose: '16–20 oz pure water + trace minerals', timing: 'morning', goalKey: 'energy' },
+  { id: 'cold_shower_or_plunge', name: 'Deliberate Cold Exposure', dose: '2–3 mins (50°F–55°F / 10°C–13°C)', timing: 'morning', requiredHardware: 'cold_plunge', goalKey: 'recovery' },
+  { id: 'creatine_monohydrate', name: 'Creatine Monohydrate', dose: '5g with morning hydration', timing: 'morning', requiredHardware: 'supplements', goalKey: 'strength' },
+  { id: 'omega3_epa_dha', name: 'High-Concentration Omega-3 EPA/DHA', dose: '2,000mg with breakfast/EVOO', timing: 'morning', requiredHardware: 'supplements', goalKey: 'longevity' },
+  { id: 'zone2_cardio_30m', name: 'Zone 2 Mitochondrial Endurance', dose: '30–45 mins (Nasally breathing, HR 60-70% max)', timing: 'afternoon', goalKey: 'longevity' },
+  { id: 'sauna_session', name: 'Heat Shock Sauna Session', dose: '20 mins at 174°F+ (80°C+)', timing: 'afternoon', requiredHardware: 'sauna', goalKey: 'longevity' },
   { id: 'ppl_push_day', name: 'Resistance Hypertrophy Session', dose: '45–60 mins (RPE 7-9, 2-3 RIR)', timing: 'afternoon', requiredHardware: 'gym', goalKey: 'strength' },
   { id: 'post_meal_glucose_walk', name: 'Post-Meal Glycemic Walk', dose: '15–20 mins brisk walk post-nutrition', timing: 'evening', goalKey: 'longevity' },
   { id: 'breathing_4_7_8', name: '4-7-8 Relaxing Wind-Down Breathwork', dose: '4 cycles (5 mins before bed)', timing: 'evening', goalKey: 'sleep' },
@@ -59,6 +60,26 @@ const EVENING_CORE_OUTCOMES = [
 const PROTOCOL_TRIGGERED_OUTCOMES = [
   { id: 'soreness', name: 'Muscular Soreness & Recovery', description: 'Muscular or joint recovery and low inflammation (prompted post-training)', icon: <Shield size={16} className="text-purple-400" /> },
   { id: 'strength', name: 'Strength & Power Output', description: 'Physical work capacity and strength output (prompted post-training)', icon: <Dumbbell size={16} className="text-rose-400" /> }
+]
+
+// Positive Daily Micro-Habits (Defaults pre-selected)
+const POSITIVE_HABITS_OPTIONS = [
+  { id: 'water_intake', name: 'Hydration & Water Goal', icon: '💧', desc: 'Daily ounces with hydration progress', hotkeyId: 'water_intake' },
+  { id: 'coffee_caffeine', name: 'Coffee & Caffeine Tracking', icon: '☕', desc: 'Cups & mg with circadian cutoff timing', hotkeyId: 'coffee_caffeine' },
+  { id: 'outside_sunlight', name: 'Daylight & Sunlight Exposure', icon: '☀️', desc: 'Circadian optic flow & retinal photons', hotkeyId: 'outside_sunlight' },
+  { id: 'mindful_break', name: 'Mindful Breathwork Break', icon: '🧘', desc: 'Cyclic sighing / box breathing resets', hotkeyId: 'mindful_break' },
+  { id: 'daily_steps', name: 'Daily Steps & Walking', icon: '🚶', desc: 'Zone 1 base movement & post-meal walks', hotkeyId: 'daily_steps' }
+]
+
+// Negative Lifestyle Exposures to Monitor (Optional)
+const NEGATIVE_EXPOSURES_OPTIONS = [
+  { id: 'alcohol_drinks', name: 'Alcohol Intake', icon: '🍷', desc: 'Standard drinks and REM sleep suppression', hotkeyId: 'alcohol_drink' },
+  { id: 'nicotine_exposure', name: 'Nicotine & Vaping', icon: '🚬', desc: 'Combustibles, vapes, and pouches', hotkeyId: 'nicotine_log' },
+  { id: 'cannabis_exposure', name: 'Cannabis & THC', icon: '🌿', desc: 'Flower, edibles, and tinctures', hotkeyId: 'cannabis_log' },
+  { id: 'late_caffeine', name: 'Late Caffeine Cutoff', icon: '☕', desc: 'Tracks consumption within 8-10h of bed', hotkeyId: 'coffee_caffeine' },
+  { id: 'blue_light', name: 'Late Screen / Blue Light', icon: '📱', desc: 'Screen exposure in final 2 hours pre-bed', hotkeyId: 'late_screen_log' },
+  { id: 'processed_sugar', name: 'Ultra-Processed Foods', icon: '🍕', desc: 'High-glycemic and refined seed oil foods', hotkeyId: 'junk_food_log' },
+  { id: 'sitting_duration', name: 'Prolonged Sitting', icon: '🪑', desc: 'Sedentary desk & sitting duration', hotkeyId: 'sedentary_stretch' }
 ]
 
 const PRIMARY_GOAL_OPTIONS = [
@@ -124,6 +145,10 @@ function OnboardingContent() {
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([
     'energy', 'sleep_quality', 'focus', 'soreness', 'waking_restedness', 'stress', 'mood', 'digestive_comfort'
   ])
+  const [selectedPositiveHabits, setSelectedPositiveHabits] = useState<string[]>([
+    'water_intake', 'coffee_caffeine', 'outside_sunlight'
+  ])
+  const [selectedNegativeExposures, setSelectedNegativeExposures] = useState<string[]>([])
 
   // Step 5: Starter Stack Selection
   const [selectedModalities, setSelectedModalities] = useState<Record<string, boolean>>({})
@@ -161,7 +186,14 @@ function OnboardingContent() {
             setSelectedGoals(profile.primary_goals)
           }
           if (profile.outcome_preference_scores && Object.keys(profile.outcome_preference_scores).length > 0) {
-            setSelectedOutcomes(Object.keys(profile.outcome_preference_scores))
+            const allKeys = Object.keys(profile.outcome_preference_scores)
+            const regularOutcomes = allKeys.filter(k => !k.startsWith('habit:') && !k.startsWith('exposure:'))
+            const habits = allKeys.filter(k => k.startsWith('habit:')).map(k => k.replace('habit:', ''))
+            const exposures = allKeys.filter(k => k.startsWith('exposure:')).map(k => k.replace('exposure:', ''))
+
+            if (regularOutcomes.length > 0) setSelectedOutcomes(regularOutcomes)
+            if (habits.length > 0) setSelectedPositiveHabits(habits)
+            if (exposures.length > 0) setSelectedNegativeExposures(exposures)
           }
         }
       } catch (err) {
@@ -189,6 +221,12 @@ function OnboardingContent() {
         const outcomeScores: Record<string, number> = {}
         selectedOutcomes.forEach(id => {
           outcomeScores[id] = 7
+        })
+        selectedPositiveHabits.forEach(id => {
+          outcomeScores[`habit:${id}`] = 10
+        })
+        selectedNegativeExposures.forEach(id => {
+          outcomeScores[`exposure:${id}`] = 10
         })
 
         await updateUserProfile(localUserId, {
@@ -219,7 +257,7 @@ function OnboardingContent() {
     displayName, age, biologicalSex, heightFeet, heightInches, weightLbs, dietaryPattern,
     idealWakeTime, idealBedtime, chronotype,
     fitnessLevel, trainingDays, workoutWindow, selectedEquipment,
-    selectedGoals, selectedOutcomes,
+    selectedGoals, selectedOutcomes, selectedPositiveHabits, selectedNegativeExposures,
     isLoadingProfile
   ])
 
@@ -260,6 +298,18 @@ function OnboardingContent() {
     })
   }
 
+  const togglePositiveHabit = (id: string) => {
+    setSelectedPositiveHabits(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const toggleNegativeExposure = (id: string) => {
+    setSelectedNegativeExposures(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
   const toggleModalityCheck = (id: string) => {
     setSelectedModalities(prev => ({
       ...prev,
@@ -285,6 +335,12 @@ function OnboardingContent() {
       selectedOutcomes.forEach(id => {
         outcomeScores[id] = 7
       })
+      selectedPositiveHabits.forEach(id => {
+        outcomeScores[`habit:${id}`] = 10
+      })
+      selectedNegativeExposures.forEach(id => {
+        outcomeScores[`exposure:${id}`] = 10
+      })
 
       const totalHeightInches = (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
 
@@ -308,7 +364,31 @@ function OnboardingContent() {
         outcome_preference_scores: outcomeScores
       })
 
-      // 2. Schedule checked starter tasks for today
+      // 2. Initialize personalized starter hotkeys list based on habit & exposure choices
+      try {
+        const activeHotkeyIds = new Set<string>()
+        // Always include nutrition_macros
+        activeHotkeyIds.add('nutrition_macros')
+
+        selectedPositiveHabits.forEach(hId => {
+          const opt = POSITIVE_HABITS_OPTIONS.find(o => o.id === hId)
+          if (opt?.hotkeyId) activeHotkeyIds.add(opt.hotkeyId)
+        })
+
+        selectedNegativeExposures.forEach(eId => {
+          const opt = NEGATIVE_EXPOSURES_OPTIONS.find(o => o.id === eId)
+          if (opt?.hotkeyId) activeHotkeyIds.add(opt.hotkeyId)
+        })
+
+        const starterHotkeys = POPULAR_HOTKEY_LIBRARY.filter(h => activeHotkeyIds.has(h.id))
+        if (starterHotkeys.length > 0) {
+          await saveUserHotkeys(localUserId, starterHotkeys)
+        }
+      } catch (hotkeyErr) {
+        console.warn('Notice initializing user starter hotkeys:', hotkeyErr)
+      }
+
+      // 3. Schedule checked starter tasks for today
       const activeMods = recommendedModalities.filter(m => isModalityChecked(m.id))
       for (const mod of activeMods) {
         try {
@@ -318,12 +398,12 @@ function OnboardingContent() {
         }
       }
 
-      // 3. Mark onboarding completed in localStorage
+      // 4. Mark onboarding completed in localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('levl_onboarding_completed', 'true')
       }
 
-      // 4. Return to destination
+      // 5. Return to destination
       if (isRecalibrateMode) {
         window.location.href = '/settings'
       } else {
@@ -1070,6 +1150,108 @@ function OnboardingContent() {
                         </button>
                       )
                     })}
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. DAILY MICRO-HABITS & LIFESTYLE EXPOSURES (OPTIONAL) */}
+              <div className="space-y-4 pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-0.5 flex items-center gap-2">
+                      <Sparkles size={14} className="text-orange-400" />
+                      <span>Daily Micro-Habits &amp; Lifestyle Factors</span>
+                      <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full lowercase">
+                        optional
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Choose positive habits and negative lifestyle factors ready for 1-tap logging. Fully customizable anytime.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {/* POSITIVE HABITS (Defaults Pre-selected) */}
+                  <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-emerald-500/20">
+                    <div className="flex items-center justify-between border-b border-emerald-500/10 pb-2">
+                      <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>✨</span>
+                        <span>Positive Habits (Pre-Selected)</span>
+                      </span>
+                      <span className="text-[9px] font-mono text-emerald-400/80 font-bold">{selectedPositiveHabits.length} selected</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {POSITIVE_HABITS_OPTIONS.map(h => {
+                        const isSelected = selectedPositiveHabits.includes(h.id)
+                        return (
+                          <button
+                            key={`pos_${h.id}`}
+                            type="button"
+                            onClick={() => togglePositiveHabit(h.id)}
+                            className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-emerald-500/15 border-emerald-400/80 text-white shadow-sm'
+                                : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-sm shrink-0">{h.icon}</span>
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold block text-white truncate">{h.name}</span>
+                                <span className="text-[10px] text-slate-400 block truncate">{h.desc}</span>
+                              </div>
+                            </div>
+                            <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
+                              isSelected ? 'bg-emerald-500 border-emerald-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                            }`}>
+                              {isSelected && <Check size={10} className="stroke-[3]" />}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* NEGATIVE EXPOSURES (Optional) */}
+                  <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-rose-500/20">
+                    <div className="flex items-center justify-between border-b border-rose-500/10 pb-2">
+                      <span className="text-[11px] font-bold text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>🚫</span>
+                        <span>Negative Exposures (Optional)</span>
+                      </span>
+                      <span className="text-[9px] font-mono text-rose-400/80 font-bold">{selectedNegativeExposures.length} selected</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {NEGATIVE_EXPOSURES_OPTIONS.map(e => {
+                        const isSelected = selectedNegativeExposures.includes(e.id)
+                        return (
+                          <button
+                            key={`neg_${e.id}`}
+                            type="button"
+                            onClick={() => toggleNegativeExposure(e.id)}
+                            className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-rose-500/15 border-rose-400/80 text-white shadow-sm'
+                                : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-sm shrink-0">{e.icon}</span>
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold block text-white truncate">{e.name}</span>
+                                <span className="text-[10px] text-slate-400 block truncate">{e.desc}</span>
+                              </div>
+                            </div>
+                            <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
+                              isSelected ? 'bg-rose-500 border-rose-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                            }`}>
+                              {isSelected && <Check size={10} className="stroke-[3]" />}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -79,6 +79,8 @@ export default function ManageHotkeysModal({
   const [customGoal, setCustomGoal] = useState('')
   const [customIcon, setCustomIcon] = useState('Activity')
   const [customPolarity, setCustomPolarity] = useState<'positive' | 'neutral' | 'negative'>('positive')
+  const [isSaving, setIsSaving] = useState(false)
+  const [isSavedSuccess, setIsSavedSuccess] = useState(false)
 
   const getHotkeyPolarity = (h: QuickHotkeyConfig): 'positive' | 'neutral' | 'negative' => {
     if (h.polarity) return h.polarity
@@ -172,14 +174,26 @@ export default function ManageHotkeysModal({
   }
 
   const handleSaveAll = async () => {
-    for (const h of selectedHotkeys) {
-      if (h.is_custom || h.id.startsWith('custom_') || !POPULAR_HOTKEY_LIBRARY.some(p => p.id === h.id)) {
-        await saveCustomCreatedHotkey(localUserId, h)
+    setIsSaving(true)
+    try {
+      for (const h of selectedHotkeys) {
+        if (h.is_custom || h.id.startsWith('custom_') || !POPULAR_HOTKEY_LIBRARY.some(p => p.id === h.id)) {
+          await saveCustomCreatedHotkey(localUserId, h)
+        }
       }
+      await saveUserHotkeys(localUserId, selectedHotkeys)
+      onSaved(selectedHotkeys)
+      setIsSavedSuccess(true)
+      setTimeout(() => {
+        setIsSaving(false)
+        setIsSavedSuccess(false)
+        onClose()
+      }, 350)
+    } catch (err) {
+      console.error('Error saving user hotkeys:', err)
+      setIsSaving(false)
+      onClose()
     }
-    await saveUserHotkeys(localUserId, selectedHotkeys)
-    onSaved(selectedHotkeys)
-    onClose()
   }
 
   return (
@@ -630,10 +644,15 @@ export default function ManageHotkeysModal({
               <button
                 type="button"
                 onClick={handleSaveAll}
-                className="px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-all shadow-lg cursor-pointer flex items-center gap-1.5 active:scale-95"
+                disabled={isSaving || isSavedSuccess}
+                className={`px-6 py-2.5 rounded-xl font-black text-xs transition-all shadow-lg cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                  isSavedSuccess
+                    ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/30 scale-105'
+                    : 'bg-orange-500 hover:bg-orange-600 text-black shadow-orange-500/30'
+                }`}
               >
-                <Check size={16} />
-                <span>Save &amp; Update Hotkeys ({selectedHotkeys.length})</span>
+                <Check size={16} strokeWidth={3} className={isSavedSuccess ? 'animate-bounce' : ''} />
+                <span>{isSavedSuccess ? '✓ Saved!' : isSaving ? 'Saving...' : `Save & Update Hotkeys (${selectedHotkeys.length})`}</span>
               </button>
             </>
           )}

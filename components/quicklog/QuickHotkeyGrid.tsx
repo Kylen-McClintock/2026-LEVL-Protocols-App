@@ -331,7 +331,7 @@ export default function QuickHotkeyGrid({
                 className="w-full text-left p-2.5 pl-3.5 sm:p-3.5 sm:pl-4 flex-1 flex flex-col justify-between cursor-pointer hover:bg-white/[0.03] active:scale-[0.98] transition-all group/btn focus:outline-none"
                 title={`1-Click: Log +${hotkey.default_increment} ${hotkey.unit}`}
               >
-                {/* Top Row: Icon + 1-Tap Indicator Badge */}
+                {/* Top Row: Icon + 1-Tap Indicator Badge with Smaller Unit */}
                 <div className="flex items-start justify-between gap-1 w-full">
                   <div
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center border text-xs shrink-0 transition-colors ${
@@ -350,7 +350,7 @@ export default function QuickHotkeyGrid({
                   </div>
 
                   <span
-                    className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-mono font-black border transition-all flex items-center gap-0.5 shadow-sm ${
+                    className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-mono font-black border transition-all flex items-baseline gap-0.5 shadow-sm ${
                       isNegative
                         ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 group-hover/btn:bg-rose-500 group-hover/btn:text-white'
                         : isNeutral
@@ -360,20 +360,27 @@ export default function QuickHotkeyGrid({
                         : 'bg-orange-500/20 text-orange-300 border-orange-500/40 group-hover/btn:bg-orange-500 group-hover/btn:text-black'
                     }`}
                   >
-                    <Plus size={11} strokeWidth={3} />
-                    <span>{hotkey.default_increment}</span>
+                    <Plus size={10} strokeWidth={3} className="shrink-0 self-center" />
+                    <span className="font-black text-xs">{hotkey.default_increment}</span>
+                    <span className="text-[8px] sm:text-[9px] font-bold opacity-80 uppercase tracking-tighter ml-0.5">{hotkey.unit}</span>
                   </span>
                 </div>
 
-                {/* Center Value Metric */}
+                {/* Center Value Metric & Name */}
                 <div className="my-1 sm:my-2 w-full">
                   <div className="flex items-baseline gap-1">
                     <span className="text-base sm:text-2xl font-black text-white font-mono tracking-tight">
                       {totalVal}
                     </span>
-                    <span className="text-[10px] sm:text-xs font-mono text-slate-400">
-                      {hotkey.unit}
-                    </span>
+                    {hotkey.daily_goal && !isNegative ? (
+                      <span className="text-[10px] sm:text-xs font-mono text-slate-400">
+                        / {hotkey.daily_goal} {hotkey.unit}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] sm:text-xs font-mono text-slate-400">
+                        {hotkey.unit}
+                      </span>
+                    )}
                   </div>
 
                   <div className={`text-[11px] sm:text-xs font-bold text-slate-200 transition-colors truncate leading-tight mt-0.5 ${
@@ -386,54 +393,35 @@ export default function QuickHotkeyGrid({
                     {hotkey.name}
                   </div>
                 </div>
-
-                {/* Micro 1-Tap Hint */}
-                <div className={`text-[9px] transition-colors font-semibold ${
-                  isNegative
-                    ? 'text-slate-500 group-hover/btn:text-rose-400'
-                    : isNeutral
-                    ? 'text-slate-500 group-hover/btn:text-sky-400'
-                    : 'text-slate-500 group-hover/btn:text-orange-400'
-                }`}>
-                  Tap to +{hotkey.default_increment} {hotkey.unit}
-                </div>
               </button>
 
-              {/* BOTTOM DETAILS & EDIT DEFAULT ACTION BAR */}
+              {/* BOTTOM ACTION BAR (Clean Progress / Entry Count + Minimal Chevron) */}
               <div
                 onClick={(e) => {
                   e.stopPropagation()
                   handleCardClick(hotkey)
                 }}
                 className="px-2.5 sm:px-3 py-1.5 bg-black/40 hover:bg-slate-800/80 border-t border-white/5 flex items-center justify-between text-[9px] sm:text-[10px] font-mono text-slate-400 hover:text-white cursor-pointer transition-colors group/bot"
-                title="Click for details, custom entries, or to change default amount"
+                title="Click for details, custom entries, or settings"
               >
                 <span className="truncate mr-1">
                   {hotkey.daily_goal && !isNegative ? (
-                    <>
-                      {/* Desktop: Keep Goal Visible */}
-                      <span className={`hidden sm:inline ${isGoalReached ? 'text-emerald-400 font-bold' : ''}`}>
-                        {isGoalReached ? '✓ Done' : `Goal: ${hotkey.daily_goal}${hotkey.unit}`}
-                      </span>
-                      {/* Mobile: Hide Goal, Show Clean Entry Count or Done */}
-                      <span className={`sm:hidden ${isGoalReached ? 'text-emerald-400 font-bold' : ''}`}>
-                        {isGoalReached ? '✓ Done' : `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}`}
-                      </span>
-                    </>
+                    <span className={isGoalReached ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
+                      {isGoalReached ? `✓ ${totalVal}/${hotkey.daily_goal} ${hotkey.unit}` : `${totalVal}/${hotkey.daily_goal} ${hotkey.unit}`}
+                    </span>
                   ) : (
                     <span>{entryCount} {entryCount === 1 ? 'entry' : 'entries'}</span>
                   )}
                 </span>
 
-                <span className={`flex items-center gap-0.5 font-bold shrink-0 text-slate-500 ${
+                <span className={`shrink-0 text-slate-500 transition-transform group-hover/bot:translate-x-0.5 ${
                   isNegative
                     ? 'group-hover/bot:text-rose-300'
                     : isNeutral
                     ? 'group-hover/bot:text-sky-300'
                     : 'group-hover/bot:text-orange-300'
                 }`}>
-                  <span>Details</span>
-                  <ChevronRight size={11} />
+                  <ChevronRight size={13} strokeWidth={2.5} />
                 </span>
               </div>
             </div>
