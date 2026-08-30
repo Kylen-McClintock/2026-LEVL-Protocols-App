@@ -69,16 +69,40 @@ const TIME_BLOCKS = [
   'morning_routine',
   'morning',
   'morning_supplement_stack',
+  'first_meal',
   'midday',
   'midday_stack',
   'afternoon',
+  'late_afternoon',
   'post_meal',
   'evening',
   'evening_supplement_stack',
   'wind_down',
   'bedtime',
+  'pre_bed',
   'anytime'
 ]
+
+function getTimeBlockOrder(slot: string): number {
+  if (!slot) return 99
+  const s = slot.toLowerCase().trim()
+  if (s.includes('wake') || s.includes('sunrise') || s.includes('dawn')) return 0
+  if (s.includes('morning_routine')) return 1
+  if (s.includes('morning_supplement') || s.includes('fasted_am')) return 2
+  if (s.includes('first_meal') || s.includes('breakfast') || s.includes('first meal') || s.includes('meal_1')) return 3
+  if (s.includes('morning') || s.includes('am')) return 4
+  if (s.includes('midday_stack') || s.includes('lunch_stack')) return 5
+  if (s.includes('midday') || s.includes('noon') || s.includes('lunch')) return 6
+  if (s.includes('afternoon') || s.includes('workout') || s.includes('training')) return 7
+  if (s.includes('late_afternoon')) return 8
+  if (s.includes('post_meal') || s.includes('postprandial') || s.includes('post meal') || s.includes('post-meal')) return 9
+  if (s.includes('evening_supplement') || s.includes('dinner_stack')) return 10
+  if (s.includes('evening') || s.includes('dinner') || s.includes('dusk')) return 11
+  if (s.includes('wind_down') || s.includes('winddown')) return 12
+  if (s.includes('bed') || s.includes('night') || s.includes('sleep') || s.includes('pre_bed') || s.includes('pre-bed')) return 13
+  if (s.includes('anytime')) return 20
+  return 15
+}
 
 
 function parseLocalDate(dStr?: string | null): Date {
@@ -1063,11 +1087,9 @@ function TodayPageContent() {
     })
 
     const entries = Object.entries(groups).sort(([groupA], [groupB]) => {
-      let idxA = TIME_BLOCKS.indexOf(groupA)
-      let idxB = TIME_BLOCKS.indexOf(groupB)
-      if (idxA === -1) idxA = 99
-      if (idxB === -1) idxB = 99
-      return completedSortOrder === 'asc' ? idxA - idxB : idxB - idxA
+      const orderA = getTimeBlockOrder(groupA)
+      const orderB = getTimeBlockOrder(groupB)
+      return completedSortOrder === 'asc' ? orderA - orderB : orderB - orderA
     })
 
     entries.forEach(([, tasksInGroup]) => {
@@ -1115,12 +1137,10 @@ function TodayPageContent() {
   }, [routineTasks])
 
   const sortedChronologicalGroups = Object.entries(chronologicalGroups).sort(([groupA], [groupB]) => {
-    const idxA = TIME_BLOCKS.indexOf(groupA)
-    const idxB = TIME_BLOCKS.indexOf(groupB)
-    if (idxA === -1 && idxB === -1) return groupA.localeCompare(groupB)
-    if (idxA === -1) return 1
-    if (idxB === -1) return -1
-    return idxA - idxB
+    const orderA = getTimeBlockOrder(groupA)
+    const orderB = getTimeBlockOrder(groupB)
+    if (orderA !== orderB) return orderA - orderB
+    return groupA.localeCompare(groupB)
   })
 
   const protocolGroups = useMemo(() => {
@@ -1140,6 +1160,7 @@ function TodayPageContent() {
     
     if (lowerName.includes('huberman morning') || lowerName.includes('morning sunlight') || lowerName.includes('morning routine')) return 10
     if (lowerName.includes('morning') || lowerName.includes('wake')) return 20
+    if (lowerName.includes('first meal') || lowerName.includes('first_meal') || lowerName.includes('breakfast')) return 30
     if (lowerName.includes('metabolic') || lowerName.includes('midday') || lowerName.includes('afternoon') || lowerName.includes('lunch')) return 50
     if (lowerName.includes('standalone') || lowerName.includes('individual')) return 100
     if (lowerName.includes('evening') || lowerName.includes('dinner')) return 150
@@ -1149,16 +1170,8 @@ function TodayPageContent() {
     let minIdx = 999
     groupTasks.forEach(task => {
       const slot = (task.timing_slot || task.protocol_step?.timing_slot || task.loose_modality?.default_timing_slot || 'anytime').toLowerCase()
-      let idx = TIME_BLOCKS.findIndex(b => slot.includes(b) || b.includes(slot))
-      if (idx === -1) {
-        if (slot.includes('morning') || slot.includes('wake') || slot.includes('sunlight')) idx = 1
-        else if (slot.includes('midday') || slot.includes('afternoon') || slot.includes('lunch')) idx = 4
-        else if (slot.includes('evening') || slot.includes('dinner')) idx = 10
-        else if (slot.includes('post_meal') || slot.includes('post-meal') || slot.includes('post meal') || slot.includes('postprandial')) idx = 13
-        else if (slot.includes('bed') || slot.includes('sleep') || slot.includes('wind_down')) idx = 15
-        else idx = 18
-      }
-      if (idx < minIdx) minIdx = idx
+      const order = getTimeBlockOrder(slot)
+      if (order < minIdx) minIdx = order
     })
     return minIdx * 10
   }
@@ -1171,6 +1184,38 @@ function TodayPageContent() {
   })
 
   const activeGroups = viewMode === 'chronological' ? sortedChronologicalGroups : sortedProtocolGroups
+
+  // Dynamic Circadian Gradient stops generated from the actual active groups on the page
+  const circadianGradientCSS = useMemo(() => {
+    if (activeGroups.length === 0) {
+      return 'linear-gradient(to bottom, #F59E0B, #06B6D4, #3B82F6, #F97316, #8B5CF6, #6366F1)'
+    }
+    const stops = activeGroups.map(([groupName], idx) => {
+      const cfg = getCircadianConfig(groupName)
+      const pct = Math.round((idx / Math.max(1, activeGroups.length - 1)) * 100)
+      return `${cfg.skyColorHex} ${pct}%`
+    })
+    if (stops.length === 1) {
+      const cfg = getCircadianConfig(activeGroups[0][0])
+      return `linear-gradient(to bottom, ${cfg.skyColorHex}, ${cfg.skyColorHex})`
+    }
+    return `linear-gradient(to bottom, ${stops.join(', ')})`
+  }, [activeGroups])
+
+  // Get active tip color for the leading photon spark
+  const latestIgnitedSkyColor = useMemo(() => {
+    if (ignitedGroupKeys.size === 0) {
+      if (activeGroups.length > 0) return getCircadianConfig(activeGroups[0][0]).skyColorHex
+      return '#F59E0B'
+    }
+    for (let i = activeGroups.length - 1; i >= 0; i--) {
+      const gName = activeGroups[i][0]
+      if (ignitedGroupKeys.has(gName)) {
+        return getCircadianConfig(gName).skyColorHex
+      }
+    }
+    return '#F59E0B'
+  }, [ignitedGroupKeys, activeGroups])
 
   const totalWeight = dedupedTasks.reduce((acc, t) => {
     const opt = t.protocol_step?.optionality || 'required'
@@ -1510,11 +1555,11 @@ function TodayPageContent() {
         <div 
           key={groupName} 
           ref={(el) => { groupHeaderRefs.current[groupName] = el }}
-          className="relative pl-5 sm:pl-6 space-y-3 group/circadian-block"
+          className="relative pl-3.5 sm:pl-4 space-y-3 group/circadian-block"
         >
           {/* Individual 3px Circadian Spine Node */}
           <div 
-            className={`absolute left-0 top-1 bottom-1 w-[3px] rounded-full transition-all duration-500 ${
+            className={`absolute -left-2 sm:-left-3 top-1 bottom-1 w-[3px] rounded-full transition-all duration-500 ${
               isIgnited ? 'opacity-100' : 'opacity-25'
             }`}
             style={{ 
@@ -2404,22 +2449,35 @@ function TodayPageContent() {
                 ) : (
                   <div 
                     ref={timelineContainerRef}
-                    className="relative pl-1 sm:pl-2 space-y-8"
+                    className="relative space-y-8"
                   >
                     {/* Background Dim Ghost Track (Full Height) */}
-                    <div className="absolute left-0 top-2 bottom-6 w-[3px] rounded-full bg-slate-800/40 pointer-events-none" />
+                    <div className="absolute -left-2 sm:-left-3 top-2 bottom-6 w-[3px] rounded-full bg-slate-800/40 pointer-events-none" />
 
-                    {/* Revealing Circadian Sky Gradient Spine (Grows/Shrinks dynamically on scroll) */}
+                    {/* Revealing Circadian Sky Gradient Spine (Masks true vertical gradient matching each block as user scrolls) */}
                     <div 
-                      className="absolute left-0 top-2 w-[3px] rounded-full bg-gradient-to-b from-amber-400 via-cyan-400 via-blue-500 via-orange-500 via-purple-500 to-indigo-600 shadow-[0_0_12px_rgba(168,85,247,0.55)] transition-[height] duration-75 ease-out pointer-events-none"
+                      className="absolute -left-2 sm:-left-3 top-2 w-[3px] rounded-full overflow-hidden transition-[height] duration-75 ease-out pointer-events-none shadow-[0_0_12px_rgba(168,85,247,0.55)]"
                       style={{ height: `${spineHeight}px` }}
-                    />
+                    >
+                      {/* Inner Full-Height Gradient Line (Pinned to timeline height, masked by outer overflow-hidden) */}
+                      <div 
+                        className="w-full"
+                        style={{ 
+                          height: timelineContainerRef.current ? `${timelineContainerRef.current.offsetHeight}px` : '1200px',
+                          background: circadianGradientCSS
+                        }}
+                      />
+                    </div>
 
-                    {/* Leading Edge Photon Spark (Lights up the tip of the growing spine) */}
+                    {/* Leading Edge Photon Spark (Lights up the tip with the exact sky color of the latest reached time block) */}
                     {spineHeight > 0 && (
                       <div 
-                        className="absolute -left-[3.5px] w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_8px_#fff,0_0_16px_rgba(168,85,247,0.9)] pointer-events-none transition-all duration-75 ease-out -translate-y-1/2"
-                        style={{ top: `calc(${spineHeight}px + 8px)` }}
+                        className="absolute -left-[11px] sm:-left-[15px] w-2.5 h-2.5 rounded-full pointer-events-none transition-all duration-75 ease-out -translate-y-1/2"
+                        style={{ 
+                          top: `calc(${spineHeight}px + 8px)`,
+                          backgroundColor: latestIgnitedSkyColor,
+                          boxShadow: `0 0 8px #fff, 0 0 16px ${latestIgnitedSkyColor}`
+                        }}
                       />
                     )}
 

@@ -98,6 +98,23 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     startHour: 8,
     endHour: 11
   },
+  first_meal: {
+    key: 'first_meal',
+    label: 'First Meal / Breakfast',
+    timeRange: '8:30 AM – 11:30 AM',
+    circadianPhase: 'Post-Fasting / Fat-Soluble Nutrient Assimilation',
+    skyColorHex: '#06B6D4',
+    accentGradient: 'from-cyan-500/20 via-teal-500/10 to-transparent',
+    icon: Zap,
+    badgeBg: 'bg-cyan-500/15',
+    badgeBorder: 'border-cyan-500/40',
+    badgeText: 'text-cyan-300',
+    glowShadow: 'shadow-[0_0_16px_rgba(6,182,212,0.4)]',
+    activeRing: 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950',
+    spineGradientStop: 'rgba(6, 182, 212, 0.9)',
+    startHour: 8,
+    endHour: 12
+  },
   midday: {
     key: 'midday',
     label: 'Midday & Solar Noon',
@@ -270,6 +287,9 @@ export function getCircadianConfig(slotName: string): CircadianSlotConfig {
   }
   if (normalized.includes('morning_routine') || normalized.includes('fasted')) {
     return CIRCADIAN_SLOTS.morning_routine
+  }
+  if (normalized.includes('first_meal') || normalized.includes('first meal') || normalized.includes('breakfast') || normalized.includes('meal_1')) {
+    return CIRCADIAN_SLOTS.first_meal
   }
   if (normalized.includes('morning') || normalized.includes('sunlight')) {
     return CIRCADIAN_SLOTS.morning
