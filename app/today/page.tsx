@@ -53,6 +53,7 @@ import { calculateDailyEfficacySummary } from '@/lib/data/historicalAnalysis'
 import { getScoredLongevityTips } from '@/lib/ranking/tipPersonalization'
 import { getMacroCategory } from '@/lib/utils/categories'
 import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
+import { getCircadianConfig, isCurrentCircadianSlot } from '@/lib/utils/circadianConfig'
 import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
 
 function formatSlotName(str: string): string {
@@ -1444,41 +1445,80 @@ function TodayPageContent() {
         )
       }
 
-      // Default Chronological Time Blocks rendering
+      // Default Chronological Time Blocks rendering with Circadian Sky Beacons & 3px Spine
+      const circadian = getCircadianConfig(groupName)
+      const CircadianIcon = circadian.icon
+      const isNow = isCurrentDay && isCurrentCircadianSlot(groupName)
+
       return (
-        <div key={groupName} className="space-y-3">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+        <div key={groupName} className="relative pl-5 sm:pl-6 space-y-3 group/circadian-block">
+          {/* Individual 3px Circadian Spine Node */}
+          <div 
+            className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full transition-all duration-500"
+            style={{ 
+              backgroundColor: circadian.skyColorHex,
+              boxShadow: isNow ? `0 0 14px ${circadian.skyColorHex}` : `0 0 6px ${circadian.skyColorHex}50`
+            }}
+          />
+
+          <div className="flex items-center justify-between border-b border-white/10 pb-2.5 flex-wrap gap-2">
             <button
               type="button"
               onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-              className="flex items-center gap-2 text-left group cursor-pointer focus:outline-none"
+              className="flex items-center gap-3 text-left group cursor-pointer focus:outline-none"
             >
+              {/* Circadian Sky Beacon Icon */}
+              <div 
+                className={`w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all duration-500 ${circadian.badgeBg} ${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} ${isNow ? circadian.activeRing : ''}`}
+                style={{
+                  boxShadow: isNow 
+                    ? `0 0 22px ${circadian.skyColorHex}99, inset 0 0 10px ${circadian.skyColorHex}33` 
+                    : `0 0 12px ${circadian.skyColorHex}30`
+                }}
+              >
+                <CircadianIcon size={17} strokeWidth={2.2} />
+              </div>
+
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-extrabold text-white uppercase tracking-wider group-hover:text-purple-200 transition-colors">
+                    {formatSlotName(groupName)}
+                  </span>
+                  {isNow && (
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span>Live Window</span>
+                    </span>
+                  )}
+                  <span className="text-xs bg-slate-800/90 text-slate-400 px-2 py-0.5 rounded-full font-mono font-bold">
+                    {completedCount > 0 ? `${completedCount}/${groupTasks.length}` : groupTasks.length}
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {circadian.timeRange} • <span className="text-slate-500">{circadian.circadianPhase}</span>
+                </span>
+              </div>
+
               <ChevronDown 
                 size={16} 
-                className={`text-slate-400 group-hover:text-white transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`} 
+                className={`text-slate-400 group-hover:text-white transition-transform duration-200 ml-1 ${isCollapsed ? '-rotate-90' : ''}`} 
               />
-              <span className="text-sm font-bold text-white uppercase tracking-wider group-hover:text-purple-300 transition-colors">
-                {formatSlotName(groupName)}
-              </span>
-              <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">
-                {completedCount > 0 ? `${completedCount}/${groupTasks.length}` : groupTasks.length}
-              </span>
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 ml-auto">
               <button
                 type="button"
                 onClick={() => handleStartGroupTracking(groupName, groupTasks)}
-                className="text-xs text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-1 cursor-pointer"
+                className="text-xs text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
               >
-                <Activity size={13} /> {activeGroupTrackKey === groupName ? 'Close Tracking' : 'Track Group'}
+                <Activity size={13} /> {activeGroupTrackKey === groupName ? 'Close' : 'Track'}
               </button>
               <button
                 type="button"
                 onClick={() => handleCompleteGroup(groupName, groupTasks)}
-                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 cursor-pointer"
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 cursor-pointer px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors"
               >
-                <Check size={13} /> Complete All
+                <Check size={13} strokeWidth={2.5} /> Complete All
               </button>
             </div>
           </div>
@@ -2248,7 +2288,7 @@ function TodayPageContent() {
                   </div>
 
                   {isUncompletedSectionExpanded && (
-                    <div className="p-4 space-y-8 bg-black/40 animate-in fade-in slide-in-from-top-2">
+                    <div className="p-4 space-y-8 bg-black/40 animate-in fade-in slide-in-from-top-2 relative pl-5 before:absolute before:left-2 before:top-4 before:bottom-6 before:w-[3px] before:rounded-full before:bg-gradient-to-b before:from-amber-400 before:via-cyan-400 before:via-blue-500 before:via-orange-500 before:via-purple-500 before:to-indigo-600 before:opacity-85">
                       {renderTimelineBlocks()}
                     </div>
                   )}
@@ -2265,7 +2305,7 @@ function TodayPageContent() {
                 ) : activeGroups.length === 0 ? (
                   <div className="text-center p-8 bg-slate-950/60 border border-white/10 rounded-2xl text-gray-400 text-sm space-y-4 shadow-xl backdrop-blur-md">
                     <div className="space-y-1">
-                      <p className="font-bold text-white text-base">You don't have any protocols scheduled for today.</p>
+                      <p className="font-bold text-white text-base">You don&apos;t have any protocols scheduled for today.</p>
                       <p className="text-xs text-slate-400">Enroll in an active protocol or log an ad-hoc session to start building your daily timeline.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-md mx-auto">
@@ -2284,7 +2324,9 @@ function TodayPageContent() {
                     </div>
                   </div>
                 ) : (
-                  renderTimelineBlocks()
+                  <div className="relative pl-1 sm:pl-2 space-y-8 before:absolute before:left-0 before:top-2 before:bottom-6 before:w-[3px] before:rounded-full before:bg-gradient-to-b before:from-amber-400 before:via-cyan-400 before:via-blue-500 before:via-orange-500 before:via-purple-500 before:to-indigo-600 before:opacity-85 before:shadow-[0_0_10px_rgba(168,85,247,0.35)]">
+                    {renderTimelineBlocks()}
+                  </div>
                 )}
               </div>
             )}
