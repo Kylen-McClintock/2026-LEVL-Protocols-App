@@ -719,9 +719,8 @@ export default function ProtocolFocusPage() {
               </div>
             </div>
 
-            <div className="text-purple-300 flex items-center gap-1.5 text-xs font-bold shrink-0 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-xl hover:bg-purple-500/20 transition-all">
-              <span>{isTimelineExpanded ? 'Hide Timeline' : 'View Timeline'}</span>
-              <ChevronDown size={15} className={`transition-transform duration-200 ${isTimelineExpanded ? 'rotate-180 text-purple-400' : ''}`} />
+            <div className="p-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 transition-all shrink-0">
+              <ChevronDown size={18} className={`transition-transform duration-200 ${isTimelineExpanded ? 'rotate-180 text-purple-400' : 'text-slate-400'}`} />
             </div>
           </button>
 
