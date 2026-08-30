@@ -3654,6 +3654,106 @@ export async function moveModalityToBench(localUserId: string, modalityId: strin
   return true
 }
 
+export async function benchEntireProtocol(
+  localUserId: string, 
+  protocolId: string, 
+  modalityIds: string[], 
+  reason: string = 'Moved Entire Protocol to Bench',
+  selectedReasons: string[] = []
+) {
+  if (!supabase || !localUserId || !modalityIds || modalityIds.length === 0) return false
+  const client = supabase
+
+  const updates = modalityIds.map(async (mId) => {
+    if (!mId) return
+    const { data: existing } = await client
+      .from('user_bench_items')
+      .select('*')
+      .eq('local_user_id', localUserId)
+      .eq('modality_id', mId)
+      .maybeSingle()
+
+    if (existing) {
+      await client.from('user_bench_items').update({ 
+        status: 'benched', 
+        pinned: false,
+        personal_notes: reason,
+        elimination_reasons: selectedReasons
+      }).eq('id', existing.id)
+    } else {
+      await client.from('user_bench_items').insert([{
+        local_user_id: localUserId,
+        modality_id: mId,
+        status: 'benched',
+        personal_notes: reason,
+        elimination_reasons: selectedReasons,
+        pinned: false
+      }])
+    }
+
+    // Update pending daily tasks for this modality
+    await client
+      .from('daily_protocol_tasks')
+      .update({ status: 'skipped', status_reason: reason })
+      .eq('local_user_id', localUserId)
+      .eq('modality_id', mId)
+      .eq('status', 'pending')
+  })
+
+  await Promise.all(updates)
+  return true
+}
+
+export async function eliminateEntireProtocol(
+  localUserId: string, 
+  protocolId: string, 
+  modalityIds: string[], 
+  reason: string = 'User Eliminated Entire Protocol', 
+  selectedReasons: string[] = []
+) {
+  if (!supabase || !localUserId || !modalityIds || modalityIds.length === 0) return false
+  const client = supabase
+
+  const updates = modalityIds.map(async (mId) => {
+    if (!mId) return
+    const { data: existing } = await client
+      .from('user_bench_items')
+      .select('*')
+      .eq('local_user_id', localUserId)
+      .eq('modality_id', mId)
+      .maybeSingle()
+
+    if (existing) {
+      await client.from('user_bench_items').update({ 
+        status: 'eliminated', 
+        pinned: false,
+        personal_notes: reason,
+        elimination_reasons: selectedReasons
+      }).eq('id', existing.id)
+    } else {
+      await client.from('user_bench_items').insert([{
+        local_user_id: localUserId,
+        modality_id: mId,
+        status: 'eliminated',
+        personal_notes: reason,
+        elimination_reasons: selectedReasons,
+        pinned: false
+      }])
+    }
+
+    // Update pending daily tasks for this modality
+    await client
+      .from('daily_protocol_tasks')
+      .update({ status: 'contraindicated', status_reason: reason })
+      .eq('local_user_id', localUserId)
+      .eq('modality_id', mId)
+      .eq('status', 'pending')
+  })
+
+  await Promise.all(updates)
+  return true
+}
+
 export async function getBenchItem(localUserId: string, modalityId: string): Promise<UserBenchItem | null> {
   if (!supabase) return null
   const { data } = await supabase

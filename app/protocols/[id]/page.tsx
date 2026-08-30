@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createPortal } from 'react-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { 
   getProtocolByIdWithSteps, 
@@ -16,7 +17,9 @@ import {
   getOutcomeDimensions,
   saveOutcomeObservation,
   getTaskOutcomeObservations,
-  getDailyWellbeingHistory
+  getDailyWellbeingHistory,
+  benchEntireProtocol,
+  eliminateEntireProtocol
 } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { DailyProtocolTask, UserProfile, OutcomeDimension, DailyWellbeingCheckin } from '@/lib/types'
@@ -38,7 +41,13 @@ import {
   Zap,
   Target,
   Sliders,
-  ListOrdered
+  Archive,
+  Trash2,
+  X,
+  ExternalLink,
+  BookOpen,
+  Calendar,
+  ChevronRight
 } from 'lucide-react'
 import { ExpandedModalityDetailBanner } from '@/components/views/ExpandedModalityDetailBanner'
 import { DosageDetailModal } from '@/components/modals/DosageDetailModal'
@@ -52,6 +61,33 @@ const formatSlotName = (str: string) => {
   if (!str) return 'Daily'
   return str.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
+
+const getPhaseIcon = (timingSlot: string) => {
+  const slot = (timingSlot || '').toLowerCase()
+  if (slot.includes('wake') || slot.includes('morning') || slot.includes('sunrise') || slot.includes('fasted')) return '🌅'
+  if (slot.includes('afternoon') || slot.includes('midday') || slot.includes('meal') || slot.includes('workout')) return '☀️'
+  if (slot.includes('evening') || slot.includes('sunset') || slot.includes('wind_down')) return '🌙'
+  if (slot.includes('bed') || slot.includes('night') || slot.includes('sleep')) return '🛌'
+  return '⚡'
+}
+
+const PROTOCOL_BENCH_REASONS = [
+  'Currently on a break / cycling off',
+  'Traveling / limited hardware or gear',
+  'Want to test other protocols first',
+  'Too many active daily tasks right now',
+  'Financial / supplement refill timing',
+  'Seasonal adjustment'
+]
+
+const PROTOCOL_ELIMINATION_REASONS = [
+  'Experiencing adverse effects / side effects',
+  'Medical / prescription contraindication',
+  'Did not feel noticeable benefits',
+  'Too time intensive / complex daily routine',
+  'Dislike modality taste / texture / delivery method',
+  'Replaced by an improved alternative'
+]
 
 function getOutcomesForModality(modality: any, allOutcomes: OutcomeDimension[]): OutcomeDimension[] {
   if (!allOutcomes || allOutcomes.length === 0) return []
@@ -77,17 +113,28 @@ export default function ProtocolFocusPage() {
   const [allOutcomes, setAllOutcomes] = useState<OutcomeDimension[]>([])
   const [checkins, setCheckins] = useState<DailyWellbeingCheckin[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [mounted, setMounted] = useState(false)
 
+  // Collapsible view toggles (Collapsed by default so modalities are prominent)
+  const [isRationaleExpanded, setIsRationaleExpanded] = useState<boolean>(false)
+  const [isTimelineExpanded, setIsTimelineExpanded] = useState<boolean>(false)
+
+  // Protocol-Level Action Modal (Bench or Eliminate Entire Protocol)
+  const [actionModalType, setActionModalType] = useState<'bench' | 'eliminate' | null>(null)
+  const [selectedEliminationReasons, setSelectedEliminationReasons] = useState<string[]>([])
+  const [eliminateReason, setEliminateReason] = useState<string>('')
+  const [isProcessingAction, setIsProcessingAction] = useState<boolean>(false)
+
+  // Modality Level States
   const [expandedModalityId, setExpandedModalityId] = useState<string | null>(null)
   const [dosageModalModality, setDosageModalModality] = useState<any | null>(null)
   const [scheduleModalModality, setScheduleModalModality] = useState<any | null>(null)
-  const [isSynthesisFlowExpanded, setIsSynthesisFlowExpanded] = useState<boolean>(false)
 
   // Customize Outcomes Modal state
   const [customizeOutcomesModality, setCustomizeOutcomesModality] = useState<any | null>(null)
   const [customOutcomesMap, setCustomOutcomesMap] = useState<Record<string, string[]>>({})
 
-  // INLINE outcome tracking state (Matching Today View inline tracking panel)
+  // INLINE outcome tracking state
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null)
   const [activeOutcomePhase, setActiveOutcomePhase] = useState<'pre' | 'post'>('post')
   
@@ -101,6 +148,20 @@ export default function ProtocolFocusPage() {
   const [completionToast, setCompletionToast] = useState<{ id: string; name: string } | null>(null)
 
   const currentDateStr = format(new Date(), 'yyyy-MM-dd')
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const reloadData = async () => {
+    const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+    const [tasks, bench] = await Promise.all([
+      getDailyProtocolTasks(localUserId, currentDateStr),
+      getBenchItems(localUserId)
+    ])
+    setTodayTasks(tasks)
+    setBenchItems(bench)
+  }
 
   useEffect(() => {
     if (authLoading) return
@@ -220,7 +281,6 @@ export default function ProtocolFocusPage() {
     const promises: Promise<any>[] = []
 
     if (activeOutcomePhase === 'pre') {
-      // SAVE BASELINE OBSERVATIONS (WITHOUT COMPLETING TASK)
       modOutcomes.forEach(outcome => {
         if (touchedPre[outcome.id] && preValues[outcome.id] !== undefined) {
           promises.push(
@@ -243,7 +303,6 @@ export default function ProtocolFocusPage() {
       return
     }
 
-    // SAVE AFTER OBSERVATIONS & COMPLETE TASK
     await updateDailyTaskStatus(taskId, 'completed', undefined, undefined, format(new Date(), 'yyyy-MM-dd HH:mm:ss'))
     const updatedTasks = await getDailyProtocolTasks(localUserId, currentDateStr)
     setTodayTasks(updatedTasks)
@@ -298,6 +357,55 @@ export default function ProtocolFocusPage() {
     setBenchItems(updatedBench)
   }
 
+  const toggleEliminationReason = (label: string) => {
+    setSelectedEliminationReasons(prev =>
+      prev.includes(label) ? prev.filter(r => r !== label) : [...prev, label]
+    )
+  }
+
+  // Protocol-Level Actions: Add All, Bench Entire Protocol, Eliminate Entire Protocol
+  const handleAddEntireProtocolToToday = async () => {
+    if (!protocol) return
+    setIsProcessingAction(true)
+    const localUserId = getLocalUserId()
+    await addProtocolToToday(localUserId, currentDateStr, protocol.id)
+    await reloadData()
+    setIsProcessingAction(false)
+  }
+
+  const handleConfirmProtocolAction = async () => {
+    if (!protocol) return
+    setIsProcessingAction(true)
+    const localUserId = getLocalUserId()
+    const modalityIds = (protocol.steps || protocol.protocol_steps || [])
+      .map((s: any) => s.modality_id || s.modality?.id)
+      .filter(Boolean)
+
+    if (actionModalType === 'eliminate') {
+      await eliminateEntireProtocol(
+        localUserId,
+        protocol.id,
+        modalityIds,
+        eliminateReason || 'User eliminated entire protocol',
+        selectedEliminationReasons
+      )
+    } else if (actionModalType === 'bench') {
+      await benchEntireProtocol(
+        localUserId,
+        protocol.id,
+        modalityIds,
+        eliminateReason || 'Moved Entire Protocol to Bench',
+        selectedEliminationReasons
+      )
+    }
+
+    await reloadData()
+    setIsProcessingAction(false)
+    setActionModalType(null)
+    setEliminateReason('')
+    setSelectedEliminationReasons([])
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
@@ -319,7 +427,7 @@ export default function ProtocolFocusPage() {
         </p>
         <Link
           href="/today"
-          className="mt-4 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all"
+          className="mt-4 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all cursor-pointer"
         >
           <ArrowLeft size={16} /> Return to Today View
         </Link>
@@ -365,6 +473,7 @@ export default function ProtocolFocusPage() {
   const completedCount = evaluatedSteps.filter((s: any) => s.statusType === 'completed').length
   const benchedCount = evaluatedSteps.filter((s: any) => s.statusType === 'benched').length
   const notEnrolledCount = evaluatedSteps.filter((s: any) => s.statusType === 'not_enrolled').length
+  const isEntirelyActive = evaluatedSteps.length > 0 && activeCount === evaluatedSteps.length
 
   const authorName = protocol.source_label || protocol.author_name || protocol.name || 'Protocol'
   const isBryanJohnson = authorName.toLowerCase().includes('blueprint') || authorName.toLowerCase().includes('bryan johnson')
@@ -382,14 +491,14 @@ export default function ProtocolFocusPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-20 selection:bg-purple-500/30">
+    <div className="min-h-screen bg-slate-950 text-slate-100 pb-24 selection:bg-purple-500/30">
       
       {/* Top Header Toolbar */}
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 sm:px-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800 cursor-pointer"
+            className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800 cursor-pointer active:scale-95"
           >
             <ArrowLeft size={14} />
             <span>Back</span>
@@ -404,57 +513,175 @@ export default function ProtocolFocusPage() {
       </header>
 
       {/* Main Focus Container */}
-      <main className="max-w-5xl mx-auto px-4 py-6 sm:px-6 space-y-6">
+      <main className="max-w-5xl mx-auto px-4 py-5 sm:px-6 space-y-5">
 
-        {/* HERO PROTOCOL FOCUS CARD */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/40 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 relative overflow-hidden">
+        {/* COMPACT HERO PROTOCOL FOCUS CARD */}
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/40 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden">
           <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
+          {/* Header Row: Title & Primary Metadata Pills */}
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-purple-400 text-xs font-bold uppercase tracking-wider">
-              <Sparkles size={16} /> Protocol Deep Dive & Focus View
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              {protocol.name}
-            </h1>
-            {protocol.description && (
-              <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-3xl">
-                {protocol.description}
-              </p>
-            )}
-          </div>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-purple-400 text-xs font-bold uppercase tracking-wider">
+                <Sparkles size={14} /> Protocol Deep Dive
+              </div>
 
-          {/* Key Longevity Metadata Pills */}
-          <div className="flex items-center gap-2.5 flex-wrap pt-1 text-xs">
-            {protocol.primary_goal && (
-              <div className="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-teal-300">
-                <Target size={14} className="text-teal-400" />
-                <span className="font-semibold">Goal: {protocol.primary_goal}</span>
-              </div>
-            )}
-            {protocol.difficulty_level && (
-              <div className="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-amber-300">
-                <Zap size={14} className="text-amber-400" />
-                <span className="font-semibold">Difficulty: {protocol.difficulty_level}</span>
-              </div>
-            )}
-            {protocol.evidence_level && (
-              <div className="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-blue-300">
-                <ShieldCheck size={14} className="text-blue-400" />
-                <span className="font-semibold">Evidence: {protocol.evidence_level}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Scientific Rationale Banner */}
-          <div className="p-4 rounded-2xl bg-slate-950/80 border border-purple-500/30 text-xs sm:text-sm text-purple-200 flex items-start gap-3 leading-relaxed">
-            <Info size={18} className="text-purple-400 shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-purple-300 font-bold block mb-0.5">Scientific Protocol Rationale:</strong>
-              <span>
-                {protocol.rationale || protocol.notes || `Prescribed protocol stack authored by ${authorName}. Designed to extend longevity healthspan through target biological pathway modulation.`}
+              {/* Modality Count Chip */}
+              <span className="text-[11px] font-mono font-bold text-slate-300 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full">
+                {evaluatedSteps.length} Modalities
               </span>
             </div>
+
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+              {protocol.name}
+            </h1>
+          </div>
+
+          {/* PROTOCOL-LEVEL QUICK ACTIONS BAR (Easy to Add, Bench, or Eliminate Entire Protocol) */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap pt-1 border-t border-white/5">
+            {isEntirelyActive ? (
+              <div className="px-3.5 py-2 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm">
+                <Check size={14} strokeWidth={3} />
+                <span>All {evaluatedSteps.length} Modalities Active</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAddEntireProtocolToToday}
+                disabled={isProcessingAction}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md shadow-purple-900/30 cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <Plus size={14} strokeWidth={3} />
+                <span>Add Entire Protocol to Today</span>
+              </button>
+            )}
+
+            {/* Bench Entire Protocol */}
+            <button
+              type="button"
+              onClick={() => {
+                setEliminateReason('')
+                setSelectedEliminationReasons([])
+                setActionModalType('bench')
+              }}
+              className="px-3.5 py-2 bg-slate-800/90 hover:bg-amber-950/50 text-slate-300 hover:text-amber-300 border border-slate-700 hover:border-amber-500/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+              title="Pause all modalities in this protocol and store on bench"
+            >
+              <Archive size={14} />
+              <span>Bench Entire Protocol</span>
+            </button>
+
+            {/* Eliminate Entire Protocol */}
+            <button
+              type="button"
+              onClick={() => {
+                setEliminateReason('')
+                setSelectedEliminationReasons([])
+                setActionModalType('eliminate')
+              }}
+              className="px-3.5 py-2 bg-slate-800/90 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-500/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95 ml-auto sm:ml-0"
+              title="Eliminate and remove all modalities from this protocol"
+            >
+              <Trash2 size={14} />
+              <span>Eliminate Entire Protocol</span>
+            </button>
+          </div>
+
+          {/* COMPACT SEGMENTED PROGRESS STRIP */}
+          <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-slate-300 font-bold flex items-center gap-1.5">
+                <Layers size={13} className="text-purple-400" />
+                <span>Enrollment Status:</span>
+              </span>
+              <div className="flex items-center gap-3 text-slate-400">
+                <span className="text-emerald-400 font-bold">{completedCount} Done</span>
+                <span>•</span>
+                <span className="text-blue-400 font-bold">{activeCount - completedCount} Active</span>
+                <span>•</span>
+                <span className="text-amber-400 font-bold">{benchedCount} Benched</span>
+                <span>•</span>
+                <span className="text-slate-400">{notEnrolledCount} Not Saved</span>
+              </div>
+            </div>
+
+            {/* Visual Mini Progress Bar */}
+            <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden flex">
+              <div 
+                className="bg-emerald-500 transition-all duration-300"
+                style={{ width: `${evaluatedSteps.length ? (completedCount / evaluatedSteps.length) * 100 : 0}%` }}
+                title={`${completedCount} Completed`}
+              />
+              <div 
+                className="bg-blue-500 transition-all duration-300"
+                style={{ width: `${evaluatedSteps.length ? ((activeCount - completedCount) / evaluatedSteps.length) * 100 : 0}%` }}
+                title={`${activeCount - completedCount} Active Today`}
+              />
+              <div 
+                className="bg-amber-500 transition-all duration-300"
+                style={{ width: `${evaluatedSteps.length ? (benchedCount / evaluatedSteps.length) * 100 : 0}%` }}
+                title={`${benchedCount} on Bench`}
+              />
+            </div>
+          </div>
+
+          {/* COLLAPSIBLE PROTOCOL DETAILS & SCIENTIFIC RATIONALE (Collapsed by Default) */}
+          <div className="border border-purple-500/20 bg-purple-950/10 rounded-2xl overflow-hidden transition-all">
+            <button
+              type="button"
+              onClick={() => setIsRationaleExpanded(!isRationaleExpanded)}
+              className="w-full flex items-center justify-between p-3.5 text-left hover:bg-purple-950/30 transition-colors cursor-pointer text-xs font-bold text-purple-300"
+            >
+              <div className="flex items-center gap-2">
+                <BookOpen size={14} className="text-purple-400" />
+                <span>Protocol Details &amp; Scientific Rationale</span>
+              </div>
+
+              <div className="flex items-center gap-1 text-[11px] text-purple-400">
+                <span>{isRationaleExpanded ? 'Hide Details' : 'View Details'}</span>
+                {isRationaleExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </div>
+            </button>
+
+            {isRationaleExpanded && (
+              <div className="p-4 border-t border-purple-500/20 space-y-4 bg-slate-950/80 text-xs sm:text-sm animate-in fade-in">
+                {protocol.description && (
+                  <p className="text-slate-300 leading-relaxed">
+                    {protocol.description}
+                  </p>
+                )}
+
+                {/* Metadata Badges */}
+                <div className="flex items-center gap-2 flex-wrap text-xs">
+                  {protocol.primary_goal && (
+                    <div className="bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl flex items-center gap-1.5 text-teal-300">
+                      <Target size={13} className="text-teal-400" />
+                      <span>Goal: {protocol.primary_goal}</span>
+                    </div>
+                  )}
+                  {protocol.difficulty_level && (
+                    <div className="bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl flex items-center gap-1.5 text-amber-300">
+                      <Zap size={13} className="text-amber-400" />
+                      <span>Difficulty: {protocol.difficulty_level}</span>
+                    </div>
+                  )}
+                  {protocol.evidence_level && (
+                    <div className="bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl flex items-center gap-1.5 text-blue-300">
+                      <ShieldCheck size={13} className="text-blue-400" />
+                      <span>Evidence: {protocol.evidence_level}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Scientific Rationale */}
+                <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/30 text-xs text-purple-200 space-y-1">
+                  <strong className="text-purple-300 font-bold block">Target Biological Mechanism &amp; Rationale:</strong>
+                  <p className="leading-relaxed">
+                    {protocol.rationale || protocol.notes || `Prescribed protocol stack authored by ${authorName}. Designed to extend longevity healthspan through target biological pathway modulation.`}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -468,118 +695,94 @@ export default function ProtocolFocusPage() {
           />
         )}
 
-        {/* PROTOCOL SYNTHESIS & SEQUENTIAL EXECUTION FLOW (Collapsed by Default) */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-xl transition-all">
+        {/* DAILY ROUTINE TIMELINE (Redesigned & Collapsed by Default) */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-lg transition-all">
           <button
             type="button"
-            onClick={() => setIsSynthesisFlowExpanded(!isSynthesisFlowExpanded)}
-            className="w-full flex items-center justify-between p-4 sm:p-5 text-left bg-purple-950/20 hover:bg-purple-950/40 transition-colors cursor-pointer"
+            onClick={() => setIsTimelineExpanded(!isTimelineExpanded)}
+            className="w-full flex items-center justify-between p-4 sm:p-4.5 text-left hover:bg-slate-800/60 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                <ListOrdered size={18} />
+              <div className="p-2 rounded-xl bg-slate-800 text-purple-300 border border-white/5">
+                <Calendar size={17} />
               </div>
               <div>
                 <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
-                  <span>Protocol Synthesis & Sequential Execution Flow</span>
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold">
-                    {evaluatedSteps.length} Modalities
+                  <span>Daily Routine Timeline</span>
+                  <span className="text-[10px] bg-purple-500/15 text-purple-300 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                    {evaluatedSteps.length} Steps
                   </span>
                 </h3>
                 <p className="text-xs text-slate-400 font-medium">
-                  Daily timing schedule & synergistic pathway interactions across this protocol
+                  Circadian schedule &amp; sequence across all {evaluatedSteps.length} modalities
                 </p>
               </div>
             </div>
 
-            <div className="text-purple-300 flex items-center gap-1.5 text-xs font-bold shrink-0">
-              <span>{isSynthesisFlowExpanded ? 'Hide Flow' : 'Show Sequential Flow'}</span>
-              {isSynthesisFlowExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            <div className="text-purple-300 flex items-center gap-1.5 text-xs font-bold shrink-0 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-xl hover:bg-purple-500/20 transition-all">
+              <span>{isTimelineExpanded ? 'Hide Timeline' : 'View Timeline'}</span>
+              <ChevronDown size={15} className={`transition-transform duration-200 ${isTimelineExpanded ? 'rotate-180 text-purple-400' : ''}`} />
             </div>
           </button>
 
-          {isSynthesisFlowExpanded && (
-            <div className="p-4 sm:p-5 border-t border-purple-500/30 space-y-3 bg-slate-950/80 animate-in fade-in slide-in-from-top-2">
-              {evaluatedSteps.map(({ step, modality }: any, idx: number) => {
-                const stepName = modality?.display_name || modality?.name || step.instructions || `Step ${idx + 1}`
-                const stepTiming = step.timing_slot ? formatSlotName(step.timing_slot) : modality?.timing_summary || 'Daily'
-                const stepDose = step.dosage || step.dosage_value || modality?.dose_or_exposure || 'Standard dose'
-                const stepNotes = step.instructions || modality?.instructions || modality?.brief_description || ''
+          {isTimelineExpanded && (
+            <div className="p-4 sm:p-5 border-t border-slate-800 space-y-3 bg-slate-950/60 animate-in fade-in slide-in-from-top-2">
+              <div className="relative pl-6 sm:pl-8 space-y-4 before:absolute before:left-3 sm:before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-gradient-to-b before:from-indigo-500 before:via-purple-500 before:to-amber-500">
+                {evaluatedSteps.map(({ step, modality }: any, idx: number) => {
+                  const stepName = modality?.display_name || modality?.name || step.instructions || `Step ${idx + 1}`
+                  const stepTiming = step.timing_slot ? formatSlotName(step.timing_slot) : modality?.timing_summary || 'Daily'
+                  const stepDose = step.dosage || step.dosage_value || modality?.dose_or_exposure || 'Standard dose'
+                  const stepNotes = step.instructions || modality?.instructions || modality?.brief_description || ''
+                  const phaseIcon = getPhaseIcon(step.timing_slot || modality?.timing_summary || '')
 
-                return (
-                  <div key={idx} className="bg-slate-900/90 border border-slate-800/90 rounded-xl p-3.5 space-y-2 hover:border-purple-500/40 transition-all">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-center font-bold font-mono text-xs shrink-0">
-                          {idx + 1}
-                        </span>
-                        <span className="text-sm font-extrabold text-white">
-                          {stepName}
-                        </span>
+                  return (
+                    <div key={idx} className="relative group">
+                      {/* Chronological Timeline Node */}
+                      <div className="absolute -left-6 sm:-left-8 top-1.5 w-6 h-6 rounded-full bg-slate-950 border-2 border-purple-400 flex items-center justify-center font-mono font-bold text-[10px] text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.4)]">
+                        {idx + 1}
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="bg-slate-950 border border-slate-800 text-purple-300 px-2.5 py-0.5 rounded-md font-mono text-[11px]">
-                          ⏰ {stepTiming}
-                        </span>
-                        <span className="bg-slate-950 border border-slate-800 text-teal-300 px-2.5 py-0.5 rounded-md font-mono text-[11px]">
-                          💊 {stepDose}
-                        </span>
+                      <div className="bg-slate-900/90 border border-slate-800/90 rounded-xl p-3.5 space-y-2 hover:border-purple-500/40 transition-all">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-sm font-extrabold text-white">
+                            {stepName}
+                          </span>
+
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="bg-slate-950 border border-slate-800 text-purple-300 px-2.5 py-0.5 rounded-lg font-mono text-[11px] flex items-center gap-1">
+                              <span>{phaseIcon}</span>
+                              <span>{stepTiming}</span>
+                            </span>
+                            <span className="bg-slate-950 border border-slate-800 text-teal-300 px-2.5 py-0.5 rounded-lg font-mono text-[11px]">
+                              💊 {stepDose}
+                            </span>
+                          </div>
+                        </div>
+
+                        {stepNotes && (
+                          <p className="text-xs text-slate-300 leading-relaxed font-sans pl-3 border-l-2 border-purple-500/30 my-1">
+                            {stepNotes}
+                          </p>
+                        )}
                       </div>
                     </div>
-
-                    {stepNotes && (
-                      <p className="text-xs text-slate-300 leading-relaxed font-sans pl-8 border-l-2 border-purple-500/30 my-1">
-                        {stepNotes}
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
 
-        {/* ENROLLMENT & STATUS BREAKDOWN SUMMARY BAR */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
-              <Layers size={16} className="text-purple-400" />
-              <span>Protocol Enrollment & Completion Status</span>
-            </div>
-            <span className="text-xs font-mono font-bold text-slate-400">
-              {evaluatedSteps.length} Total Modalities
+        {/* PRESCRIBED PROTOCOL MODALITIES (Prominent & Near the Top) */}
+        <div className="space-y-3 pt-1">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+              <Activity size={16} className="text-teal-400" /> Prescribed Protocol Modalities ({evaluatedSteps.length})
+            </h2>
+            <span className="text-[11px] text-slate-400 font-mono">
+              Click any card to personalize dosing or schedule
             </span>
           </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl flex flex-col justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Completed Today</span>
-              <span className="text-xl font-extrabold text-emerald-300 font-mono mt-1">{completedCount}</span>
-            </div>
-
-            <div className="bg-blue-950/40 border border-blue-500/30 p-3 rounded-xl flex flex-col justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Active / Pending</span>
-              <span className="text-xl font-extrabold text-blue-300 font-mono mt-1">{activeCount - completedCount}</span>
-            </div>
-
-            <div className="bg-amber-950/40 border border-amber-500/30 p-3 rounded-xl flex flex-col justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">On Bench</span>
-              <span className="text-xl font-extrabold text-amber-300 font-mono mt-1">{benchedCount}</span>
-            </div>
-
-            <div className="bg-slate-950/80 border border-slate-800 p-3 rounded-xl flex flex-col justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Not In Stack</span>
-              <span className="text-xl font-extrabold text-slate-300 font-mono mt-1">{notEnrolledCount}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* MODALITY BREAKDOWN CARDS */}
-        <div className="space-y-4 pt-2">
-          <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-            <Activity size={16} className="text-teal-400" /> Prescribed Protocol Modalities ({evaluatedSteps.length})
-          </h2>
 
           <div className="space-y-3">
             {evaluatedSteps.map(({ step, modality, modalityId, todayTask, statusType }: any, index: number) => {
@@ -610,7 +813,7 @@ export default function ProtocolFocusPage() {
                   >
                     {/* Row 1: Full-Width Modality Name & Status Badge */}
                     <div className="flex items-start justify-between gap-3 w-full">
-                      <h3 className="text-lg sm:text-xl font-extrabold text-white leading-snug flex-1">
+                      <h3 className="text-base sm:text-lg font-extrabold text-white leading-snug flex-1">
                         {modName}
                       </h3>
 
@@ -699,109 +902,71 @@ export default function ProtocolFocusPage() {
                   {isExpanded && modality && (
                     <div className="p-4 sm:p-5 pt-0 border-t border-slate-800/80 animate-in fade-in space-y-4">
                       
-                      {/* UNIFIED INLINE OUTCOME TRACKER PANEL (EXACT TODAY VIEW LOGGING FLOW) */}
+                      {/* INLINE OUTCOME LOGGING PANEL */}
                       {isCompletingThisTask && (
-                        <div className="bg-black/70 border border-purple-500/40 rounded-2xl p-4 sm:p-5 space-y-4 animate-in fade-in shadow-xl text-xs mt-4">
-                          
-                          {/* Header & Phase Switcher Tabs */}
-                          <div className="flex items-center justify-between border-b border-white/10 pb-3 flex-wrap gap-2">
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <div className="flex items-center gap-2 text-white font-bold uppercase tracking-wider">
-                                <Activity size={16} className="text-purple-400" /> Outcome Observations
-                              </div>
-
-                              {/* Phase Tabs: Before Modality | After Modality */}
-                              <div className="flex items-center gap-1 bg-black/60 p-1 rounded-lg border border-white/15">
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveOutcomePhase('pre')}
-                                  className={`px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${activeOutcomePhase === 'pre' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                                >
-                                  Before Modality
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveOutcomePhase('post')}
-                                  className={`px-3 py-1 rounded-md font-bold transition-all cursor-pointer ${activeOutcomePhase === 'post' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                                >
-                                  After Modality
-                                </button>
-                              </div>
-
-                              {activeOutcomePhase === 'post' && (
-                                <div className="flex items-center gap-2 bg-black/60 border border-emerald-500/40 rounded-xl px-3 py-1 text-xs font-semibold text-emerald-300">
-                                  <Clock size={14} />
-                                  <span>NOW Completed: {format(new Date(), 'hh:mm a')}</span>
-                                </div>
-                              )}
+                        <div className="bg-slate-950 border border-purple-500/40 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xl animate-in fade-in">
+                          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                            <div className="flex items-center gap-2">
+                              <Sparkles size={16} className="text-purple-400" />
+                              <span className="font-extrabold text-sm text-white">
+                                Log Experience: {modName}
+                              </span>
                             </div>
-
-                            {/* Edit Tracked Outcomes Button */}
-                            <button
-                              type="button"
-                              onClick={() => setCustomizeOutcomesModality(modality)}
-                              className="text-xs font-bold text-gray-200 hover:text-white bg-white/10 hover:bg-white/15 border border-white/20 px-3.5 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Sliders size={14} /> Edit Tracked Outcomes
-                            </button>
+                            
+                            {/* Pre / Post Tabs */}
+                            <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs">
+                              <button
+                                type="button"
+                                onClick={() => setActiveOutcomePhase('pre')}
+                                className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                                  activeOutcomePhase === 'pre'
+                                    ? 'bg-purple-600 text-white shadow-sm'
+                                    : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                Pre-Session
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActiveOutcomePhase('post')}
+                                className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                                  activeOutcomePhase === 'post'
+                                    ? 'bg-emerald-500 text-slate-950 font-extrabold shadow-sm'
+                                    : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                Post-Session
+                              </button>
+                            </div>
                           </div>
 
-                          {/* Outcome Sliders List */}
-                          <div className="space-y-3">
-                            {trackedOutcomes.map(outcome => {
-                              const preVal = preValues[outcome.id]
-                              const postVal = postValues[outcome.id]
-                              const isPreTouched = touchedPre[outcome.id]
-                              const isPostTouched = touchedPost[outcome.id]
-
-                              const isCurrentPhaseTouched = activeOutcomePhase === 'pre' ? isPreTouched : isPostTouched
-                              const currentVal = activeOutcomePhase === 'pre' ? (preVal ?? 5) : (postVal ?? preVal ?? 5)
-                              const effectiveBaseline = preVal !== undefined ? preVal : 5
-
-                              const preColor = getOutcomeColorConfig(effectiveBaseline, outcome.directionality)
-                              const postColor = getOutcomeColorConfig(currentVal, outcome.directionality)
-                              const colorCfg = isCurrentPhaseTouched ? postColor : getNeutralOutcomeColorConfig()
-                              const isLowerBetter = outcome.directionality === 'lower_is_better'
-                              const netShift = currentVal - effectiveBaseline
+                          {/* Outcome Sliders */}
+                          <div className="space-y-4">
+                            {trackedOutcomes.map((outcome) => {
+                              const val = activeOutcomePhase === 'pre' 
+                                ? (preValues[outcome.id] ?? 5) 
+                                : (postValues[outcome.id] ?? 5)
+                              const isTouched = activeOutcomePhase === 'pre' 
+                                ? touchedPre[outcome.id] 
+                                : touchedPost[outcome.id]
+                              const colorCfg = getOutcomeColorConfig(val, outcome.directionality)
 
                               return (
-                                <div key={outcome.id} className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
-                                  <div className="flex justify-between items-center text-xs">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="text-white font-bold">{outcome.name}</span>
-                                      
-                                      {/* Display Before Baseline rating pill & shift badge when logging after modality */}
-                                      {activeOutcomePhase === 'post' && preVal !== undefined && (
-                                        <div className="flex items-center gap-1">
-                                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-0.5 ${preColor.badgeBg}`}>
-                                            ⚡ Baseline: {preVal}/10
-                                          </span>
-                                          {isPostTouched && (
-                                            <span className={`text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded border ${netShift >= 0 ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-red-500/20 border-red-500/40 text-red-300'}`}>
-                                              {netShift >= 0 ? `+${netShift}` : netShift} Shift
-                                            </span>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5">
-                                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
-                                        {isCurrentPhaseTouched ? colorCfg.qualityLabel : 'Unset'}
-                                      </span>
-                                      <span className={`font-mono font-bold text-xs ${colorCfg.textColor}`}>
-                                        {isCurrentPhaseTouched ? `${currentVal}/10` : 'Unset'}
-                                      </span>
-                                    </div>
+                                <div key={outcome.id} className="space-y-1.5">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-bold text-slate-200">{outcome.name}</span>
+                                    <span className={`font-mono font-bold px-2 py-0.5 rounded-md ${colorCfg.badgeBg}`}>
+                                      {isTouched ? `${val}/10` : 'Not Rated (5)'}
+                                    </span>
                                   </div>
-
-                                  <input 
-                                    type="range" 
-                                    min="0" 
-                                    max="10" 
-                                    value={currentVal} 
+                                  <input
+                                    type="range"
+                                    min={0}
+                                    max={10}
+                                    step={1}
+                                    value={val}
                                     onChange={(e) => {
-                                      const num = parseInt(e.target.value)
+                                      const num = parseInt(e.target.value, 10)
                                       if (activeOutcomePhase === 'pre') {
                                         setPreValues(prev => ({ ...prev, [outcome.id]: num }))
                                         setTouchedPre(prev => ({ ...prev, [outcome.id]: true }))
@@ -809,73 +974,66 @@ export default function ProtocolFocusPage() {
                                         setPostValues(prev => ({ ...prev, [outcome.id]: num }))
                                         setTouchedPost(prev => ({ ...prev, [outcome.id]: true }))
                                       }
-                                    }} 
-                                    className="w-full cursor-pointer" 
-                                    style={{ accentColor: colorCfg.accentHex }}
+                                    }}
+                                    className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
                                   />
-                                  
-                                  <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-gray-400">
-                                    <span className={isLowerBetter ? 'text-emerald-400' : 'text-red-400'}>
-                                      0: {isLowerBetter ? 'Best (None)' : 'Poor (Low)'}
-                                    </span>
-                                    <span className={isLowerBetter ? 'text-red-400' : 'text-emerald-400'}>
-                                      10: {isLowerBetter ? 'Worst (Severe)' : 'Peak (Best)'}
-                                    </span>
-                                  </div>
                                 </div>
                               )
                             })}
                           </div>
 
-                          {/* Optional Notes Input */}
-                          <div className="pt-1">
-                            <label className="text-[10px] uppercase font-bold text-gray-400 block mb-1">
-                              Optional Notes
-                            </label>
+                          {/* Subjective Notes */}
+                          <div className="space-y-1 pt-1">
+                            <label className="text-[11px] font-bold text-slate-400">Notes / Subjective Observations (Optional)</label>
                             <input
                               type="text"
                               value={outcomeNotes}
                               onChange={(e) => setOutcomeNotes(e.target.value)}
-                              placeholder="e.g. Felt extra calm after 15m session, water at 55°F"
-                              className="w-full bg-black/50 border border-white/15 rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500 transition-colors"
+                              placeholder="e.g. Felt noticeably calm, no GI discomfort..."
+                              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500"
                             />
                           </div>
 
-                          {/* Action Buttons: Save Baseline OR Save Observations & Complete */}
-                          <div className="flex items-center gap-3 pt-2">
+                          {/* Inline Action Buttons */}
+                          <div className="flex items-center justify-between pt-2">
+                            <button
+                              type="button"
+                              onClick={() => setCompletingTaskId(null)}
+                              className="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => handleSaveInlineOutcomes(todayTask, step, modality)}
                               disabled={isSavingOutcomes}
-                              className={`flex-1 py-3 text-white font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer active:scale-95 ${
-                                activeOutcomePhase === 'pre' 
-                                  ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/40' 
-                                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/40'
-                              }`}
+                              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer active:scale-95 disabled:opacity-50"
                             >
-                              <Check size={16} className="stroke-[3]" />
-                              <span>
-                                {isSavingOutcomes
-                                  ? (activeOutcomePhase === 'pre' ? 'Saving Baseline...' : 'Saving...')
-                                  : (activeOutcomePhase === 'pre' ? '⚡ Save Baseline Observations' : '✓ Save Observations & Complete')
-                                }
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCompletingTaskId(null)}
-                              className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-colors cursor-pointer"
-                            >
-                              Cancel
+                              <Check size={14} strokeWidth={3} />
+                              <span>{activeOutcomePhase === 'pre' ? 'Save Pre-Check' : 'Complete & Save Log'}</span>
                             </button>
                           </div>
-
                         </div>
                       )}
 
-                      {/* RICH EXPANDED MODALITY DETAIL BANNER (UNTOUCHED) */}
+                      {/* Detailed Modality Banner Component */}
                       <ExpandedModalityDetailBanner
-                        task={todayTask || ({ loose_modality: modality, modality_id: modalityId, protocol_step: step } as any)}
+                        task={{
+                          id: todayTask?.id || `preview_${modalityId}`,
+                          local_user_id: getLocalUserId(),
+                          date: currentDateStr,
+                          modality_id: modalityId,
+                          protocol_step_id: step.id,
+                          status: statusType === 'not_enrolled' ? 'pending' : statusType,
+                          timing_slot: step.timing_slot,
+                          custom_dose: todayTask?.custom_dose || step.dose_text,
+                          protocol_step: {
+                            ...step,
+                            protocol: protocol
+                          },
+                          loose_modality: modality
+                        } as any}
                         onClose={() => setExpandedModalityId(null)}
                         onTaskStatusChange={(tId, status) => {
                           if (status === 'completed') {
@@ -924,6 +1082,145 @@ export default function ProtocolFocusPage() {
         </div>
       )}
 
+      {/* FULL-SCREEN TAKEOVER MODAL: BENCH OR ELIMINATE ENTIRE PROTOCOL */}
+      {actionModalType && mounted && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setActionModalType(null)
+          }}
+        >
+          <div 
+            className={`relative w-full max-w-lg bg-slate-950 border ${
+              actionModalType === 'eliminate' 
+                ? 'border-rose-500/50 shadow-[0_0_50px_rgba(244,63,94,0.25)]' 
+                : 'border-purple-500/50 shadow-[0_0_50px_rgba(168,85,247,0.25)]'
+            } rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col my-auto max-h-[90vh] overflow-hidden space-y-4`}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-2xl border shrink-0 ${
+                  actionModalType === 'eliminate' 
+                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' 
+                    : 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                }`}>
+                  {actionModalType === 'eliminate' ? <Trash2 size={22} /> : <Archive size={22} />}
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white">
+                    {actionModalType === 'eliminate' 
+                      ? `Eliminate "${protocol.name}" Entirely?` 
+                      : `Move "${protocol.name}" to Bench?`}
+                  </h3>
+                  <p className={`text-xs font-medium ${actionModalType === 'eliminate' ? 'text-rose-300/90' : 'text-purple-300/90'}`}>
+                    {actionModalType === 'eliminate' 
+                      ? `Removes all ${evaluatedSteps.length} modalities from active schedule` 
+                      : `Pauses all ${evaluatedSteps.length} modalities and saves to bench`}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActionModalType(null)}
+                className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Scrollable Reason Content */}
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1 py-1">
+              <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 leading-relaxed">
+                💡 <strong className="text-teal-300">Don&apos;t worry:</strong> {actionModalType === 'eliminate' 
+                  ? 'You can re-add this protocol from the Protocol Library anytime.' 
+                  : 'You can restore this benched protocol back to your schedule anytime with 1 click.'}
+              </div>
+
+              {/* Reasons Checkbox Grid */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Why are you {actionModalType === 'eliminate' ? 'eliminating' : 'benching'} this protocol? (Select 0 or more)
+                </label>
+                <div className="grid grid-cols-1 gap-2">
+                  {(actionModalType === 'eliminate' ? PROTOCOL_ELIMINATION_REASONS : PROTOCOL_BENCH_REASONS).map((label) => {
+                    const isSelected = selectedEliminationReasons.includes(label)
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => toggleEliminationReason(label)}
+                        className={`w-full p-2.5 rounded-xl border text-left text-xs flex items-center justify-between transition-all cursor-pointer ${
+                          isSelected
+                            ? actionModalType === 'eliminate'
+                              ? 'bg-rose-500/15 border-rose-500/60 text-white'
+                              : 'bg-purple-500/15 border-purple-500/60 text-white'
+                            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span>{label}</span>
+                        <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
+                          isSelected 
+                            ? actionModalType === 'eliminate' ? 'bg-rose-500 border-rose-400 text-white' : 'bg-purple-500 border-purple-400 text-white'
+                            : 'border-slate-700 bg-slate-800'
+                        }`}>
+                          {isSelected && <Check size={10} strokeWidth={3} />}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Freeform Personal Notes */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Personal Notes / Biometric Feedback (Optional)
+                </label>
+                <textarea
+                  value={eliminateReason}
+                  onChange={(e) => setEliminateReason(e.target.value)}
+                  placeholder="e.g., Bloodwork marker changes, cycling off for 8 weeks..."
+                  rows={3}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Sticky Action Footer */}
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/10 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActionModalType(null)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmProtocolAction}
+                disabled={isProcessingAction}
+                className={`px-5 py-2.5 rounded-xl text-xs font-extrabold text-white transition-all shadow-lg cursor-pointer active:scale-95 disabled:opacity-50 flex items-center gap-1.5 ${
+                  actionModalType === 'eliminate'
+                    ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-900/30'
+                    : 'bg-purple-600 hover:bg-purple-500 shadow-purple-900/30'
+                }`}
+              >
+                {actionModalType === 'eliminate' ? <Trash2 size={14} /> : <Archive size={14} />}
+                <span>
+                  {isProcessingAction 
+                    ? 'Updating...' 
+                    : actionModalType === 'eliminate' 
+                    ? 'Confirm Protocol Elimination' 
+                    : 'Confirm Move to Bench'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Modality Dosage Personalization Modal */}
       {dosageModalModality && (
         <ManageTaskModal
@@ -933,7 +1230,7 @@ export default function ProtocolFocusPage() {
           userProfile={profile}
           onSaveSuccess={() => {
             setDosageModalModality(null)
-            window.location.reload()
+            reloadData()
           }}
         />
       )}
@@ -964,9 +1261,7 @@ export default function ProtocolFocusPage() {
           onClose={() => setScheduleModalModality(null)}
           modality={scheduleModalModality}
           onSuccess={async () => {
-            const localUserId = getLocalUserId()
-            const updatedTasks = await getDailyProtocolTasks(localUserId, currentDateStr)
-            setTodayTasks(updatedTasks)
+            await reloadData()
           }}
         />
       )}
