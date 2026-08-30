@@ -168,6 +168,61 @@ function TodayPageContent() {
   const [touchedGroupOutcomes, setTouchedGroupOutcomes] = useState<Record<string, boolean>>({})
   const [isSavingGroupTrack, setIsSavingGroupTrack] = useState(false)
 
+  // Scroll-Driven Circadian Spine & Icon Ignition Engine
+  const timelineContainerRef = useRef<HTMLDivElement | null>(null)
+  const groupHeaderRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const [spineHeight, setSpineHeight] = useState<number>(0)
+  const [ignitedGroupKeys, setIgnitedGroupKeys] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    let animationFrameId: number
+
+    const updateScrollSpine = () => {
+      if (!timelineContainerRef.current) return
+      const containerRect = timelineContainerRef.current.getBoundingClientRect()
+      // Trigger horizon is at 45% of viewport height (natural reading eye level)
+      const triggerHorizon = window.innerHeight * 0.45
+
+      // Calculate how far down the timeline container the horizon has reached:
+      const relativeTravel = triggerHorizon - containerRect.top
+      const totalHeight = containerRect.height
+
+      // Spine starts revealing when container enters horizon, up to totalHeight
+      const activeHeight = Math.max(0, Math.min(relativeTravel, totalHeight))
+      setSpineHeight(activeHeight)
+
+      // Check each time-of-day block header position:
+      const newlyIgnited = new Set<string>()
+      Object.entries(groupHeaderRefs.current).forEach(([key, el]) => {
+        if (!el) return
+        const rect = el.getBoundingClientRect()
+        // If the group header is at or above the trigger horizon (or within 24px of it):
+        if (rect.top <= triggerHorizon + 24) {
+          newlyIgnited.add(key)
+        }
+      })
+
+      setIgnitedGroupKeys(newlyIgnited)
+    }
+
+    const onScrollOrResize = () => {
+      cancelAnimationFrame(animationFrameId)
+      animationFrameId = requestAnimationFrame(updateScrollSpine)
+    }
+
+    window.addEventListener('scroll', onScrollOrResize, { passive: true })
+    window.addEventListener('resize', onScrollOrResize, { passive: true })
+
+    // Initial run
+    updateScrollSpine()
+
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize)
+      window.removeEventListener('resize', onScrollOrResize)
+      cancelAnimationFrame(animationFrameId)
+    }
+  }, [tasks.length, calendarViewMode])
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedMode = localStorage.getItem('levl_completion_mode') as 'outcome' | 'fast'
@@ -1449,15 +1504,24 @@ function TodayPageContent() {
       const circadian = getCircadianConfig(groupName)
       const CircadianIcon = circadian.icon
       const isNow = isCurrentDay && isCurrentCircadianSlot(groupName)
+      const isIgnited = ignitedGroupKeys.has(groupName) || isNow
 
       return (
-        <div key={groupName} className="relative pl-5 sm:pl-6 space-y-3 group/circadian-block">
+        <div 
+          key={groupName} 
+          ref={(el) => { groupHeaderRefs.current[groupName] = el }}
+          className="relative pl-5 sm:pl-6 space-y-3 group/circadian-block"
+        >
           {/* Individual 3px Circadian Spine Node */}
           <div 
-            className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full transition-all duration-500"
+            className={`absolute left-0 top-1 bottom-1 w-[3px] rounded-full transition-all duration-500 ${
+              isIgnited ? 'opacity-100' : 'opacity-25'
+            }`}
             style={{ 
-              backgroundColor: circadian.skyColorHex,
-              boxShadow: isNow ? `0 0 14px ${circadian.skyColorHex}` : `0 0 6px ${circadian.skyColorHex}50`
+              backgroundColor: isIgnited ? circadian.skyColorHex : '#334155',
+              boxShadow: isIgnited 
+                ? (isNow ? `0 0 14px ${circadian.skyColorHex}` : `0 0 8px ${circadian.skyColorHex}60`)
+                : 'none'
             }}
           />
 
@@ -1467,21 +1531,29 @@ function TodayPageContent() {
               onClick={() => toggleGroupCollapse(groupName, groupTasks)}
               className="flex items-center gap-3 text-left group cursor-pointer focus:outline-none"
             >
-              {/* Circadian Sky Beacon Icon */}
+              {/* Circadian Sky Beacon Icon (Fills with color as scroll reaches it) */}
               <div 
-                className={`w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all duration-500 ${circadian.badgeBg} ${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} ${isNow ? circadian.activeRing : ''}`}
+                className={`w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all duration-500 ${
+                  isIgnited 
+                    ? `${circadian.badgeBg} ${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 ${isNow ? circadian.activeRing : ''}`
+                    : 'bg-slate-900/60 border-slate-800 text-slate-500 scale-95 shadow-none'
+                }`}
                 style={{
-                  boxShadow: isNow 
-                    ? `0 0 22px ${circadian.skyColorHex}99, inset 0 0 10px ${circadian.skyColorHex}33` 
-                    : `0 0 12px ${circadian.skyColorHex}30`
+                  boxShadow: isIgnited
+                    ? (isNow 
+                        ? `0 0 22px ${circadian.skyColorHex}99, inset 0 0 10px ${circadian.skyColorHex}33` 
+                        : `0 0 14px ${circadian.skyColorHex}40`)
+                    : undefined
                 }}
               >
-                <CircadianIcon size={17} strokeWidth={2.2} />
+                <CircadianIcon size={17} strokeWidth={isIgnited ? 2.2 : 1.7} />
               </div>
 
               <div className="flex flex-col">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-extrabold text-white uppercase tracking-wider group-hover:text-purple-200 transition-colors">
+                  <span className={`text-sm font-extrabold uppercase tracking-wider transition-colors ${
+                    isIgnited ? 'text-white group-hover:text-purple-200' : 'text-slate-400 group-hover:text-slate-200'
+                  }`}>
                     {formatSlotName(groupName)}
                   </span>
                   {isNow && (
@@ -1490,18 +1562,24 @@ function TodayPageContent() {
                       <span>Live Window</span>
                     </span>
                   )}
-                  <span className="text-xs bg-slate-800/90 text-slate-400 px-2 py-0.5 rounded-full font-mono font-bold">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-mono font-bold transition-colors ${
+                    isIgnited ? 'bg-slate-800/90 text-slate-300' : 'bg-slate-900 text-slate-500'
+                  }`}>
                     {completedCount > 0 ? `${completedCount}/${groupTasks.length}` : groupTasks.length}
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-400 font-medium">
-                  {circadian.timeRange} • <span className="text-slate-500">{circadian.circadianPhase}</span>
+                <span className={`text-[11px] font-medium transition-colors ${
+                  isIgnited ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  {circadian.timeRange} • <span className="text-slate-600">{circadian.circadianPhase}</span>
                 </span>
               </div>
 
               <ChevronDown 
                 size={16} 
-                className={`text-slate-400 group-hover:text-white transition-transform duration-200 ml-1 ${isCollapsed ? '-rotate-90' : ''}`} 
+                className={`transition-transform duration-200 ml-1 ${
+                  isIgnited ? 'text-slate-400 group-hover:text-white' : 'text-slate-600'
+                } ${isCollapsed ? '-rotate-90' : ''}`} 
               />
             </button>
 
@@ -2324,7 +2402,27 @@ function TodayPageContent() {
                     </div>
                   </div>
                 ) : (
-                  <div className="relative pl-1 sm:pl-2 space-y-8 before:absolute before:left-0 before:top-2 before:bottom-6 before:w-[3px] before:rounded-full before:bg-gradient-to-b before:from-amber-400 before:via-cyan-400 before:via-blue-500 before:via-orange-500 before:via-purple-500 before:to-indigo-600 before:opacity-85 before:shadow-[0_0_10px_rgba(168,85,247,0.35)]">
+                  <div 
+                    ref={timelineContainerRef}
+                    className="relative pl-1 sm:pl-2 space-y-8"
+                  >
+                    {/* Background Dim Ghost Track (Full Height) */}
+                    <div className="absolute left-0 top-2 bottom-6 w-[3px] rounded-full bg-slate-800/40 pointer-events-none" />
+
+                    {/* Revealing Circadian Sky Gradient Spine (Grows/Shrinks dynamically on scroll) */}
+                    <div 
+                      className="absolute left-0 top-2 w-[3px] rounded-full bg-gradient-to-b from-amber-400 via-cyan-400 via-blue-500 via-orange-500 via-purple-500 to-indigo-600 shadow-[0_0_12px_rgba(168,85,247,0.55)] transition-[height] duration-75 ease-out pointer-events-none"
+                      style={{ height: `${spineHeight}px` }}
+                    />
+
+                    {/* Leading Edge Photon Spark (Lights up the tip of the growing spine) */}
+                    {spineHeight > 0 && (
+                      <div 
+                        className="absolute -left-[3.5px] w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_8px_#fff,0_0_16px_rgba(168,85,247,0.9)] pointer-events-none transition-all duration-75 ease-out -translate-y-1/2"
+                        style={{ top: `calc(${spineHeight}px + 8px)` }}
+                      />
+                    )}
+
                     {renderTimelineBlocks()}
                   </div>
                 )}
