@@ -105,34 +105,33 @@ export default function HardwareAccessCard({ profile, onUpdated }: HardwareAcces
   return (
     <div className="glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md shadow-xl space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center shadow-md shrink-0">
+      <div className="space-y-2 pb-3 border-b border-slate-800/80">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center shadow-md shrink-0 mt-0.5">
             <Dumbbell size={20} />
           </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2 flex-wrap">
               <span>Biohacking Hardware &amp; Facility Access</span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
                 {hardware.length}/{HARDWARE_ITEMS.length} Available
               </span>
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
               Personalizes protocol recommendations based on equipment you own or access
             </p>
+            <div className="flex items-center gap-1.5 mt-2 text-[11px] font-mono">
+              {isSaving ? (
+                <span className="text-purple-400 font-bold animate-pulse">Saving...</span>
+              ) : savedSuccess ? (
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <Check size={12} /> Auto-saved
+                </span>
+              ) : (
+                <span className="text-slate-500 font-medium">Auto-saves on change</span>
+              )}
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 border border-white/5 text-[11px] font-mono shrink-0">
-          {isSaving ? (
-            <span className="text-purple-400 font-bold animate-pulse">Saving...</span>
-          ) : savedSuccess ? (
-            <span className="text-emerald-400 font-bold flex items-center gap-1">
-              <Check size={12} /> Auto-saved
-            </span>
-          ) : (
-            <span className="text-slate-500 font-medium">Auto-saves on change</span>
-          )}
         </div>
       </div>
 

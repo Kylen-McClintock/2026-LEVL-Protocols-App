@@ -27,18 +27,18 @@ export default function TemperatureUnitSettingsCard() {
   return (
     <div className="glass-card p-5 rounded-2xl border border-slate-700/80 shadow-xl space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="w-9 h-9 rounded-xl bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_10px_rgba(6,182,212,0.2)] shrink-0">
             <Thermometer size={18} />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="font-extrabold text-base text-white tracking-tight">Temperature Units</h3>
-            <p className="text-xs text-slate-400">Preferred units for cold plunge, sauna & sleep protocols</p>
+            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">Preferred units for cold plunge, sauna &amp; sleep protocols</p>
           </div>
         </div>
 
-        <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-800/60">
+        <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 shrink-0 self-start sm:self-center">
           {unit === 'F' ? '°F (Fahrenheit)' : '°C (Celsius)'}
         </span>
       </div>

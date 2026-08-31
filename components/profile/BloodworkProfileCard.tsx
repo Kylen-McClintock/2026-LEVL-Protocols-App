@@ -52,22 +52,22 @@ export default function BloodworkProfileCard({ profile }: BloodworkProfileCardPr
   return (
     <div className="glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md shadow-xl space-y-4">
       {/* Card Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center shadow-md shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-slate-800/80">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center shadow-md shrink-0 mt-0.5">
             <Activity size={20} />
           </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-              <span>Bloodwork & Lab Panels</span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2 flex-wrap">
+              <span>Bloodwork &amp; Lab Panels</span>
               {panels.length > 0 && (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   {panels.length} {panels.length === 1 ? 'Panel' : 'Panels'} Uploaded
                 </span>
               )}
             </h2>
-            <p className="text-xs text-slate-400">
-              Synced directly with your Biological Aging & Protocol Personalization engine
+            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+              Synced directly with your Biological Aging &amp; Protocol Personalization engine
             </p>
           </div>
         </div>

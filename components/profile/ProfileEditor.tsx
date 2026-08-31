@@ -218,9 +218,11 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center text-xs">
-        <span className="text-levl-text-secondary">Your ranking profile drives the Explore tab recommendations.</span>
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 border border-white/5 text-[11px] font-mono shrink-0">
+      <div className="space-y-1.5 pb-1">
+        <p className="text-xs text-levl-text-secondary leading-relaxed">
+          Your ranking profile drives the Explore tab recommendations.
+        </p>
+        <div className="flex items-center gap-1.5 text-[11px] font-mono">
           {isSaving ? (
             <span className="text-levl-accent font-bold animate-pulse">Saving...</span>
           ) : savedSuccess ? (

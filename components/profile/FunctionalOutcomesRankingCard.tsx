@@ -167,14 +167,14 @@ export default function FunctionalOutcomesRankingCard({
       {/* Header */}
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between cursor-pointer select-none"
+        className="flex items-start justify-between cursor-pointer select-none gap-3"
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0 shadow-sm">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
             <Activity size={20} />
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-sm font-bold text-white tracking-tight">
                 Functional Outcome Priorities &amp; Ranking
               </h3>
@@ -182,19 +182,26 @@ export default function FunctionalOutcomesRankingCard({
                 {trackedOutcomeIds.length} Tracked
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5 truncate">
+            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
               Rank the importance (1–10) of each outcome for personalized protocol recommendations &amp; ROI analysis.
             </p>
+            <div className="flex items-center gap-1.5 mt-2 text-[10px] font-mono">
+              {saving ? (
+                <span className="text-purple-400 animate-pulse font-bold">Saving...</span>
+              ) : saved ? (
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  ✓ Auto-saved
+                </span>
+              ) : (
+                <span className="text-slate-500 font-medium">Auto-saves on change</span>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {saving && <span className="text-[10px] text-purple-400 animate-pulse font-mono font-bold">Saving...</span>}
-          {saved && <span className="text-[10px] text-emerald-400 font-mono font-bold">✓ Saved</span>}
-          <button type="button" className="text-slate-400 hover:text-white p-1">
-            {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </button>
-        </div>
+        <button type="button" className="text-slate-400 hover:text-white p-1 shrink-0 mt-1">
+          {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
       </div>
 
       {isOpen && (

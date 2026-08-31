@@ -75,38 +75,36 @@ export default function NegativeLongevityFactorsCard({
     <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-white/10 shadow-lg space-y-4 backdrop-blur-md">
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between cursor-pointer"
+        className="flex items-start justify-between cursor-pointer gap-3"
       >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center shrink-0">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
             <ShieldAlert size={20} />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <span>Risk Factor Audit &amp; Negative Longevity Factors</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
               Optional lifestyle baseline: alcohol, nicotine, sitting duration, late caffeine.
             </p>
+            <div className="flex items-center gap-1.5 mt-2 text-[10px] font-mono">
+              {saving ? (
+                <span className="text-rose-400 font-bold animate-pulse">Saving...</span>
+              ) : saved ? (
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <Check size={11} /> Auto-saved
+                </span>
+              ) : (
+                <span className="text-slate-500 font-medium">Auto-saves on change</span>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 border border-white/5 text-[10px] font-mono shrink-0">
-            {saving ? (
-              <span className="text-rose-400 font-bold animate-pulse">Saving...</span>
-            ) : saved ? (
-              <span className="text-emerald-400 font-bold flex items-center gap-1">
-                <Check size={11} /> Auto-saved
-              </span>
-            ) : (
-              <span className="text-slate-500 font-medium">Auto-saves</span>
-            )}
-          </div>
-          <button type="button" className="text-slate-400 hover:text-white p-1">
-            {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </button>
-        </div>
+        <button type="button" className="text-slate-400 hover:text-white p-1 shrink-0 mt-1">
+          {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
       </div>
 
       {isOpen && (
