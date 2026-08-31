@@ -49,20 +49,18 @@ export default function CustomizeModalityOutcomesModal({
     return map
   }, [allOutcomes, userProfile])
 
-  // Sort list: currently selected first, then user priorities, then alphabetical
+  // STABLE DISPLAY ORDER:
+  // Sort list by user priorities, then alphabetical.
+  // DO NOT sort by selectedIds in real time so clicking an item toggles its state in place without the UI jumping.
   const sortedOutcomes = useMemo(() => {
     return [...allOutcomes].sort((a, b) => {
-      const aSel = selectedIds.includes(a.id) ? 1 : 0
-      const bSel = selectedIds.includes(b.id) ? 1 : 0
-      if (aSel !== bSel) return bSel - aSel
-
       const aP = userPriorityMap.get(a.id)?.score || 0
       const bP = userPriorityMap.get(b.id)?.score || 0
       if (aP !== bP) return bP - aP
 
       return a.name.localeCompare(b.name)
     })
-  }, [allOutcomes, selectedIds, userPriorityMap])
+  }, [allOutcomes, userPriorityMap])
 
   if (!isOpen) return null
 

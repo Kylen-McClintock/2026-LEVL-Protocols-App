@@ -119,7 +119,7 @@ export default function CustomizeCheckinOutcomesModal({
     return allOutcomes.filter(o => isTracked(o.id, 'nightly')).length
   }, [allOutcomes, preferences])
 
-  // Filtered Additional Outcomes
+  // Filtered Additional Outcomes - STABLE DISPLAY ORDER (do not dynamically sort by isTracked)
   const filteredAdditionalOutcomes = useMemo(() => {
     return additionalOutcomes.filter(o => {
       const matchesSearch = 
@@ -131,12 +131,9 @@ export default function CustomizeCheckinOutcomesModal({
 
       return matchesSearch && matchesCat
     }).sort((a, b) => {
-      const aTracked = isTracked(a.id, activeTab) ? 1 : 0
-      const bTracked = isTracked(b.id, activeTab) ? 1 : 0
-      if (aTracked !== bTracked) return bTracked - aTracked
       return a.name.localeCompare(b.name)
     })
-  }, [additionalOutcomes, preferences, activeTab, searchQuery, selectedCategory])
+  }, [additionalOutcomes, searchQuery, selectedCategory])
 
   const filteredRecommendedOutcomes = useMemo(() => {
     return recommendedOutcomes.filter(o => {

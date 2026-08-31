@@ -57,16 +57,35 @@ export default function FunctionalOutcomesRankingCard({
 
   useEffect(() => {
     if (profile?.outcome_preference_scores) {
-      // Filter out negative risk keys (which start with negative_ or neg_)
+      // Filter strictly for valid functional outcome dimensions:
+      // NEVER include demographics (age, height, weight), habits (habit:*), exposures (exposure:*),
+      // hotkeys (hotkey:*, _*), or negative risk factors (negative_*, neg_*)
       const cleanPref: Record<string, number> = {}
       Object.entries(profile.outcome_preference_scores).forEach(([k, v]) => {
-        if (!k.startsWith('negative_') && !k.startsWith('neg_') && typeof v === 'number') {
-          cleanPref[k] = v
+        const isExcluded = 
+          k.startsWith('negative_') || 
+          k.startsWith('neg_') || 
+          k.startsWith('habit:') || 
+          k.startsWith('exposure:') || 
+          k.startsWith('hotkey:') || 
+          k.startsWith('_') ||
+          k === 'age' || 
+          k === 'height' || 
+          k === 'weight' ||
+          k === 'biological_sex' ||
+          k === 'dietary_pattern'
+
+        if (!isExcluded && typeof v === 'number') {
+          // If outcomes catalog is available, verify it belongs to known outcomes or standard outcome names
+          const isValidOutcome = outcomes.length === 0 || outcomes.some(o => o.id === k || o.name.toLowerCase() === k.toLowerCase())
+          if (isValidOutcome) {
+            cleanPref[k] = v
+          }
         }
       })
       setPreferences(cleanPref)
     }
-  }, [profile])
+  }, [profile, outcomes])
 
   const handleUpdateScore = async (id: string, newScore: number) => {
     const updated = { ...preferences, [id]: newScore }
@@ -92,13 +111,22 @@ export default function FunctionalOutcomesRankingCard({
     setSaving(true)
     try {
       const localUserId = getLocalUserId()
-      // Preserve existing negative risk factors in the same JSON column
+      // Preserve existing non-outcome keys (negative risk factors, custom hotkeys, quick logs)
       const existingScores = profile.outcome_preference_scores || {}
       const combined = { ...existingScores, ...newPref }
       
-      // Remove any keys that were deleted from clean preferences
+      // Remove any outcome keys that were deleted from clean preferences, without touching preserved keys
       Object.keys(existingScores).forEach(k => {
-        if (!k.startsWith('negative_') && !k.startsWith('neg_') && newPref[k] === undefined) {
+        const isOutcomeKey = 
+          !k.startsWith('negative_') && 
+          !k.startsWith('neg_') && 
+          !k.startsWith('habit:') && 
+          !k.startsWith('exposure:') && 
+          !k.startsWith('hotkey:') && 
+          !k.startsWith('_') &&
+          k !== 'age' && k !== 'height' && k !== 'weight'
+        
+        if (isOutcomeKey && newPref[k] === undefined) {
           delete combined[k]
         }
       })
@@ -119,8 +147,20 @@ export default function FunctionalOutcomesRankingCard({
     }
   }
 
-  const trackedOutcomeIds = Object.keys(preferences)
-  const availableOutcomes = outcomes.filter(o => !trackedOutcomeIds.includes(o.id))
+  // STABLE DISPLAY ORDER:
+  // Order tracked outcomes according to the static database/catalog order in `outcomes` prop.
+  // NEVER sort dynamically by slider value/score in real time so the UI stays stable under the user's cursor.
+  const trackedOutcomeIds = React.useMemo(() => {
+    const fromCatalog = outcomes
+      .filter(o => preferences[o.id] !== undefined)
+      .map(o => o.id)
+    const extraTracked = Object.keys(preferences).filter(
+      id => !outcomes.some(o => o.id === id)
+    )
+    return [...fromCatalog, ...extraTracked]
+  }, [outcomes, preferences])
+
+  const availableOutcomes = outcomes.filter(o => preferences[o.id] === undefined)
 
   return (
     <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-purple-500/30 shadow-xl space-y-4 backdrop-blur-md">

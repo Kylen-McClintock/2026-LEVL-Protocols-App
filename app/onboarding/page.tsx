@@ -222,12 +222,6 @@ function OnboardingContent() {
         selectedOutcomes.forEach(id => {
           outcomeScores[id] = 7
         })
-        selectedPositiveHabits.forEach(id => {
-          outcomeScores[`habit:${id}`] = 10
-        })
-        selectedNegativeExposures.forEach(id => {
-          outcomeScores[`exposure:${id}`] = 10
-        })
 
         await updateUserProfile(localUserId, {
           display_name: displayName.trim() || undefined,
@@ -334,12 +328,6 @@ function OnboardingContent() {
       const outcomeScores: Record<string, number> = {}
       selectedOutcomes.forEach(id => {
         outcomeScores[id] = 7
-      })
-      selectedPositiveHabits.forEach(id => {
-        outcomeScores[`habit:${id}`] = 10
-      })
-      selectedNegativeExposures.forEach(id => {
-        outcomeScores[`exposure:${id}`] = 10
       })
 
       const totalHeightInches = (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
