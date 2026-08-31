@@ -88,16 +88,16 @@ function getTimeBlockOrder(slot: string): number {
   const s = slot.toLowerCase().trim()
   if (s.includes('wake') || s.includes('sunrise') || s.includes('dawn')) return 0
   if (s.includes('morning_routine')) return 1
-  if (s.includes('morning_supplement') || s.includes('fasted_am')) return 2
-  if (s.includes('first_meal') || s.includes('breakfast') || s.includes('first meal') || s.includes('meal_1')) return 3
-  if (s.includes('morning') || s.includes('am')) return 4
-  if (s.includes('midday_stack') || s.includes('lunch_stack')) return 5
-  if (s.includes('midday') || s.includes('noon') || s.includes('lunch')) return 6
+  if (s.includes('morning_supplement') || s.includes('fasted_am') || s.includes('am_stack') || s.includes('am stack')) return 3
+  if (s.includes('first_meal') || s.includes('breakfast') || s.includes('first meal') || s.includes('meal_1')) return 4
+  if (s.includes('morning') || s.includes('am')) return 2
+  if (s.includes('midday_stack') || s.includes('lunch_stack')) return 6
+  if (s.includes('midday') || s.includes('noon') || s.includes('lunch')) return 5
   if (s.includes('afternoon') || s.includes('workout') || s.includes('training')) return 7
   if (s.includes('late_afternoon')) return 8
   if (s.includes('post_meal') || s.includes('postprandial') || s.includes('post meal') || s.includes('post-meal')) return 9
-  if (s.includes('evening_supplement') || s.includes('dinner_stack')) return 10
-  if (s.includes('evening') || s.includes('dinner') || s.includes('dusk')) return 11
+  if (s.includes('evening_supplement') || s.includes('dinner_stack') || s.includes('pm_stack') || s.includes('pm stack')) return 11
+  if (s.includes('evening') || s.includes('dinner') || s.includes('dusk')) return 10
   if (s.includes('wind_down') || s.includes('winddown')) return 12
   if (s.includes('bed') || s.includes('night') || s.includes('sleep') || s.includes('pre_bed') || s.includes('pre-bed')) return 13
   if (s.includes('anytime')) return 20

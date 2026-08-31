@@ -369,11 +369,15 @@ export default function QuickHotkeyGrid({
                 {/* Center Value Metric & Name */}
                 <div className="my-1 sm:my-2 w-full">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-base sm:text-2xl font-black text-white font-mono tracking-tight">
+                    <span className={`text-base sm:text-2xl font-black font-mono tracking-tight transition-colors ${
+                      isGoalReached && !isNegative ? 'text-emerald-400' : 'text-white'
+                    }`}>
                       {totalVal}
                     </span>
                     {hotkey.daily_goal && !isNegative ? (
-                      <span className="text-[10px] sm:text-xs font-mono text-slate-400">
+                      <span className={`text-[10px] sm:text-xs font-mono transition-colors ${
+                        isGoalReached ? 'text-emerald-400/90 font-bold' : 'text-slate-400'
+                      }`}>
                         / {hotkey.daily_goal} {hotkey.unit}
                       </span>
                     ) : (
@@ -395,39 +399,23 @@ export default function QuickHotkeyGrid({
                 </div>
               </button>
 
-              {/* BOTTOM ACTION BAR (Clean Progress / Entry Count + Minimal Chevron) */}
+              {/* BOTTOM ACTION BAR (Clean Minimal Detail Trigger, No Text) */}
               <div
                 onClick={(e) => {
                   e.stopPropagation()
                   handleCardClick(hotkey)
                 }}
-                className="px-2.5 sm:px-3 py-1.5 bg-black/40 hover:bg-slate-800/80 border-t border-white/5 flex items-center justify-between text-[9px] sm:text-[10px] font-mono text-slate-400 hover:text-white cursor-pointer transition-colors group/bot"
+                className="px-2.5 sm:px-3 py-1 bg-black/40 hover:bg-slate-800/80 border-t border-white/5 flex items-center justify-end text-slate-500 hover:text-white cursor-pointer transition-colors group/bot"
                 title="Click for details, custom entries, or settings"
               >
-                <span className="truncate mr-1">
-                  {hotkey.daily_goal && !isNegative ? (
-                    isGoalReached ? (
-                      <span className="text-emerald-400 font-bold flex items-center gap-1">
-                        ✓ Goal met • {entryCount} {entryCount === 1 ? 'log' : 'logs'}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">
-                        {entryCount > 0 ? `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'} (${progressPct}%)` : 'No entries yet'}
-                      </span>
-                    )
-                  ) : (
-                    <span>{entryCount > 0 ? `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}` : 'No entries yet'}</span>
-                  )}
-                </span>
-
-                <span className={`shrink-0 text-slate-500 transition-transform group-hover/bot:translate-x-0.5 ${
+                <span className={`shrink-0 transition-transform group-hover/bot:translate-x-0.5 ${
                   isNegative
                     ? 'group-hover/bot:text-rose-300'
                     : isNeutral
                     ? 'group-hover/bot:text-sky-300'
                     : 'group-hover/bot:text-orange-300'
                 }`}>
-                  <ChevronRight size={13} strokeWidth={2.5} />
+                  <ChevronRight size={12} strokeWidth={2.5} />
                 </span>
               </div>
             </div>
