@@ -1188,8 +1188,19 @@ function TodayPageContent() {
       }
     }
 
-    // Insert anytime immediately after the current/live slot, or at index 1
-    const insertIdx = currentSlotIdx !== -1 ? currentSlotIdx + 1 : (timedEntries.length > 0 ? 1 : 0)
+    // Insert anytime immediately after the current/live cluster, never splitting a stack from its parent
+    let insertIdx = currentSlotIdx !== -1 ? currentSlotIdx + 1 : (timedEntries.length > 0 ? 1 : 0)
+
+    // If the next slot is a paired stack or routine (e.g. evening_supplement_stack or morning_supplement_stack), advance past it
+    while (insertIdx < timedEntries.length) {
+      const nextGroup = timedEntries[insertIdx][0].toLowerCase()
+      if (nextGroup.includes('supplement_stack') || nextGroup.includes('stack') || nextGroup.includes('routine')) {
+        insertIdx++
+      } else {
+        break
+      }
+    }
+
     const result = [...timedEntries]
     result.splice(insertIdx, 0, anytimeEntry)
     return result
