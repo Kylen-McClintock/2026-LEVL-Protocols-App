@@ -1188,17 +1188,31 @@ function TodayPageContent() {
   // Dynamic Circadian Gradient stops generated from the actual active groups on the page
   const circadianGradientCSS = useMemo(() => {
     if (activeGroups.length === 0) {
-      return 'linear-gradient(to bottom, #F59E0B, #06B6D4, #3B82F6, #F97316, #8B5CF6, #6366F1)'
+      return 'linear-gradient(to bottom, #D97706, #F59E0B, #38BDF8, #0EA5E9, #7DD3FC, #BAE6FD, #38BDF8, #0284C7, #F97316, #EC4899, #8B5CF6, #4338CA, #1E1B4B)'
     }
-    const stops = activeGroups.map(([groupName], idx) => {
-      const cfg = getCircadianConfig(groupName)
-      const pct = Math.round((idx / Math.max(1, activeGroups.length - 1)) * 100)
-      return `${cfg.skyColorHex} ${pct}%`
-    })
-    if (stops.length === 1) {
+    if (activeGroups.length === 1) {
       const cfg = getCircadianConfig(activeGroups[0][0])
-      return `linear-gradient(to bottom, ${cfg.skyColorHex}, ${cfg.skyColorHex})`
+      return cfg.gradientCSS
     }
+
+    const n = activeGroups.length
+    const stops: string[] = []
+
+    activeGroups.forEach(([groupName], idx) => {
+      const cfg = getCircadianConfig(groupName)
+      const startPct = Math.round((idx / n) * 100)
+      const endPct = Math.round(((idx + 1) / n) * 100)
+      const midPct = Math.round((startPct + endPct) / 2)
+
+      stops.push(`${cfg.startColorHex} ${startPct}%`)
+      if (cfg.key === 'evening') {
+        stops.push(`#EC4899 ${midPct}%`)
+      } else if (cfg.key === 'midday' || cfg.key === 'midday_stack') {
+        stops.push(`#BAE6FD ${midPct}%`)
+      }
+      stops.push(`${cfg.endColorHex} ${endPct}%`)
+    })
+
     return `linear-gradient(to bottom, ${stops.join(', ')})`
   }, [activeGroups])
 
@@ -1563,9 +1577,9 @@ function TodayPageContent() {
               isIgnited ? 'opacity-100' : 'opacity-25'
             }`}
             style={{ 
-              backgroundColor: isIgnited ? circadian.skyColorHex : '#334155',
+              background: isIgnited ? circadian.gradientCSS : '#334155',
               boxShadow: isIgnited 
-                ? (isNow ? `0 0 14px ${circadian.skyColorHex}` : `0 0 8px ${circadian.skyColorHex}60`)
+                ? (isNow ? `0 0 14px ${circadian.skyColorHex}` : `0 0 8px ${circadian.skyColorHex}70`)
                 : 'none'
             }}
           />
@@ -1576,14 +1590,15 @@ function TodayPageContent() {
               onClick={() => toggleGroupCollapse(groupName, groupTasks)}
               className="flex items-center gap-3 text-left group cursor-pointer focus:outline-none"
             >
-              {/* Circadian Sky Beacon Icon (Fills with color as scroll reaches it) */}
+              {/* Circadian Sky Beacon Icon (Fills with linked sky gradient as scroll reaches it) */}
               <div 
                 className={`w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all duration-500 ${
                   isIgnited 
-                    ? `${circadian.badgeBg} ${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 ${isNow ? circadian.activeRing : ''}`
+                    ? `${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 ${isNow ? circadian.activeRing : ''}`
                     : 'bg-slate-900/60 border-slate-800 text-slate-500 scale-95 shadow-none'
                 }`}
                 style={{
+                  background: isIgnited ? circadian.badgeGradientCSS : undefined,
                   boxShadow: isIgnited
                     ? (isNow 
                         ? `0 0 22px ${circadian.skyColorHex}99, inset 0 0 10px ${circadian.skyColorHex}33` 
