@@ -53,7 +53,7 @@ import { calculateDailyEfficacySummary } from '@/lib/data/historicalAnalysis'
 import { getScoredLongevityTips } from '@/lib/ranking/tipPersonalization'
 import { getMacroCategory } from '@/lib/utils/categories'
 import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
-import { getCircadianConfig, isCurrentCircadianSlot } from '@/lib/utils/circadianConfig'
+import { getCircadianConfig, isCurrentCircadianSlot, buildDynamicCircadianGradientCSS } from '@/lib/utils/circadianConfig'
 import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
 
 function formatSlotName(str: string): string {
@@ -195,6 +195,7 @@ function TodayPageContent() {
   // Scroll-Driven Circadian Spine & Icon Ignition Engine
   const timelineContainerRef = useRef<HTMLDivElement | null>(null)
   const groupHeaderRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const beaconRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [spineHeight, setSpineHeight] = useState<number>(0)
   const [ignitedGroupKeys, setIgnitedGroupKeys] = useState<Set<string>>(new Set())
 
@@ -215,13 +216,14 @@ function TodayPageContent() {
       const activeHeight = Math.max(0, Math.min(relativeTravel, totalHeight))
       setSpineHeight(activeHeight)
 
-      // Check each time-of-day block header position:
+      // Check each time-of-day block beacon center position:
+      // Only ignite when the scroll photon physically reaches that exact circle/sun beacon center
       const newlyIgnited = new Set<string>()
-      Object.entries(groupHeaderRefs.current).forEach(([key, el]) => {
+      Object.entries(beaconRefs.current).forEach(([key, el]) => {
         if (!el) return
         const rect = el.getBoundingClientRect()
-        // If the group header is at or above the trigger horizon (or within 24px of it):
-        if (rect.top <= triggerHorizon + 24) {
+        const beaconCenterY = rect.top + rect.height / 2
+        if (beaconCenterY <= triggerHorizon + 12) {
           newlyIgnited.add(key)
         }
       })
@@ -245,7 +247,7 @@ function TodayPageContent() {
       window.removeEventListener('resize', onScrollOrResize)
       cancelAnimationFrame(animationFrameId)
     }
-  }, [tasks.length, calendarViewMode])
+  }, [tasks.length, calendarViewMode, viewMode])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1136,12 +1138,62 @@ function TodayPageContent() {
     return groups
   }, [routineTasks])
 
-  const sortedChronologicalGroups = Object.entries(chronologicalGroups).sort(([groupA], [groupB]) => {
-    const orderA = getTimeBlockOrder(groupA)
-    const orderB = getTimeBlockOrder(groupB)
-    if (orderA !== orderB) return orderA - orderB
-    return groupA.localeCompare(groupB)
-  })
+  const sortedChronologicalGroups = useMemo(() => {
+    const rawEntries = Object.entries(chronologicalGroups)
+    if (rawEntries.length === 0) return []
+
+    // Separate anytime group from fixed time slots
+    const anytimeEntry = rawEntries.find(([group]) => group.toLowerCase().includes('anytime'))
+    const timedEntries = rawEntries
+      .filter(([group]) => !group.toLowerCase().includes('anytime'))
+      .sort(([groupA], [groupB]) => {
+        const orderA = getTimeBlockOrder(groupA)
+        const orderB = getTimeBlockOrder(groupB)
+        if (orderA !== orderB) return orderA - orderB
+        return groupA.localeCompare(groupB)
+      })
+
+    if (!anytimeEntry) return timedEntries
+
+    // If not current day (past/future date), place anytime after morning blocks (or near top)
+    if (!isCurrentDay) {
+      const morningLastIdx = timedEntries.findIndex(([g]) => {
+        const o = getTimeBlockOrder(g)
+        return o > 4 // after morning slots (0..4)
+      })
+      const insertAt = morningLastIdx !== -1 ? morningLastIdx : timedEntries.length
+      const result = [...timedEntries]
+      result.splice(insertAt, 0, anytimeEntry)
+      return result
+    }
+
+    // On current day: find the current live circadian slot or highest passed slot
+    const currentHour = new Date().getHours()
+    let currentSlotIdx = -1
+
+    timedEntries.forEach(([group], idx) => {
+      if (isCurrentCircadianSlot(group, currentHour)) {
+        currentSlotIdx = idx
+      }
+    })
+
+    // If no exact match (e.g. between defined windows), find the latest passed slot
+    if (currentSlotIdx === -1) {
+      for (let i = timedEntries.length - 1; i >= 0; i--) {
+        const cfg = getCircadianConfig(timedEntries[i][0])
+        if (currentHour >= cfg.startHour && cfg.startHour <= cfg.endHour) {
+          currentSlotIdx = i
+          break
+        }
+      }
+    }
+
+    // Insert anytime immediately after the current/live slot, or at index 1
+    const insertIdx = currentSlotIdx !== -1 ? currentSlotIdx + 1 : (timedEntries.length > 0 ? 1 : 0)
+    const result = [...timedEntries]
+    result.splice(insertIdx, 0, anytimeEntry)
+    return result
+  }, [chronologicalGroups, isCurrentDay])
 
   const protocolGroups = useMemo(() => {
     const groups: Record<string, DedupedTask[]> = {}
@@ -1187,33 +1239,8 @@ function TodayPageContent() {
 
   // Dynamic Circadian Gradient stops generated from the actual active groups on the page
   const circadianGradientCSS = useMemo(() => {
-    if (activeGroups.length === 0) {
-      return 'linear-gradient(to bottom, #D97706, #F59E0B, #38BDF8, #0EA5E9, #7DD3FC, #BAE6FD, #38BDF8, #0284C7, #F97316, #EC4899, #8B5CF6, #4338CA, #1E1B4B)'
-    }
-    if (activeGroups.length === 1) {
-      const cfg = getCircadianConfig(activeGroups[0][0])
-      return cfg.gradientCSS
-    }
-
-    const n = activeGroups.length
-    const stops: string[] = []
-
-    activeGroups.forEach(([groupName], idx) => {
-      const cfg = getCircadianConfig(groupName)
-      const startPct = Math.round((idx / n) * 100)
-      const endPct = Math.round(((idx + 1) / n) * 100)
-      const midPct = Math.round((startPct + endPct) / 2)
-
-      stops.push(`${cfg.startColorHex} ${startPct}%`)
-      if (cfg.key === 'evening') {
-        stops.push(`#EC4899 ${midPct}%`)
-      } else if (cfg.key === 'midday' || cfg.key === 'midday_stack') {
-        stops.push(`#BAE6FD ${midPct}%`)
-      }
-      stops.push(`${cfg.endColorHex} ${endPct}%`)
-    })
-
-    return `linear-gradient(to bottom, ${stops.join(', ')})`
+    const groupKeys = activeGroups.map(([groupName]) => groupName)
+    return buildDynamicCircadianGradientCSS(groupKeys)
   }, [activeGroups])
 
   // Get active tip color for the leading photon spark
@@ -1571,10 +1598,10 @@ function TodayPageContent() {
           ref={(el) => { groupHeaderRefs.current[groupName] = el }}
           className="relative pl-3.5 sm:pl-4 space-y-3 group/circadian-block"
         >
-          {/* Individual 3px Circadian Spine Node */}
+          {/* Individual 3px Circadian Spine Node (20% resting opacity, 100% full illumination when ignited) */}
           <div 
             className={`absolute -left-2 sm:-left-3 top-1 bottom-1 w-[3px] rounded-full transition-all duration-500 ${
-              isIgnited ? 'opacity-100' : 'opacity-25'
+              isIgnited ? 'opacity-100' : 'opacity-20'
             }`}
             style={{ 
               background: isIgnited ? circadian.gradientCSS : '#334155',
@@ -1590,12 +1617,13 @@ function TodayPageContent() {
               onClick={() => toggleGroupCollapse(groupName, groupTasks)}
               className="flex items-center gap-3 text-left group cursor-pointer focus:outline-none"
             >
-              {/* Circadian Sky Beacon Icon (Fills with linked sky gradient as scroll reaches it) */}
+              {/* Circadian Sky Beacon Icon (Fills with full 100% vibrant gradient and glow only when scroll reaches it) */}
               <div 
+                ref={(el) => { beaconRefs.current[groupName] = el }}
                 className={`w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all duration-500 ${
                   isIgnited 
-                    ? `${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 ${isNow ? circadian.activeRing : ''}`
-                    : 'bg-slate-900/60 border-slate-800 text-slate-500 scale-95 shadow-none'
+                    ? `${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 opacity-100 ${isNow ? circadian.activeRing : ''}`
+                    : 'bg-slate-900/50 border-slate-800/80 text-slate-500/80 scale-95 opacity-50 shadow-none'
                 }`}
                 style={{
                   background: isIgnited ? circadian.badgeGradientCSS : undefined,
@@ -2466,8 +2494,11 @@ function TodayPageContent() {
                     ref={timelineContainerRef}
                     className="relative space-y-8"
                   >
-                    {/* Background Dim Ghost Track (Full Height) */}
-                    <div className="absolute -left-2 sm:-left-3 top-2 bottom-6 w-[3px] rounded-full bg-slate-800/40 pointer-events-none" />
+                    {/* Background Dim Ambient Ghost Track (20% Ambient Circadian Glow) */}
+                    <div 
+                      className="absolute -left-2 sm:-left-3 top-2 bottom-6 w-[3px] rounded-full opacity-20 pointer-events-none" 
+                      style={{ background: circadianGradientCSS }}
+                    />
 
                     {/* Revealing Circadian Sky Gradient Spine (Masks true vertical gradient matching each block as user scrolls) */}
                     <div 
