@@ -13,7 +13,7 @@ import {
   Brain, Dna, Dumbbell, Flame, Droplets, Watch, Pill, Activity, 
   Heart, Shield, Clock, Sun, Sunrise, Sunset, Utensils, Award, 
   RotateCcw, CheckCircle2, ChevronRight, Info, Eye, Camera, FileText,
-  Sliders, Thermometer
+  Sliders, Thermometer, Coffee, ShieldAlert, Edit3
 } from 'lucide-react'
 
 interface ModalityOption {
@@ -133,6 +133,8 @@ function OnboardingContent() {
   const [idealWakeTime, setIdealWakeTime] = useState<string>('06:30')
   const [idealBedtime, setIdealBedtime] = useState<string>('22:30')
   const [chronotype, setChronotype] = useState<string>('Intermediate')
+  const [customMilestones, setCustomMilestones] = useState<Record<string, string>>({})
+  const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null)
 
   // Step 3: Physical Training & Hardware Access
   const [fitnessLevel, setFitnessLevel] = useState<string>('Intermediate')
@@ -174,6 +176,9 @@ function OnboardingContent() {
           if (profile.ideal_wake_time) setIdealWakeTime(profile.ideal_wake_time)
           if (profile.ideal_bedtime) setIdealBedtime(profile.ideal_bedtime)
           if (profile.chronotype) setChronotype(profile.chronotype)
+          if (profile.outcome_preference_scores?._diurnal_milestone_overrides) {
+            setCustomMilestones(profile.outcome_preference_scores._diurnal_milestone_overrides)
+          }
           if (profile.fitness_training_level) setFitnessLevel(profile.fitness_training_level)
           if (profile.resistance_training_days && profile.resistance_training_days.length > 0) {
             setTrainingDays(profile.resistance_training_days)
@@ -187,7 +192,7 @@ function OnboardingContent() {
           }
           if (profile.outcome_preference_scores && Object.keys(profile.outcome_preference_scores).length > 0) {
             const allKeys = Object.keys(profile.outcome_preference_scores)
-            const regularOutcomes = allKeys.filter(k => !k.startsWith('habit:') && !k.startsWith('exposure:'))
+            const regularOutcomes = allKeys.filter(k => !k.startsWith('habit:') && !k.startsWith('exposure:') && !k.startsWith('_'))
             const habits = allKeys.filter(k => k.startsWith('habit:')).map(k => k.replace('habit:', ''))
             const exposures = allKeys.filter(k => k.startsWith('exposure:')).map(k => k.replace('exposure:', ''))
 
@@ -218,10 +223,13 @@ function OnboardingContent() {
         if (!localUserId) return
 
         const totalHeightInches = (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
-        const outcomeScores: Record<string, number> = {}
+        const outcomeScores: Record<string, any> = {}
         selectedOutcomes.forEach(id => {
           outcomeScores[id] = 7
         })
+        if (Object.keys(customMilestones).length > 0) {
+          outcomeScores._diurnal_milestone_overrides = customMilestones
+        }
 
         await updateUserProfile(localUserId, {
           display_name: displayName.trim() || undefined,
@@ -249,11 +257,135 @@ function OnboardingContent() {
     return () => clearTimeout(timer)
   }, [
     displayName, age, biologicalSex, heightFeet, heightInches, weightLbs, dietaryPattern,
-    idealWakeTime, idealBedtime, chronotype,
+    idealWakeTime, idealBedtime, chronotype, customMilestones,
     fitnessLevel, trainingDays, workoutWindow, selectedEquipment,
     selectedGoals, selectedOutcomes, selectedPositiveHabits, selectedNegativeExposures,
     isLoadingProfile
   ])
+
+  // Helper to calculate dynamic diurnal milestone times from idealWakeTime and idealBedtime
+  const calculatedDiurnalMilestones = useMemo(() => {
+    const [wakeH, wakeM] = (idealWakeTime || '06:30').split(':').map(Number)
+    const [bedH, bedM] = (idealBedtime || '22:30').split(':').map(Number)
+
+    const format12 = (h: number, m: number) => {
+      let normH = ((h % 24) + 24) % 24
+      const ampm = normH >= 12 ? 'PM' : 'AM'
+      let dispH = normH % 12
+      if (dispH === 0) dispH = 12
+      const dispM = m < 10 ? `0${m}` : m
+      return `${dispH}:${dispM} ${ampm}`
+    }
+
+    const to24 = (h: number, m: number) => {
+      let normH = ((h % 24) + 24) % 24
+      const dispM = m < 10 ? `0${m}` : m
+      return `${normH < 10 ? '0' : ''}${normH}:${dispM}`
+    }
+
+    // 1. Morning Sunlight (Wake to Wake + 60m)
+    const sunStart = to24(wakeH, wakeM)
+    const sunEnd = to24(wakeH + 1, wakeM)
+    const sunFormatted = `${format12(wakeH, wakeM)} – ${format12(wakeH + 1, wakeM)}`
+
+    // 2. Adenosine Delay (90m post-wake)
+    const adTotal = (wakeH * 60 + wakeM + 90) % 1440
+    const adH = Math.floor(adTotal / 60)
+    const adM = adTotal % 60
+    const adTime = to24(adH, adM)
+    const adFormatted = format12(adH, adM)
+
+    // 3. Peak Cognitive Window (Wake + 2.5h to Wake + 5.5h)
+    const cog1Total = (wakeH * 60 + wakeM + 150) % 1440
+    const cog1H = Math.floor(cog1Total / 60)
+    const cog1M = cog1Total % 60
+    const cog2Total = (wakeH * 60 + wakeM + 330) % 1440
+    const cog2H = Math.floor(cog2Total / 60)
+    const cog2M = cog2Total % 60
+    const cogStart = to24(cog1H, cog1M)
+    const cogEnd = to24(cog2H, cog2M)
+    const cogFormatted = `${format12(cog1H, cog1M)} – ${format12(cog2H, cog2M)}`
+
+    // 4. Caffeine Cutoff (10h before bed)
+    const caffTotal = ((bedH * 60 + bedM - 600) % 1440 + 1440) % 1440
+    const caffH = Math.floor(caffTotal / 60)
+    const caffM = caffTotal % 60
+    const caffTime = to24(caffH, caffM)
+    const caffFormatted = format12(caffH, caffM)
+
+    // 5. Last Meal / Fasting Cutoff (3h before bed)
+    const mealTotal = ((bedH * 60 + bedM - 180) % 1440 + 1440) % 1440
+    const mealH = Math.floor(mealTotal / 60)
+    const mealM = mealTotal % 60
+    const mealTime = to24(mealH, mealM)
+    const mealFormatted = format12(mealH, mealM)
+
+    // 6. Blue Light Reduction (2h before bed)
+    const blueTotal = ((bedH * 60 + bedM - 120) % 1440 + 1440) % 1440
+    const blueH = Math.floor(blueTotal / 60)
+    const blueM = blueTotal % 60
+    const blueTime = to24(blueH, blueM)
+    const blueFormatted = format12(blueH, blueM)
+
+    return [
+      {
+        id: 'morning_sunlight',
+        isRange: true,
+        title: 'Morning Sunlight Window',
+        desc: 'Resets master SCN biological clock & triggers natural cortisol spike',
+        autoFormatted: sunFormatted,
+        defaultStart: sunStart,
+        defaultEnd: sunEnd,
+        icon: <Sun size={16} className="text-amber-400" />
+      },
+      {
+        id: 'adenosine_delay',
+        isRange: false,
+        title: '90m Coffee & Caffeine Delay',
+        desc: 'Clears adenosine buildup to prevent afternoon energy crash',
+        autoFormatted: adFormatted,
+        defaultTime: adTime,
+        icon: <Coffee size={16} className="text-orange-400" />
+      },
+      {
+        id: 'cognitive_peak',
+        isRange: true,
+        title: 'Peak Cognitive & Focus Window',
+        desc: 'Optimal prefrontal cortex neurotransmitter availability for deep work',
+        autoFormatted: cogFormatted,
+        defaultStart: cogStart,
+        defaultEnd: cogEnd,
+        icon: <Zap size={16} className="text-yellow-400" />
+      },
+      {
+        id: 'caffeine_cutoff',
+        isRange: false,
+        title: '10h Caffeine Cutoff',
+        desc: 'Clears caffeine half-life to protect restorative slow-wave deep sleep',
+        autoFormatted: caffFormatted,
+        defaultTime: caffTime,
+        icon: <ShieldAlert size={16} className="text-rose-400" />
+      },
+      {
+        id: 'meal_cutoff',
+        isRange: false,
+        title: 'Last Meal / Fasting Cutoff (3h prior)',
+        desc: 'Enables nighttime core body temperature drop and digestive rest',
+        autoFormatted: mealFormatted,
+        defaultTime: mealTime,
+        icon: <Flame size={16} className="text-amber-400" />
+      },
+      {
+        id: 'blue_light_cutoff',
+        isRange: false,
+        title: 'Blue Light Reduction & Wind-Down (2h prior)',
+        desc: 'Preserves pineal melatonin secretion and primes sleep architecture',
+        autoFormatted: blueFormatted,
+        defaultTime: blueTime,
+        icon: <Eye size={16} className="text-indigo-400" />
+      }
+    ]
+  }, [idealWakeTime, idealBedtime])
 
   // Calculate recommended starter stack based on Step 3 equipment and Step 4 goals
   const recommendedModalities = useMemo(() => {
@@ -325,10 +457,13 @@ function OnboardingContent() {
       const nameToSave = displayName.trim() || 'Protocol Optimizer'
 
       // Map outcome preference scores (default 7/10 priority for checked outcomes)
-      const outcomeScores: Record<string, number> = {}
+      const outcomeScores: Record<string, any> = {}
       selectedOutcomes.forEach(id => {
         outcomeScores[id] = 7
       })
+      if (Object.keys(customMilestones).length > 0) {
+        outcomeScores._diurnal_milestone_overrides = customMilestones
+      }
 
       const totalHeightInches = (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
 
@@ -772,6 +907,133 @@ function OnboardingContent() {
                       Triggers wind-down, thermal drop &amp; melatonin buffer
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* 3. Auto-Calculated Diurnal Timeline (Third - under Bed/Wake times) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/80 border border-slate-800/90 space-y-3.5 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={15} className="text-amber-400" />
+                    <label className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                      3. Auto-Calculated Diurnal Timeline
+                    </label>
+                  </div>
+                  <span className="text-[10px] font-mono text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">
+                    Live Circadian Waveform
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Dynamically calculated from your wake (<span className="text-amber-300 font-mono font-bold">{idealWakeTime}</span>) and sleep (<span className="text-indigo-300 font-mono font-bold">{idealBedtime}</span>) anchors. Tap edit on any milestone to manually customize.
+                </p>
+
+                <div className="space-y-2.5 pt-1">
+                  {calculatedDiurnalMilestones.map((m) => {
+                    const isCustom = !!customMilestones[m.id]
+                    const isEditing = editingMilestoneId === m.id
+                    const displayTime = isCustom ? customMilestones[m.id] : m.autoFormatted
+
+                    return (
+                      <div
+                        key={m.id}
+                        className={`p-3 sm:p-3.5 rounded-2xl border transition-all ${
+                          isCustom
+                            ? 'bg-purple-950/20 border-purple-500/40 shadow-sm'
+                            : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                              {m.icon}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="text-xs font-bold text-white block truncate">
+                                {m.title}
+                              </span>
+                              <p className="text-[10px] text-slate-400 leading-snug mt-0.5">
+                                {m.desc}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="text-right">
+                              <span className="text-xs font-mono font-bold text-white block">
+                                {displayTime}
+                              </span>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md font-mono border ${
+                                isCustom 
+                                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' 
+                                  : 'bg-slate-800 text-slate-400 border-slate-700'
+                              }`}>
+                                {isCustom ? 'Custom' : 'Auto'}
+                              </span>
+                            </div>
+
+                            {isCustom && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomMilestones(prev => {
+                                    const next = { ...prev }
+                                    delete next[m.id]
+                                    return next
+                                  })
+                                }}
+                                title="Reset to auto-calculated time"
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                              >
+                                <RotateCcw size={12} />
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => setEditingMilestoneId(isEditing ? null : m.id)}
+                              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                                isEditing
+                                  ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
+                                  : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
+                              }`}
+                              title="Edit milestone time"
+                            >
+                              <Edit3 size={12} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Inline Time Editor */}
+                        {isEditing && (
+                          <div className="mt-2.5 pt-2.5 border-t border-white/10 flex items-center gap-2 animate-in fade-in">
+                            <label className="text-[10px] text-slate-400 uppercase font-mono font-bold shrink-0">
+                              Custom Time:
+                            </label>
+                            <input
+                              type="text"
+                              value={customMilestones[m.id] || m.autoFormatted}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setCustomMilestones(prev => ({
+                                  ...prev,
+                                  [m.id]: val
+                                }))
+                              }}
+                              placeholder={m.autoFormatted}
+                              className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:outline-none focus:border-amber-400"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setEditingMilestoneId(null)}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-bold cursor-pointer"
+                            >
+                              Done
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
