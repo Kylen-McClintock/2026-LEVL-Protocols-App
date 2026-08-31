@@ -168,13 +168,15 @@ export default function QuickLogDetailModal({
             </div>
             <div>
               <h3 className="text-base font-black text-white leading-tight">{hotkey.name}</h3>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
+              <div className="flex items-center gap-1.5 text-xs text-slate-400">
                 <span>Today:</span>
                 <span className="font-mono font-bold text-white">
-                  {totalLogged} {hotkey.unit}
+                  {totalLogged}
                 </span>
-                {hotkey.daily_goal && (
-                  <span className="text-[10px] text-slate-500">/ {hotkey.daily_goal} {hotkey.unit} goal</span>
+                {hotkey.daily_goal ? (
+                  <span className="text-[11px] font-mono text-slate-400">/ {hotkey.daily_goal} {hotkey.unit}</span>
+                ) : (
+                  <span className="text-[11px] font-mono text-slate-400">{hotkey.unit}</span>
                 )}
               </div>
             </div>

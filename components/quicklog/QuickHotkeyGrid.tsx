@@ -406,11 +406,17 @@ export default function QuickHotkeyGrid({
               >
                 <span className="truncate mr-1">
                   {hotkey.daily_goal && !isNegative ? (
-                    <span className={isGoalReached ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
-                      {isGoalReached ? `✓ ${totalVal}/${hotkey.daily_goal} ${hotkey.unit}` : `${totalVal}/${hotkey.daily_goal} ${hotkey.unit}`}
-                    </span>
+                    isGoalReached ? (
+                      <span className="text-emerald-400 font-bold flex items-center gap-1">
+                        ✓ Goal met • {entryCount} {entryCount === 1 ? 'log' : 'logs'}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">
+                        {entryCount > 0 ? `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'} (${progressPct}%)` : 'No entries yet'}
+                      </span>
+                    )
                   ) : (
-                    <span>{entryCount} {entryCount === 1 ? 'entry' : 'entries'}</span>
+                    <span>{entryCount > 0 ? `${entryCount} ${entryCount === 1 ? 'entry' : 'entries'}` : 'No entries yet'}</span>
                   )}
                 </span>
 

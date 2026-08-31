@@ -328,7 +328,7 @@ export default function ManageHotkeysModal({
                                 </span>
                               </div>
                               <div className="text-[10px] text-slate-500 font-mono truncate">
-                                Default: +{h.default_increment} {h.unit}
+                                +{h.default_increment} {h.unit} {h.daily_goal ? `• Goal: ${h.daily_goal} ${h.unit}` : ''}
                               </div>
                             </div>
                           </div>
