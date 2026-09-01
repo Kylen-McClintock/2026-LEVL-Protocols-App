@@ -17,7 +17,11 @@ import {
   Clock,
   Layers,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Info,
+  Microscope,
+  ExternalLink,
+  BookOpen
 } from 'lucide-react'
 import { Modality, UserProfile, DailyProtocolTask } from '@/lib/types'
 import {
@@ -340,6 +344,9 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
   const effort = recommendation.effortMeta
   const cost = recommendation.costMeta
 
+  const [isNbaExpanded, setIsNbaExpanded] = useState(false)
+  const [isNbaBenched, setIsNbaBenched] = useState(false)
+
   const handleAddModality = async () => {
     setIsProcessing(true)
     try {
@@ -352,25 +359,39 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
     }
   }
 
-  return (
-    <div className="rounded-2xl border border-purple-500/40 bg-gradient-to-br from-purple-950/50 via-slate-900 to-slate-950 p-4 sm:p-5 shadow-xl relative overflow-hidden backdrop-blur-md animate-in fade-in slide-in-from-top-2">
-      <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+  const handleBenchNba = async () => {
+    if (!onMoveToBench) return
+    setIsProcessing(true)
+    try {
+      await onMoveToBench(targetMod.id)
+      setIsNbaBenched(true)
+    } catch (err) {
+      console.error('Error benching next best action:', err)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
+  return (
+    <div className="rounded-2xl border border-purple-500/40 bg-gradient-to-br from-purple-950/60 via-slate-900 to-slate-950 p-4 sm:p-5 shadow-2xl relative overflow-hidden backdrop-blur-md animate-in fade-in slide-in-from-top-2 space-y-4">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Header Bar */}
       <div className="flex items-start justify-between gap-3 relative z-10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold shadow-[0_0_12px_rgba(168,85,247,0.2)]">
-            <Sparkles size={16} />
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold shadow-[0_0_14px_rgba(168,85,247,0.3)] shrink-0">
+            <Sparkles size={18} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300">
                 Next Best Action (Stack Progression)
               </span>
-              <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
+              <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-700/80">
                 Longevity Score: {recommendation.longevityImpactScore}/10
               </span>
             </div>
-            <h3 className="text-sm sm:text-base font-extrabold text-white">
+            <h3 className="text-sm sm:text-base font-extrabold text-white mt-0.5">
               {recommendation.title}
             </h3>
           </div>
@@ -379,42 +400,179 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
         <button
           type="button"
           onClick={() => setIsDismissed(true)}
-          className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+          className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
           title="Dismiss suggestion"
         >
           <X size={14} />
         </button>
       </div>
 
-      <p className="text-xs text-slate-300 mt-2.5 leading-relaxed relative z-10">
+      {/* Recommendation Rationale Summary */}
+      <p className="text-xs text-slate-300 leading-relaxed relative z-10">
         {recommendation.detailedRationale}
       </p>
 
-      {/* Metadata & Multi-Dimensional Badges */}
-      <div className="mt-3.5 flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-white/5 relative z-10">
+      {/* Metadata Badges & Learn More Toggle */}
+      <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-white/5 relative z-10">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${effort.badgeColor}`}>
+          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md border ${effort.badgeColor}`}>
             {effort.shortLabel}
           </span>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300">
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300">
             Cost: {cost.shortLabel}
           </span>
-          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-purple-950/80 border border-purple-800 text-purple-300">
+          <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-purple-950/80 border border-purple-800 text-purple-300">
             ROI Score: {recommendation.roiScore}%
           </span>
+          {targetMod.category && (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-slate-400 capitalize">
+              {targetMod.category.replace(/_/g, ' ')}
+            </span>
+          )}
         </div>
+
+        {/* Expand / Collapse In-Place Button */}
+        <button
+          type="button"
+          onClick={() => setIsNbaExpanded(!isNbaExpanded)}
+          className="text-[11px] font-bold text-purple-300 hover:text-white px-3 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ml-auto sm:ml-0"
+        >
+          <Info size={13} className="text-purple-400" />
+          <span>{isNbaExpanded ? 'Hide Protocol Specs' : 'Learn More & Protocol Specs'}</span>
+          {isNbaExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </button>
+      </div>
+
+      {/* EXPANDED INLINE CLINICAL & PROTOCOL SPECIFICATIONS */}
+      {isNbaExpanded && (
+        <div className="p-4 bg-slate-950/90 border border-purple-500/30 rounded-xl space-y-4 animate-in fade-in slide-in-from-top-2 relative z-10 shadow-inner">
+          {/* Scientific Mechanism & Clinical Rationale */}
+          {(targetMod.expanded_why || targetMod.brief_description || targetMod.mechanism_of_action || targetMod.headline_benefit || targetMod.implementation_summary) && (
+            <div className="space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                <Microscope size={13} className="text-purple-400" /> Scientific Mechanism &amp; Evidence
+              </span>
+              <p className="text-xs text-slate-300 leading-relaxed pl-5">
+                {targetMod.expanded_why || targetMod.brief_description || targetMod.mechanism_of_action || targetMod.headline_benefit || targetMod.implementation_summary}
+              </p>
+            </div>
+          )}
+
+          {/* Clinical Protocol Specifications 4-Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            {/* Prescribed Dose */}
+            <div className="p-3 bg-black/40 border border-white/10 rounded-xl space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                💊 Prescribed Protocol Dose
+              </span>
+              <span className="text-xs font-bold text-emerald-300 font-mono">
+                {targetMod.dose_or_exposure || 'Standard Clinically Validated Dose'}
+              </span>
+            </div>
+
+            {/* Optimal Circadian Window */}
+            <div className="p-3 bg-black/40 border border-white/10 rounded-xl space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                ⏰ Circadian Timing Window
+              </span>
+              <span className="text-xs font-bold text-cyan-300 font-mono">
+                {targetMod.timing_summary || targetMod.default_timing_slot || 'Target Timing Window'}
+              </span>
+            </div>
+
+            {/* Recommended Cadence */}
+            <div className="p-3 bg-black/40 border border-white/10 rounded-xl space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                📅 Frequency &amp; Cadence
+              </span>
+              <span className="text-xs font-bold text-purple-300 font-mono">
+                {targetMod.frequency || 'Daily Protocol'}
+              </span>
+            </div>
+
+            {/* Administration Route */}
+            <div className="p-3 bg-black/40 border border-white/10 rounded-xl space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                🧬 Modality Type &amp; Category
+              </span>
+              <span className="text-xs font-bold text-amber-300 font-mono capitalize">
+                {targetMod.category?.replace(/_/g, ' ') || targetMod.modality_type || 'Biological Optimization'}
+              </span>
+            </div>
+          </div>
+
+          {/* Primary Outcome & Secondary Impacts */}
+          {(targetMod.primary_outcome || (targetMod.secondary_outcomes && targetMod.secondary_outcomes.length > 0)) && (
+            <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center text-xs">
+              {targetMod.primary_outcome && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-slate-400 font-semibold text-[11px]">Primary Target:</span>
+                  <span className="px-2.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
+                    {targetMod.primary_outcome.replace(/_/g, ' ')}
+                  </span>
+                </div>
+              )}
+
+              {targetMod.secondary_outcomes && targetMod.secondary_outcomes.length > 0 && (
+                <div className="flex items-center gap-1.5 text-slate-300 text-[11px] flex-wrap">
+                  <span className="text-purple-300 font-semibold">Secondary Outcomes:</span>
+                  {targetMod.secondary_outcomes.slice(0, 3).map((out, idx) => (
+                    <span key={idx} className="px-2 py-0.5 bg-slate-800/80 text-slate-300 border border-slate-700 rounded-md text-[10px]">
+                      {out.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Research Paper Link */}
+          {targetMod.scientific_references && targetMod.scientific_references.length > 0 && targetMod.scientific_references[0].url && (
+            <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+              <span className="text-slate-400 text-[11px]">Clinical Validation:</span>
+              <a
+                href={targetMod.scientific_references[0].url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 font-bold text-[11px]"
+              >
+                <span>{targetMod.scientific_references[0].title || 'Read PubMed Research Paper'}</span>
+                <ExternalLink size={12} />
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Action Buttons Row */}
+      <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-white/10 relative z-10 flex-wrap">
+        {onMoveToBench && (
+          <button
+            type="button"
+            onClick={handleBenchNba}
+            disabled={isNbaBenched || isActionDone || isProcessing}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer ${
+              isNbaBenched
+                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                : 'bg-white/5 hover:bg-white/10 border-white/15 text-slate-300 hover:text-white'
+            }`}
+          >
+            {isNbaBenched ? <Check size={13} /> : <Bookmark size={13} />}
+            <span>{isNbaBenched ? 'Saved to Bench (14 Days)' : 'Save to Bench'}</span>
+          </button>
+        )}
 
         <button
           type="button"
           onClick={handleAddModality}
           disabled={isActionDone || isProcessing}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer ${
+          className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg flex items-center gap-2 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] ${
             isActionDone
               ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
-              : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-900/40 active:scale-95'
+              : 'bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white shadow-purple-900/40'
           }`}
         >
-          {isActionDone ? <Check size={13} /> : <Plus size={13} />}
+          {isActionDone ? <Check size={14} strokeWidth={2.5} /> : <Plus size={14} strokeWidth={2.5} />}
           <span>{isActionDone ? 'Enrolled in Today' : `Add ${targetMod.display_name || targetMod.name} to Today`}</span>
         </button>
       </div>

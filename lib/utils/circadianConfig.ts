@@ -317,19 +317,19 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     key: 'bedtime',
     label: 'Bedtime & Sleep',
     timeRange: '10:00 PM – 5:30 AM',
-    circadianPhase: 'Deep Midnight Sapphire • Glymphatic Cleansing & Recovery',
-    skyColorHex: '#1D4ED8',
-    startColorHex: '#2563EB',
-    endColorHex: '#1D4ED8',
-    gradientCSS: 'linear-gradient(to bottom, #2563EB, #1D4ED8, #1E40AF)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(37,99,235,0.4), rgba(29,78,216,0.5))',
-    accentGradient: 'from-blue-600/25 via-blue-800/40 to-transparent',
+    circadianPhase: 'Deep Midnight Starlit Abyss • Glymphatic Cleansing & Recovery',
+    skyColorHex: '#172554',
+    startColorHex: '#1E3A8A',
+    endColorHex: '#0B132B',
+    gradientCSS: 'linear-gradient(to bottom, #1E3A8A, #172554, #0B132B)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(30,58,138,0.5), rgba(11,19,43,0.7))',
+    accentGradient: 'from-blue-900/30 via-indigo-950/50 to-transparent',
     icon: MoonStar,
-    badgeBg: 'bg-blue-900/40',
-    badgeBorder: 'border-blue-500/50',
+    badgeBg: 'bg-blue-950/70',
+    badgeBorder: 'border-blue-700/60',
     badgeText: 'text-blue-300',
-    glowShadow: 'shadow-[0_0_20px_rgba(29,78,216,0.6)]',
-    activeRing: 'ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950',
+    glowShadow: 'shadow-[0_0_20px_rgba(23,37,84,0.8)]',
+    activeRing: 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-950',
     startHour: 22,
     endHour: 5
   },
@@ -441,7 +441,7 @@ export function isCurrentCircadianSlot(slotName: string, currentHour?: number): 
  */
 export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   if (!slotKeys || slotKeys.length === 0) {
-    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 12%, #FBBF24 20%, #38BDF8 28%, #0284C7 45%, #3B82F6 60%, #F59E0B 72%, #F97316 80%, #EC4899 88%, #8B5CF6 93%, #6366F1 97%, #1D4ED8 100%)'
+    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 12%, #FBBF24 20%, #38BDF8 28%, #0284C7 45%, #3B82F6 60%, #F59E0B 72%, #F97316 80%, #EC4899 88%, #8B5CF6 93%, #6366F1 97%, #0B132B 100%)'
   }
   if (slotKeys.length === 1) {
     return getCircadianConfig(slotKeys[0]).gradientCSS
@@ -466,7 +466,7 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   // Helper to check if color is dark blue
   const isDarkBlueFamily = (hex: string) => {
     const h = hex.toLowerCase()
-    return h === '#1d4ed8' || h === '#1e40af' || h === '#2563eb' || h === '#1e3a8a'
+    return h === '#172554' || h === '#1e3a8a' || h === '#0f172a' || h === '#0b132b' || h === '#1d4ed8' || h === '#1e40af' || h === '#2563eb' || h === '#1e1b4b'
   }
 
   slotKeys.forEach((key, i) => {

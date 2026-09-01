@@ -169,7 +169,6 @@ function TodayPageContent() {
   const [availableProtocols, setAvailableProtocols] = useState<{ id: string; name: string; colorHex?: string }[]>([])
   const [benchItems, setBenchItems] = useState<UserBenchItem[]>([])
   const [dismissedTipIds, setDismissedTipIds] = useState<string[]>([])
-  const [topRecommendation, setTopRecommendation] = useState<Modality | null>(null)
   const [wellbeingCheckin, setWellbeingCheckin] = useState<WellbeingType | null>(null)
 
   const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false)
@@ -2679,50 +2678,6 @@ function TodayPageContent() {
                     await handleMoveToBench(modalityId)
                   }}
                 />
-              </div>
-            )}
-
-            {/* Next Best Action (Momentum UI) */}
-            {topRecommendation && progressPercent >= 70 && (
-              <div className="mt-8 pt-8 border-t border-white/5">
-                <details className="group glass-card rounded-xl border border-white/5 overflow-hidden">
-                  <summary className="p-4 cursor-pointer list-none flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Sparkles size={20} className="text-levl-accent" />
-                        Next Best Action
-                      </h2>
-                      <p className="text-sm text-levl-text-secondary mt-1 group-open:hidden">
-                        You've crushed your habits today! Keep up the momentum...
-                      </p>
-                      <p className="text-sm text-levl-text-secondary mt-1 hidden group-open:block">
-                        Based on your goals, this is the #1 next best action you can take.
-                      </p>
-                    </div>
-                    <div className="text-white/50 group-open:rotate-180 transition-transform">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
-                  </summary>
-                  
-                  <div className="p-4 pt-0 border-t border-white/5 mt-4">
-                    <ExploreCard 
-                      modality={topRecommendation}
-                      userProfile={profile}
-                      onAddToBench={async (id) => {
-                        const localUserId = getLocalUserId()
-                        const { addToBench } = await import('@/lib/data')
-                        await addToBench(localUserId, id)
-                        setTopRecommendation(null)
-                      }}
-                      onAddToToday={async (id) => {
-                        const localUserId = getLocalUserId()
-                        await createDailyTask(localUserId, dateStr, id)
-                        setTopRecommendation(null)
-                        await refreshTodayTasks()
-                      }}
-                    />
-                  </div>
-                </details>
               </div>
             )}
           </>
