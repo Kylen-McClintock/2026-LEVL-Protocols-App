@@ -573,6 +573,28 @@ function TodayPageContent() {
     const slotToUse = newTimingSlot || 'evening'
     const cleanSlotName = slotToUse.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 
+    if (action === 'move_to_bench') {
+      const taskToBench = rescheduleTask
+      setIsRescheduleModalOpen(false)
+      setRescheduleTask(null)
+      setRescheduleModality(null)
+      if (taskToBench) {
+        handleMoveToBench(taskToBench)
+      }
+      return
+    }
+
+    if (action === 'eliminate_entirely') {
+      const taskToEliminate = rescheduleTask
+      setIsRescheduleModalOpen(false)
+      setRescheduleTask(null)
+      setRescheduleModality(null)
+      if (taskToEliminate) {
+        handleEliminateEntirely(taskToEliminate, 'Eliminated from schedule options')
+      }
+      return
+    }
+
     // 1. INSTANT OPTIMISTIC UI STATE UPDATE (0ms delay)
     let updatedStatus: any = 'skipped'
     let updatedReason: string = 'Skipped'

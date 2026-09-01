@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react'
 import { DailyProtocolTask, Modality } from '@/lib/types'
-import { X, Calendar, FastForward, ArrowRightLeft, Clock, SkipForward, Sparkles, Check } from 'lucide-react'
+import { X, Calendar, FastForward, ArrowRightLeft, Clock, SkipForward, Sparkles, Check, Archive, Trash2 } from 'lucide-react'
 
 export type RescheduleActionType = 
   | 'slide_forward'        // Push session to next day (slides entire sequence)
@@ -10,6 +10,8 @@ export type RescheduleActionType =
   | 'snooze_later_today'   // Move task to a later timing slot today (evening/pre-bed)
   | 'skip_session'         // Mark session skipped (stay on calendar schedule)
   | 'custom_date'          // Pick a custom future date on calendar
+  | 'move_to_bench'        // Move modality to bench (deactivate from routine)
+  | 'eliminate_entirely'   // Permanently eliminate modality from stack
 
 interface SmartRescheduleModalProps {
   isOpen: boolean
@@ -106,9 +108,9 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh]">
         {/* Header */}
-        <div className="p-5 border-b border-slate-800 flex items-start justify-between bg-slate-950/70">
+        <div className="p-5 border-b border-slate-800 flex items-start justify-between bg-slate-950/80 shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md ${
@@ -129,14 +131,14 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
+            className="p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Action Options Body */}
-        <div className="p-5 overflow-y-auto space-y-3.5 flex-1 text-slate-200">
+        <div className="p-5 overflow-y-auto min-h-0 flex-1 space-y-4 text-slate-200 pb-16 overscroll-contain">
           
           {/* Option 1: Snooze to Future Time Slot Today */}
           <div className="p-4 rounded-2xl border border-teal-500/40 bg-gradient-to-br from-teal-950/30 via-slate-900/90 to-slate-950 space-y-3 shadow-lg">
@@ -194,10 +196,10 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
             <button
               type="button"
               onClick={() => onExecuteReschedule('snooze_later_today', undefined, selectedSlot)}
-              className="w-full py-2.5 px-4 rounded-xl bg-teal-500 hover:bg-teal-400 active:scale-[0.98] text-slate-950 text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-1"
+              className="w-full py-3 px-4 rounded-xl bg-teal-500 hover:bg-teal-400 active:scale-[0.98] text-slate-950 text-xs font-black transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer mt-2 ring-1 ring-teal-300/40"
             >
-              <Clock size={14} className="text-slate-950" />
-              <span>
+              <Clock size={15} className="text-slate-950 shrink-0" />
+              <span className="truncate">
                 Confirm Snooze to {ALL_TODAY_SLOTS.find(s => s.slot === selectedSlot)?.label || selectedSlot}
               </span>
             </button>
@@ -294,10 +296,61 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Section Divider: Stack Management Options */}
+          <div className="pt-2 border-t border-slate-800/80">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1 mb-2.5 flex items-center gap-2">
+              <span>Stack Management</span>
+              <div className="flex-1 h-[1px] bg-slate-800" />
+            </div>
+            
+            <div className="space-y-2.5">
+              {/* Option 6: Move to Bench */}
+              <button
+                type="button"
+                onClick={() => onExecuteReschedule('move_to_bench')}
+                className="w-full p-3.5 rounded-2xl border text-left flex items-start gap-3.5 transition-all bg-amber-950/20 border-amber-800/40 hover:border-amber-500/80 hover:bg-amber-950/40 active:scale-[0.98] cursor-pointer group shadow-sm"
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-950/80 border border-amber-700/60 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <Archive className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5 flex-1 min-w-0">
+                  <div className="text-xs font-bold text-amber-200 flex items-center gap-2">
+                    <span>Move to Bench</span>
+                    <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-semibold">Deactivate</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Pause this modality and store it on your Bench. You can reactivate it anytime.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 7: Eliminate Entirely */}
+              <button
+                type="button"
+                onClick={() => onExecuteReschedule('eliminate_entirely')}
+                className="w-full p-3.5 rounded-2xl border text-left flex items-start gap-3.5 transition-all bg-rose-950/20 border-rose-900/40 hover:border-rose-500/80 hover:bg-rose-950/40 active:scale-[0.98] cursor-pointer group shadow-sm"
+              >
+                <div className="w-9 h-9 rounded-xl bg-rose-950/80 border border-rose-700/60 flex items-center justify-center text-rose-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5 flex-1 min-w-0">
+                  <div className="text-xs font-bold text-rose-300 flex items-center gap-2">
+                    <span>Eliminate Entirely</span>
+                    <span className="text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-semibold">Permanent</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Permanently eliminate this modality and cancel all future scheduled sessions from your stack.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/90 flex justify-end">
+        <div className="p-4 border-t border-slate-800 bg-slate-950/90 flex justify-end shrink-0">
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
