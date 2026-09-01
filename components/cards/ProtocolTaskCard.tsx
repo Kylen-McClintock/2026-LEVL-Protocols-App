@@ -1850,13 +1850,13 @@ export default function ProtocolTaskCard({
       {expanded && !showSkipReason && !showEliminateReason && (
         <div className="px-4 pb-4 pt-2 border-t border-white/5 animate-in slide-in-from-top-2">
           
-          {/* SKIPPED / FLEXIBLE SATISFIED REASON BANNER */}
+          {/* SKIPPED REASON BANNER */}
           {(task.status === 'skipped' || task.status === 'not_today' || task.status_reason || (task as any).ai_coach_reason) && (
             <div className="mb-4 p-3.5 bg-slate-900/80 border border-slate-500/30 rounded-xl text-xs space-y-1 animate-in fade-in shadow-md">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-slate-300 font-bold uppercase tracking-wider text-[11px]">
                   {(task as any).ai_coach_reason ? <Sparkles size={14} className="text-purple-400" /> : <Info size={14} className="text-slate-400" />}
-                  {(task as any).ai_coach_reason ? 'AI Coach Derived Reason' : 'Skipped / Satisfied Reason'}
+                  {(task as any).ai_coach_reason ? 'AI Coach Derived Reason' : 'Skipped Reason'}
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 uppercase">
                   {task.status === 'not_today' ? 'Skipped Today' : task.status}
