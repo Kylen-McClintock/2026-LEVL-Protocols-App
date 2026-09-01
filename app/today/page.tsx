@@ -1609,18 +1609,22 @@ function TodayPageContent() {
         <div 
           key={groupName} 
           ref={(el) => { groupHeaderRefs.current[groupName] = el }}
-          className={`relative ${isAnytime ? 'pl-5 sm:pl-6' : 'pl-3.5 sm:pl-4'} space-y-3 group/circadian-block`}
+          className={`relative ${
+            isAnytime 
+              ? 'ml-2 sm:ml-4 pl-3 sm:pl-4 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-3 sm:p-3.5 space-y-2.5 my-3' 
+              : 'pl-3.5 sm:pl-4 space-y-3'
+          } group/circadian-block`}
         >
           <div className={`flex items-center justify-between ${isAnytime ? 'border-b border-dashed border-white/10 pb-2' : 'border-b border-white/10 pb-2.5'} flex-wrap gap-2`}>
             <button
               type="button"
               onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-              className="flex items-center gap-2.5 sm:gap-3 text-left group cursor-pointer focus:outline-none"
+              className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-none"
             >
-              {/* Circadian Sky Beacon Icon (20% resting opacity, fills with full 100% vibrant gradient and glow only when scroll reaches it) */}
+              {/* Circadian Sky Beacon Icon */}
               <div 
                 ref={(el) => { beaconRefs.current[groupName] = el }}
-                className={`${isAnytime ? 'w-7 h-7 rounded-xl' : 'w-9 h-9 rounded-2xl'} border flex items-center justify-center shrink-0 transition-all duration-500 ${
+                className={`${isAnytime ? 'w-6 h-6 rounded-lg' : 'w-9 h-9 rounded-2xl'} border flex items-center justify-center shrink-0 transition-all duration-500 ${
                   isIgnited 
                     ? `${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 opacity-100 ${isNow ? circadian.activeRing : ''}`
                     : 'bg-slate-950/60 border-slate-800 text-slate-500/70 scale-95 opacity-40 shadow-none'
@@ -1630,16 +1634,16 @@ function TodayPageContent() {
                   boxShadow: isIgnited
                     ? (isNow 
                         ? `0 0 22px ${circadian.skyColorHex}99, inset 0 0 10px ${circadian.skyColorHex}33` 
-                        : (isAnytime ? `0 0 10px ${circadian.skyColorHex}30` : `0 0 14px ${circadian.skyColorHex}40`))
+                        : (isAnytime ? `0 0 8px ${circadian.skyColorHex}25` : `0 0 14px ${circadian.skyColorHex}40`))
                     : undefined
                 }}
               >
-                <CircadianIcon size={isAnytime ? 13 : 17} strokeWidth={isIgnited ? 2.2 : 1.7} />
+                <CircadianIcon size={isAnytime ? 12 : 17} strokeWidth={isIgnited ? 2.2 : 1.7} />
               </div>
 
               <div className="flex flex-col">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`${isAnytime ? 'text-xs font-bold tracking-normal' : 'text-sm font-extrabold tracking-wider'} uppercase transition-colors ${
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <span className={`${isAnytime ? 'text-[11px] sm:text-xs font-bold tracking-normal' : 'text-sm font-extrabold tracking-wider'} uppercase transition-colors ${
                     isIgnited ? (isAnytime ? 'text-slate-300 group-hover:text-purple-300' : 'text-white group-hover:text-purple-200') : 'text-slate-400 group-hover:text-slate-200'
                   }`}>
                     {isAnytime ? 'Anytime / Flexible' : formatSlotName(groupName)}
@@ -1650,8 +1654,8 @@ function TodayPageContent() {
                       <span>Live Window</span>
                     </span>
                   )}
-                  <span className={`text-[11px] sm:text-xs px-2 py-0.5 rounded-full font-mono font-bold transition-colors ${
-                    isIgnited ? (isAnytime ? 'bg-purple-950/40 text-purple-300 border border-purple-800/40' : 'bg-slate-800/90 text-slate-300') : 'bg-slate-900 text-slate-500'
+                  <span className={`text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-mono font-bold transition-colors ${
+                    isIgnited ? (isAnytime ? 'bg-purple-950/50 text-purple-300 border border-purple-800/40' : 'bg-slate-800/90 text-slate-300') : 'bg-slate-900 text-slate-500'
                   }`}>
                     {completedCount > 0 ? `${completedCount}/${groupTasks.length}` : groupTasks.length}
                   </span>
@@ -1664,27 +1668,35 @@ function TodayPageContent() {
               </div>
 
               <ChevronDown 
-                size={isAnytime ? 14 : 16} 
+                size={isAnytime ? 13 : 16} 
                 className={`transition-transform duration-200 ml-1 ${
                   isIgnited ? 'text-slate-400 group-hover:text-white' : 'text-slate-600'
                 } ${isCollapsed ? '-rotate-90' : ''}`} 
               />
             </button>
 
-            <div className="flex items-center gap-2 shrink-0 ml-auto">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
               <button
                 type="button"
                 onClick={() => handleStartGroupTracking(groupName, groupTasks)}
-                className="text-xs text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+                className={`font-semibold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition-colors ${
+                  isAnytime 
+                    ? 'text-[11px] text-slate-400 hover:text-purple-300 hover:bg-white/5' 
+                    : 'text-xs text-purple-400 hover:text-purple-300 hover:bg-white/5'
+                }`}
               >
-                <Activity size={13} /> {activeGroupTrackKey === groupName ? 'Close' : 'Track'}
+                <Activity size={isAnytime ? 12 : 13} /> {activeGroupTrackKey === groupName ? 'Close' : 'Track'}
               </button>
               <button
                 type="button"
                 onClick={() => handleCompleteGroup(groupName, groupTasks)}
-                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 cursor-pointer px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors"
+                className={`font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
+                  isAnytime 
+                    ? 'text-[11px] text-emerald-400/90 hover:text-emerald-300 px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20' 
+                    : 'text-xs text-emerald-400 hover:text-emerald-300 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30'
+                }`}
               >
-                <Check size={13} strokeWidth={2.5} /> Complete All
+                <Check size={isAnytime ? 12 : 13} strokeWidth={2.5} /> Complete All
               </button>
             </div>
           </div>

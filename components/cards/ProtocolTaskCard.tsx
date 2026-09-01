@@ -785,6 +785,62 @@ export default function ProtocolTaskCard({
 
   const hasPrecisionLogUI = archetype !== 'general'
 
+  // Precision execution log default expansion determination (~50% open, ~50% collapsed)
+  const isPrecisionLogOpenByDefault = useMemo(() => {
+    // If the task already has custom execution details logged by the user, keep it open so they see their data
+    if (task.execution_details && Object.keys(task.execution_details).length > 0) {
+      return true
+    }
+
+    // EXPANDED by default (~50%):
+    // 1. Strength & Resistance
+    // 2. Cardio & Aerobic
+    // 3. Thermal (Sauna & Cold)
+    // 4. Peptides & Biologics
+    // 5. Breathwork & Mindfulness / NSDR
+    // 6. Fasting Windows
+    // 7. Blue light blockers & Screen time reduction
+    // 8. Circadian light / Sunlight
+    // 9. Targeted Macro Nutrition
+    // 10. Phlebotomy & Diagnostics
+    if (
+      isStrength ||
+      isCardio ||
+      isThermal ||
+      isPeptide ||
+      isBreathwork ||
+      isFasting ||
+      isBlueLightDimming ||
+      isSunlight ||
+      isNutritionMacro ||
+      isPhlebotomy
+    ) {
+      return true
+    }
+
+    // COLLAPSED by default (~50%):
+    // Supplements, Hydration, Sleep Hygiene, Red Light, CGM, General
+    return false
+  }, [
+    task.execution_details,
+    isStrength,
+    isCardio,
+    isThermal,
+    isPeptide,
+    isBreathwork,
+    isFasting,
+    isBlueLightDimming,
+    isSunlight,
+    isNutritionMacro,
+    isPhlebotomy
+  ])
+
+  const [isPrecisionLogExpanded, setIsPrecisionLogExpanded] = useState<boolean>(isPrecisionLogOpenByDefault)
+
+  useEffect(() => {
+    setIsPrecisionLogExpanded(isPrecisionLogOpenByDefault)
+  }, [isPrecisionLogOpenByDefault, task.id])
+
   const peakWindowText = useMemo(() => {
     const name = (modality.display_name || modality.name || '').toLowerCase()
     const cat = (modality.category || '').toLowerCase()
@@ -1893,122 +1949,197 @@ export default function ProtocolTaskCard({
 
           {/* PENDING PRECISION EXECUTION LOGGER DIRECTLY ON EXPANDED CARD */}
           {task.status === 'pending' && !isFutureTask && hasPrecisionLogUI && !showInlineOutcomes && (
-            <div className="mb-4 space-y-3">
-              <div className="p-3.5 bg-slate-950/90 border border-cyan-500/30 rounded-xl space-y-3 shadow-lg">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
-                    <Activity size={14} className="text-cyan-400" /> Precision Execution Log
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {modality.display_name || modality.name}
-                  </span>
-                </div>
-
-                {/* Render the specialized UI */}
-                {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                {isCardio && (
-                  <CardioExecutionLog 
-                    value={executionDetails} 
-                    onChange={setExecutionDetails} 
-                    lockedCardioType={lockedCardioType}
-                    specializedTraits={specializedTraits}
-                  />
-                )}
-                {isStrength && (
-                  <StrengthExecutionLog 
-                    value={executionDetails} 
-                    onChange={setExecutionDetails} 
-                    lockedExerciseName={lockedExerciseName}
-                    specializedTraits={specializedTraits}
-                  />
-                )}
-                {isFasting && (
-                  <FastingExecutionLog 
-                    value={executionDetails} 
-                    onChange={setExecutionDetails} 
-                    isMultiDay={
-                      modalityKey.includes('16:8') || modalityKey.includes('18:6') || modalityKey.includes('time-restricted') || modalityKey.includes('trf')
-                        ? false 
-                        : true
-                    }
-                  />
-                )}
-                {isNutritionMacro && <NutritionMacroExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                {isRedLight && <RedLightExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                {isCGM && <CGMExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                {isBlueLightDimming && <BlueLightDimmingExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                {isPhlebotomy && <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                {isPeptide && (
-                  <PeptideExecutionLog 
-                    value={executionDetails} 
-                    onChange={setExecutionDetails} 
-                    modality={modality} 
-                    modalityKey={modalityKey} 
-                    defaultDoseMcg={task.protocol_step?.dose_amount || 250} 
-                  />
-                )}
-                {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-
-                {/* COMPLETE & LOG SESSION ACTION BUTTON */}
-                <div className="flex items-center justify-between gap-3 pt-3 border-t border-emerald-500/20 flex-wrap">
-                  <div className="hidden sm:flex items-center gap-2 text-emerald-400 text-xs font-semibold">
-                    <Sparkles size={14} className="text-emerald-400 shrink-0" />
-                    <span>Log precision metrics &amp; launch outcome tracking</span>
+            isPrecisionLogExpanded ? (
+              <div className="mb-4 space-y-3">
+                <div className="p-3.5 bg-slate-950/90 border border-cyan-500/30 rounded-xl space-y-3 shadow-lg">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                      <Activity size={14} className="text-cyan-400" /> Precision Execution Log
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {modality.display_name || modality.name}
+                      </span>
+                      {!isPrecisionLogOpenByDefault && (
+                        <button
+                          type="button"
+                          onClick={() => setIsPrecisionLogExpanded(false)}
+                          className="text-[10px] font-bold text-slate-400 hover:text-white px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors flex items-center gap-1 cursor-pointer border border-white/10"
+                        >
+                          <span>Hide Details</span>
+                          <ChevronUp size={12} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    disabled={isProcessing}
-                    onClick={async (e) => {
-                      e.stopPropagation()
-                      setIsProcessing(true)
-                      try {
-                        const baseDateStr = task.scheduled_date
-                        let logDate = new Date()
-                        if (baseDateStr) {
-                          const [y, m, d] = baseDateStr.split('-').map(Number)
-                          if (y && m && d) {
-                            logDate = new Date(y, m - 1, d)
-                          }
-                        }
-                        const now = new Date()
-                        logDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0)
 
-                        let metrics: any = undefined
-                        if (executionDetails?.duration || executionDetails?.distance) {
-                          metrics = {}
-                          if (executionDetails.duration) metrics.duration_mins = parseFloat(executionDetails.duration)
-                          if (executionDetails.distance) metrics.distance = parseFloat(executionDetails.distance)
-                        }
-                        if (isPeptide && executionDetails?.injection_site) {
-                          saveInjectionSiteLog(modalityKey, executionDetails.injection_site)
-                        }
-                        await updateTaskExecutionDetails(task.id, executionDetails)
-                        
-                        if (currentRelevantOutcomes.length > 0) {
-                          setShowInlineOutcomes(true)
-                          setActiveOutcomePhase('post')
-                        } else {
-                          onStatusChange(task.id, 'completed', undefined, logDate.toISOString(), metrics, executionDetails)
-                        }
-                      } catch(err) {
-                        console.error('Error saving execution details:', err)
-                      } finally {
-                        setIsProcessing(false)
+                  {/* Render the specialized UI */}
+                  {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isCardio && (
+                    <CardioExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      lockedCardioType={lockedCardioType}
+                      specializedTraits={specializedTraits}
+                    />
+                  )}
+                  {isStrength && (
+                    <StrengthExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      lockedExerciseName={lockedExerciseName}
+                      specializedTraits={specializedTraits}
+                    />
+                  )}
+                  {isFasting && (
+                    <FastingExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      isMultiDay={
+                        modalityKey.includes('16:8') || modalityKey.includes('18:6') || modalityKey.includes('time-restricted') || modalityKey.includes('trf')
+                          ? false 
+                          : true
                       }
-                    }}
-                    className="w-full sm:w-auto h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
-                  >
-                    <CheckCircle2 size={16} strokeWidth={2.5} />
-                    <span>Complete Session &amp; Rate Outcomes</span>
-                    <ChevronRight size={14} strokeWidth={2.5} />
-                  </button>
+                    />
+                  )}
+                  {isNutritionMacro && <NutritionMacroExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isRedLight && <RedLightExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isCGM && <CGMExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isBlueLightDimming && <BlueLightDimmingExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isPhlebotomy && <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isPeptide && (
+                    <PeptideExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      modality={modality} 
+                      modalityKey={modalityKey} 
+                      defaultDoseMcg={task.protocol_step?.dose_amount || 250} 
+                    />
+                  )}
+                  {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+
+                  {/* COMPLETE & LOG SESSION ACTION BUTTON */}
+                  <div className="flex items-center justify-between gap-3 pt-3 border-t border-emerald-500/20 flex-wrap">
+                    <div className="hidden sm:flex items-center gap-2 text-emerald-400 text-xs font-semibold">
+                      <Sparkles size={14} className="text-emerald-400 shrink-0" />
+                      <span>Log precision metrics &amp; launch outcome tracking</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        setIsProcessing(true)
+                        try {
+                          const baseDateStr = task.scheduled_date
+                          let logDate = new Date()
+                          if (baseDateStr) {
+                            const [y, m, d] = baseDateStr.split('-').map(Number)
+                            if (y && m && d) {
+                              logDate = new Date(y, m - 1, d)
+                            }
+                          }
+                          const now = new Date()
+                          logDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0)
+
+                          let metrics: any = undefined
+                          if (executionDetails?.duration || executionDetails?.distance) {
+                            metrics = {}
+                            if (executionDetails.duration) metrics.duration_mins = parseFloat(executionDetails.duration)
+                            if (executionDetails.distance) metrics.distance = parseFloat(executionDetails.distance)
+                          }
+                          if (isPeptide && executionDetails?.injection_site) {
+                            saveInjectionSiteLog(modalityKey, executionDetails.injection_site)
+                          }
+                          await updateTaskExecutionDetails(task.id, executionDetails)
+                          
+                          if (currentRelevantOutcomes.length > 0) {
+                            setShowInlineOutcomes(true)
+                            setActiveOutcomePhase('post')
+                          } else {
+                            onStatusChange(task.id, 'completed', undefined, logDate.toISOString(), metrics, executionDetails)
+                          }
+                        } catch(err) {
+                          console.error('Error saving execution details:', err)
+                        } finally {
+                          setIsProcessing(false)
+                        }
+                      }}
+                      className="w-full sm:w-auto h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <CheckCircle2 size={16} strokeWidth={2.5} />
+                      <span>Complete Session &amp; Rate Outcomes</span>
+                      <ChevronRight size={14} strokeWidth={2.5} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* COLLAPSED PRECISION LOG PANEL: Compact quick action bar with expand toggle */
+              <div className="mb-4 space-y-2">
+                <div className="p-3 bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 transition-all">
+                  <div className="flex items-center gap-2 text-xs text-slate-300 flex-wrap">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                    <span className="font-medium text-slate-400">Target Dose:</span>
+                    <span className="font-bold text-white font-mono bg-white/5 px-2.5 py-0.5 rounded-lg border border-white/10">
+                      {customDose || modality.dose_or_exposure || 'Standard Protocol Session'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsPrecisionLogExpanded(true)}
+                      className="flex-1 sm:flex-initial text-[11px] font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <Activity size={13} className="text-cyan-400" />
+                      <span>+ Log Specific Details</span>
+                      <ChevronDown size={12} className="text-slate-400" />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        setIsProcessing(true)
+                        try {
+                          const baseDateStr = task.scheduled_date
+                          let logDate = new Date()
+                          if (baseDateStr) {
+                            const [y, m, d] = baseDateStr.split('-').map(Number)
+                            if (y && m && d) {
+                              logDate = new Date(y, m - 1, d)
+                            }
+                          }
+                          const now = new Date()
+                          logDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0)
+
+                          if (currentRelevantOutcomes.length > 0) {
+                            setShowInlineOutcomes(true)
+                            setActiveOutcomePhase('post')
+                          } else {
+                            onStatusChange(task.id, 'completed', undefined, logDate.toISOString(), undefined, executionDetails)
+                          }
+                        } catch(err) {
+                          console.error('Error completing session:', err)
+                        } finally {
+                          setIsProcessing(false)
+                        }
+                      }}
+                      className="flex-1 sm:flex-initial h-9 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_16px_rgba(16,185,129,0.35)] transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <CheckCircle2 size={15} strokeWidth={2.5} />
+                      <span>{currentRelevantOutcomes.length > 0 ? 'Complete & Rate' : 'Complete (1-Click)'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
           )}
           
           {/* COMPLETED DOSAGE & EXECUTION SUMMARY BANNER */}
