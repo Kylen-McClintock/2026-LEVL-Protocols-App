@@ -786,52 +786,49 @@ export default function ProtocolTaskCard({
 
   const hasPrecisionLogUI = archetype !== 'general'
 
-  // Precision execution log default expansion determination (~50% open, ~50% collapsed)
+  // Precision execution log default expansion determination (~40% open, ~60% collapsed)
   const isPrecisionLogOpenByDefault = useMemo(() => {
-    // If the task already has custom execution details logged by the user, keep it open so they see their data
-    if (task.execution_details && Object.keys(task.execution_details).length > 0) {
-      return true
-    }
-
-    // EXPANDED by default (~50%):
-    // 1. Strength & Resistance
-    // 2. Cardio & Aerobic
-    // 3. Thermal (Sauna & Cold)
-    // 4. Peptides & Biologics
-    // 5. Breathwork & Mindfulness / NSDR
-    // 6. Fasting Windows
-    // 7. Blue light blockers & Screen time reduction
-    // 8. Circadian light / Sunlight
-    // 9. Targeted Macro Nutrition
-    // 10. Phlebotomy & Diagnostics
+    // EXPANDED by default (~40% - High-variance, dynamic session metrics where users configure sets, temps, HR, mcg):
+    // 1. Strength & Resistance (Sets, reps, load, RPE)
+    // 2. Cardio & Aerobic & Sports (Duration, HR zones, distance, pace)
+    // 3. Thermal Stress (Sauna & Cold plunge exact temp, duration, Søberg warm-up)
+    // 4. Peptides & Biologics (Microgram dose, injection site, route)
+    // 5. Breathwork & Mindfulness / NSDR (Rounds, hold duration, minutes)
+    // 6. Fasting Windows & Live Timers (Fast start/end, target hours)
+    // 7. Targeted Macro Nutrition (Exact grams of protein/carbs/fat)
+    // 8. Phlebotomy & Diagnostics (Volume mL, ferritin, blood pressure)
     if (
       isStrength ||
       isCardio ||
+      isSport ||
       isThermal ||
       isPeptide ||
       isBreathwork ||
       isFasting ||
-      isBlueLightDimming ||
-      isSunlight ||
       isNutritionMacro ||
       isPhlebotomy
     ) {
       return true
     }
 
-    // COLLAPSED by default (~50%):
-    // Supplements, Hydration, Sleep Hygiene, Red Light, CGM, General
+    // COLLAPSED by default (~60% - Low-friction, standard daily habits with compact dose pill + 1-click complete):
+    // 1. Oral Supplements & Nootropics (Creatine, Magnesium, D3+K2, Omega-3, NMN, etc.)
+    // 2. Hydration & Electrolytes (Morning water, LMNT salt)
+    // 3. Sunlight & Circadian Light Exposure (Morning sunlight, optical flow)
+    // 4. Blue Light Blockers & Screen Curfew (Amber glasses, digital sunset)
+    // 5. Sleep Sanctuary & Bedroom Environment (Mouth tape, 66°F room)
+    // 6. Photobiomodulation / Red Light Panels (Standard panel routine)
+    // 7. CGM & Passive Glucose Tracking (Baseline checks)
+    // 8. General Modalities
     return false
   }, [
-    task.execution_details,
     isStrength,
     isCardio,
+    isSport,
     isThermal,
     isPeptide,
     isBreathwork,
     isFasting,
-    isBlueLightDimming,
-    isSunlight,
     isNutritionMacro,
     isPhlebotomy
   ])
