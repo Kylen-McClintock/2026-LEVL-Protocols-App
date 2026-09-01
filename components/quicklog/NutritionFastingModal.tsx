@@ -9,6 +9,7 @@ import {
   Sparkles,
   Flame,
   Clock,
+  Check,
   CheckCircle2,
   Trash2,
   Sliders,
@@ -72,6 +73,8 @@ export default function NutritionFastingModal({
   const [portionMultiplier, setPortionMultiplier] = useState<number>(1.0)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isRecalculating, setIsRecalculating] = useState(false)
+  const [recalculatedSuccess, setRecalculatedSuccess] = useState(false)
 
   // Editable Form Fields
   const [mealName, setMealName] = useState('')
@@ -98,6 +101,7 @@ export default function NutritionFastingModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const manualFileInputRef = useRef<HTMLInputElement>(null)
 
   // Load Data
   const reloadData = async () => {
@@ -198,6 +202,75 @@ export default function NutritionFastingModal({
     }
   }
 
+  // Handle Manual Mode Photo Attachment (with identical standard compression)
+  const handleManualPhotoAttached = async (file: File) => {
+    try {
+      const compressedBase64 = await compressAndDownscaleImage(file, {
+        maxDimension: 1200,
+        quality: 0.80
+      })
+      setCapturedImageBase64(compressedBase64)
+      setKeepPhotoInJournal(true)
+    } catch (err) {
+      console.error('Photo compression error in manual entry:', err)
+    }
+  }
+
+  // Handle AI Recalculate with Updated Meal Description & Ingredients
+  const handleRecalculateFromDescription = async () => {
+    if (!mealName.trim()) {
+      setErrorMsg('Please enter a meal description to recalculate.')
+      return
+    }
+
+    setIsRecalculating(true)
+    setErrorMsg(null)
+    setRecalculatedSuccess(false)
+
+    try {
+      const res = await fetch('/api/nutrition/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: mealName.trim(),
+          ingredients: ingredientsList,
+          image: capturedImageBase64 || undefined
+        })
+      })
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || 'Failed to recalculate nutritional details.')
+      }
+
+      const json = await res.json()
+      if (!json.success || !json.data) {
+        throw new Error('Invalid response from AI recalculation.')
+      }
+
+      const data: MealScanResult = json.data
+      setScanResult(data)
+      setPortionMultiplier(1.0)
+      setCalories(data.calories)
+      setProtein(data.protein_g)
+      setCarbs(data.carbs_g)
+      setFiber(data.fiber_g)
+      setFat(data.fat_g)
+      setVeggieServings(data.veggie_servings)
+      setFruitServings(data.fruit_servings)
+      if (data.ingredients && data.ingredients.length > 0) {
+        setIngredientsList(data.ingredients)
+      }
+      setRecalculatedSuccess(true)
+      setTimeout(() => setRecalculatedSuccess(false), 4000)
+    } catch (err: any) {
+      console.error('Recalculate error:', err)
+      setErrorMsg(err.message || 'Error recalculating meal details. Please try again.')
+    } finally {
+      setIsRecalculating(false)
+    }
+  }
+
   // Handle Portion Multiplier Change
   const handleMultiplierChange = (mult: number) => {
     if (!scanResult) return
@@ -245,6 +318,15 @@ export default function NutritionFastingModal({
       const mealDateObj = new Date(date + 'T12:00:00')
       mealDateObj.setHours(h || 12, m || 0, 0, 0)
 
+      // Ensure exact client-side compression (max 1200px, 80% JPEG) when keeping photo in journal
+      let finalImageUrl: string | undefined = undefined
+      if (keepPhotoInJournal && capturedImageBase64) {
+        finalImageUrl = await compressAndDownscaleImage(capturedImageBase64, {
+          maxDimension: 1200,
+          quality: 0.80
+        })
+      }
+
       const entry: DailyMealLogEntry = {
         id: `meal_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         local_user_id: localUserId,
@@ -260,7 +342,7 @@ export default function NutritionFastingModal({
         fruit_servings: Number(fruitServings) || 0,
         plant_diversity_count: scanResult?.plant_diversity_count || (veggieServings > 0 || fruitServings > 0 ? 1 : 0),
         ingredients: ingredientsList.length > 0 ? ingredientsList : undefined,
-        image_url: keepPhotoInJournal && capturedImageBase64 ? capturedImageBase64 : undefined,
+        image_url: finalImageUrl,
         notes: scanResult?.summary
       }
 
@@ -503,19 +585,38 @@ export default function NutritionFastingModal({
                 </div>
               )}
 
-              {/* Meal Name & Time */}
+              {/* Meal Name, Recalculate Button & Time */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-400">Meal / Dish Description</label>
-                  <input
-                    type="text"
-                    value={mealName}
-                    onChange={(e) => setMealName(e.target.value)}
-                    placeholder="e.g. Scrambled Eggs with Avocado & Sourdough"
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none focus:border-emerald-500"
-                  />
+                <div className="sm:col-span-2 space-y-1.5">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-300">Meal / Dish Description</label>
+                    {recalculatedSuccess && (
+                      <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                        <Check size={11} strokeWidth={3} /> Recalculated with updated details
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={mealName}
+                      onChange={(e) => setMealName(e.target.value)}
+                      placeholder="e.g. Scrambled Eggs with Avocado & Sourdough"
+                      className="flex-1 bg-black/60 border border-white/10 focus:border-emerald-500/60 rounded-xl p-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRecalculateFromDescription}
+                      disabled={isRecalculating || !mealName.trim()}
+                      className="px-3.5 py-2.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-500/40 hover:to-teal-500/40 text-emerald-300 border border-emerald-500/40 hover:border-emerald-400 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                      title="Recalculate calories, macros, and nutrients with AI based on your updated description"
+                    >
+                      <Sparkles size={13} className={isRecalculating ? 'animate-spin text-emerald-400' : 'text-emerald-400'} />
+                      <span>{isRecalculating ? 'Recalculating...' : 'Recalculate with AI'}</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <label className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">
                     <Clock size={11} /> Time Consumed
                   </label>
@@ -601,16 +702,22 @@ export default function NutritionFastingModal({
                 </div>
               </div>
 
-              {/* Interactive Constituent Ingredients & Foods Editor (Remove / Add) */}
+              {/* Interactive Constituent Ingredients & Foods Editor (Remove / Add / Recalculate) */}
               <div className="space-y-2.5 p-3.5 rounded-2xl bg-black/50 border border-white/10 shadow-inner">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-1">
                   <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1.5">
                     <Utensils size={13} className="text-emerald-400" />
                     <span>Constituent Ingredients &amp; Foods ({ingredientsList.length})</span>
                   </label>
-                  <span className="text-[10px] text-slate-400">
-                    Tap <span className="text-rose-400 font-bold">✕</span> to remove • Add below
-                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRecalculateFromDescription}
+                    disabled={isRecalculating || !mealName.trim()}
+                    className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 hover:underline cursor-pointer disabled:opacity-40"
+                  >
+                    <Sparkles size={11} />
+                    <span>Recalculate Macros</span>
+                  </button>
                 </div>
 
                 {/* Interactive Ingredient Chips */}
@@ -674,28 +781,68 @@ export default function NutritionFastingModal({
                 </div>
               </div>
 
-              {/* Photo Retention Toggle: Discard by Default */}
-              {capturedImageBase64 && (
-                <label className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3 cursor-pointer hover:bg-white/10 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={keepPhotoInJournal}
-                    onChange={(e) => setKeepPhotoInJournal(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 accent-emerald-500 cursor-pointer"
-                  />
-                  <div className="text-xs">
-                    <span className="font-bold text-white flex items-center gap-1.5">
-                      <ImageIcon size={13} className="text-emerald-400" />
-                      <span>Keep photo in Meal Journal</span>
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      {keepPhotoInJournal
-                        ? 'Photo will be stored in your meal log.'
-                        : 'Discarded by default to optimize device storage & cloud sync.'}
-                    </span>
+              {/* Photo Attachment & Retention (Standard Client Compression ~120KB) */}
+              <div className="space-y-2">
+                {capturedImageBase64 ? (
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={capturedImageBase64}
+                        alt="Plate Preview"
+                        className="w-12 h-12 rounded-xl object-cover border border-white/15 shrink-0"
+                      />
+                      <label className="text-xs flex items-center gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={keepPhotoInJournal}
+                          onChange={(e) => setKeepPhotoInJournal(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 accent-emerald-500 cursor-pointer"
+                        />
+                        <div>
+                          <span className="font-bold text-white block">Keep photo in Food Journal</span>
+                          <span className="text-[10px] text-slate-400 block">
+                            {keepPhotoInJournal
+                              ? 'Saved with standard client compression (~120KB JPEG).'
+                              : 'Discarded by default to optimize device storage & cloud sync.'}
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCapturedImageBase64(null)
+                        setKeepPhotoInJournal(false)
+                      }}
+                      className="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                      title="Remove photo"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                </label>
-              )}
+                ) : (
+                  <div>
+                    <input
+                      ref={manualFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleManualPhotoAttached(file)
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => manualFileInputRef.current?.click()}
+                      className="w-full py-2.5 px-3 bg-white/5 hover:bg-white/10 border border-white/10 border-dashed rounded-xl text-xs text-slate-300 font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Camera size={14} className="text-emerald-400" />
+                      <span>Optional: Attach Plate Photo to Journal (Compressed JPEG)</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Action Buttons */}
               <div className="flex items-center gap-3 pt-2">
