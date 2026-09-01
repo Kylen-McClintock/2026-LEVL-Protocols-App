@@ -30,6 +30,9 @@ export type UserProfile = {
   resistance_training_days?: string[]
   fitness_training_level?: string
   enabled_hotkeys?: QuickHotkeyConfig[]
+  morning_checkin_dimensions?: string[]
+  evening_checkin_dimensions?: string[]
+  anytime_checkin_dimensions?: string[]
   // Infradian & Menstrual Cycle Optimization
   infradian_cycle_enabled?: boolean
   last_period_start_date?: string // 'YYYY-MM-DD'

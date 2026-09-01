@@ -10,13 +10,14 @@ type CustomizeCheckinOutcomesModalProps = {
   isOpen: boolean
   onClose: () => void
   title?: string
-  mode?: 'morning' | 'nightly'
+  mode?: 'morning' | 'anytime' | 'nightly'
   allOutcomes: OutcomeDimension[]
   userProfile?: UserProfile | null
   onOutcomesUpdated?: (updatedPreferences?: Record<string, number>) => void
 }
 
 const RECOMMENDED_IDS = ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep']
+const RECOMMENDED_ANYTIME_IDS = ['mood', 'energy', 'stress', 'focus', 'mental_clarity', 'satiety', 'motivation', 'physical_fatigue']
 
 export const CHECKIN_EXPOSURES_METADATA = [
   { id: 'alcohol_drinks', name: 'Alcohol Intake', icon: '🍷', description: 'Tracks standard drinks and sleep architecture impact' },
@@ -38,7 +39,7 @@ export default function CustomizeCheckinOutcomesModal({
   userProfile,
   onOutcomesUpdated
 }: CustomizeCheckinOutcomesModalProps) {
-  const [activeTab, setActiveTab] = useState<'morning' | 'nightly'>(mode)
+  const [activeTab, setActiveTab] = useState<'morning' | 'anytime' | 'nightly'>(mode)
   const [preferences, setPreferences] = useState<Record<string, number>>({})
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
@@ -58,6 +59,9 @@ export default function CustomizeCheckinOutcomesModal({
           init[`morning:${o.id}`] = 10
           init[`nightly:${o.id}`] = 10
         }
+        if (RECOMMENDED_ANYTIME_IDS.includes(o.id) || ['mood', 'energy', 'stress', 'focus'].includes(o.id)) {
+          init[`anytime:${o.id}`] = 10
+        }
       })
       CHECKIN_EXPOSURES_METADATA.forEach(e => {
         init[`exposure:${e.id}`] = 10
@@ -66,12 +70,13 @@ export default function CustomizeCheckinOutcomesModal({
     }
   }, [userProfile, allOutcomes, isOpen])
 
-  const getKey = (id: string, tab: 'morning' | 'nightly') => `${tab}:${id}`
+  const getKey = (id: string, tab: 'morning' | 'anytime' | 'nightly') => `${tab}:${id}`
 
-  const isTracked = (id: string, tab: 'morning' | 'nightly') => {
+  const isTracked = (id: string, tab: 'morning' | 'anytime' | 'nightly') => {
     const key = getKey(id, tab)
     const val = preferences[key] ?? preferences[id]
     if (val === undefined) {
+      if (tab === 'anytime') return RECOMMENDED_ANYTIME_IDS.includes(id) || ['mood', 'energy', 'stress', 'focus'].includes(id)
       return RECOMMENDED_IDS.includes(id)
     }
     return val >= 7
@@ -103,16 +108,26 @@ export default function CustomizeCheckinOutcomesModal({
 
   // Split into Recommended and Additional
   const recommendedOutcomes = useMemo(() => {
+    if (activeTab === 'anytime') {
+      return allOutcomes.filter(o => o.is_default_wellbeing || RECOMMENDED_ANYTIME_IDS.includes(o.id))
+    }
     return allOutcomes.filter(o => o.is_default_wellbeing || RECOMMENDED_IDS.includes(o.id))
-  }, [allOutcomes])
+  }, [allOutcomes, activeTab])
 
   const additionalOutcomes = useMemo(() => {
+    if (activeTab === 'anytime') {
+      return allOutcomes.filter(o => !o.is_default_wellbeing && !RECOMMENDED_ANYTIME_IDS.includes(o.id))
+    }
     return allOutcomes.filter(o => !o.is_default_wellbeing && !RECOMMENDED_IDS.includes(o.id))
-  }, [allOutcomes])
+  }, [allOutcomes, activeTab])
 
   // Count active outcomes per tab
   const morningActiveCount = useMemo(() => {
     return allOutcomes.filter(o => isTracked(o.id, 'morning')).length
+  }, [allOutcomes, preferences])
+
+  const anytimeActiveCount = useMemo(() => {
+    return allOutcomes.filter(o => isTracked(o.id, 'anytime')).length
   }, [allOutcomes, preferences])
 
   const nightlyActiveCount = useMemo(() => {
@@ -180,41 +195,57 @@ export default function CustomizeCheckinOutcomesModal({
             Customize Tracked Bio-Signals
           </h2>
           <p className="text-[11px] text-gray-400 mt-1">
-            Toggle any bio-signal ON or OFF for your <span className="text-amber-300 font-semibold">Morning</span> and <span className="text-rose-300 font-semibold">Nightly</span> check-ins.
+            Toggle any bio-signal ON or OFF for your <span className="text-amber-300 font-semibold">Morning</span>, <span className="text-purple-300 font-semibold">Anytime (Current State)</span>, and <span className="text-rose-300 font-semibold">Nightly</span> check-ins.
           </p>
         </div>
 
-        {/* Morning / Nightly Mode Tabs */}
-        <div className="grid grid-cols-2 gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/10 shrink-0">
+        {/* Morning / Anytime / Nightly Mode Tabs */}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/10 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('morning')}
-            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'morning'
                 ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-400/50 text-amber-200 shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            <Sun size={14} className={activeTab === 'morning' ? 'text-amber-400' : 'text-slate-500'} />
-            <span>Morning Check-in</span>
-            <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              {morningActiveCount} active
+            <Sun size={13} className={activeTab === 'morning' ? 'text-amber-400' : 'text-slate-500'} />
+            <span className="truncate">Morning</span>
+            <span className="text-[9px] font-mono font-extrabold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              {morningActiveCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('anytime')}
+            className={`py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'anytime'
+                ? 'bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-400/50 text-purple-200 shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Sparkles size={13} className={activeTab === 'anytime' ? 'text-purple-400' : 'text-slate-500'} />
+            <span className="truncate">Anytime</span>
+            <span className="text-[9px] font-mono font-extrabold px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              {anytimeActiveCount}
             </span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('nightly')}
-            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === 'nightly'
                 ? 'bg-gradient-to-r from-rose-500/20 to-purple-500/20 border border-rose-400/50 text-rose-200 shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            <Moon size={14} className={activeTab === 'nightly' ? 'text-rose-300' : 'text-slate-500'} />
-            <span>Nightly Check-in</span>
-            <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
-              {nightlyActiveCount} active
+            <Moon size={13} className={activeTab === 'nightly' ? 'text-rose-400' : 'text-slate-500'} />
+            <span className="truncate">Nightly</span>
+            <span className="text-[9px] font-mono font-extrabold px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+              {nightlyActiveCount}
             </span>
           </button>
         </div>
@@ -224,7 +255,7 @@ export default function CustomizeCheckinOutcomesModal({
           <Search className="absolute left-3 top-2.5 text-slate-500 w-4 h-4" />
           <input
             type="text"
-            placeholder={`Search ${activeTab === 'morning' ? 'Morning' : 'Nightly'} bio-signals (e.g. Mood, Energy, Stress, Focus)...`}
+            placeholder={`Search ${activeTab === 'morning' ? 'Morning' : activeTab === 'anytime' ? 'Anytime' : 'Nightly'} bio-signals (e.g. Mood, Energy, Stress, Focus)...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"

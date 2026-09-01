@@ -2271,6 +2271,7 @@ function TodayPageContent() {
                 date={currentDate}
                 isCurrentDay={isCurrentDay}
                 isCollapsedByDefault={isPastDate}
+                recentTasks={tasks}
               />
             </div>
 

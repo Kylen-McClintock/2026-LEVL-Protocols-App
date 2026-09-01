@@ -160,3 +160,164 @@ export function getRecentOutcomeSnapshot(
     source: 'default'
   }
 }
+
+export interface OutcomeLiveState {
+  outcomeId: string
+  name: string
+  currentValue: number | null
+  morningBaseline: number | null
+  trend: 'increasing' | 'decreasing' | 'steady' | 'baseline_only' | 'unrecorded'
+  delta: number
+  sourceLabel: string
+  recordedAt: string | null
+  timeAgoMinutes?: number
+  directionality: 'higher_is_better' | 'lower_is_better'
+  icon?: string
+}
+
+/**
+ * Calculates the real-time live state and trend for an outcome dimension
+ * by comparing the latest reading across all sources against the morning baseline.
+ */
+export function getLatestOutcomeLiveState(
+  outcomeId: string,
+  wellbeingCheckin?: DailyWellbeingCheckin | null,
+  recentTasks?: any[] | null,
+  allOutcomes?: any[] | null
+): OutcomeLiveState {
+  const cleanId = (outcomeId || '').toLowerCase().trim()
+  const matchedOutcome = allOutcomes?.find(o => o.id?.toLowerCase() === cleanId || o.name?.toLowerCase() === cleanId)
+  const name = matchedOutcome?.name || outcomeId.charAt(0).toUpperCase() + outcomeId.slice(1).replace(/_/g, ' ')
+  const directionality = (matchedOutcome?.directionality || (cleanId === 'stress' || cleanId.includes('pain') || cleanId.includes('fatigue') ? 'lower_is_better' : 'higher_is_better')) as 'higher_is_better' | 'lower_is_better'
+
+  // 1. Get morning baseline reading
+  let morningBaseline: number | null = null
+  let morningTimestamp = 0
+  let morningRecordedAt: string | null = null
+
+  if (wellbeingCheckin) {
+    const rawCreated = (wellbeingCheckin as any).created_at
+    morningTimestamp = rawCreated ? new Date(rawCreated).getTime() : 0
+    morningRecordedAt = rawCreated || null
+
+    if (cleanId === 'mood' || cleanId.includes('mood')) {
+      morningBaseline = wellbeingCheckin.mood_0_10 ?? null
+    } else if (cleanId === 'energy' || cleanId.includes('energy') || cleanId.includes('readiness')) {
+      morningBaseline = wellbeingCheckin.energy_0_10 ?? null
+    } else if (cleanId === 'stress' || cleanId.includes('stress') || cleanId.includes('anxiety')) {
+      morningBaseline = wellbeingCheckin.stress_0_10 ?? null
+    } else if (cleanId === 'sleep' || cleanId.includes('sleep') || cleanId === 'subjective_sleep') {
+      morningBaseline = wellbeingCheckin.subjective_sleep_0_10 ?? null
+    } else {
+      const customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
+      if (customJSON[cleanId] !== undefined && typeof customJSON[cleanId] === 'number') {
+        morningBaseline = customJSON[cleanId]
+      } else if (customJSON.focus_score !== undefined && (cleanId === 'focus' || cleanId.includes('focus'))) {
+        morningBaseline = customJSON.focus_score
+      } else if (customJSON.skin_clarity !== undefined && (cleanId === 'skin' || cleanId.includes('skin'))) {
+        morningBaseline = customJSON.skin_clarity
+      }
+    }
+  }
+
+  // 2. Scan for the absolute latest reading across all sources
+  let latestVal = morningBaseline
+  let latestTimestamp = morningTimestamp
+  let latestDateStr = morningRecordedAt
+  let latestSourceLabel = morningBaseline !== null ? 'Morning Check-in' : 'Unrecorded'
+
+  // Check anytime check-in snapshots
+  if (wellbeingCheckin) {
+    const customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
+    if (Array.isArray(customJSON._anytime_checkins) && customJSON._anytime_checkins.length > 0) {
+      customJSON._anytime_checkins.forEach((snap: any) => {
+        const snapTime = snap.timestamp ? new Date(snap.timestamp).getTime() : 0
+        if (snapTime > 0 && snapTime >= latestTimestamp) {
+          let snapVal: number | undefined = undefined
+          if (cleanId === 'mood' || cleanId.includes('mood')) snapVal = snap.mood
+          else if (cleanId === 'energy' || cleanId.includes('energy') || cleanId.includes('readiness')) snapVal = snap.energy
+          else if (cleanId === 'stress' || cleanId.includes('stress') || cleanId.includes('anxiety')) snapVal = snap.stress
+          else if (cleanId === 'focus' || cleanId.includes('focus')) snapVal = snap.focus ?? snap.focus_score
+          else if (cleanId === 'skin' || cleanId.includes('skin')) snapVal = snap.skin ?? snap.skin_clarity
+          else if (snap[cleanId] !== undefined && typeof snap[cleanId] === 'number') snapVal = snap[cleanId]
+
+          if (typeof snapVal === 'number') {
+            latestVal = snapVal
+            latestTimestamp = snapTime
+            latestDateStr = snap.timestamp
+            const timeStr = snap.time_display || (snap.timestamp ? new Date(snap.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '')
+            latestSourceLabel = `Anytime Check-in${timeStr ? ` (${timeStr})` : ''}`
+          }
+        }
+      })
+    }
+  }
+
+  // Check completed modality tasks
+  if (recentTasks && recentTasks.length > 0) {
+    recentTasks.forEach(task => {
+      if (task.status === 'completed' && task.completed_at) {
+        const taskTime = new Date(task.completed_at).getTime()
+        const tracked = task.execution_details?.outcomes_tracked || task.execution_details?.outcome_ratings || {}
+        
+        let taskOutcomeVal: number | undefined = undefined
+        if (tracked[cleanId] !== undefined && typeof tracked[cleanId] === 'number') {
+          taskOutcomeVal = tracked[cleanId]
+        } else {
+          // Check key match
+          Object.entries(tracked).forEach(([k, v]) => {
+            if (typeof v === 'number' && (k.toLowerCase() === cleanId || k.toLowerCase().includes(cleanId) || cleanId.includes(k.toLowerCase()))) {
+              taskOutcomeVal = v
+            }
+          })
+        }
+
+        if (typeof taskOutcomeVal === 'number' && taskTime >= latestTimestamp) {
+          latestVal = taskOutcomeVal
+          latestTimestamp = taskTime
+          latestDateStr = task.completed_at
+          const modName = task.loose_modality?.name || task.protocol_step?.modality?.name || 'Modality'
+          const timeStr = new Date(task.completed_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+          latestSourceLabel = `${modName} (${timeStr})`
+        }
+      }
+    })
+  }
+
+  // 3. Compute delta & trend direction
+  let trend: OutcomeLiveState['trend'] = 'unrecorded'
+  let delta = 0
+
+  if (latestVal !== null) {
+    if (morningBaseline !== null) {
+      delta = latestVal - morningBaseline
+      if (delta > 0) trend = 'increasing'
+      else if (delta < 0) trend = 'decreasing'
+      else trend = latestTimestamp > morningTimestamp ? 'steady' : 'baseline_only'
+    } else {
+      trend = 'baseline_only'
+    }
+  }
+
+  let timeAgoMinutes: number | undefined = undefined
+  if (latestTimestamp > 0) {
+    const ageMs = Date.now() - latestTimestamp
+    if (ageMs >= 0) {
+      timeAgoMinutes = Math.max(1, Math.round(ageMs / (60 * 1000)))
+    }
+  }
+
+  return {
+    outcomeId,
+    name,
+    currentValue: latestVal,
+    morningBaseline,
+    trend,
+    delta,
+    sourceLabel: latestSourceLabel,
+    recordedAt: latestDateStr,
+    timeAgoMinutes,
+    directionality,
+    icon: matchedOutcome?.icon
+  }
+}

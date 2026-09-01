@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { DailyWellbeingCheckin as WellbeingType, UserProfile, OutcomeDimension } from '@/lib/types'
 import { isFuture, isPast, isSameDay, format } from 'date-fns'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
-import { getRecentOutcomeSnapshot } from '@/lib/utils/outcomeRecency'
-import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun } from 'lucide-react'
+import { getRecentOutcomeSnapshot, getLatestOutcomeLiveState, OutcomeLiveState } from '@/lib/utils/outcomeRecency'
+import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sparkles, ArrowUpRight, ArrowDownRight, Radio, Activity } from 'lucide-react'
 import CustomizeCheckinOutcomesModal from '@/components/modals/CustomizeCheckinOutcomesModal'
+import QuickOutcomeUpdateModal from '@/components/modals/QuickOutcomeUpdateModal'
 
 function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: string = '22:30'): number {
   const [h, m] = timeStr.split(':').map(Number)
@@ -239,7 +240,8 @@ export default function DailyWellbeingCheckin({
   allOutcomes,
   date,
   isCurrentDay,
-  isCollapsedByDefault = false
+  isCollapsedByDefault = false,
+  recentTasks
 }: { 
   onSave: (mood: number, energy: number, stress: number, sleep?: number, sleepScore?: number, customOutcomes?: Record<string, any>, lastFoodTime?: string) => void
   initialData: WellbeingType | null
@@ -248,6 +250,7 @@ export default function DailyWellbeingCheckin({
   date: Date
   isCurrentDay: boolean
   isCollapsedByDefault?: boolean
+  recentTasks?: any[]
 }) {
   const [mood, setMood] = useState(5)
   const [energy, setEnergy] = useState(5)
@@ -259,6 +262,11 @@ export default function DailyWellbeingCheckin({
   // Additional Functional Outcomes
   const [skinClarity, setSkinClarity] = useState(5)
   const [focusScore, setFocusScore] = useState(5)
+
+  // Current State & Quick Modal State
+  const [isCurrentStateExpanded, setIsCurrentStateExpanded] = useState(false)
+  const [quickModalOutcome, setQuickModalOutcome] = useState<OutcomeLiveState | null>(null)
+  const [isQuickModalOpen, setIsQuickModalOpen] = useState(false)
 
   // Negative Longevity Exposures State (Default: 'skip' for all)
   const [alcoholDrinks, setAlcoholDrinks] = useState<number | 'skip'>('skip')
@@ -296,7 +304,7 @@ export default function DailyWellbeingCheckin({
   // Tracked Outcomes Modal state
   const [isOutcomesModalOpen, setIsOutcomesModalOpen] = useState(false)
   const [outcomesModalTitle, setOutcomesModalTitle] = useState("Customize Tracked Outcomes")
-  const [outcomesModalMode, setOutcomesModalMode] = useState<'morning' | 'nightly'>('morning')
+  const [outcomesModalMode, setOutcomesModalMode] = useState<'morning' | 'anytime' | 'nightly'>('morning')
 
   // Collapsible for retroactive last night's checkin in morning mode
   const [showLastNightRetro, setShowLastNightRetro] = useState(false)
@@ -395,6 +403,49 @@ export default function DailyWellbeingCheckin({
       return isOutcomeTracked(o.id, 'nightly')
     })
   }, [localProfile, allOutcomes])
+
+  // Active Anytime Tracked Outcomes (can be more than 4, configurable independently)
+  const activeAnytimeDimensions = useMemo(() => {
+    const prefs = localProfile?.outcome_preference_scores || {}
+    
+    // Check for explicit anytime: outcome preferences
+    const fromPrefs = allOutcomes.filter(o => {
+      const key = `anytime:${o.id}`
+      const val = prefs[key]
+      if (val !== undefined) return val >= 7
+      return false
+    })
+
+    if (fromPrefs.length > 0) return fromPrefs
+
+    // Default 4: Mood, Energy, Stress, Focus
+    const defaultIds = ['mood', 'energy', 'stress', 'focus']
+    const matched = defaultIds.map(id => allOutcomes.find(o => o.id === id || o.id === `${id}_score`)).filter(Boolean) as OutcomeDimension[]
+    
+    const finalOutcomes: OutcomeDimension[] = [...matched]
+    defaultIds.forEach(id => {
+      if (!finalOutcomes.some(o => o.id === id)) {
+        finalOutcomes.push({
+          id,
+          name: id.charAt(0).toUpperCase() + id.slice(1),
+          category: 'cognitive',
+          directionality: id === 'stress' ? 'lower_is_better' : 'higher_is_better',
+          is_default_wellbeing: true,
+          is_contextual: false
+        })
+      }
+    })
+    return finalOutcomes
+  }, [localProfile, allOutcomes])
+
+  // Real-time live outcome state map aggregating latest readings across all sources
+  const liveStateMap = useMemo(() => {
+    const map: Record<string, OutcomeLiveState> = {}
+    activeAnytimeDimensions.forEach(dim => {
+      map[dim.id] = getLatestOutcomeLiveState(dim.id, initialData, recentTasks, allOutcomes)
+    })
+    return map
+  }, [activeAnytimeDimensions, initialData, recentTasks, allOutcomes])
 
   // Initialize custom outcome states
   useEffect(() => {
@@ -627,6 +678,43 @@ export default function DailyWellbeingCheckin({
     setShowDaytimeCard(false)
   }
 
+  const handleQuickOutcomeSave = async (outcomeId: string, newValue: number) => {
+    const existingCustom = (initialData as any)?.custom_outcomes_jsonb || {}
+    const existingAnytimeLogs = Array.isArray(existingCustom._anytime_checkins) ? [...existingCustom._anytime_checkins] : []
+    
+    const nowIso = new Date().toISOString()
+    const nowDisplay = format(new Date(), 'h:mm a')
+
+    const newSnapshot: Record<string, any> = {
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `anytime_${Date.now()}`,
+      timestamp: nowIso,
+      time_display: nowDisplay,
+      [outcomeId]: newValue
+    }
+
+    existingAnytimeLogs.push(newSnapshot)
+
+    const combinedCustomOutcomes: Record<string, any> = {
+      ...existingCustom,
+      _anytime_checkins: existingAnytimeLogs,
+      latest_anytime_checkin: newSnapshot,
+      [`daytime_${outcomeId}`]: newValue
+    }
+
+    onSave(
+      initialData?.mood_0_10 ?? mood, 
+      initialData?.energy_0_10 ?? energy, 
+      initialData?.stress_0_10 ?? stress, 
+      initialData?.subjective_sleep_0_10 ?? subjectiveSleep, 
+      initialData?.sleep_score_0_100 ?? (sleepScore === '' ? undefined : Number(sleepScore)), 
+      combinedCustomOutcomes, 
+      lastFoodTime
+    )
+
+    setDaytimeSavedToast(true)
+    setTimeout(() => setDaytimeSavedToast(false), 3000)
+  }
+
   if (isFutureDate) {
     return null // Do not show checkin for future dates
   }
@@ -822,29 +910,56 @@ export default function DailyWellbeingCheckin({
 
   return (
     <>
-      {/* 🌅 MORNING CHECK-IN CARD */}
+      {/* ⚡ CURRENT STATE / REAL-TIME WELLBEING SNAPSHOT CARD */}
       {(isSaved && !isEditing) || isCollapsedAll ? (
-        <div className="glass-card py-2.5 px-3 sm:px-4 rounded-xl mb-4 border border-emerald-500/30 bg-emerald-950/20 animate-in fade-in space-y-2">
+        <div className="glass-card py-3 px-3 sm:px-4 rounded-2xl mb-4 border border-emerald-500/30 bg-slate-950/60 shadow-xl animate-in fade-in space-y-2.5">
+          {/* Top Header */}
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className={`w-2 h-2 rounded-full shrink-0 ${isSaved ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-              <span className="text-white font-bold text-xs sm:text-sm truncate">
-                {isSaved ? 'Morning Check-in Complete' : 'Morning Check-in (Collapsed)'}
-              </span>
+            <div 
+              className="flex items-center gap-2 min-w-0 cursor-pointer group"
+              onClick={() => setIsCurrentStateExpanded(!isCurrentStateExpanded)}
+              title="Click to toggle detailed provenance & trends"
+            >
+              <div className="relative flex items-center justify-center shrink-0">
+                <div className={`w-2.5 h-2.5 rounded-full ${isSaved ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                <div className={`absolute w-4 h-4 rounded-full animate-ping opacity-60 ${isSaved ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              </div>
+              <div className="truncate">
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-black text-xs sm:text-sm tracking-wide flex items-center gap-1.5">
+                    {isCurrentDay ? 'Current State' : 'Daily Wellbeing Snapshot'}
+                  </span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-mono tracking-wider uppercase hidden sm:inline-flex items-center gap-1">
+                    <Activity size={10} className="animate-pulse" /> Live
+                  </span>
+                </div>
+              </div>
             </div>
+
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => {
-                  setOutcomesModalTitle("Customize Morning Tracked Outcomes")
-                  setOutcomesModalMode("morning")
+                  setOutcomesModalTitle("Customize Tracked Outcomes")
+                  setOutcomesModalMode("anytime")
                   setIsOutcomesModalOpen(true)
                 }}
                 className="text-[11px] font-semibold text-gray-300 hover:text-white bg-white/10 hover:bg-white/15 border border-white/15 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm"
-                title="Edit tracked outcomes"
+                title="Edit which bio-signals are tracked in Current State"
               >
                 <Sliders size={12} /> <span className="hidden sm:inline">Tracked Outcomes</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setIsCurrentStateExpanded(!isCurrentStateExpanded)}
+                className="text-[11px] font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/15 px-2 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                title={isCurrentStateExpanded ? "Collapse trend details" : "Expand trend details"}
+              >
+                {isCurrentStateExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                <span className="hidden xs:inline">{isCurrentStateExpanded ? 'Less' : 'Trends'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
@@ -853,68 +968,109 @@ export default function DailyWellbeingCheckin({
                 }}
                 className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
               >
-                <ChevronDown size={12} /> {isSaved ? 'Edit' : 'Expand'}
+                {isSaved ? 'Edit Baseline' : 'Expand'}
               </button>
             </div>
           </div>
           
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-xs">
-            <div 
-              className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${currentMoodCfg.borderColor}`}
-              style={{ backgroundColor: `${currentMoodCfg.accentHex}15` }}
-            >
-              <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
-                <span>Mood</span>
-                <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${currentMoodCfg.badgeBg}`}>{currentMoodCfg.qualityLabel}</span>
-              </div>
-              <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                <span className={`font-mono font-black text-sm sm:text-base ${currentMoodCfg.textColor}`}>{mood}</span>
-                <span className="text-gray-500 text-[10px] font-mono">/10</span>
-              </div>
-            </div>
+          {/* Outcome Boxes Grid (supports 4+ items cleanly!) */}
+          <div className={`grid gap-1.5 sm:gap-2 text-xs ${
+            activeAnytimeDimensions.length <= 4 
+              ? 'grid-cols-2 sm:grid-cols-4' 
+              : activeAnytimeDimensions.length <= 6 
+                ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' 
+                : 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-8'
+          }`}>
+            {activeAnytimeDimensions.map(outcome => {
+              const liveState = liveStateMap[outcome.id] || getLatestOutcomeLiveState(outcome.id, initialData, recentTasks, allOutcomes)
+              const val = liveState.currentValue ?? 5
+              const colorCfg = getOutcomeColorConfig(val, liveState.directionality)
+              const delta = liveState.delta
 
-            <div 
-              className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${currentEnergyCfg.borderColor}`}
-              style={{ backgroundColor: `${currentEnergyCfg.accentHex}15` }}
-            >
-              <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
-                <span>Energy</span>
-                <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${currentEnergyCfg.badgeBg}`}>{currentEnergyCfg.qualityLabel}</span>
-              </div>
-              <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                <span className={`font-mono font-black text-sm sm:text-base ${currentEnergyCfg.textColor}`}>{energy}</span>
-                <span className="text-gray-500 text-[10px] font-mono">/10</span>
-              </div>
-            </div>
+              return (
+                <div 
+                  key={outcome.id}
+                  onClick={() => {
+                    setQuickModalOutcome(liveState)
+                    setIsQuickModalOpen(true)
+                  }}
+                  className={`py-2 px-2 rounded-xl border text-center transition-all cursor-pointer group hover:scale-[1.02] active:scale-95 relative overflow-hidden ${colorCfg.borderColor}`}
+                  style={{ backgroundColor: `${colorCfg.accentHex}15` }}
+                  title={`Click to quick-log / adjust ${liveState.name}`}
+                >
+                  <div className="flex items-center justify-between gap-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
+                    <span className="truncate group-hover:text-white transition-colors">{liveState.name}</span>
+                    <span className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded ${colorCfg.badgeBg} ${colorCfg.textColor}`}>
+                      {colorCfg.qualityLabel}
+                    </span>
+                  </div>
 
-            <div 
-              className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${currentStressCfg.borderColor}`}
-              style={{ backgroundColor: `${currentStressCfg.accentHex}15` }}
-            >
-              <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
-                <span>Stress</span>
-                <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${currentStressCfg.badgeBg}`}>{currentStressCfg.qualityLabel}</span>
-              </div>
-              <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                <span className={`font-mono font-black text-sm sm:text-base ${currentStressCfg.textColor}`}>{stress}</span>
-                <span className="text-gray-500 text-[10px] font-mono">/10</span>
-              </div>
-            </div>
+                  <div className="flex items-baseline justify-center gap-0.5 my-0.5">
+                    <span className={`font-mono font-black text-base sm:text-lg ${colorCfg.textColor}`}>
+                      {liveState.currentValue != null ? liveState.currentValue : '—'}
+                    </span>
+                    <span className="text-gray-500 text-[10px] font-mono">/10</span>
+                  </div>
 
-            <div 
-              className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${currentSleepCfg.borderColor}`}
-              style={{ backgroundColor: `${currentSleepCfg.accentHex}15` }}
-            >
-              <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
-                <span>Sleep</span>
-                <span className={`text-[8px] font-bold px-1 py-0.2 rounded hidden sm:inline ${currentSleepCfg.badgeBg}`}>{currentSleepCfg.qualityLabel}</span>
-              </div>
-              <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                <span className={`font-mono font-black text-sm sm:text-base ${currentSleepCfg.textColor}`}>{subjectiveSleep}</span>
-                <span className="text-gray-500 text-[10px] font-mono">/10</span>
-              </div>
-            </div>
+                  {/* Expanded Trends & Provenance (shown when Current State is expanded) */}
+                  {isCurrentStateExpanded ? (
+                    <div className="pt-1.5 mt-1 border-t border-white/10 space-y-1 animate-in fade-in">
+                      {/* Trend Delta badge */}
+                      {delta !== 0 && liveState.morningBaseline != null ? (
+                        <div className="flex items-center justify-center gap-0.5 text-[9px] font-mono font-bold">
+                          <span className={`flex items-center gap-0.5 px-1.5 py-0.2 rounded-md border ${
+                            (liveState.directionality === 'higher_is_better' ? delta > 0 : delta < 0)
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                              : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                          }`}>
+                            {delta > 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+                            {delta > 0 ? `+${delta}` : delta} vs AM
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-[9px] font-mono text-slate-400">
+                          {liveState.morningBaseline != null ? `Baseline (${liveState.morningBaseline})` : 'Unrecorded'}
+                        </div>
+                      )}
+
+                      {/* Source tag */}
+                      <div className="text-[9px] text-slate-400 truncate px-0.5" title={liveState.sourceLabel}>
+                        {liveState.sourceLabel}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[8px] text-slate-500 group-hover:text-slate-300 font-mono transition-colors">
+                      Tap to edit
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
+
+          {/* Expanded Section Footer with History and Shortcuts */}
+          {isCurrentStateExpanded && (
+            <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between flex-wrap gap-2 text-[11px] animate-in fade-in">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <Sparkles size={12} className="text-purple-400" />
+                <span>Tap any box above to quick-adjust that single bio-signal in 1 tap.</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOutcomesModalTitle("Customize Tracked Outcomes")
+                    setOutcomesModalMode("anytime")
+                    setIsOutcomesModalOpen(true)
+                  }}
+                  className="text-xs font-semibold text-indigo-300 hover:text-white bg-indigo-500/20 border border-indigo-500/30 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <Sliders size={12} /> Customize Outcomes ({activeAnytimeDimensions.length})
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Optional compact secondary chips if logged */}
           {(sleepScore || (isSaved && (skinClarity !== 5 || focusScore !== 5 || alcoholDrinks !== 'skip' || lateCaffeine !== 'skip' || lateMeal !== 'skip' || blueLight !== 'skip'))) && (
@@ -942,7 +1098,7 @@ export default function DailyWellbeingCheckin({
             </div>
           )}
 
-          {/* ☀️ DAYTIME ANYTIME CHECK-IN (Between Morning & Nightly, 10 AM - 6 PM) */}
+          {/* ☀️ ANYTIME CHECK-IN (Between Morning & Nightly, 10 AM - 6 PM) */}
           {isCurrentDay && currentHour < 18 && (() => {
             const customJSON = (initialData as any)?.custom_outcomes_jsonb || {}
             const anytimeLogs = Array.isArray(customJSON._anytime_checkins) ? customJSON._anytime_checkins : []
@@ -951,9 +1107,9 @@ export default function DailyWellbeingCheckin({
               <div className="pt-2.5 mt-2 border-t border-white/10 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Sun size={14} className="text-amber-400 shrink-0" />
-                    <span className="text-amber-300 font-bold text-xs truncate">
-                      Daytime Anytime Check-in
+                    <Sun size={14} className="text-white shrink-0" />
+                    <span className="text-white font-bold text-xs truncate">
+                      Anytime Check-in
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -964,8 +1120,20 @@ export default function DailyWellbeingCheckin({
                     )}
                     <button
                       type="button"
+                      onClick={() => {
+                        setOutcomesModalTitle("Customize Anytime Tracked Outcomes")
+                        setOutcomesModalMode("anytime")
+                        setIsOutcomesModalOpen(true)
+                      }}
+                      className="text-[11px] font-semibold text-gray-300 hover:text-white bg-white/10 hover:bg-white/15 border border-white/15 px-2 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                      title="Edit tracked outcomes"
+                    >
+                      <Sliders size={11} /> <span className="hidden sm:inline">Tracked Outcomes</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setShowDaytimeCard(!showDaytimeCard)}
-                      className="text-[11px] font-semibold text-amber-300 hover:text-white bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                      className="text-[11px] font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95"
                     >
                       {showDaytimeCard ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                       <span>{showDaytimeCard ? 'Close' : 'Log Snapshot'}</span>
@@ -977,12 +1145,12 @@ export default function DailyWellbeingCheckin({
                 {anytimeLogs.length > 0 && !showDaytimeCard && (
                   <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                      <Clock size={10} className="text-amber-400" />
+                      <Clock size={10} className="text-slate-400" />
                       <span>Today ({anytimeLogs.length}):</span>
                     </span>
                     {anytimeLogs.map((entry: any, idx: number) => (
                       <span key={entry.id || idx} className="text-[10px] bg-slate-900 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300 font-mono flex items-center gap-1.5 shadow-sm">
-                        <span className="text-amber-400 font-bold">{entry.time_display || 'Snapshot'}</span>
+                        <span className="text-slate-200 font-bold">{entry.time_display || 'Snapshot'}</span>
                         {entry.mood !== undefined && <span>Mood <strong className="text-white">{entry.mood}</strong></span>}
                         {entry.energy !== undefined && <span>Energy <strong className="text-white">{entry.energy}</strong></span>}
                         {entry.stress !== undefined && <span>Stress <strong className="text-white">{entry.stress}</strong></span>}
@@ -2409,6 +2577,13 @@ export default function DailyWellbeingCheckin({
             } : null)
           }
         }}
+      />
+
+      <QuickOutcomeUpdateModal
+        isOpen={isQuickModalOpen}
+        onClose={() => setIsQuickModalOpen(false)}
+        outcomeState={quickModalOutcome}
+        onSave={handleQuickOutcomeSave}
       />
     </>
   )

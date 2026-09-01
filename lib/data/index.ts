@@ -349,6 +349,9 @@ export function normalizeUserProfile(raw: any): UserProfile | null {
     body_fat_percentage: raw.body_fat_percentage ?? jsonPrefs.body_fat_percentage ?? null,
     baseline_sleep_quality_0_10: raw.baseline_sleep_quality_0_10 ?? jsonPrefs.baseline_sleep_quality_0_10 ?? null,
     dietary_pattern: raw.dietary_pattern ?? jsonPrefs.dietary_pattern ?? null,
+    morning_checkin_dimensions: raw.morning_checkin_dimensions ?? jsonPrefs.morning_checkin_dimensions ?? null,
+    evening_checkin_dimensions: raw.evening_checkin_dimensions ?? jsonPrefs.evening_checkin_dimensions ?? null,
+    anytime_checkin_dimensions: raw.anytime_checkin_dimensions ?? jsonPrefs.anytime_checkin_dimensions ?? null,
     outcome_preference_scores: jsonPrefs
   }
 }
@@ -469,6 +472,9 @@ export async function updateUserProfile(localUserId: string, updates: Partial<Us
   if (updates.body_fat_percentage !== undefined) mergedPrefs.body_fat_percentage = updates.body_fat_percentage
   if (updates.baseline_sleep_quality_0_10 !== undefined) mergedPrefs.baseline_sleep_quality_0_10 = updates.baseline_sleep_quality_0_10
   if (updates.dietary_pattern !== undefined) mergedPrefs.dietary_pattern = updates.dietary_pattern
+  if (updates.morning_checkin_dimensions !== undefined) mergedPrefs.morning_checkin_dimensions = updates.morning_checkin_dimensions
+  if (updates.evening_checkin_dimensions !== undefined) mergedPrefs.evening_checkin_dimensions = updates.evening_checkin_dimensions
+  if (updates.anytime_checkin_dimensions !== undefined) mergedPrefs.anytime_checkin_dimensions = updates.anytime_checkin_dimensions
 
   const normalizedMerged = normalizeUserProfile({
     ...existingCache,
