@@ -1463,7 +1463,7 @@ export default function ProtocolTaskCard({
   }
 
   return (
-    <div className={`relative overflow-hidden rounded-xl select-none ${isSupplement ? 'ml-2.5 sm:ml-3' : ''}`}>
+    <div className={`relative overflow-hidden rounded-xl select-none ${isSupplement ? 'ml-0.5 sm:ml-1' : ''}`}>
       {/* Background Underlayers revealed during swipe */}
       {task.status === 'pending' && !isFutureTask && (
         <div className="absolute inset-0 flex items-center justify-between pointer-events-none rounded-xl overflow-hidden">

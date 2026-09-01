@@ -1732,8 +1732,8 @@ function TodayPageContent() {
           ref={(el) => { groupHeaderRefs.current[groupName] = el }}
           className={`relative ${
             isAnytime 
-              ? 'ml-2 sm:ml-4 pl-3 sm:pl-4 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-3 sm:p-3.5 space-y-2.5 my-3' 
-              : 'pl-3.5 sm:pl-4 space-y-3'
+              ? 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2.5 sm:p-3 space-y-2.5 my-3' 
+              : 'pl-1.5 sm:pl-2.5 space-y-3'
           } group/circadian-block`}
         >
           <div className={`flex items-center justify-between ${isAnytime ? 'border-b border-dashed border-white/10 pb-2' : 'border-b border-white/10 pb-2.5'} flex-wrap gap-2`}>
@@ -2038,7 +2038,7 @@ function TodayPageContent() {
       )}
 
       {/* Main Container */}
-      <div className={`mx-auto px-4 sm:px-6 pt-4 sm:pt-6 ${calendarViewMode === 'today' ? 'max-w-4xl' : 'max-w-7xl'}`}>
+      <div className={`mx-auto px-3 sm:px-6 pt-4 sm:pt-6 ${calendarViewMode === 'today' ? 'max-w-4xl' : 'max-w-7xl'}`}>
         
         {/* Protocol Filter Header if specific protocol filtered */}
         {selectedProtocolFilter !== 'all' && (
@@ -2629,13 +2629,13 @@ function TodayPageContent() {
                   >
                     {/* Background Dim Ambient Ghost Track (20% Ambient Circadian Glow) */}
                     <div 
-                      className="absolute -left-2 sm:-left-3 top-2 bottom-6 w-[3px] rounded-full opacity-20 pointer-events-none" 
+                      className="absolute -left-1.5 sm:-left-2 top-2 bottom-6 w-[3px] rounded-full opacity-20 pointer-events-none" 
                       style={{ background: circadianGradientCSS }}
                     />
 
                     {/* Revealing Circadian Sky Gradient Spine (Masks true vertical gradient matching each block as user scrolls) */}
                     <div 
-                      className="absolute -left-2 sm:-left-3 top-2 w-[3px] rounded-full overflow-hidden transition-[height] duration-75 ease-out pointer-events-none shadow-[0_0_12px_rgba(168,85,247,0.55)]"
+                      className="absolute -left-1.5 sm:-left-2 top-2 w-[3px] rounded-full overflow-hidden transition-[height] duration-75 ease-out pointer-events-none shadow-[0_0_12px_rgba(168,85,247,0.55)]"
                       style={{ height: `${spineHeight}px` }}
                     >
                       {/* Inner Full-Height Gradient Line (Pinned to timeline height, masked by outer overflow-hidden) */}
@@ -2651,7 +2651,7 @@ function TodayPageContent() {
                     {/* Leading Edge Photon Spark (Lights up the tip with the exact sky color of the latest reached time block) */}
                     {spineHeight > 0 && (
                       <div 
-                        className="absolute -left-[11px] sm:-left-[15px] w-2.5 h-2.5 rounded-full pointer-events-none transition-all duration-75 ease-out -translate-y-1/2"
+                        className="absolute -left-[10px] sm:-left-[12px] w-2.5 h-2.5 rounded-full pointer-events-none transition-all duration-75 ease-out -translate-y-1/2"
                         style={{ 
                           top: `calc(${spineHeight}px + 8px)`,
                           backgroundColor: latestIgnitedSkyColor,
