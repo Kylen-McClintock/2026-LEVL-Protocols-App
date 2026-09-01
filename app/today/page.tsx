@@ -1292,32 +1292,43 @@ function TodayPageContent() {
       const nextCfg = nextGroupName ? getCircadianConfig(nextGroupName) : null
       const nextPrimary = nextCfg ? nextCfg.skyColorHex : null
 
+      // Determine seam boundary bridge color for natural atmospheric sky transitions
       let seamBridgeColor: string | null = null
       if (nextPrimary) {
         if ((isBlueFamily(primary) && isOrangeFamily(nextPrimary)) || (isOrangeFamily(primary) && isBlueFamily(nextPrimary))) {
-          seamBridgeColor = '#A855F7'
-        } else if (isOrangeFamily(primary) && isDarkBlueFamily(nextPrimary)) {
-          seamBridgeColor = '#6366F1'
+          seamBridgeColor = '#F59E0B' // Golden hour sun amber (natural atmospheric transition between daytime blue and sunset)
+        } else if (isOrangeFamily(primary) && (nextPrimary.toLowerCase() === '#8b5cf6' || nextPrimary.toLowerCase() === '#a855f7' || nextPrimary.toLowerCase() === '#ec4899')) {
+          seamBridgeColor = '#EC4899' // Sunset rose/crimson
+        } else if ((primary.toLowerCase() === '#8b5cf6' || primary.toLowerCase() === '#a855f7') && isDarkBlueFamily(nextPrimary)) {
+          seamBridgeColor = '#6366F1' // Deep twilight indigo into night
         }
       }
 
       if (i === 0) {
-        // First slot: starts solid, holds primary across ~98% of its zone until the tail boundary
-        colorStops.push({ color: primary, pct: 0 })
+        // First slot (e.g. Waking): starts with warm amber dawn (#D97706), holds primary across ~98% of its zone
+        const startCol = cfg.startColorHex || primary
+        colorStops.push({ color: startCol, pct: 0 })
         colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
         if (seamBridgeColor) {
           colorStops.push({ color: seamBridgeColor, pct: Number(bottomPct.toFixed(1)) })
         }
       } else if (i === activeGroups.length - 1) {
-        // Last slot: begins at top seam, holds solid to 100%
+        // Last slot (e.g. Bedtime): begins at top seam, holds solid to 100%
         colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 1.0).toFixed(1))) })
         colorStops.push({ color: cfg.endColorHex || primary, pct: 100 })
       } else {
-        // Middle slots (e.g. Midday):
-        // HOLDS 100% SOLID PRIMARY across its ENTIRE measured DOM height!
-        // Only blends in a tiny 1.0% seam at the top and bottom edges
-        colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 1.0).toFixed(1))) })
-        colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
+        // Middle slots:
+        if (cfg.key === 'morning_routine') {
+          // Warm sunrise gold into morning light sky blue
+          colorStops.push({ color: '#F59E0B', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+          colorStops.push({ color: '#FBBF24', pct: Math.round((topPct + bottomPct) / 2) })
+          colorStops.push({ color: '#38BDF8', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+        } else {
+          // HOLDS 100% SOLID PRIMARY across its ENTIRE measured DOM height!
+          // Only blends in a tiny 1.0% seam at the top and bottom edges
+          colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 1.0).toFixed(1))) })
+          colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
+        }
         if (seamBridgeColor) {
           colorStops.push({ color: seamBridgeColor, pct: Number(bottomPct.toFixed(1)) })
         }
