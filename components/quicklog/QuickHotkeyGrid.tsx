@@ -131,7 +131,17 @@ export default function QuickHotkeyGrid({
   useEffect(() => {
     reloadData()
 
-    const handleUpdate = () => reloadData()
+    const handleUpdate = (e: any) => {
+      // If the event carries an entry we already optimistically added, avoid redundant full refetch
+      if (e && e.detail && e.detail.id) {
+        setLogs(prev => {
+          if (prev.some(l => l.id === e.detail.id)) return prev
+          return [...prev, e.detail]
+        })
+      } else {
+        reloadData()
+      }
+    }
     const handleHotkeysUpdated = (e: any) => {
       if (e && e.detail && Array.isArray(e.detail) && e.detail.length > 0) {
         setHotkeys(e.detail)
@@ -154,15 +164,16 @@ export default function QuickHotkeyGrid({
     }
   }, [date, localUserId])
 
-  const handleQuickTapIncrement = async (e: React.MouseEvent, hotkey: QuickHotkeyConfig) => {
+  const handleQuickTapIncrement = (e: React.MouseEvent, hotkey: QuickHotkeyConfig) => {
     e.stopPropagation()
     if (hotkey.id === 'nutrition_macros') {
       setIsNutritionModalOpen(true)
       return
     }
 
+    // 1. Instant 0ms Haptic Visual Pulse
     setJustTappedId(hotkey.id)
-    setTimeout(() => setJustTappedId(null), 400)
+    setTimeout(() => setJustTappedId(null), 300)
 
     const entry: DailyQuickLogEntry = {
       id: `qlog_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -176,8 +187,13 @@ export default function QuickHotkeyGrid({
       is_negative: hotkey.is_negative
     }
 
-    await saveQuickLogEntry(entry)
-    reloadData()
+    // 2. INSTANT 0ms OPTIMISTIC IN-MEMORY STATE UPDATE (Display updates immediately!)
+    setLogs(prev => [...prev, entry])
+
+    // 3. Fire-and-forget background persistence (non-blocking)
+    saveQuickLogEntry(entry).catch(err => {
+      console.error('Failed to persist quick log entry:', err)
+    })
   }
 
   const handleCardClick = (hotkey: QuickHotkeyConfig) => {
@@ -261,7 +277,7 @@ export default function QuickHotkeyGrid({
         </div>
       </div>
 
-      {/* 3-Wide Grid Layout */}
+      {/* 3-Wide Square Grid Layout */}
       {!isCollapsed && (
         visibleHotkeys.length > 0 ? (
           <div className="grid grid-cols-3 gap-2 sm:gap-3 animate-in fade-in duration-200">
@@ -272,7 +288,6 @@ export default function QuickHotkeyGrid({
               const totalVal = hotkey.id === 'nutrition_macros' && mealCalories > 0
                 ? mealCalories
                 : hotkeyLogs.reduce((acc, l) => acc + l.value, 0)
-              const entryCount = hotkey.id === 'nutrition_macros' && meals.length > 0 ? meals.length : hotkeyLogs.length
               const isGoalReached = hotkey.daily_goal && !hotkey.is_negative ? totalVal >= hotkey.daily_goal : false
               const progressPct = hotkey.daily_goal && !hotkey.is_negative
                 ? Math.min(100, Math.max(0, Math.round((totalVal / hotkey.daily_goal) * 100)))
@@ -284,13 +299,14 @@ export default function QuickHotkeyGrid({
           return (
             <div
               key={hotkey.id}
-              className={`rounded-2xl border transition-all flex flex-col justify-between overflow-hidden relative select-none shadow-md ${
+              onClick={(e) => handleQuickTapIncrement(e, hotkey)}
+              className={`aspect-square rounded-2xl border transition-all flex flex-col justify-between p-2 sm:p-3 overflow-hidden relative select-none shadow-md cursor-pointer hover:bg-white/[0.03] active:scale-[0.97] group/card ${
                 isTapped
                   ? isNegative
-                    ? 'ring-2 ring-rose-400 scale-[0.98] bg-slate-800'
+                    ? 'ring-2 ring-rose-400 scale-[0.96] bg-slate-800'
                     : isNeutral
-                    ? 'ring-2 ring-sky-400 scale-[0.98] bg-slate-800'
-                    : 'ring-2 ring-orange-400 scale-[0.98] bg-slate-800'
+                    ? 'ring-2 ring-sky-400 scale-[0.96] bg-slate-800'
+                    : 'ring-2 ring-orange-400 scale-[0.96] bg-slate-800'
                   : isNegative
                   ? totalVal > 0
                     ? 'bg-rose-950/20 border-rose-500/40 hover:border-rose-500/70'
@@ -303,11 +319,12 @@ export default function QuickHotkeyGrid({
                   ? 'bg-emerald-950/20 border-emerald-500/40 hover:border-emerald-500/70'
                   : 'bg-slate-900/90 border-slate-800 hover:border-orange-500/40'
               }`}
+              title={`1-Click: Log +${hotkey.default_increment} ${hotkey.unit}`}
             >
-              {/* Thin Vertical Gradient Bar filling up proportionately along left side (reaches top at 100% of goal) */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 sm:w-1.5 bg-slate-800/40 z-10 pointer-events-none rounded-l-2xl overflow-hidden">
+              {/* Thin Vertical Gradient Bar filling up proportionately along left side */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-800/40 z-10 pointer-events-none rounded-l-2xl overflow-hidden">
                 <div
-                  className={`absolute bottom-0 left-0 right-0 transition-all duration-500 rounded-bl-2xl ${
+                  className={`absolute bottom-0 left-0 right-0 transition-all duration-300 rounded-bl-2xl ${
                     progressPct >= 100 ? 'rounded-tl-2xl' : ''
                   } ${
                     isNegative
@@ -324,116 +341,103 @@ export default function QuickHotkeyGrid({
                 />
               </div>
 
-              {/* PRIMARY 1-CLICK LOGGING AREA (Biggest portion of the card) */}
-              <button
-                type="button"
-                onClick={(e) => handleQuickTapIncrement(e, hotkey)}
-                className="w-full text-left p-2.5 pl-3.5 sm:p-3.5 sm:pl-4 flex-1 flex flex-col justify-between cursor-pointer hover:bg-white/[0.03] active:scale-[0.98] transition-all group/btn focus:outline-none"
-                title={`1-Click: Log +${hotkey.default_increment} ${hotkey.unit}`}
-              >
-                {/* Top Row: Icon + 1-Tap Indicator Badge with Smaller Unit */}
-                <div className="flex items-start justify-between gap-1 w-full">
-                  <div
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center border text-xs shrink-0 transition-colors ${
-                      isNegative
-                        ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
-                        : isNeutral
-                        ? 'bg-sky-500/15 border-sky-500/30 text-sky-300'
-                        : hotkey.id === 'nutrition_macros'
-                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                        : hotkey.id === 'protein_pulse'
-                        ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
-                        : 'bg-slate-800 border-white/5 text-slate-300 group-hover/btn:text-white'
-                    }`}
-                  >
-                    <IconComp size={15} />
-                  </div>
-
-                  <span
-                    className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-mono font-black border transition-all flex items-baseline gap-0.5 shadow-sm ${
-                      isNegative
-                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 group-hover/btn:bg-rose-500 group-hover/btn:text-white'
-                        : isNeutral
-                        ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 group-hover/btn:bg-sky-400 group-hover/btn:text-black'
-                        : hotkey.id === 'nutrition_macros'
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 group-hover/btn:bg-emerald-500 group-hover/btn:text-black'
-                        : 'bg-orange-500/20 text-orange-300 border-orange-500/40 group-hover/btn:bg-orange-500 group-hover/btn:text-black'
-                    }`}
-                  >
-                    <Plus size={10} strokeWidth={3} className="shrink-0 self-center" />
-                    <span className="font-black text-xs">{hotkey.default_increment}</span>
-                    <span className="text-[8px] sm:text-[9px] font-bold opacity-80 uppercase tracking-tighter ml-0.5">{hotkey.unit}</span>
-                  </span>
-                </div>
-
-                {/* Center Value Metric & Name */}
-                <div className="my-1 sm:my-2 w-full">
-                  <div className="flex items-baseline gap-1">
-                    <span className={`text-base sm:text-2xl font-black font-mono tracking-tight transition-colors ${
-                      isGoalReached && !isNegative ? 'text-emerald-400' : 'text-white'
-                    }`}>
-                      {totalVal}
-                    </span>
-                    {hotkey.daily_goal && !isNegative ? (
-                      <span className={`text-[10px] sm:text-xs font-mono transition-colors ${
-                        isGoalReached ? 'text-emerald-400/90 font-bold' : 'text-slate-400'
-                      }`}>
-                        / {hotkey.daily_goal} {hotkey.unit}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] sm:text-xs font-mono text-slate-400">
-                        {hotkey.unit}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className={`text-[11px] sm:text-xs font-bold text-slate-200 transition-colors truncate leading-tight mt-0.5 ${
+              {/* TOP ROW: Icon + Increment Badge */}
+              <div className="flex items-center justify-between gap-1 w-full pl-0.5">
+                <div
+                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center border text-[11px] shrink-0 transition-colors ${
                     isNegative
-                      ? 'group-hover/btn:text-rose-300'
+                      ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
                       : isNeutral
-                      ? 'group-hover/btn:text-sky-300'
-                      : 'group-hover/btn:text-orange-300'
-                  }`}>
-                    {hotkey.name}
-                  </div>
+                      ? 'bg-sky-500/15 border-sky-500/30 text-sky-300'
+                      : hotkey.id === 'nutrition_macros'
+                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                      : hotkey.id === 'protein_pulse'
+                      ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
+                      : 'bg-slate-800 border-white/5 text-slate-300 group-hover/card:text-white'
+                  }`}
+                >
+                  <IconComp size={13} />
                 </div>
-              </button>
 
-              {/* BOTTOM ACTION BAR (Clean Minimal Detail Trigger, No Text) */}
-              <div
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleCardClick(hotkey)
-                }}
-                className="px-2.5 sm:px-3 py-1 bg-black/40 hover:bg-slate-800/80 border-t border-white/5 flex items-center justify-end text-slate-500 hover:text-white cursor-pointer transition-colors group/bot"
-                title="Click for details, custom entries, or settings"
-              >
-                <span className={`shrink-0 transition-transform group-hover/bot:translate-x-0.5 ${
-                  isNegative
-                    ? 'group-hover/bot:text-rose-300'
-                    : isNeutral
-                    ? 'group-hover/bot:text-sky-300'
-                    : 'group-hover/bot:text-orange-300'
-                }`}>
-                  <ChevronRight size={12} strokeWidth={2.5} />
+                <span
+                  className={`px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-mono font-black border transition-all flex items-baseline gap-0.5 shadow-sm ${
+                    isNegative
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 group-hover/card:bg-rose-500 group-hover/card:text-white'
+                      : isNeutral
+                      ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 group-hover/card:bg-sky-400 group-hover/card:text-black'
+                      : hotkey.id === 'nutrition_macros'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 group-hover/card:bg-emerald-500 group-hover/card:text-black'
+                      : 'bg-orange-500/20 text-orange-300 border-orange-500/40 group-hover/card:bg-orange-500 group-hover/card:text-black'
+                  }`}
+                >
+                  <Plus size={9} strokeWidth={3} className="shrink-0 self-center" />
+                  <span className="font-black">{hotkey.default_increment}</span>
+                  <span className="text-[7.5px] sm:text-[8.5px] font-bold opacity-80 uppercase tracking-tighter ml-0.5">{hotkey.unit}</span>
                 </span>
+              </div>
+
+              {/* CENTER ROW: Numerator & Denominator Value Metric */}
+              <div className="my-auto w-full pl-0.5">
+                <div className="flex items-baseline gap-0.5 sm:gap-1 flex-wrap">
+                  <span className={`text-base sm:text-xl font-black font-mono tracking-tight transition-colors ${
+                    isGoalReached && !isNegative ? 'text-emerald-400' : 'text-white'
+                  }`}>
+                    {totalVal}
+                  </span>
+                  {hotkey.daily_goal && !isNegative ? (
+                    <span className={`text-[9px] sm:text-[11px] font-mono transition-colors ${
+                      isGoalReached ? 'text-emerald-400/90 font-bold' : 'text-slate-400'
+                    }`}>
+                      /{hotkey.daily_goal} {hotkey.unit}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] sm:text-[11px] font-mono text-slate-400">
+                      {hotkey.unit}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* BOTTOM ROW: Name + Discreet Settings/Detail Chevron */}
+              <div className="flex items-center justify-between gap-1 w-full pl-0.5">
+                <div className={`text-[10px] sm:text-[11.5px] font-bold text-slate-200 transition-colors truncate leading-tight flex-1 ${
+                  isNegative
+                    ? 'group-hover/card:text-rose-300'
+                    : isNeutral
+                    ? 'group-hover/card:text-sky-300'
+                    : 'group-hover/card:text-orange-300'
+                }`}>
+                  {hotkey.name}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleCardClick(hotkey)
+                  }}
+                  className="shrink-0 p-0.5 text-slate-500 hover:text-white transition-colors cursor-pointer rounded hover:bg-white/10"
+                  title="Click for details & logs"
+                >
+                  <ChevronRight size={11} strokeWidth={2.5} />
+                </button>
               </div>
             </div>
           )
         })}
 
-        {/* 3-Wide Add Hotkey Card */}
+        {/* 3-Wide Add Hotkey Square Card */}
         <div
           onClick={() => setIsManageModalOpen(true)}
-          className="p-2.5 sm:p-3.5 rounded-2xl border border-dashed border-slate-800 hover:border-orange-500/50 bg-slate-950/40 hover:bg-orange-950/10 transition-all cursor-pointer flex flex-col items-center justify-center text-center space-y-1 group shadow-sm min-h-[110px]"
+          className="aspect-square rounded-2xl border border-dashed border-slate-800 hover:border-orange-500/50 bg-slate-950/40 hover:bg-orange-950/10 transition-all cursor-pointer flex flex-col items-center justify-center text-center p-2 space-y-1 group shadow-sm"
         >
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/5 group-hover:bg-orange-500/20 text-slate-400 group-hover:text-orange-400 flex items-center justify-center transition-colors">
-            <Plus size={16} />
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-white/5 group-hover:bg-orange-500/20 text-slate-400 group-hover:text-orange-400 flex items-center justify-center transition-colors">
+            <Plus size={14} />
           </div>
-          <span className="text-[11px] font-bold text-slate-400 group-hover:text-white transition-colors">
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 group-hover:text-white transition-colors">
             + Add Hotkey
           </span>
-          <span className="text-[9px] text-slate-600">Preset or Custom</span>
+          <span className="text-[8px] sm:text-[9px] text-slate-600">Custom / Preset</span>
         </div>
       </div>
       ) : (
