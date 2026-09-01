@@ -377,7 +377,7 @@ export default function QuickHotkeyGrid({
               </div>
 
               {/* FULL-WIDTH NAME ROW: Placed upwards so text displays full width without being crowded by chevron */}
-              <div className={`w-full pl-0.5 text-[10.5px] sm:text-[12px] font-bold text-slate-200 transition-colors truncate leading-tight ${
+              <div className={`w-full pl-0.5 text-[11px] sm:text-[12.5px] font-bold text-slate-200 transition-colors truncate leading-tight ${
                 isNegative
                   ? 'group-hover/card:text-rose-300'
                   : isNeutral
@@ -389,20 +389,20 @@ export default function QuickHotkeyGrid({
 
               {/* BOTTOM ROW: Numerator & Denominator Value Metric + Expand/Detail Chevron on the right */}
               <div className="flex items-end justify-between gap-1 w-full pl-0.5">
-                <div className="flex items-baseline gap-0.5 sm:gap-1 flex-wrap min-w-0">
-                  <span className={`text-base sm:text-xl font-black font-mono tracking-tight transition-colors ${
+                <div className="flex items-baseline gap-1 min-w-0 flex-wrap">
+                  <span className={`text-lg sm:text-2xl font-black font-mono tracking-tight leading-none transition-colors ${
                     isGoalReached && !isNegative ? 'text-emerald-400' : 'text-white'
                   }`}>
                     {totalVal}
                   </span>
                   {hotkey.daily_goal && !isNegative ? (
-                    <span className={`text-[9px] sm:text-[11px] font-mono transition-colors truncate ${
-                      isGoalReached ? 'text-emerald-400/90 font-bold' : 'text-slate-400'
+                    <span className={`text-xs sm:text-sm font-bold font-mono transition-colors truncate ${
+                      isGoalReached ? 'text-emerald-400 font-bold' : 'text-slate-300'
                     }`}>
-                      /{hotkey.daily_goal} {hotkey.unit}
+                      /{hotkey.daily_goal} <span className="text-[10px] sm:text-xs font-semibold text-slate-400">{hotkey.unit}</span>
                     </span>
                   ) : (
-                    <span className="text-[9px] sm:text-[11px] font-mono text-slate-400 truncate">
+                    <span className="text-xs sm:text-sm font-bold font-mono text-slate-400 truncate">
                       {hotkey.unit}
                     </span>
                   )}
@@ -414,10 +414,10 @@ export default function QuickHotkeyGrid({
                     e.stopPropagation()
                     handleCardClick(hotkey)
                   }}
-                  className="shrink-0 p-1 text-slate-500 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/10"
+                  className="shrink-0 p-1 text-slate-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/10"
                   title="Click for details & logs"
                 >
-                  <ChevronRight size={13} strokeWidth={2.5} />
+                  <ChevronRight size={14} strokeWidth={2.5} />
                 </button>
               </div>
             </div>
