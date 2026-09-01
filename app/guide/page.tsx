@@ -201,7 +201,7 @@ export default function GuidePage() {
               href="/today"
               className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-900/30 flex items-center gap-1.5"
             >
-              <span>Launch App</span>
+              <span>Return to App</span>
               <ArrowRight size={13} />
             </Link>
           </div>
