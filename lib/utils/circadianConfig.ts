@@ -512,15 +512,9 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
       colorStops.push({ color: cfg.endColorHex || primary, pct: 100 })
     } else {
       // Middle slots (e.g. Morning Routine, Morning Alertness, Midday, Afternoon, Evening):
-      // For morning slots: ensure warm sunrise gold flows smoothly into morning light sky blue
-      if (cfg.key === 'morning_routine' || cfg.key === 'morning' || cfg.key === 'morning_supplement_stack') {
-        colorStops.push({ color: '#F59E0B', pct: Math.min(100, Number((startPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: '#FBBF24', pct: Math.round((startPct + endPct) / 2) })
-        colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 0.5).toFixed(1))) })
-      } else {
-        colorStops.push({ color: primary, pct: Math.min(100, Number((startPct + 1.2).toFixed(1))) })
-        colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
-      }
+      // HOLDS 100% SOLID PRIMARY across its entire zone (strictly 1 single sunrise at block 0)
+      colorStops.push({ color: primary, pct: Math.min(100, Number((startPct + 1.2).toFixed(1))) })
+      colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
       if (seamBridgeColor) {
         colorStops.push({ color: seamBridgeColor, pct: Number(endPct.toFixed(1)) })
       }
