@@ -38,21 +38,27 @@ export function resolveSlotFromTimingString(timingStr?: string, isSupplement: bo
   // Clean away weekly frequency prefixes like "3–4x per week • "
   const clean = lower.includes('•') ? lower.split('•').slice(1).join('•').trim() : lower
 
-  // Bedtime / Pre-bed / Night
+  // Wind down / evening cutoffs (Checked first before generic "bed" or "night")
+  if (
+    clean.includes('wind down') || clean.includes('wind_down') || clean.includes('winddown') ||
+    clean.includes('screen cutoff') || clean.includes('digital sunset') || clean.includes('caffeine cutoff') ||
+    clean.includes('blue light') || clean.includes('dimming') || clean.includes('8:00 pm') || clean.includes('8:30 pm')
+  ) {
+    return 'wind_down'
+  }
+
+  // Pre-Bed (30-60m before sleep)
+  if (clean.includes('pre_bed') || clean.includes('pre-bed') || clean.includes('30m before bed') || clean.includes('60m before bed')) {
+    return 'pre_bed'
+  }
+
+  // Bedtime / Sleep / Overnight
   if (
     clean.includes('bed') || clean.includes('night') || clean.includes('sleep') || 
     clean.includes('9:00 pm') || clean.includes('10:00 pm') || clean.includes('11:00 pm') ||
-    clean.includes('pre_bed') || clean.includes('pre-bed')
+    clean.includes('overnight')
   ) {
     return 'bedtime'
-  }
-
-  // Wind down / evening cutoffs
-  if (
-    clean.includes('wind down') || clean.includes('wind_down') || clean.includes('screen cutoff') ||
-    clean.includes('digital sunset') || clean.includes('caffeine cutoff')
-  ) {
-    return 'wind_down'
   }
 
   // Post-meal
@@ -220,25 +226,30 @@ export function resolveOptimalTimingSlot(
     const inst = (modality.instructions || '').toLowerCase()
     const text = `${timing} ${name} ${cat} ${inst}`.toLowerCase()
 
+    // Wind Down / Evening Cutoffs (Checked before generic bed/sleep)
+    if (
+      timing.includes('wind down') || timing.includes('wind_down') || timing.includes('winddown') || text.includes('4-7-8') || 
+      name.includes('screen time reduction') || timing.includes('screen') || timing.includes('cutoff') ||
+      text.includes('caffeine cutoff') || text.includes('alcohol sleep-protection') ||
+      name.includes('blue-light') || timing.includes('dimming') || name.includes('blue light')
+    ) {
+      return 'wind_down'
+    }
+
+    // Pre-Bed (30-60m before sleep)
+    if (timing.includes('pre_bed') || timing.includes('pre-bed') || text.includes('30m before bed') || text.includes('60m before bed')) {
+      return 'pre_bed'
+    }
+
     // Bedtime / Sleep / Overnight / Dental Nightly
     if (
-      timing.includes('bed') || timing.includes('nightly') || timing.includes('pre-bed') || 
+      timing.includes('bed') || timing.includes('nightly') || 
       timing.includes('overnight') || timing.includes('before bed') || timing.includes('sleep environment') ||
       name.includes('flossing') || name.includes('mouth tap') || name.includes('sleep environment') ||
-      text.includes('30m before bed') || text.includes('before sleep') || text.includes('sleep architecture') ||
+      text.includes('before sleep') || text.includes('sleep architecture') ||
       name.includes('sleep consistency')
     ) {
       return 'bedtime'
-    }
-
-    // Wind Down / Evening Cutoffs
-    if (
-      timing.includes('wind down') || timing.includes('wind_down') || text.includes('4-7-8') || 
-      name.includes('screen time reduction') || timing.includes('screen') || timing.includes('cutoff') ||
-      text.includes('caffeine cutoff') || text.includes('alcohol sleep-protection') ||
-      name.includes('blue-light') || timing.includes('dimming')
-    ) {
-      return 'wind_down'
     }
 
     // Evening / Dinner / Sauna

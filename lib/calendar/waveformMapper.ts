@@ -275,14 +275,18 @@ export function getWaveformProfiles(task: DailyProtocolTask): WaveformEvent[] {
   else if (timeStr === 'midday') timeStr = '12:00:00'
   else if (timeStr === 'afternoon') timeStr = '15:00:00'
   else if (timeStr === 'evening') timeStr = '18:00:00'
-  else if (timeStr === 'wind_down' || timeStr === 'night' || timeStr === 'nightly') timeStr = '21:00:00'
+  else if (timeStr === 'wind_down' || timeStr === 'winddown') timeStr = '20:30:00'
+  else if (timeStr === 'pre_bed') timeStr = '21:30:00'
+  else if (timeStr === 'bedtime' || timeStr === 'night' || timeStr === 'nightly' || timeStr === 'sleep') timeStr = '22:30:00'
   else if (!timeStr.includes(':')) {
     timeStr = '12:00:00' // safe generic fallback
   }
 
-  // Force Bedtime intercept for Sleep Modalities (applies instantly to past and future tasks)
-  if (name.includes('sleep') || name.includes('melatonin') || name.includes('gaba') || name.includes('tape') || name.includes('bed') || name.includes('wind_down')) {
-    timeStr = '22:00:00' // 10 PM
+  // Bedtime intercept for Sleep Modalities
+  if (name.includes('sleep') || name.includes('melatonin') || name.includes('gaba') || name.includes('tape') || name.includes('bed')) {
+    timeStr = '22:30:00' // 10:30 PM
+  } else if (name.includes('wind_down') || name.includes('wind down') || name.includes('4-7-8')) {
+    timeStr = '20:30:00' // 8:30 PM
   }
 
   const dateStr = task.scheduled_date
