@@ -13,31 +13,231 @@ import {
   Brain, Dna, Dumbbell, Flame, Droplets, Watch, Pill, Activity, 
   Heart, Shield, Clock, Sun, Sunrise, Sunset, Utensils, Award, 
   RotateCcw, CheckCircle2, ChevronRight, Info, Eye, Camera, FileText,
-  Sliders, Thermometer, Coffee, ShieldAlert, Edit3
+  Sliders, Thermometer, Coffee, ShieldAlert, Edit3, X, HelpCircle, ArrowUpRight
 } from 'lucide-react'
 
-interface ModalityOption {
+export interface ModalityOption {
   id: string
   name: string
   dose: string
-  timing: string
+  timing: 'morning' | 'afternoon' | 'evening'
   requiredHardware?: string
   goalKey: string
+  timeMins: number
+  effortLevel: number // 1 (lowest friction) to 5 (highest)
+  costTier: number // 1 (free), 2 ($), 3 ($$), 4 ($$$)
+  evidenceTier: number // 1 (Gold RCT), 2 (Mechanistic), 3 (Emerging)
+  sideEffectRisk: number // 1 (zero), 2 (moderate), 3 (high)
+  isFoundational80_20?: boolean
+  explainRationale: string
+  targetPathways: string[]
+  synergies: string[]
+  pubmedEvidence?: string
 }
 
-const STARTER_CATALOG: ModalityOption[] = [
-  { id: 'morning_sunlight', name: 'Morning Optic Sunlight & Photons', dose: '10–15 mins outdoors within 60m of waking', timing: 'morning', goalKey: 'energy' },
-  { id: 'water_electrolytes', name: 'Baseline Hydration + Electrolytes', dose: '16–20 oz pure water + trace minerals', timing: 'morning', goalKey: 'energy' },
-  { id: 'cold_shower_or_plunge', name: 'Deliberate Cold Exposure', dose: '2–3 mins (50°F–55°F / 10°C–13°C)', timing: 'morning', requiredHardware: 'cold_plunge', goalKey: 'recovery' },
-  { id: 'creatine_monohydrate', name: 'Creatine Monohydrate', dose: '5g with morning hydration', timing: 'morning', requiredHardware: 'supplements', goalKey: 'strength' },
-  { id: 'omega3_epa_dha', name: 'High-Concentration Omega-3 EPA/DHA', dose: '2,000mg with breakfast/EVOO', timing: 'morning', requiredHardware: 'supplements', goalKey: 'longevity' },
-  { id: 'zone2_cardio_30m', name: 'Zone 2 Mitochondrial Endurance', dose: '30–45 mins (Nasally breathing, HR 60-70% max)', timing: 'afternoon', goalKey: 'longevity' },
-  { id: 'sauna_session', name: 'Heat Shock Sauna Session', dose: '20 mins at 174°F+ (80°C+)', timing: 'afternoon', requiredHardware: 'sauna', goalKey: 'longevity' },
-  { id: 'ppl_push_day', name: 'Resistance Hypertrophy Session', dose: '45–60 mins (RPE 7-9, 2-3 RIR)', timing: 'afternoon', requiredHardware: 'gym', goalKey: 'strength' },
-  { id: 'post_meal_glucose_walk', name: 'Post-Meal Glycemic Walk', dose: '15–20 mins brisk walk post-nutrition', timing: 'evening', goalKey: 'longevity' },
-  { id: 'breathing_4_7_8', name: '4-7-8 Relaxing Wind-Down Breathwork', dose: '4 cycles (5 mins before bed)', timing: 'evening', goalKey: 'sleep' },
-  { id: 'magnesium_glycinate', name: 'Magnesium Bisglycinate (Sleep Depth)', dose: '400mg with water 60m pre-bed', timing: 'evening', requiredHardware: 'supplements', goalKey: 'sleep' },
-  { id: 'melatonin_onset_dimming', name: '2-Hour Blue-Light Shielding', dose: 'Circadian dimming & amber glasses 120m pre-bed', timing: 'evening', goalKey: 'sleep' }
+export const STARTER_CATALOG: ModalityOption[] = [
+  { 
+    id: 'morning_sunlight', 
+    name: 'Morning Optic Sunlight & Photons', 
+    dose: '10–15 mins outdoors within 60m of waking', 
+    timing: 'morning', 
+    goalKey: 'energy',
+    timeMins: 15,
+    effortLevel: 1,
+    costTier: 1,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    isFoundational80_20: true,
+    explainRationale: 'Direct photons onto retinal ganglion cells (ipRGCs) reset the central hypothalamic suprachiasmatic nucleus (SCN), triggering a healthy cortisol awakening spike and locking in the 14-hour melatonin synthesis timer for deep restorative sleep.',
+    targetPathways: ['SCN Circadian Entrainment', 'Cortisol Awakening Response (CAR)', 'Pineal Melatonin Priming'],
+    synergies: ['Pairs synergistically with Hydration & Electrolytes to clear morning grogginess.', 'Reinforces 90m Coffee Delay by letting natural cortisol rise first.'],
+    pubmedEvidence: 'PMID: 31105940 (Huberman et al. / SCN Photobiology)'
+  },
+  { 
+    id: 'water_electrolytes', 
+    name: 'Baseline Hydration + Electrolytes', 
+    dose: '16–20 oz pure water + trace minerals', 
+    timing: 'morning', 
+    goalKey: 'energy',
+    timeMins: 2,
+    effortLevel: 1,
+    costTier: 1,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    isFoundational80_20: true,
+    explainRationale: 'Restores overnight respiratory water loss, expands blood plasma volume for cerebral perfusion, and re-establishes neuromuscular membrane potential without caloric load.',
+    targetPathways: ['Cellular Osmoregulation', 'Blood Plasma Volume', 'Renal Sodium-Potassium ATPase'],
+    synergies: ['Hydrates muscle cells before morning movement.', 'Optimizes cellular uptake of morning micronutrients.'],
+    pubmedEvidence: 'PMID: 30999554 (Hydration and Cognitive Performance)'
+  },
+  { 
+    id: 'breathing_4_7_8', 
+    name: '4-7-8 Relaxing Wind-Down Breathwork', 
+    dose: '4 cycles (5 mins before bed)', 
+    timing: 'evening', 
+    goalKey: 'sleep',
+    timeMins: 5,
+    effortLevel: 1,
+    costTier: 1,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    isFoundational80_20: true,
+    explainRationale: 'Prolonged exhalations engage pulmonary stretch receptors that stimulate the vagus nerve, rapidly downshifting sympathetic tone, slowing heart rate, and promoting alpha-to-theta brainwave transition.',
+    targetPathways: ['Vagal Parasympathetic Tone', 'Heart Rate Variability (HRV)', 'Sympathetic Down-Regulation'],
+    synergies: ['Magnifies deep sleep induction when paired with 2-Hour Blue-Light Shielding.', 'Combines with Magnesium Bisglycinate to lower sleep onset latency.'],
+    pubmedEvidence: 'PMID: 29559958 (Slow deep breathing and autonomic balance)'
+  },
+  { 
+    id: 'melatonin_onset_dimming', 
+    name: '2-Hour Blue-Light Shielding', 
+    dose: 'Circadian dimming & amber glasses 120m pre-bed', 
+    timing: 'evening', 
+    goalKey: 'sleep',
+    timeMins: 5,
+    effortLevel: 2,
+    costTier: 1,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    isFoundational80_20: true,
+    explainRationale: 'Shielding short-wavelength 460–480nm light prevents artificial suppression of pineal melatonin secretion, allowing natural core body temperature cooling and restorative delta slow-wave sleep.',
+    targetPathways: ['Pineal Melatonin Synthesis', 'Core Body Temperature Drop', 'Delta Slow-Wave Sleep Duration'],
+    synergies: ['Amplifies natural wind-down breathwork efficacy.', 'Protects deep sleep latency after cognitive work.'],
+    pubmedEvidence: 'PMID: 25535358 (Blue light and sleep architecture)'
+  },
+  { 
+    id: 'post_meal_glucose_walk', 
+    name: 'Post-Meal Glycemic Walk', 
+    dose: '15–20 mins brisk walk post-nutrition', 
+    timing: 'evening', 
+    goalKey: 'longevity',
+    timeMins: 15,
+    effortLevel: 2,
+    costTier: 1,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    explainRationale: 'Contraction of large lower-body skeletal muscle beds triggers insulin-independent GLUT4 glucose transporter translocation, blunting postprandial glycemic spikes and reducing systemic glycation (HbA1c).',
+    targetPathways: ['GLUT4 Translocation', 'Postprandial Glycemic Disposal', 'Insulin Sensitivity'],
+    synergies: ['Prevents evening blood sugar instability that causes nocturnal sleep arousals.', 'Assists digestive motility.'],
+    pubmedEvidence: 'PMID: 35147980 (Postprandial walking and glycemic control)'
+  },
+  { 
+    id: 'creatine_monohydrate', 
+    name: 'Creatine Monohydrate', 
+    dose: '5g with morning hydration', 
+    timing: 'morning', 
+    requiredHardware: 'supplements', 
+    goalKey: 'strength',
+    timeMins: 2,
+    effortLevel: 2,
+    costTier: 2,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    explainRationale: 'Supersaturates intramuscular and cerebral phosphocreatine reserves, accelerating rapid ATP regeneration during resistance training and enhancing prefrontal executive memory under mental strain.',
+    targetPathways: ['Phosphocreatine ATP Shuttling', 'mTORC1 Myogenesis', 'Cerebral Bioenergetics'],
+    synergies: ['Pairs with morning hydration for optimal cellular uptake.', 'Powers explosive performance in Resistance Hypertrophy sessions.'],
+    pubmedEvidence: 'PMID: 33578876 (Creatine supplementation in health and exercise)'
+  },
+  { 
+    id: 'magnesium_glycinate', 
+    name: 'Magnesium Bisglycinate (Sleep Depth)', 
+    dose: '400mg with water 60m pre-bed', 
+    timing: 'evening', 
+    requiredHardware: 'supplements', 
+    goalKey: 'sleep',
+    timeMins: 2,
+    effortLevel: 2,
+    costTier: 2,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    explainRationale: 'Acts as an inhibitory cofactor for GABA-A receptors while blocking excitotoxic NMDA receptor activity. The bound glycine ligand readily crosses the blood-brain barrier to trigger peripheral vasodilation for somatic cooling.',
+    targetPathways: ['GABA-A Neurotransmission', 'NMDA Receptor Antagonism', 'Somatic Thermoregulation'],
+    synergies: ['Reinforces 4-7-8 Breathwork relaxation.', 'Prevents nocturnal muscle cramps and twitching.'],
+    pubmedEvidence: 'PMID: 23853635 (Magnesium supplementation and subjective sleep)'
+  },
+  { 
+    id: 'omega3_epa_dha', 
+    name: 'High-Concentration Omega-3 EPA/DHA', 
+    dose: '2,000mg with breakfast/EVOO', 
+    timing: 'morning', 
+    requiredHardware: 'supplements', 
+    goalKey: 'longevity',
+    timeMins: 2,
+    effortLevel: 2,
+    costTier: 2,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    explainRationale: 'Incorporates long-chain polyunsaturated fatty acids directly into cellular phospholipid bilayers, boosting membrane fluidity, resolving systemic inflammation via resolvins/protectins, and lowering triglycerides.',
+    targetPathways: ['Phospholipid Fluidity', 'Specialized Pro-Resolving Mediators (SPMs)', 'Cardiovascular Endothelial Function'],
+    synergies: ['Taken with healthy fats (EVOO) for maximal lipophilic bioavailability.'],
+    pubmedEvidence: 'PMID: 31089851 (Omega-3 fatty acids in health and aging)'
+  },
+  { 
+    id: 'zone2_cardio_30m', 
+    name: 'Zone 2 Mitochondrial Endurance', 
+    dose: '30–45 mins (Nasally breathing, HR 60-70% max)', 
+    timing: 'afternoon', 
+    goalKey: 'longevity',
+    timeMins: 35,
+    effortLevel: 3,
+    costTier: 1,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    explainRationale: 'Stimulates maximal mitochondrial lipid oxidation without excessive blood lactate accumulation. Activates PGC-1α transcription to drive mitochondrial biogenesis and cardiorespiratory VO2 max longevity.',
+    targetPathways: ['PGC-1α Mitochondrial Biogenesis', 'Fatty Acid Beta-Oxidation', 'Lactate Clearance Efficiency'],
+    synergies: ['Pairs with Heat Shock Sauna to compound cardiovascular adaptations.', 'Boosts baseline insulin sensitivity.'],
+    pubmedEvidence: 'PMID: 32300067 (Zone 2 training and mitochondrial function)'
+  },
+  { 
+    id: 'ppl_push_day', 
+    name: 'Resistance Hypertrophy Session', 
+    dose: '45–60 mins (RPE 7-9, 2-3 RIR)', 
+    timing: 'afternoon', 
+    requiredHardware: 'gym', 
+    goalKey: 'strength',
+    timeMins: 50,
+    effortLevel: 4,
+    costTier: 2,
+    evidenceTier: 1,
+    sideEffectRisk: 2,
+    explainRationale: 'Mechanical tension activates mechanosensors, driving muscle protein synthesis via mTORC1 and stimulating skeletal myokine release for whole-body metabolic resilience and bone density preservation.',
+    targetPathways: ['mTORC1 Protein Synthesis', 'Myokine Secretion (IL-6 / Irisin)', 'Bone Mineral Density'],
+    synergies: ['Fueled by Creatine Monohydrate saturation.', 'Assisted by post-training hydration and evening sleep depth.'],
+    pubmedEvidence: 'PMID: 28834797 (Resistance training for health and longevity)'
+  },
+  { 
+    id: 'sauna_session', 
+    name: 'Heat Shock Sauna Session', 
+    dose: '20 mins at 174°F+ (80°C+)', 
+    timing: 'afternoon', 
+    requiredHardware: 'sauna', 
+    goalKey: 'longevity',
+    timeMins: 25,
+    effortLevel: 4,
+    costTier: 3,
+    evidenceTier: 1,
+    sideEffectRisk: 2,
+    explainRationale: 'Whole-body thermal stress induces Heat Shock Protein 70 (HSP70) expression to refold misfolded proteins and clear aggregates, while upregulating endothelial nitric oxide synthase (eNOS) for cardiovascular elasticity.',
+    targetPathways: ['HSP70 Molecular Chaperone Induction', 'Endothelial eNOS Vasodilation', 'Autophagy & Protein Quality Control'],
+    synergies: ['Compounds cardiovascular adaptations when performed post-workout or post-Zone 2.', 'Hydrate with electrolytes before and after.'],
+    pubmedEvidence: 'PMID: 25705824 (Sauna bathing and cardiovascular mortality reduction)'
+  },
+  { 
+    id: 'cold_shower_or_plunge', 
+    name: 'Deliberate Cold Exposure', 
+    dose: '2–3 mins (50°F–55°F / 10°C–13°C)', 
+    timing: 'morning', 
+    requiredHardware: 'cold_plunge', 
+    goalKey: 'recovery',
+    timeMins: 5,
+    effortLevel: 4,
+    costTier: 3,
+    evidenceTier: 1,
+    sideEffectRisk: 2,
+    explainRationale: 'Sudden cutaneous thermal shock triggers a massive locus coeruleus norepinephrine release (+250%) and prolonged dopamine elevation (+250%), while stimulating brown adipose tissue (BAT) thermogenesis and mitochondrial uncoupling (UCP1).',
+    targetPathways: ['Norepinephrine & Dopamine Surge', 'BAT Thermogenesis & UCP1', 'Hormetic Resilience'],
+    synergies: ['Execute Søberg Principle: end on cold and let the body warm itself naturally.', 'Best utilized in the morning window.'],
+    pubmedEvidence: 'PMID: 34697334 (Søberg et al. / Cold exposure and metabolism)'
+  }
 ]
 
 // Database Parity: Grouped into biological tracking time horizons
@@ -152,8 +352,17 @@ function OnboardingContent() {
   ])
   const [selectedNegativeExposures, setSelectedNegativeExposures] = useState<string[]>([])
 
-  // Step 5: Starter Stack Selection
+  // Optional Constraint & Protocol Calibration Sliders
+  const [dailyTimeBudget, setDailyTimeBudget] = useState<number>(45) // 15 to 120 mins
+  const [complexityEffort, setComplexityEffort] = useState<number>(3) // 1 (low friction 80/20) to 5 (intensive)
+  const [monthlyBudget, setMonthlyBudget] = useState<number>(2) // 1 ($0 free) to 4 (unconstrained)
+  const [opennessToEmergingScience, setOpennessToEmergingScience] = useState<number>(2) // 1 (RCTs) to 3 (frontier)
+  const [sideEffectTolerance, setSideEffectTolerance] = useState<number>(2) // 1 (zero risk) to 3 (hormetic)
+
+  // Step 5: Starter Stack Selection & 3-Way Calibration Mode
+  const [coverageMode, setCoverageMode] = useState<'simplify' | 'calibrated' | 'coverage'>('calibrated')
   const [selectedModalities, setSelectedModalities] = useState<Record<string, boolean>>({})
+  const [explainingModality, setExplainingModality] = useState<ModalityOption | null>(null)
 
   const hasHydratedRef = React.useRef(false)
 
@@ -199,6 +408,16 @@ function OnboardingContent() {
             if (regularOutcomes.length > 0) setSelectedOutcomes(regularOutcomes)
             if (habits.length > 0) setSelectedPositiveHabits(habits)
             if (exposures.length > 0) setSelectedNegativeExposures(exposures)
+
+            const constraints = profile.outcome_preference_scores._calibration_constraints
+            if (constraints) {
+              if (constraints.dailyTimeBudget) setDailyTimeBudget(constraints.dailyTimeBudget)
+              if (constraints.complexityEffort) setComplexityEffort(constraints.complexityEffort)
+              if (constraints.monthlyBudget) setMonthlyBudget(constraints.monthlyBudget)
+              if (constraints.opennessToEmergingScience) setOpennessToEmergingScience(constraints.opennessToEmergingScience)
+              if (constraints.sideEffectTolerance) setSideEffectTolerance(constraints.sideEffectTolerance)
+              if (constraints.coverageMode) setCoverageMode(constraints.coverageMode)
+            }
           }
         }
       } catch (err) {
@@ -230,6 +449,14 @@ function OnboardingContent() {
         if (Object.keys(customMilestones).length > 0) {
           outcomeScores._diurnal_milestone_overrides = customMilestones
         }
+        outcomeScores._calibration_constraints = {
+          dailyTimeBudget,
+          complexityEffort,
+          monthlyBudget,
+          opennessToEmergingScience,
+          sideEffectTolerance,
+          coverageMode
+        }
 
         await updateUserProfile(localUserId, {
           display_name: displayName.trim() || undefined,
@@ -260,6 +487,7 @@ function OnboardingContent() {
     idealWakeTime, idealBedtime, chronotype, customMilestones,
     fitnessLevel, trainingDays, workoutWindow, selectedEquipment,
     selectedGoals, selectedOutcomes, selectedPositiveHabits, selectedNegativeExposures,
+    dailyTimeBudget, complexityEffort, monthlyBudget, opennessToEmergingScience, sideEffectTolerance, coverageMode,
     isLoadingProfile
   ])
 
@@ -387,16 +615,86 @@ function OnboardingContent() {
     ]
   }, [idealWakeTime, idealBedtime])
 
-  // Calculate recommended starter stack based on Step 3 equipment and Step 4 goals
-  const recommendedModalities = useMemo(() => {
-    return STARTER_CATALOG.filter(mod => {
-      // Check goal alignment
-      const matchesGoal = selectedGoals.includes(mod.goalKey)
-      // Check hardware access requirement
+  // Multi-tier Recommendation Engine based on constraints, equipment, and primary goals
+  const {
+    calibratedModalities,
+    displayedModalities,
+    simplifyCutCandidates,
+    nextBestActions,
+    targetCount
+  } = useMemo(() => {
+    // 1. Filter out modalities where required hardware or budget is strictly missing
+    const available = STARTER_CATALOG.filter(mod => {
       const hasHardware = !mod.requiredHardware || selectedEquipment.includes(mod.requiredHardware)
-      return matchesGoal && hasHardware
+      const budgetOk = monthlyBudget >= mod.costTier || mod.costTier === 1
+      return hasHardware && budgetOk
     })
-  }, [selectedGoals, selectedEquipment])
+
+    // 2. Score each modality based on goal matches, foundational status, time & effort match
+    const scored = available.map(mod => {
+      let score = 0
+      // Goal alignment
+      if (selectedGoals.includes(mod.goalKey)) score += 14
+      // Foundational 80/20 status bonus
+      if (mod.isFoundational80_20) score += 10
+      // Time efficiency bonus (if user has small time budget, short modalities get big bonus)
+      if (dailyTimeBudget <= 30 && mod.timeMins <= 15) score += 8
+      if (dailyTimeBudget > 60 && mod.timeMins >= 20) score += 4
+      // Effort alignment
+      const effortDiff = Math.abs(mod.effortLevel - complexityEffort)
+      score += Math.max(0, 6 - effortDiff * 2)
+      // Openness to emerging science
+      if (opennessToEmergingScience >= mod.evidenceTier) score += 3
+      // Side effect tolerance
+      if (sideEffectTolerance >= mod.sideEffectRisk) score += 3
+
+      return { mod, score }
+    })
+
+    // Sort descending by score
+    scored.sort((a, b) => b.score - a.score)
+    const sorted = scored.map(s => s.mod)
+
+    // 3. Determine calibrated target count based on dailyTimeBudget and complexityEffort
+    let target = 5
+    if (dailyTimeBudget <= 30 || complexityEffort <= 2) {
+      target = 4 // 3–4 for minimalist
+    } else if (dailyTimeBudget <= 60 || complexityEffort <= 3) {
+      target = 6 // 5–7 for balanced
+    } else {
+      target = 8 // 8–10 for comprehensive
+    }
+    const finalTarget = Math.min(sorted.length, Math.max(3, target))
+
+    // 4. Calibrated Stack vs Next Best Actions
+    const calibrated = sorted.slice(0, finalTarget)
+    const nextBest = sorted.slice(finalTarget, finalTarget + 4)
+
+    // 5. In calibrated stack, find candidates to simplify/cut (non-foundational or highest effort/time)
+    const cutCandidates = [...calibrated]
+      .filter(m => !m.isFoundational80_20 || calibrated.length > 4)
+      .sort((a, b) => (b.effortLevel + b.timeMins / 10) - (a.effortLevel + a.timeMins / 10))
+      .slice(0, 3)
+
+    // 6. Active Displayed List based on coverageMode
+    let displayed: ModalityOption[] = []
+    if (coverageMode === 'coverage') {
+      displayed = [...calibrated, ...nextBest]
+    } else {
+      displayed = calibrated
+    }
+
+    return {
+      calibratedModalities: calibrated,
+      displayedModalities: displayed,
+      simplifyCutCandidates: cutCandidates,
+      nextBestActions: nextBest,
+      targetCount: finalTarget
+    }
+  }, [
+    selectedEquipment, monthlyBudget, selectedGoals, dailyTimeBudget, 
+    complexityEffort, opennessToEmergingScience, sideEffectTolerance, coverageMode
+  ])
 
   const toggleDay = (day: string) => {
     setTrainingDays(prev => 
@@ -437,14 +735,21 @@ function OnboardingContent() {
   }
 
   const toggleModalityCheck = (id: string) => {
-    setSelectedModalities(prev => ({
-      ...prev,
-      [id]: prev[id] === undefined ? false : !prev[id]
-    }))
+    setSelectedModalities(prev => {
+      const currentlyChecked = isModalityChecked(id)
+      return {
+        ...prev,
+        [id]: !currentlyChecked
+      }
+    })
   }
 
   const isModalityChecked = (id: string) => {
-    return selectedModalities[id] !== false
+    if (selectedModalities[id] !== undefined) {
+      return selectedModalities[id]
+    }
+    // Default checked if part of calibrated stack
+    return calibratedModalities.some(m => m.id === id)
   }
 
   const handleComplete = async () => {
@@ -463,6 +768,14 @@ function OnboardingContent() {
       })
       if (Object.keys(customMilestones).length > 0) {
         outcomeScores._diurnal_milestone_overrides = customMilestones
+      }
+      outcomeScores._calibration_constraints = {
+        dailyTimeBudget,
+        complexityEffort,
+        monthlyBudget,
+        opennessToEmergingScience,
+        sideEffectTolerance,
+        coverageMode
       }
 
       const totalHeightInches = (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
@@ -512,7 +825,7 @@ function OnboardingContent() {
       }
 
       // 3. Schedule checked starter tasks for today
-      const activeMods = recommendedModalities.filter(m => isModalityChecked(m.id))
+      const activeMods = displayedModalities.filter(m => isModalityChecked(m.id))
       for (const mod of activeMods) {
         try {
           await createDailyTask(localUserId, todayStr, mod.id)
@@ -1508,6 +1821,170 @@ function OnboardingContent() {
                   </div>
                 </div>
               </div>
+
+              {/* 5. PROTOCOL CONSTRAINTS & CALIBRATION SLIDERS */}
+              <div className="space-y-4 pt-3 border-t border-slate-800">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-0.5 flex items-center gap-2">
+                    <Sliders size={14} className="text-emerald-400" />
+                    <span>Protocol Constraints &amp; Calibration</span>
+                    <span className="text-[10px] font-bold text-emerald-400/90 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full lowercase">
+                      smart engine
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Calibrate your available time, effort tolerance, and budget. These constraints directly shape the size and intensity of your recommended starter protocol.
+                  </p>
+                </div>
+
+                <div className="space-y-4 bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-emerald-500/20 shadow-inner">
+                  {/* 1. Daily Time Budget */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <label className="font-bold text-slate-200 flex items-center gap-1.5">
+                        <Clock size={13} className="text-amber-400" />
+                        <span>Daily Available Time Commitment</span>
+                      </label>
+                      <span className="font-mono font-bold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 text-xs">
+                        {dailyTimeBudget} mins/day {dailyTimeBudget <= 30 ? '• 3–4 modalities' : dailyTimeBudget <= 60 ? '• 5–7 modalities' : '• 8–10 modalities'}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="15"
+                      max="120"
+                      step="15"
+                      value={dailyTimeBudget}
+                      onChange={(e) => setDailyTimeBudget(Number(e.target.value))}
+                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                      <span>15m (Express / Minimalist)</span>
+                      <span>45m (Standard)</span>
+                      <span>90m+ (Deep Protocol)</span>
+                    </div>
+                  </div>
+
+                  {/* 2. Complexity & Friction Tolerance */}
+                  <div className="space-y-2 pt-3 border-t border-white/5">
+                    <div className="flex items-center justify-between text-xs">
+                      <label className="font-bold text-slate-200 flex items-center gap-1.5">
+                        <Zap size={13} className="text-purple-400" />
+                        <span>Complexity &amp; Effort Tolerance</span>
+                      </label>
+                      <span className="font-mono font-bold text-purple-300 bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-purple-500/20 text-xs">
+                        {complexityEffort === 1 ? 'Level 1 (Zero-Friction 80/20)' :
+                         complexityEffort === 2 ? 'Level 2 (Low Friction Micro-Habits)' :
+                         complexityEffort === 3 ? 'Level 3 (Balanced Active Routine)' :
+                         complexityEffort === 4 ? 'Level 4 (High Discipline Protocol)' :
+                         'Level 5 (Maximum Comprehensive Stack)'}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      step="1"
+                      value={complexityEffort}
+                      onChange={(e) => setComplexityEffort(Number(e.target.value))}
+                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-400"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                      <span>Passive / Effortless</span>
+                      <span>Moderate Balance</span>
+                      <span>Intensive Daily Stacks</span>
+                    </div>
+                  </div>
+
+                  {/* 3. Monthly Protocol Budget */}
+                  <div className="space-y-2 pt-3 border-t border-white/5">
+                    <div className="flex items-center justify-between text-xs">
+                      <label className="font-bold text-slate-200 flex items-center gap-1.5">
+                        <Award size={13} className="text-emerald-400" />
+                        <span>Monthly Protocol Budget</span>
+                      </label>
+                      <span className="font-mono font-bold text-emerald-300 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20 text-xs">
+                        {monthlyBudget === 1 ? '$0 (Free / Zero-Equipment)' :
+                         monthlyBudget === 2 ? 'Modest ($50–$150/mo)' :
+                         monthlyBudget === 3 ? 'High ($200–$500/mo)' :
+                         'Unconstrained / Premium'}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="4"
+                      step="1"
+                      value={monthlyBudget}
+                      onChange={(e) => setMonthlyBudget(Number(e.target.value))}
+                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                      <span>$0 Free Habits</span>
+                      <span>Targeted Supplements</span>
+                      <span>Full Biohacker Stack</span>
+                    </div>
+                  </div>
+
+                  {/* 4. Openness to Emerging Science */}
+                  <div className="space-y-2 pt-3 border-t border-white/5">
+                    <div className="flex items-center justify-between text-xs">
+                      <label className="font-bold text-slate-200 flex items-center gap-1.5">
+                        <Dna size={13} className="text-sky-400" />
+                        <span>Openness to Emerging Science</span>
+                      </label>
+                      <span className="font-mono font-bold text-sky-300 bg-sky-500/10 px-2.5 py-0.5 rounded-lg border border-sky-500/20 text-xs">
+                        {opennessToEmergingScience === 1 ? 'Conservative (Peer-Reviewed RCTs Only)' :
+                         opennessToEmergingScience === 2 ? 'Balanced (Strong Human & Mechanistic Data)' :
+                         'Cutting-Edge (Emerging Epigenetics & Trials)'}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="1"
+                      value={opennessToEmergingScience}
+                      onChange={(e) => setOpennessToEmergingScience(Number(e.target.value))}
+                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-400"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                      <span>Gold Standard RCTs</span>
+                      <span>Balanced</span>
+                      <span>Cutting-Edge Frontier</span>
+                    </div>
+                  </div>
+
+                  {/* 5. Side Effect & Intervention Stressor Tolerance */}
+                  <div className="space-y-2 pt-3 border-t border-white/5">
+                    <div className="flex items-center justify-between text-xs">
+                      <label className="font-bold text-slate-200 flex items-center gap-1.5">
+                        <ShieldAlert size={13} className="text-rose-400" />
+                        <span>Side Effect &amp; Intensity Tolerance</span>
+                      </label>
+                      <span className="font-mono font-bold text-rose-300 bg-rose-500/10 px-2.5 py-0.5 rounded-lg border border-rose-500/20 text-xs">
+                        {sideEffectTolerance === 1 ? 'Zero Risk / Non-Invasive' :
+                         sideEffectTolerance === 2 ? 'Moderate (Hormetic Cold/Heat Stress)' :
+                         'High (Intensive Metabolic & Physical Stressors)'}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="1"
+                      value={sideEffectTolerance}
+                      onChange={(e) => setSideEffectTolerance(Number(e.target.value))}
+                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-400"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                      <span>Gentle / Safe</span>
+                      <span>Moderate Hormesis</span>
+                      <span>Aggressive Interventions</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="pt-2 flex items-center justify-between gap-3">
@@ -1532,7 +2009,7 @@ function OnboardingContent() {
         )}
 
         {/* ---------------------------------------------------- */}
-        {/* STEP 5: TAILORED STARTER STACK & SETTINGS DISCOVERY */}
+        {/* STEP 5: TAILORED STARTER STACK & 3-WAY CALIBRATION */}
         {/* ---------------------------------------------------- */}
         {step === 5 && (
           <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 backdrop-blur-md">
@@ -1542,54 +2019,182 @@ function OnboardingContent() {
                 <span>Your Calibrated Starter Stack</span>
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Clinically validated starter protocols calibrated to your exact biometrics, equipment, and targets.
+                Clinically validated starter protocols calibrated to your exact time budget ({dailyTimeBudget}m), effort level, and primary targets.
               </p>
             </div>
 
-            {/* Context Explainer Box */}
-            <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-start gap-3 text-xs text-emerald-200/90 leading-relaxed">
-              <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-white block mb-0.5">How LEVL Uses This:</span>
-                These protocols will be scheduled directly onto your Today timeline with clinically validated starter doses, circadian timing blocks, and single-tap precision logs.
+            {/* 3-Way Calibration Segmented Control */}
+            <div className="space-y-2.5">
+              <div className="p-1 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-1 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setCoverageMode('simplify')}
+                  className={`flex-1 py-2.5 px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    coverageMode === 'simplify'
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>⚡ Simplify</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCoverageMode('calibrated')}
+                  className={`flex-1 py-2.5 px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    coverageMode === 'calibrated'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>🎯 Just Right</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCoverageMode('coverage')}
+                  className={`flex-1 py-2.5 px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    coverageMode === 'coverage'
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>🚀 More Coverage</span>
+                </button>
               </div>
+
+              {/* Dynamic Mode Explainer Banner */}
+              {coverageMode === 'simplify' && (
+                <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200/90 leading-relaxed animate-in fade-in">
+                  <Sparkles size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-amber-300 block mb-0.5">80/20 Simplification Mode:</span>
+                    Highlighted below are the easiest modalities to prune if you want to start with zero friction. You can simplify or layer on modalities at any time as consistency builds.
+                  </div>
+                </div>
+              )}
+
+              {coverageMode === 'calibrated' && (
+                <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-start gap-3 text-xs text-emerald-200/90 leading-relaxed animate-in fade-in">
+                  <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-emerald-300 block mb-0.5">Calibrated Preset:</span>
+                    Personalized sweet spot balancing your available time ({dailyTimeBudget}m/day), hardware access, and top longevity targets.
+                  </div>
+                </div>
+              )}
+
+              {coverageMode === 'coverage' && (
+                <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 flex items-start gap-3 text-xs text-indigo-200/90 leading-relaxed animate-in fade-in">
+                  <Zap size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-indigo-300 block mb-0.5">Next Best Actions:</span>
+                    Highlighted below are high-synergy complementary protocols ranked in order of next best action to maximize your biomarker and target pathway coverage. Select any to add to your stack.
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Starter Modalities List */}
-            <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
-              {recommendedModalities.map(mod => {
+            {/* Unconstrained Full-Height Starter Modalities List */}
+            <div className="space-y-3 pt-1">
+              {displayedModalities.map((mod, idx) => {
                 const checked = isModalityChecked(mod.id)
+                const isNextBestAction = nextBestActions.some(n => n.id === mod.id)
+                const nextBestIndex = nextBestActions.findIndex(n => n.id === mod.id)
+                const isCutCandidate = simplifyCutCandidates.some(c => c.id === mod.id)
+                const cutIndex = simplifyCutCandidates.findIndex(c => c.id === mod.id)
+
                 return (
-                  <button
+                  <div
                     key={mod.id}
-                    type="button"
-                    onClick={() => toggleModalityCheck(mod.id)}
-                    className={`w-full p-3.5 rounded-2xl border text-left flex items-start gap-3.5 transition-all cursor-pointer ${
+                    className={`p-4 rounded-2xl border transition-all space-y-2.5 ${
                       checked
-                        ? 'bg-slate-950/90 border-emerald-500/50 shadow-md'
+                        ? isNextBestAction
+                          ? 'bg-purple-950/30 border-purple-500/50 shadow-md'
+                          : 'bg-slate-950/90 border-emerald-500/40 shadow-sm'
                         : 'bg-slate-950/40 border-slate-800 text-slate-500 opacity-60'
                     }`}
                   >
-                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 border mt-0.5 ${
-                      checked ? 'bg-emerald-500 border-emerald-400 text-slate-950' : 'border-slate-700 bg-slate-900'
-                    }`}>
-                      {checked && <Check size={12} className="stroke-[3]" />}
-                    </div>
+                    {/* Top Row: Checkbox, Name, Timing Pill, and Explain Button */}
+                    <div className="flex items-start justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleModalityCheck(mod.id)}
+                        className="flex items-start gap-3 min-w-0 flex-1 text-left cursor-pointer group"
+                      >
+                        <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 border mt-0.5 transition-colors ${
+                          checked 
+                            ? isNextBestAction ? 'bg-purple-500 border-purple-400 text-white' : 'bg-emerald-500 border-emerald-400 text-slate-950' 
+                            : 'border-slate-700 bg-slate-900 group-hover:border-slate-500'
+                        }`}>
+                          {checked && <Check size={12} className="stroke-[3]" />}
+                        </div>
 
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs sm:text-sm font-bold text-white block truncate">
-                          {mod.name}
-                        </span>
-                        <span className="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded-full font-mono shrink-0">
+                        <div className="min-w-0 flex-1">
+                          <span className="text-xs sm:text-sm font-bold text-white block leading-snug group-hover:text-emerald-300 transition-colors">
+                            {mod.name}
+                          </span>
+                          <p className="text-xs text-emerald-400/90 font-mono mt-0.5">
+                            {mod.dose}
+                          </p>
+                        </div>
+                      </button>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-0.5 rounded-full font-mono">
                           {mod.timing.replace('_', ' ')}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => setExplainingModality(mod)}
+                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Explain protocol rationale and synergies"
+                        >
+                          <HelpCircle size={12} className="text-emerald-400" />
+                          <span>Explain</span>
+                        </button>
                       </div>
-                      <p className="text-xs text-emerald-400/90 font-mono">
-                        {mod.dose}
-                      </p>
                     </div>
-                  </button>
+
+                    {/* Contextual Status / Recommendation Badges */}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {coverageMode === 'simplify' && (
+                          isCutCandidate ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                              <span>#{cutIndex + 1} Recommended to Cut</span>
+                              <span className="opacity-75">({mod.timeMins}m • Level {mod.effortLevel} effort)</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                              ⚡ 80/20 Foundational Anchor
+                            </span>
+                          )
+                        )}
+
+                        {coverageMode === 'coverage' && (
+                          isNextBestAction ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center gap-1">
+                              <span>🚀 #{nextBestIndex + 1} Next Best Action</span>
+                              <span className="opacity-75">({mod.timeMins}m)</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-slate-800 text-slate-400 border border-slate-700">
+                              🎯 Calibrated Base Stack
+                            </span>
+                          )
+                        )}
+
+                        {coverageMode === 'calibrated' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                            {mod.isFoundational80_20 ? '⚡ Foundational 80/20' : '🎯 Primary Goal Match'}
+                          </span>
+                        )}
+                      </div>
+
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {mod.timeMins} mins • Effort {mod.effortLevel}/5
+                      </span>
+                    </div>
+                  </div>
                 )
               })}
             </div>
@@ -1660,6 +2265,93 @@ function OnboardingContent() {
                       ? 'Save & Update Protocol Stack' 
                       : 'Complete & Launch Today View'}
                 </span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* EXPLAIN RECOMMENDATION BREAKDOWN MODAL */}
+        {/* ---------------------------------------------------- */}
+        {explainingModality && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+            <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-3xl p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                    <Zap size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white leading-tight">
+                      {explainingModality.name}
+                    </h3>
+                    <span className="text-xs text-emerald-400 font-mono">
+                      {explainingModality.dose}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExplainingModality(null)}
+                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs text-slate-300 max-h-[60vh] overflow-y-auto pr-1">
+                <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                    <Sparkles size={12} className="text-amber-400" />
+                    Biological Rationale &amp; Goal Alignment
+                  </span>
+                  <p className="leading-relaxed text-slate-300">
+                    {explainingModality.explainRationale}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                    <Dna size={12} className="text-purple-400" />
+                    Target Pathways &amp; Mechanisms
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {explainingModality.targetPathways?.map(pw => (
+                      <span key={pw} className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-300">
+                        {pw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {explainingModality.synergies && explainingModality.synergies.length > 0 && (
+                  <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                      <Heart size={12} className="text-emerald-400" />
+                      Stack Synergies
+                    </span>
+                    <ul className="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
+                      {explainingModality.synergies.map((syn, idx) => (
+                        <li key={idx}>{syn}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {explainingModality.pubmedEvidence && (
+                  <div className="p-2.5 rounded-xl bg-slate-950/50 border border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                    <span>Clinical Reference:</span>
+                    <span className="text-slate-300 font-bold">{explainingModality.pubmedEvidence}</span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setExplainingModality(null)}
+                className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer transition-colors"
+              >
+                Close Breakdown
               </button>
             </div>
           </div>
