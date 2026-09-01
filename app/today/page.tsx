@@ -1603,23 +1603,24 @@ function TodayPageContent() {
       const CircadianIcon = circadian.icon
       const isNow = isCurrentDay && isCurrentCircadianSlot(groupName)
       const isIgnited = ignitedGroupKeys.has(groupName)
+      const isAnytime = groupName === 'anytime'
 
       return (
         <div 
           key={groupName} 
           ref={(el) => { groupHeaderRefs.current[groupName] = el }}
-          className="relative pl-3.5 sm:pl-4 space-y-3 group/circadian-block"
+          className={`relative ${isAnytime ? 'pl-5 sm:pl-6' : 'pl-3.5 sm:pl-4'} space-y-3 group/circadian-block`}
         >
-          <div className="flex items-center justify-between border-b border-white/10 pb-2.5 flex-wrap gap-2">
+          <div className={`flex items-center justify-between ${isAnytime ? 'border-b border-dashed border-white/10 pb-2' : 'border-b border-white/10 pb-2.5'} flex-wrap gap-2`}>
             <button
               type="button"
               onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-              className="flex items-center gap-3 text-left group cursor-pointer focus:outline-none"
+              className="flex items-center gap-2.5 sm:gap-3 text-left group cursor-pointer focus:outline-none"
             >
               {/* Circadian Sky Beacon Icon (20% resting opacity, fills with full 100% vibrant gradient and glow only when scroll reaches it) */}
               <div 
                 ref={(el) => { beaconRefs.current[groupName] = el }}
-                className={`w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all duration-500 ${
+                className={`${isAnytime ? 'w-7 h-7 rounded-xl' : 'w-9 h-9 rounded-2xl'} border flex items-center justify-center shrink-0 transition-all duration-500 ${
                   isIgnited 
                     ? `${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 opacity-100 ${isNow ? circadian.activeRing : ''}`
                     : 'bg-slate-950/60 border-slate-800 text-slate-500/70 scale-95 opacity-40 shadow-none'
@@ -1629,19 +1630,19 @@ function TodayPageContent() {
                   boxShadow: isIgnited
                     ? (isNow 
                         ? `0 0 22px ${circadian.skyColorHex}99, inset 0 0 10px ${circadian.skyColorHex}33` 
-                        : `0 0 14px ${circadian.skyColorHex}40`)
+                        : (isAnytime ? `0 0 10px ${circadian.skyColorHex}30` : `0 0 14px ${circadian.skyColorHex}40`))
                     : undefined
                 }}
               >
-                <CircadianIcon size={17} strokeWidth={isIgnited ? 2.2 : 1.7} />
+                <CircadianIcon size={isAnytime ? 13 : 17} strokeWidth={isIgnited ? 2.2 : 1.7} />
               </div>
 
               <div className="flex flex-col">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-sm font-extrabold uppercase tracking-wider transition-colors ${
-                    isIgnited ? 'text-white group-hover:text-purple-200' : 'text-slate-400 group-hover:text-slate-200'
+                  <span className={`${isAnytime ? 'text-xs font-bold tracking-normal' : 'text-sm font-extrabold tracking-wider'} uppercase transition-colors ${
+                    isIgnited ? (isAnytime ? 'text-slate-300 group-hover:text-purple-300' : 'text-white group-hover:text-purple-200') : 'text-slate-400 group-hover:text-slate-200'
                   }`}>
-                    {formatSlotName(groupName)}
+                    {isAnytime ? 'Anytime / Flexible' : formatSlotName(groupName)}
                   </span>
                   {isNow && (
                     <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse flex items-center gap-1">
@@ -1649,21 +1650,21 @@ function TodayPageContent() {
                       <span>Live Window</span>
                     </span>
                   )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-mono font-bold transition-colors ${
-                    isIgnited ? 'bg-slate-800/90 text-slate-300' : 'bg-slate-900 text-slate-500'
+                  <span className={`text-[11px] sm:text-xs px-2 py-0.5 rounded-full font-mono font-bold transition-colors ${
+                    isIgnited ? (isAnytime ? 'bg-purple-950/40 text-purple-300 border border-purple-800/40' : 'bg-slate-800/90 text-slate-300') : 'bg-slate-900 text-slate-500'
                   }`}>
                     {completedCount > 0 ? `${completedCount}/${groupTasks.length}` : groupTasks.length}
                   </span>
                 </div>
-                <span className={`text-[11px] font-medium transition-colors ${
-                  isIgnited ? 'text-slate-400' : 'text-slate-500'
+                <span className={`${isAnytime ? 'text-[10px] text-slate-500' : 'text-[11px]'} font-medium transition-colors ${
+                  isIgnited && !isAnytime ? 'text-slate-400' : 'text-slate-500'
                 }`}>
-                  {circadian.timeRange} • <span className="text-slate-600">{circadian.circadianPhase}</span>
+                  {isAnytime ? 'Flexible window • Complete anytime today' : <>{circadian.timeRange} • <span className="text-slate-600">{circadian.circadianPhase}</span></>}
                 </span>
               </div>
 
               <ChevronDown 
-                size={16} 
+                size={isAnytime ? 14 : 16} 
                 className={`transition-transform duration-200 ml-1 ${
                   isIgnited ? 'text-slate-400 group-hover:text-white' : 'text-slate-600'
                 } ${isCollapsed ? '-rotate-90' : ''}`} 

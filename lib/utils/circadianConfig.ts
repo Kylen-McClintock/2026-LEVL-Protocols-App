@@ -218,17 +218,17 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Post-Meal Window',
     timeRange: '5:00 PM – 7:30 PM',
     circadianPhase: 'Twilight Horizon • Postprandial Glucose Walk & Thermal Drop',
-    skyColorHex: '#7C3AED',
-    startColorHex: '#6366F1',
-    endColorHex: '#7C3AED',
-    gradientCSS: 'linear-gradient(to bottom, #6366F1, #7C3AED)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(99,102,241,0.3), rgba(124,58,237,0.25))',
+    skyColorHex: '#8B5CF6',
+    startColorHex: '#3B82F6',
+    endColorHex: '#F97316',
+    gradientCSS: 'linear-gradient(to bottom, #8B5CF6, #F97316)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(139,92,246,0.35), rgba(249,115,22,0.25))',
     accentGradient: 'from-indigo-500/20 via-purple-500/10 to-transparent',
     icon: Sunset,
     badgeBg: 'bg-purple-500/15',
     badgeBorder: 'border-purple-500/40',
     badgeText: 'text-purple-300',
-    glowShadow: 'shadow-[0_0_16px_rgba(124,58,237,0.45)]',
+    glowShadow: 'shadow-[0_0_16px_rgba(139,92,246,0.45)]',
     activeRing: 'ring-2 ring-purple-400 ring-offset-2 ring-offset-slate-950',
     startHour: 17,
     endHour: 20
@@ -237,19 +237,19 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     key: 'evening',
     label: 'Evening & Dinner',
     timeRange: '5:30 PM – 8:30 PM',
-    circadianPhase: 'Sunset Violet Glow • Blue Light Moderation & Wind-Down',
-    skyColorHex: '#8B5CF6',
-    startColorHex: '#6366F1',
-    endColorHex: '#8B5CF6',
-    gradientCSS: 'linear-gradient(to bottom, #6366F1, #8B5CF6)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(99,102,241,0.35), rgba(139,92,246,0.3))',
-    accentGradient: 'from-indigo-500/20 via-purple-500/15 to-transparent',
+    circadianPhase: 'Golden Sunset & Twilight Horizon • Blue Light Moderation',
+    skyColorHex: '#F97316',
+    startColorHex: '#8B5CF6',
+    endColorHex: '#EC4899',
+    gradientCSS: 'linear-gradient(to bottom, #F97316, #EC4899)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(249,115,22,0.35), rgba(236,72,153,0.3))',
+    accentGradient: 'from-orange-500/20 via-pink-500/15 to-transparent',
     icon: Sunset,
-    badgeBg: 'bg-purple-500/15',
-    badgeBorder: 'border-purple-400/40',
-    badgeText: 'text-purple-300',
-    glowShadow: 'shadow-[0_0_18px_rgba(139,92,246,0.5)]',
-    activeRing: 'ring-2 ring-purple-400 ring-offset-2 ring-offset-slate-950',
+    badgeBg: 'bg-orange-500/15',
+    badgeBorder: 'border-orange-400/40',
+    badgeText: 'text-orange-300',
+    glowShadow: 'shadow-[0_0_18px_rgba(249,115,22,0.5)]',
+    activeRing: 'ring-2 ring-orange-400 ring-offset-2 ring-offset-slate-950',
     startHour: 17,
     endHour: 20
   },
@@ -258,18 +258,18 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Evening Stack',
     timeRange: '7:30 PM – 9:30 PM',
     circadianPhase: 'Melatonin Synthesis & Cortisol Suppression',
-    skyColorHex: '#7C3AED',
-    startColorHex: '#8B5CF6',
-    endColorHex: '#7C3AED',
-    gradientCSS: 'linear-gradient(to bottom, #8B5CF6, #7C3AED)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(139,92,246,0.3), rgba(124,58,237,0.25))',
-    accentGradient: 'from-purple-500/20 via-indigo-600/10 to-transparent',
+    skyColorHex: '#EC4899',
+    startColorHex: '#F97316',
+    endColorHex: '#A855F7',
+    gradientCSS: 'linear-gradient(to bottom, #EC4899, #A855F7)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(236,72,153,0.3), rgba(168,85,247,0.25))',
+    accentGradient: 'from-pink-500/20 via-purple-500/10 to-transparent',
     icon: Moon,
-    badgeBg: 'bg-purple-500/15',
-    badgeBorder: 'border-purple-500/40',
-    badgeText: 'text-purple-300',
-    glowShadow: 'shadow-[0_0_16px_rgba(124,58,237,0.45)]',
-    activeRing: 'ring-2 ring-purple-400 ring-offset-2 ring-offset-slate-950',
+    badgeBg: 'bg-pink-500/15',
+    badgeBorder: 'border-pink-400/40',
+    badgeText: 'text-pink-300',
+    glowShadow: 'shadow-[0_0_16px_rgba(236,72,153,0.45)]',
+    activeRing: 'ring-2 ring-pink-400 ring-offset-2 ring-offset-slate-950',
     startHour: 19,
     endHour: 21
   },
@@ -277,12 +277,12 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     key: 'wind_down',
     label: 'Evening Wind-Down',
     timeRange: '8:30 PM – 10:30 PM',
-    circadianPhase: 'Twilight Indigo • Parasympathetic Tone & Screen Cutoff',
-    skyColorHex: '#6366F1',
-    startColorHex: '#7C3AED',
+    circadianPhase: 'Twilight Violet & Indigo • Parasympathetic Tone & Screen Cutoff',
+    skyColorHex: '#8B5CF6',
+    startColorHex: '#EC4899',
     endColorHex: '#6366F1',
-    gradientCSS: 'linear-gradient(to bottom, #7C3AED, #6366F1)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(124,58,237,0.35), rgba(99,102,241,0.25))',
+    gradientCSS: 'linear-gradient(to bottom, #8B5CF6, #6366F1)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(139,92,246,0.35), rgba(99,102,241,0.25))',
     accentGradient: 'from-purple-500/20 via-indigo-600/10 to-transparent',
     icon: Moon,
     badgeBg: 'bg-indigo-500/15',
@@ -298,12 +298,12 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Pre-Bed Preparation',
     timeRange: '9:30 PM – 11:00 PM',
     circadianPhase: 'Deep Twilight • Sleep Architecture Priming',
-    skyColorHex: '#4338CA',
-    startColorHex: '#6366F1',
-    endColorHex: '#1E1B4B',
-    gradientCSS: 'linear-gradient(to bottom, #6366F1, #4338CA, #020617)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(99,102,241,0.35), rgba(67,56,202,0.4), rgba(2,6,23,0.7))',
-    accentGradient: 'from-indigo-600/25 via-slate-950/50 to-transparent',
+    skyColorHex: '#6366F1',
+    startColorHex: '#8B5CF6',
+    endColorHex: '#4338CA',
+    gradientCSS: 'linear-gradient(to bottom, #6366F1, #4338CA, #1E3A8A)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(99,102,241,0.35), rgba(67,56,202,0.4), rgba(30,58,138,0.5))',
+    accentGradient: 'from-indigo-600/25 via-blue-950/50 to-transparent',
     icon: MoonStar,
     badgeBg: 'bg-indigo-900/30',
     badgeBorder: 'border-indigo-500/40',
@@ -318,18 +318,18 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Bedtime & Sleep',
     timeRange: '10:00 PM – 5:30 AM',
     circadianPhase: 'Midnight Starlit Abyss • Glymphatic Cleansing & Recovery',
-    skyColorHex: '#1E1B4B',
-    startColorHex: '#4338CA',
-    endColorHex: '#000000',
-    gradientCSS: 'linear-gradient(to bottom, #4338CA, #1E1B4B, #020617, #000000)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(67,56,202,0.4), rgba(30,27,75,0.5), rgba(0,0,0,0.85))',
-    accentGradient: 'from-indigo-600/25 via-slate-950/50 to-transparent',
+    skyColorHex: '#312E81',
+    startColorHex: '#6366F1',
+    endColorHex: '#1E3A8A',
+    gradientCSS: 'linear-gradient(to bottom, #4338CA, #312E81, #1E3A8A)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(67,56,202,0.4), rgba(49,46,129,0.5), rgba(30,58,138,0.7))',
+    accentGradient: 'from-indigo-600/25 via-blue-950/60 to-transparent',
     icon: MoonStar,
-    badgeBg: 'bg-slate-950/80',
-    badgeBorder: 'border-indigo-900/50',
-    badgeText: 'text-indigo-300',
-    glowShadow: 'shadow-[0_0_20px_rgba(30,27,75,0.6)]',
-    activeRing: 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-950',
+    badgeBg: 'bg-blue-950/80',
+    badgeBorder: 'border-blue-700/50',
+    badgeText: 'text-blue-300',
+    glowShadow: 'shadow-[0_0_20px_rgba(30,58,138,0.6)]',
+    activeRing: 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-950',
     startHour: 22,
     endHour: 5
   },
@@ -338,7 +338,7 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Anytime / Flexible Window',
     timeRange: 'Flexible Timing',
     circadianPhase: 'Throughout Today • Habit Synergy & Vitality',
-    skyColorHex: '#6366F1',
+    skyColorHex: '#8B5CF6',
     startColorHex: '#6366F1',
     endColorHex: '#8B5CF6',
     gradientCSS: 'linear-gradient(to bottom, #6366F1, #8B5CF6, #6366F1)',
@@ -436,67 +436,71 @@ export function isCurrentCircadianSlot(slotName: string, currentHour?: number): 
 /**
  * Mathematically builds a seamless continuous linear gradient spanning from top to bottom
  * based on whichever ordered sequence of time blocks are actively rendered on the user's page.
- * Guarantees zero hard cuts and 100% smooth, continuous chromatic interpolation.
+ * Guarantees that each time block holds its signature primary color across ~70% of its zone,
+ * and only smoothly blends at the tail ends between adjacent blocks.
  */
 export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   if (!slotKeys || slotKeys.length === 0) {
-    return 'linear-gradient(to bottom, #D97706, #F59E0B, #FBBF24, #38BDF8, #0EA5E9, #0284C7, #2563EB, #3B82F6, #6366F1, #8B5CF6, #7C3AED, #6366F1, #4338CA, #1E1B4B, #020617, #000000)'
+    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 12%, #38BDF8 25%, #0284C7 40%, #3B82F6 55%, #F97316 70%, #EC4899 80%, #8B5CF6 88%, #4338CA 94%, #1E3A8A 100%)'
   }
   if (slotKeys.length === 1) {
     return getCircadianConfig(slotKeys[0]).gradientCSS
   }
 
-  const rawColorSequence: string[] = []
+  const N = slotKeys.length
+  const step = 100 / N
+  const colorStops: { color: string; pct: number }[] = []
 
-  slotKeys.forEach((key, idx) => {
+  slotKeys.forEach((key, i) => {
     const cfg = getCircadianConfig(key)
+    const startPct = i * step
+    const endPct = (i + 1) * step
+    const width = endPct - startPct
 
-    if (cfg.key === 'anytime') {
-      // Injects a smooth ambient transition between surrounding slots
-      const prevKey = idx > 0 ? slotKeys[idx - 1] : null
-      const nextKey = idx < slotKeys.length - 1 ? slotKeys[idx + 1] : null
-      if (prevKey && nextKey) {
-        rawColorSequence.push(getCircadianConfig(prevKey).endColorHex)
-      } else {
-        rawColorSequence.push(cfg.skyColorHex)
-      }
+    // Primary signature sky color for this time block
+    const primary = cfg.skyColorHex
+    // Inflow start color & outflow end color
+    const startCol = cfg.startColorHex || primary
+    const endCol = cfg.endColorHex || primary
+
+    if (i === 0) {
+      // First slot: starts at 0% with startColor, quickly reaches primary, holds steady until tail
+      colorStops.push({ color: startCol, pct: 0 })
+      colorStops.push({ color: primary, pct: Math.round(startPct + width * 0.25) })
+      colorStops.push({ color: primary, pct: Math.round(endPct - width * 0.20) })
+      colorStops.push({ color: endCol, pct: Math.round(endPct) })
+    } else if (i === N - 1) {
+      // Last slot: holds primary color, and gracefully transitions to rich dark blue bedtime finish
+      colorStops.push({ color: startCol, pct: Math.round(startPct) })
+      colorStops.push({ color: primary, pct: Math.round(startPct + width * 0.20) })
+      colorStops.push({ color: primary, pct: Math.round(endPct - width * 0.25) })
+      colorStops.push({ color: endCol, pct: 100 })
     } else {
-      if (idx === 0) {
-        rawColorSequence.push(cfg.startColorHex)
-      }
-      if (cfg.skyColorHex && cfg.skyColorHex !== cfg.startColorHex) {
-        rawColorSequence.push(cfg.skyColorHex)
-      }
-      if (cfg.endColorHex && cfg.endColorHex !== cfg.skyColorHex) {
-        rawColorSequence.push(cfg.endColorHex)
-      }
+      // Middle slots (e.g. Midday, Afternoon, Evening):
+      // Inflow at start boundary, quickly hits primary, HOLDS PRIMARY for ~60-70% of the block height,
+      // and only transitions into endCol at the bottom tail boundary!
+      colorStops.push({ color: startCol, pct: Math.round(startPct) })
+      colorStops.push({ color: primary, pct: Math.round(startPct + width * 0.20) })
+      colorStops.push({ color: primary, pct: Math.round(endPct - width * 0.20) })
+      colorStops.push({ color: endCol, pct: Math.round(endPct) })
     }
   })
 
-  // Ensure bedtime/night blocks terminate into super dark obsidian black
-  const lastKey = slotKeys[slotKeys.length - 1]
-  if (lastKey && (lastKey.includes('bed') || lastKey.includes('sleep') || lastKey.includes('night') || lastKey.includes('pre_bed'))) {
-    rawColorSequence.push('#020617')
-    rawColorSequence.push('#000000')
-  }
-
-  // Deduplicate adjacent identical colors to maintain fluid transitions
-  const uniqueColors: string[] = []
-  rawColorSequence.forEach((c) => {
-    if (uniqueColors.length === 0 || uniqueColors[uniqueColors.length - 1] !== c) {
-      uniqueColors.push(c)
+  // Deduplicate adjacent stops with identical pct & color to keep CSS clean
+  const uniqueStops: { color: string; pct: number }[] = []
+  colorStops.forEach((s) => {
+    if (
+      uniqueStops.length === 0 ||
+      uniqueStops[uniqueStops.length - 1].pct !== s.pct ||
+      uniqueStops[uniqueStops.length - 1].color !== s.color
+    ) {
+      uniqueStops.push(s)
     }
   })
 
-  if (uniqueColors.length <= 1) {
-    return getCircadianConfig(slotKeys[0]).gradientCSS
-  }
+  // Sort ascending by percentage
+  uniqueStops.sort((a, b) => a.pct - b.pct)
 
-  const total = uniqueColors.length - 1
-  const stops = uniqueColors.map((col, i) => {
-    const pct = Math.round((i / total) * 100)
-    return `${col} ${pct}%`
-  })
-
-  return `linear-gradient(to bottom, ${stops.join(', ')})`
+  const stopStrings = uniqueStops.map(s => `${s.color} ${s.pct}%`)
+  return `linear-gradient(to bottom, ${stopStrings.join(', ')})`
 }
