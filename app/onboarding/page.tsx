@@ -936,41 +936,24 @@ function OnboardingContent() {
                     return (
                       <div
                         key={m.id}
-                        className={`p-3 sm:p-3.5 rounded-2xl border transition-all ${
+                        className={`p-3.5 sm:p-4 rounded-2xl border transition-all space-y-2.5 ${
                           isCustom
                             ? 'bg-purple-950/20 border-purple-500/40 shadow-sm'
                             : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-2.5">
-                          <div className="flex items-start gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                        {/* 1. Header: Icon + Full-Width Title + Action Buttons */}
+                        <div className="flex items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 shadow-sm">
                               {m.icon}
                             </div>
-                            <div className="min-w-0">
-                              <span className="text-xs font-bold text-white block truncate">
-                                {m.title}
-                              </span>
-                              <p className="text-[10px] text-slate-400 leading-snug mt-0.5">
-                                {m.desc}
-                              </p>
-                            </div>
+                            <span className="text-xs sm:text-sm font-bold text-white leading-tight">
+                              {m.title}
+                            </span>
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <div className="text-right">
-                              <span className="text-xs font-mono font-bold text-white block">
-                                {displayTime}
-                              </span>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md font-mono border ${
-                                isCustom 
-                                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' 
-                                  : 'bg-slate-800 text-slate-400 border-slate-700'
-                              }`}>
-                                {isCustom ? 'Custom' : 'Auto'}
-                              </span>
-                            </div>
-
                             {isCustom && (
                               <button
                                 type="button"
@@ -1002,6 +985,26 @@ function OnboardingContent() {
                             </button>
                           </div>
                         </div>
+
+                        {/* 2. Dedicated Time & Mode Row */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-mono font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
+                            <Clock size={12} className="text-amber-400" />
+                            {displayTime}
+                          </span>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md font-mono border ${
+                            isCustom 
+                              ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' 
+                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                          }`}>
+                            {isCustom ? 'Custom' : 'Auto'}
+                          </span>
+                        </div>
+
+                        {/* 3. Full-Width Body Description */}
+                        <p className="text-[11px] text-slate-300/90 leading-relaxed pl-0.5">
+                          {m.desc}
+                        </p>
 
                         {/* Inline Time Editor */}
                         {isEditing && (
