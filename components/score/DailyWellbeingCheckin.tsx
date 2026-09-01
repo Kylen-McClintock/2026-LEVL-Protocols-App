@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { DailyWellbeingCheckin as WellbeingType, UserProfile, OutcomeDimension } from '@/lib/types'
 import { isFuture, isPast, isSameDay, format } from 'date-fns'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
-import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone } from 'lucide-react'
+import { getRecentOutcomeSnapshot } from '@/lib/utils/outcomeRecency'
+import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun } from 'lucide-react'
 import CustomizeCheckinOutcomesModal from '@/components/modals/CustomizeCheckinOutcomesModal'
 
 function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: string = '22:30'): number {
@@ -281,6 +282,11 @@ export default function DailyWellbeingCheckin({
   const [isNightlyEditing, setIsNightlyEditing] = useState(false)
   const [isNightlySaved, setIsNightlySaved] = useState(false)
 
+  // Daytime Anytime Check-in state (Between Morning & Nightly, 10 AM - 6 PM)
+  const [showDaytimeCard, setShowDaytimeCard] = useState(false)
+  const [daytimeTouchedOutcomes, setDaytimeTouchedOutcomes] = useState<Record<string, boolean>>({})
+  const [daytimeSavedToast, setDaytimeSavedToast] = useState(false)
+
   // Tracked Outcomes Modal state
   const [isOutcomesModalOpen, setIsOutcomesModalOpen] = useState(false)
   const [outcomesModalTitle, setOutcomesModalTitle] = useState("Customize Tracked Outcomes")
@@ -544,6 +550,35 @@ export default function DailyWellbeingCheckin({
     onSave(mood, energy, stress, subjectiveSleep, sleepScore === '' ? undefined : Number(sleepScore), combinedCustomOutcomes, lastFoodTime)
     setIsNightlySaved(true)
     setShowNightlyCard(false)
+  }
+
+  const handleDaytimeSave = () => {
+    const existingCustom = (initialData as any)?.custom_outcomes_jsonb || {}
+    const combinedCustomOutcomes: Record<string, any> = {
+      ...existingCustom,
+      ...customOutcomeValues
+    }
+
+    if (daytimeTouchedOutcomes.skin) combinedCustomOutcomes.skin_clarity = skinClarity
+    if (daytimeTouchedOutcomes.focus) combinedCustomOutcomes.focus_score = focusScore
+
+    const newMood = daytimeTouchedOutcomes.mood ? mood : (initialData?.mood_0_10 ?? mood)
+    const newEnergy = daytimeTouchedOutcomes.energy ? energy : (initialData?.energy_0_10 ?? energy)
+    const newStress = daytimeTouchedOutcomes.stress ? stress : (initialData?.stress_0_10 ?? stress)
+
+    onSave(
+      newMood, 
+      newEnergy, 
+      newStress, 
+      initialData?.subjective_sleep_0_10 ?? subjectiveSleep, 
+      initialData?.sleep_score_0_100 ?? (sleepScore === '' ? undefined : Number(sleepScore)), 
+      combinedCustomOutcomes, 
+      lastFoodTime
+    )
+
+    setDaytimeSavedToast(true)
+    setTimeout(() => setDaytimeSavedToast(false), 3000)
+    setShowDaytimeCard(false)
   }
 
   if (isFutureDate) {
@@ -857,6 +892,242 @@ export default function DailyWellbeingCheckin({
                 <span className="px-2 py-0.5 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-300 font-mono font-semibold">
                   🍷 {alcoholDrinks} drinks
                 </span>
+              )}
+            </div>
+          )}
+
+          {/* ☀️ DAYTIME ANYTIME CHECK-IN (Between Morning & Nightly, 10 AM - 6 PM) */}
+          {isCurrentDay && currentHour < 18 && (
+            <div className="pt-2.5 mt-2 border-t border-white/10">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Sun size={14} className="text-amber-400 shrink-0" />
+                  <span className="text-amber-300 font-bold text-xs truncate">
+                    Daytime Anytime Check-in
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {daytimeSavedToast && (
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30 animate-in fade-in">
+                      ✓ Snapshot Saved!
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowDaytimeCard(!showDaytimeCard)}
+                    className="text-[11px] font-semibold text-amber-300 hover:text-white bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                  >
+                    {showDaytimeCard ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    <span>{showDaytimeCard ? 'Close' : 'Log Snapshot'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {showDaytimeCard && (
+                <div className="space-y-3 pt-3 mt-2 border-t border-amber-500/20 animate-in fade-in">
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Sliders start at your last recorded value if logged within the past 2 hours. Tap any value pill to confirm without sliding:
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Daytime Mood Slider */}
+                    {(() => {
+                      const isTouched = daytimeTouchedOutcomes.mood
+                      const snap = getRecentOutcomeSnapshot('mood', initialData)
+                      const colorCfg = isTouched ? getOutcomeColorConfig(mood, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                      return (
+                        <div className="bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-1.5 text-xs">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-1">
+                              <span className="text-white font-bold">Current Mood</span>
+                              {snap.isRecent && !isTouched && (
+                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-mono">
+                                  {snap.timeAgoMinutes}m ago
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, mood: !prev.mood }))}
+                              className="flex items-center gap-1 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                              title="Click to confirm this value"
+                            >
+                              <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                                {isTouched ? colorCfg.qualityLabel : 'Unconfirmed'}
+                              </span>
+                              <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                                {mood}/10
+                              </span>
+                            </button>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="10" 
+                            value={mood} 
+                            onChange={(e) => {
+                              setMood(parseInt(e.target.value))
+                              setDaytimeTouchedOutcomes(prev => ({ ...prev, mood: true }))
+                            }} 
+                            className="w-full cursor-pointer accent-amber-400" 
+                          />
+                        </div>
+                      )
+                    })()}
+
+                    {/* Daytime Energy Slider */}
+                    {(() => {
+                      const isTouched = daytimeTouchedOutcomes.energy
+                      const snap = getRecentOutcomeSnapshot('energy', initialData)
+                      const colorCfg = isTouched ? getOutcomeColorConfig(energy, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                      return (
+                        <div className="bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-1.5 text-xs">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-1">
+                              <span className="text-white font-bold">Current Energy</span>
+                              {snap.isRecent && !isTouched && (
+                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-mono">
+                                  {snap.timeAgoMinutes}m ago
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, energy: !prev.energy }))}
+                              className="flex items-center gap-1 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                              title="Click to confirm this value"
+                            >
+                              <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                                {isTouched ? colorCfg.qualityLabel : 'Unconfirmed'}
+                              </span>
+                              <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                                {energy}/10
+                              </span>
+                            </button>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="10" 
+                            value={energy} 
+                            onChange={(e) => {
+                              setEnergy(parseInt(e.target.value))
+                              setDaytimeTouchedOutcomes(prev => ({ ...prev, energy: true }))
+                            }} 
+                            className="w-full cursor-pointer accent-amber-400" 
+                          />
+                        </div>
+                      )
+                    })()}
+
+                    {/* Daytime Stress Slider */}
+                    {(() => {
+                      const isTouched = daytimeTouchedOutcomes.stress
+                      const snap = getRecentOutcomeSnapshot('stress', initialData)
+                      const colorCfg = isTouched ? getOutcomeColorConfig(stress, 'lower_is_better') : getNeutralOutcomeColorConfig()
+                      return (
+                        <div className="bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-1.5 text-xs">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-1">
+                              <span className="text-white font-bold">Current Stress</span>
+                              {snap.isRecent && !isTouched && (
+                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-mono">
+                                  {snap.timeAgoMinutes}m ago
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, stress: !prev.stress }))}
+                              className="flex items-center gap-1 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                              title="Click to confirm this value"
+                            >
+                              <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                                {isTouched ? colorCfg.qualityLabel : 'Unconfirmed'}
+                              </span>
+                              <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                                {stress}/10
+                              </span>
+                            </button>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="10" 
+                            value={stress} 
+                            onChange={(e) => {
+                              setStress(parseInt(e.target.value))
+                              setDaytimeTouchedOutcomes(prev => ({ ...prev, stress: true }))
+                            }} 
+                            className="w-full cursor-pointer accent-amber-400" 
+                          />
+                        </div>
+                      )
+                    })()}
+
+                    {/* Daytime Focus Slider */}
+                    {(() => {
+                      const isTouched = daytimeTouchedOutcomes.focus
+                      const snap = getRecentOutcomeSnapshot('focus', initialData)
+                      const colorCfg = isTouched ? getOutcomeColorConfig(focusScore, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                      return (
+                        <div className="bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-1.5 text-xs">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-1">
+                              <span className="text-white font-bold">Mental Focus & Clarity</span>
+                              {snap.isRecent && !isTouched && (
+                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-mono">
+                                  {snap.timeAgoMinutes}m ago
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, focus: !prev.focus }))}
+                              className="flex items-center gap-1 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                              title="Click to confirm this value"
+                            >
+                              <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                                {isTouched ? colorCfg.qualityLabel : 'Unconfirmed'}
+                              </span>
+                              <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                                {focusScore}/10
+                              </span>
+                            </button>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="10" 
+                            value={focusScore} 
+                            onChange={(e) => {
+                              setFocusScore(parseInt(e.target.value))
+                              setDaytimeTouchedOutcomes(prev => ({ ...prev, focus: true }))
+                            }} 
+                            className="w-full cursor-pointer accent-amber-400" 
+                          />
+                        </div>
+                      )
+                    })()}
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowDaytimeCard(false)}
+                      className="px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDaytimeSave}
+                      className="px-3.5 py-1 rounded-lg text-xs font-black bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all shadow-md active:scale-95 cursor-pointer"
+                    >
+                      Save Daytime Snapshot
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -1294,17 +1565,32 @@ export default function DailyWellbeingCheckin({
                 {/* Mood Slider */}
                 {isMoodTracked && (() => {
                   const isTouched = touchedOutcomes['mood']
+                  const snap = getRecentOutcomeSnapshot('mood', initialData)
                   const colorCfg = isTouched ? getOutcomeColorConfig(mood, 'higher_is_better') : getNeutralOutcomeColorConfig()
                   return (
                     <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-white font-bold">{isNightly ? 'Overall Mood Today' : 'Morning Mood (Current)'}</span>
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
-                            {colorCfg.qualityLabel}
-                          </span>
-                          <span className={`font-mono font-bold text-xs ${colorCfg.textColor}`}>{mood}/10</span>
+                          <span className="text-white font-bold">{isNightly ? 'Overall Mood Today' : 'Morning Mood (Current)'}</span>
+                          {snap.isRecent && !isTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                              Recent ({snap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, mood: !prev.mood }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                          </span>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {mood}/10
+                          </span>
+                        </button>
                       </div>
                       <input 
                         type="range" 
@@ -1329,17 +1615,32 @@ export default function DailyWellbeingCheckin({
                 {/* Energy Slider */}
                 {isEnergyTracked && (() => {
                   const isTouched = touchedOutcomes['energy']
+                  const snap = getRecentOutcomeSnapshot('energy', initialData)
                   const colorCfg = isTouched ? getOutcomeColorConfig(energy, 'higher_is_better') : getNeutralOutcomeColorConfig()
                   return (
                     <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-white font-bold">{isNightly ? 'Overall Daily Energy' : 'Morning Readiness & Energy (Current)'}</span>
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
-                            {colorCfg.qualityLabel}
-                          </span>
-                          <span className={`font-mono font-bold text-xs ${colorCfg.textColor}`}>{energy}/10</span>
+                          <span className="text-white font-bold">{isNightly ? 'Overall Daily Energy' : 'Morning Readiness & Energy (Current)'}</span>
+                          {snap.isRecent && !isTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                              Recent ({snap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, energy: !prev.energy }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                          </span>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {energy}/10
+                          </span>
+                        </button>
                       </div>
                       <input 
                         type="range" 
@@ -1364,17 +1665,32 @@ export default function DailyWellbeingCheckin({
                 {/* Stress Slider (Lower is better!) */}
                 {isStressTracked && (() => {
                   const isTouched = touchedOutcomes['stress']
+                  const snap = getRecentOutcomeSnapshot('stress', initialData)
                   const colorCfg = isTouched ? getOutcomeColorConfig(stress, 'lower_is_better') : getNeutralOutcomeColorConfig()
                   return (
                     <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-white font-bold">{isNightly ? 'Overall Stress Today' : 'Current Morning Stress'}</span>
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
-                            {colorCfg.qualityLabel}
-                          </span>
-                          <span className={`font-mono font-bold text-xs ${colorCfg.textColor}`}>{stress}/10</span>
+                          <span className="text-white font-bold">{isNightly ? 'Overall Stress Today' : 'Current Morning Stress'}</span>
+                          {snap.isRecent && !isTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                              Recent ({snap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, stress: !prev.stress }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                          </span>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {stress}/10
+                          </span>
+                        </button>
                       </div>
                       <input 
                         type="range" 
@@ -1399,19 +1715,34 @@ export default function DailyWellbeingCheckin({
                 {/* Skin Clarity & Radiance Slider */}
                 {isSkinTracked && (() => {
                   const isTouched = touchedOutcomes['skin']
+                  const snap = getRecentOutcomeSnapshot('skin', initialData)
                   const colorCfg = isTouched ? getOutcomeColorConfig(skinClarity, 'higher_is_better') : getNeutralOutcomeColorConfig()
                   return (
                     <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-white font-bold flex items-center gap-1">
-                          ✨ Skin Clarity & Radiance
-                        </span>
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
-                            {colorCfg.qualityLabel}
+                          <span className="text-white font-bold flex items-center gap-1">
+                            ✨ Skin Clarity & Radiance
                           </span>
-                          <span className={`font-mono font-bold text-xs ${colorCfg.textColor}`}>{skinClarity}/10</span>
+                          {snap.isRecent && !isTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                              Recent ({snap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, skin: !prev.skin }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                          </span>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {skinClarity}/10
+                          </span>
+                        </button>
                       </div>
                       <input 
                         type="range" 
@@ -1436,19 +1767,34 @@ export default function DailyWellbeingCheckin({
                 {/* Mental Focus & Brain Fog Slider */}
                 {isFocusTracked && (() => {
                   const isTouched = touchedOutcomes['focus']
+                  const snap = getRecentOutcomeSnapshot('focus', initialData)
                   const colorCfg = isTouched ? getOutcomeColorConfig(focusScore, 'higher_is_better') : getNeutralOutcomeColorConfig()
                   return (
                     <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-white font-bold flex items-center gap-1">
-                          🧠 {isNightly ? 'Overall Focus & Mental Clarity Today' : 'Current Mental Focus & Clarity'}
-                        </span>
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
-                            {colorCfg.qualityLabel}
+                          <span className="text-white font-bold flex items-center gap-1">
+                            🧠 {isNightly ? 'Overall Focus & Mental Clarity Today' : 'Current Mental Focus & Clarity'}
                           </span>
-                          <span className={`font-mono font-bold text-xs ${colorCfg.textColor}`}>{focusScore}/10</span>
+                          {snap.isRecent && !isTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                              Recent ({snap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, focus: !prev.focus }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                          </span>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {focusScore}/10
+                          </span>
+                        </button>
                       </div>
                       <input 
                         type="range" 
@@ -1495,7 +1841,8 @@ export default function DailyWellbeingCheckin({
           {showOutcomesSection ? (
             <div className="space-y-4">
             {morningOutcomesToTrack.map(outcome => {
-              const val = customOutcomeValues[outcome.id] ?? 5
+              const snap = getRecentOutcomeSnapshot(outcome.id, initialData)
+              const val = customOutcomeValues[outcome.id] ?? (snap.isRecent ? snap.value : 5)
               const isTouched = touchedOutcomes[outcome.id]
               const colorCfg = isTouched ? getOutcomeColorConfig(val, outcome.directionality) : getNeutralOutcomeColorConfig()
               const isLowerBetter = outcome.directionality === 'lower_is_better'
@@ -1503,13 +1850,25 @@ export default function DailyWellbeingCheckin({
               return (
                 <div key={outcome.id} className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-white font-bold">{isNightly ? `Overall ${outcome.name} Today` : `Morning ${outcome.name}`}</span>
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
-                        {colorCfg.qualityLabel}
-                      </span>
-                      <span className={`font-mono font-bold text-xs ${colorCfg.textColor}`}>{val}/10</span>
+                      <span className="text-white font-bold">{isNightly ? `Overall ${outcome.name} Today` : `Morning ${outcome.name}`}</span>
+                      {snap.isRecent && !isTouched && (
+                        <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                          Recent ({snap.timeAgoMinutes}m ago)
+                        </span>
+                      )}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: !prev[outcome.id] }))}
+                      className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                      title="Click to confirm this value without sliding"
+                    >
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                        {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                      </span>
+                      <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>{val}/10</span>
+                    </button>
                   </div>
                   <input 
                     type="range" 
@@ -1746,12 +2105,25 @@ export default function DailyWellbeingCheckin({
                 <div className="bg-black/40 p-3 rounded-xl border border-white/10 space-y-1.5 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-white font-bold">Overall Mood Today</span>
-                    <span className="font-mono font-bold text-xs text-indigo-300">{mood}/10</span>
+                    <button
+                      type="button"
+                      onClick={() => setTouchedOutcomes(prev => ({ ...prev, mood: !prev.mood }))}
+                      className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                      title="Click to confirm this value without sliding"
+                    >
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${touchedOutcomes['mood'] ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                        {touchedOutcomes['mood'] ? 'Confirmed' : 'Unconfirmed (Tap)'}
+                      </span>
+                      <span className={`font-mono font-bold text-xs ${touchedOutcomes['mood'] ? 'text-indigo-300' : 'text-slate-400'}`}>{mood}/10</span>
+                    </button>
                   </div>
                   <input
                     type="range" min="0" max="10"
                     value={mood}
-                    onChange={(e) => setMood(parseInt(e.target.value))}
+                    onChange={(e) => {
+                      setMood(parseInt(e.target.value))
+                      setTouchedOutcomes(prev => ({ ...prev, mood: true }))
+                    }}
                     className="w-full accent-indigo-400 cursor-pointer"
                   />
                   <div className="flex justify-between text-[9px] text-gray-400">
@@ -1763,12 +2135,25 @@ export default function DailyWellbeingCheckin({
                 <div className="bg-black/40 p-3 rounded-xl border border-white/10 space-y-1.5 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-white font-bold">Overall Energy Today</span>
-                    <span className="font-mono font-bold text-xs text-indigo-300">{energy}/10</span>
+                    <button
+                      type="button"
+                      onClick={() => setTouchedOutcomes(prev => ({ ...prev, energy: !prev.energy }))}
+                      className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                      title="Click to confirm this value without sliding"
+                    >
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${touchedOutcomes['energy'] ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                        {touchedOutcomes['energy'] ? 'Confirmed' : 'Unconfirmed (Tap)'}
+                      </span>
+                      <span className={`font-mono font-bold text-xs ${touchedOutcomes['energy'] ? 'text-indigo-300' : 'text-slate-400'}`}>{energy}/10</span>
+                    </button>
                   </div>
                   <input
                     type="range" min="0" max="10"
                     value={energy}
-                    onChange={(e) => setEnergy(parseInt(e.target.value))}
+                    onChange={(e) => {
+                      setEnergy(parseInt(e.target.value))
+                      setTouchedOutcomes(prev => ({ ...prev, energy: true }))
+                    }}
                     className="w-full accent-indigo-400 cursor-pointer"
                   />
                   <div className="flex justify-between text-[9px] text-gray-400">
@@ -1780,12 +2165,25 @@ export default function DailyWellbeingCheckin({
                 <div className="bg-black/40 p-3 rounded-xl border border-white/10 space-y-1.5 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="text-white font-bold">Overall Stress Today</span>
-                    <span className="font-mono font-bold text-xs text-indigo-300">{stress}/10</span>
+                    <button
+                      type="button"
+                      onClick={() => setTouchedOutcomes(prev => ({ ...prev, stress: !prev.stress }))}
+                      className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                      title="Click to confirm this value without sliding"
+                    >
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${touchedOutcomes['stress'] ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                        {touchedOutcomes['stress'] ? 'Confirmed' : 'Unconfirmed (Tap)'}
+                      </span>
+                      <span className={`font-mono font-bold text-xs ${touchedOutcomes['stress'] ? 'text-indigo-300' : 'text-slate-400'}`}>{stress}/10</span>
+                    </button>
                   </div>
                   <input
                     type="range" min="0" max="10"
                     value={stress}
-                    onChange={(e) => setStress(parseInt(e.target.value))}
+                    onChange={(e) => {
+                      setStress(parseInt(e.target.value))
+                      setTouchedOutcomes(prev => ({ ...prev, stress: true }))
+                    }}
                     className="w-full accent-indigo-400 cursor-pointer"
                   />
                   <div className="flex justify-between text-[9px] text-gray-400">
@@ -1804,12 +2202,17 @@ export default function DailyWellbeingCheckin({
                     <div key={outcome.id} className="bg-black/40 p-3 rounded-xl border border-white/10 space-y-1.5 text-xs">
                       <div className="flex justify-between items-center">
                         <span className="text-white font-bold">Overall {outcome.name} Today</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
-                            {colorCfg.qualityLabel}
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: !prev[outcome.id] }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
                           </span>
-                          <span className={`font-mono font-bold text-xs ${colorCfg.textColor}`}>{val}/10</span>
-                        </div>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>{val}/10</span>
+                        </button>
                       </div>
                       <input 
                         type="range" min="0" max="10" 

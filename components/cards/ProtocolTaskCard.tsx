@@ -17,6 +17,7 @@ import { getModalityVideoInfo } from '@/lib/data/modalityVideos'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { UserBenchItem, OutcomeDimension, UserProfile } from '@/lib/types'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
+import { getRecentOutcomeSnapshot } from '@/lib/utils/outcomeRecency'
 import OutcomePill from '@/components/outcomes/OutcomePill'
 import StrengthExecutionLog from '../execution/StrengthExecutionLog'
 import FastingExecutionLog from '../execution/FastingExecutionLog'
@@ -2482,16 +2483,19 @@ export default function ProtocolTaskCard({
               {/* Sliders List */}
               <div className="space-y-4">
                 {visibleOutcomes.map(outcome => {
+                  const recentSnap = getRecentOutcomeSnapshot(outcome.id, null, (taskObs as any) || [])
+                  const recentDefault = recentSnap.isRecent ? recentSnap.value : 5
+
                   const preVal = inlinePreValues[outcome.id] ?? baselineOutcomesMap[outcome.id]
                   const postVal = inlinePostValues[outcome.id]
                   const baselineVal = baselineOutcomesMap[outcome.id] ?? inlinePreValues[outcome.id]
-                  const effectiveBaseline = baselineVal !== undefined ? baselineVal : 5
+                  const effectiveBaseline = baselineVal !== undefined ? baselineVal : recentDefault
 
                   const isPreTouched = touchedPreOutcomes[outcome.id] || baselineOutcomesMap[outcome.id] !== undefined
                   const isPostTouched = touchedPostOutcomes[outcome.id]
 
                   const isCurrentPhaseTouched = activeOutcomePhase === 'pre' ? isPreTouched : isPostTouched
-                  const currentVal = activeOutcomePhase === 'pre' ? (preVal ?? 5) : (postVal ?? baselineVal ?? 5)
+                  const currentVal = activeOutcomePhase === 'pre' ? (preVal ?? effectiveBaseline) : (postVal ?? effectiveBaseline)
 
                   const preColor = getOutcomeColorConfig(effectiveBaseline, outcome.directionality)
                   const postColor = getOutcomeColorConfig(currentVal, outcome.directionality)
@@ -2533,20 +2537,46 @@ export default function ProtocolTaskCard({
                             </div>
                           )}
 
+                          {recentSnap.isRecent && !isCurrentPhaseTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono font-medium">
+                              Recent ({recentSnap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
+
                           {userPriority && (
                             <span className="text-[9px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/40 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                               <Star size={9} fill="currentColor" /> {userPriority.label}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
-                            {isCurrentPhaseTouched ? colorCfg.qualityLabel : 'Unset'}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (activeOutcomePhase === 'pre') {
+                              const nextTouched = !touchedPreOutcomes[outcome.id]
+                              setTouchedPreOutcomes(prev => ({ ...prev, [outcome.id]: nextTouched }))
+                              if (nextTouched && inlinePreValues[outcome.id] === undefined) {
+                                setInlinePreValues(prev => ({ ...prev, [outcome.id]: currentVal }))
+                              }
+                            } else {
+                              const nextTouched = !touchedPostOutcomes[outcome.id]
+                              setTouchedPostOutcomes(prev => ({ ...prev, [outcome.id]: nextTouched }))
+                              if (nextTouched && inlinePostValues[outcome.id] === undefined) {
+                                setInlinePostValues(prev => ({ ...prev, [outcome.id]: currentVal }))
+                              }
+                            }
+                          }}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isCurrentPhaseTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isCurrentPhaseTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
                           </span>
-                          <span className={`font-mono font-bold text-xs ${colorCfg.textColor}`}>
-                            {isCurrentPhaseTouched ? `${currentVal}/10` : 'Unset'}
+                          <span className={`font-mono font-bold text-xs ${isCurrentPhaseTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {currentVal}/10
                           </span>
-                        </div>
+                        </button>
                       </div>
 
                       {/* Visual Gradient Track showing exact Pre to Post Outcome Shift (ONLY for pre-loggable outcomes) */}

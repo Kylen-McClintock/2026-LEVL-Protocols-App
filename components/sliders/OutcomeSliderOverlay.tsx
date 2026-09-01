@@ -113,12 +113,17 @@ export default function OutcomeSliderOverlay({ outcomes, modality, onSave, onClo
               <div key={outcome.id} className="space-y-2 bg-white/5 p-3.5 rounded-xl border border-white/5">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-white font-bold">{outcome.name}</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${colorCfg.badgeBg}`}>
-                      {colorCfg.qualityLabel}
+                  <button
+                    type="button"
+                    onClick={() => setTouched(prev => ({ ...prev, [outcome.id]: !prev[outcome.id] }))}
+                    className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                    title="Click to confirm this value without sliding"
+                  >
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                      {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
                     </span>
-                    <span className={`font-mono font-bold ${colorCfg.textColor}`}>{val}/10</span>
-                  </div>
+                    <span className={`font-mono font-bold ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>{val}/10</span>
+                  </button>
                 </div>
                 
                 <input 
