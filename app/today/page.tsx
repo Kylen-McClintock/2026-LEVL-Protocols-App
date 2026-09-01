@@ -481,6 +481,17 @@ function TodayPageContent() {
       const dose = completedTask?.loose_modality?.dose_or_exposure || completedTask?.protocol_step?.modality?.dose_or_exposure
       setCompletionToast({ id: baseId, name: modName, dose })
       setRecentlyCompletedIds(prev => new Set(prev).add(id).add(baseId))
+
+      // Green completed confirmation animation flashes on card for 0.5s, then task transitions to Completed Modalities
+      setTimeout(() => {
+        setRecentlyCompletedIds(prev => {
+          const next = new Set(prev)
+          next.delete(id)
+          next.delete(baseId)
+          return next
+        })
+      }, 500)
+
       setTimeout(() => {
         setCompletionToast(null)
       }, 4000)
@@ -1709,6 +1720,7 @@ function TodayPageContent() {
                           outcomesRefreshKey={outcomesRefreshKey}
                           onOpenRescheduleModal={handleOpenRescheduleModal}
                           completionMode={completionMode}
+                          isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
                         />
                       )
                     })}
@@ -1962,6 +1974,7 @@ function TodayPageContent() {
                       outcomesRefreshKey={outcomesRefreshKey}
                       onOpenRescheduleModal={handleOpenRescheduleModal}
                       completionMode={completionMode}
+                      isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
                     />
                   )
                 })}
