@@ -79,11 +79,11 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     timeRange: '8:00 AM – 11:30 AM',
     circadianPhase: 'High-Lux 480nm Light • Dopaminergic Focus',
     skyColorHex: '#38BDF8',
-    startColorHex: '#38BDF8',
+    startColorHex: '#F59E0B',
     endColorHex: '#0EA5E9',
-    gradientCSS: 'linear-gradient(to bottom, #38BDF8, #0EA5E9)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(56,189,248,0.3), rgba(14,165,233,0.25))',
-    accentGradient: 'from-sky-500/20 via-cyan-500/10 to-transparent',
+    gradientCSS: 'linear-gradient(to bottom, #F59E0B, #FBBF24, #38BDF8)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(245,158,11,0.3), rgba(56,189,248,0.25))',
+    accentGradient: 'from-amber-500/20 via-sky-500/10 to-transparent',
     icon: Zap,
     badgeBg: 'bg-sky-500/15',
     badgeBorder: 'border-sky-500/40',
@@ -99,11 +99,11 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     timeRange: '8:30 AM – 11:30 AM',
     circadianPhase: 'Fasted AM / Post-Breakfast Bioavailability',
     skyColorHex: '#0EA5E9',
-    startColorHex: '#38BDF8',
-    endColorHex: '#0EA5E9',
-    gradientCSS: 'linear-gradient(to bottom, #38BDF8, #0EA5E9)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(56,189,248,0.3), rgba(14,165,233,0.25))',
-    accentGradient: 'from-sky-500/20 via-cyan-500/10 to-transparent',
+    startColorHex: '#F59E0B',
+    endColorHex: '#0284C7',
+    gradientCSS: 'linear-gradient(to bottom, #F59E0B, #FBBF24, #0EA5E9)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(245,158,11,0.3), rgba(14,165,233,0.25))',
+    accentGradient: 'from-amber-500/20 via-sky-500/10 to-transparent',
     icon: Zap,
     badgeBg: 'bg-sky-500/15',
     badgeBorder: 'border-sky-500/40',
@@ -492,10 +492,17 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
     }
 
     if (i === 0) {
-      // First slot (e.g. Waking): starts with warm amber dawn, holds primary across ~98% of its zone
-      const startCol = cfg.startColorHex || primary
-      colorStops.push({ color: startCol, pct: 0 })
-      colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
+      // First slot: if waking, morning, or morning stack, guarantee warm golden sunrise dawn (#D97706 -> #F59E0B -> #FBBF24) into sky blue
+      if (['waking', 'morning_routine', 'morning', 'morning_supplement_stack', 'first_meal'].includes(cfg.key)) {
+        colorStops.push({ color: '#D97706', pct: 0 })
+        colorStops.push({ color: '#F59E0B', pct: Math.min(Number((endPct * 0.35).toFixed(1)), 8) })
+        colorStops.push({ color: '#FBBF24', pct: Math.min(Number((endPct * 0.7).toFixed(1)), 16) })
+        colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
+      } else {
+        const startCol = cfg.startColorHex || primary
+        colorStops.push({ color: startCol, pct: 0 })
+        colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
+      }
       if (seamBridgeColor) {
         colorStops.push({ color: seamBridgeColor, pct: Number(endPct.toFixed(1)) })
       }
@@ -504,12 +511,12 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
       colorStops.push({ color: primary, pct: Math.min(100, Number((startPct + 1.2).toFixed(1))) })
       colorStops.push({ color: cfg.endColorHex || primary, pct: 100 })
     } else {
-      // Middle slots (e.g. Morning Routine, Midday, Afternoon, Evening):
-      // For morning_routine: ensure warm sunrise gold flows smoothly into morning light sky blue
-      if (cfg.key === 'morning_routine') {
+      // Middle slots (e.g. Morning Routine, Morning Alertness, Midday, Afternoon, Evening):
+      // For morning slots: ensure warm sunrise gold flows smoothly into morning light sky blue
+      if (cfg.key === 'morning_routine' || cfg.key === 'morning' || cfg.key === 'morning_supplement_stack') {
         colorStops.push({ color: '#F59E0B', pct: Math.min(100, Number((startPct + 0.5).toFixed(1))) })
         colorStops.push({ color: '#FBBF24', pct: Math.round((startPct + endPct) / 2) })
-        colorStops.push({ color: '#38BDF8', pct: Math.max(0, Number((endPct - 0.5).toFixed(1))) })
+        colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 0.5).toFixed(1))) })
       } else {
         colorStops.push({ color: primary, pct: Math.min(100, Number((startPct + 1.2).toFixed(1))) })
         colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })

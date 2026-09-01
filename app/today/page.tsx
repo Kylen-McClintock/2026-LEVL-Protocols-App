@@ -1304,10 +1304,17 @@ function TodayPageContent() {
       }
 
       if (i === 0) {
-        // First slot (e.g. Waking): starts with warm amber dawn (#D97706), holds primary across ~98% of its zone
-        const startCol = cfg.startColorHex || primary
-        colorStops.push({ color: startCol, pct: 0 })
-        colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
+        // First slot: if waking, morning, or morning stack, guarantee warm golden sunrise dawn (#D97706 -> #F59E0B -> #FBBF24) into sky blue
+        if (['waking', 'morning_routine', 'morning', 'morning_supplement_stack', 'first_meal'].includes(cfg.key)) {
+          colorStops.push({ color: '#D97706', pct: 0 })
+          colorStops.push({ color: '#F59E0B', pct: Math.min(Number((bottomPct * 0.35).toFixed(1)), 8) })
+          colorStops.push({ color: '#FBBF24', pct: Math.min(Number((bottomPct * 0.7).toFixed(1)), 16) })
+          colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
+        } else {
+          const startCol = cfg.startColorHex || primary
+          colorStops.push({ color: startCol, pct: 0 })
+          colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
+        }
         if (seamBridgeColor) {
           colorStops.push({ color: seamBridgeColor, pct: Number(bottomPct.toFixed(1)) })
         }
@@ -1316,12 +1323,12 @@ function TodayPageContent() {
         colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 1.0).toFixed(1))) })
         colorStops.push({ color: cfg.endColorHex || primary, pct: 100 })
       } else {
-        // Middle slots:
-        if (cfg.key === 'morning_routine') {
-          // Warm sunrise gold into morning light sky blue
+        // Middle slots (e.g. Morning Routine, Morning Alertness, Midday, Afternoon, Evening):
+        // For morning slots: ensure warm sunrise gold flows smoothly into morning light sky blue
+        if (cfg.key === 'morning_routine' || cfg.key === 'morning' || cfg.key === 'morning_supplement_stack') {
           colorStops.push({ color: '#F59E0B', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
           colorStops.push({ color: '#FBBF24', pct: Math.round((topPct + bottomPct) / 2) })
-          colorStops.push({ color: '#38BDF8', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+          colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
         } else {
           // HOLDS 100% SOLID PRIMARY across its ENTIRE measured DOM height!
           // Only blends in a tiny 1.0% seam at the top and bottom edges
