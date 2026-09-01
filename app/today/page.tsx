@@ -78,8 +78,8 @@ const TIME_BLOCKS = [
   'evening',
   'evening_supplement_stack',
   'wind_down',
-  'bedtime',
   'pre_bed',
+  'bedtime',
   'anytime'
 ]
 
@@ -98,10 +98,11 @@ function getTimeBlockOrder(slot: string): number {
   if (s.includes('post_meal') || s.includes('postprandial') || s.includes('post meal') || s.includes('post-meal')) return 9
   if (s.includes('evening_supplement') || s.includes('dinner_stack') || s.includes('pm_stack') || s.includes('pm stack')) return 11
   if (s.includes('evening') || s.includes('dinner') || s.includes('dusk')) return 10
-  if (s.includes('wind_down') || s.includes('winddown')) return 12
-  if (s.includes('bed') || s.includes('night') || s.includes('sleep') || s.includes('pre_bed') || s.includes('pre-bed')) return 13
+  if (s.includes('wind_down') || s.includes('winddown') || s.includes('wind down')) return 12
+  if (s.includes('pre_bed') || s.includes('pre-bed')) return 13
+  if (s.includes('bed') || s.includes('night') || s.includes('sleep')) return 14
   if (s.includes('anytime')) return 20
-  return 15
+  return 16
 }
 
 
@@ -1597,11 +1598,11 @@ function TodayPageContent() {
         )
       }
 
-      // Default Chronological Time Blocks rendering with Circadian Sky Beacons & 3px Spine
+      // Default Chronological Time Blocks rendering with Circadian Sky Beacons
       const circadian = getCircadianConfig(groupName)
       const CircadianIcon = circadian.icon
       const isNow = isCurrentDay && isCurrentCircadianSlot(groupName)
-      const isIgnited = ignitedGroupKeys.has(groupName) || isNow
+      const isIgnited = ignitedGroupKeys.has(groupName)
 
       return (
         <div 
@@ -1609,32 +1610,19 @@ function TodayPageContent() {
           ref={(el) => { groupHeaderRefs.current[groupName] = el }}
           className="relative pl-3.5 sm:pl-4 space-y-3 group/circadian-block"
         >
-          {/* Individual 3px Circadian Spine Node (20% resting opacity, 100% full illumination when ignited) */}
-          <div 
-            className={`absolute -left-2 sm:-left-3 top-1 bottom-1 w-[3px] rounded-full transition-all duration-500 ${
-              isIgnited ? 'opacity-100' : 'opacity-20'
-            }`}
-            style={{ 
-              background: isIgnited ? circadian.gradientCSS : '#334155',
-              boxShadow: isIgnited 
-                ? (isNow ? `0 0 14px ${circadian.skyColorHex}` : `0 0 8px ${circadian.skyColorHex}70`)
-                : 'none'
-            }}
-          />
-
           <div className="flex items-center justify-between border-b border-white/10 pb-2.5 flex-wrap gap-2">
             <button
               type="button"
               onClick={() => toggleGroupCollapse(groupName, groupTasks)}
               className="flex items-center gap-3 text-left group cursor-pointer focus:outline-none"
             >
-              {/* Circadian Sky Beacon Icon (Fills with full 100% vibrant gradient and glow only when scroll reaches it) */}
+              {/* Circadian Sky Beacon Icon (20% resting opacity, fills with full 100% vibrant gradient and glow only when scroll reaches it) */}
               <div 
                 ref={(el) => { beaconRefs.current[groupName] = el }}
                 className={`w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all duration-500 ${
                   isIgnited 
                     ? `${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 opacity-100 ${isNow ? circadian.activeRing : ''}`
-                    : 'bg-slate-900/50 border-slate-800/80 text-slate-500/80 scale-95 opacity-50 shadow-none'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-500/70 scale-95 opacity-40 shadow-none'
                 }`}
                 style={{
                   background: isIgnited ? circadian.badgeGradientCSS : undefined,
