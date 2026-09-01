@@ -102,6 +102,37 @@ export function getRecentOutcomeSnapshot(
         candidateDateStr = rawUpdated || rawCreated || null
         candidateSource = rawUpdated ? 'anytime_checkin' : 'morning_checkin'
       }
+
+      // Check anytime check-in snapshots array if present
+      const customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
+      if (Array.isArray(customJSON._anytime_checkins) && customJSON._anytime_checkins.length > 0) {
+        customJSON._anytime_checkins.forEach((snap: any) => {
+          const snapTime = snap.timestamp ? new Date(snap.timestamp).getTime() : 0
+          if (snapTime > 0 && snapTime > candidateTimestamp) {
+            let snapVal: number | undefined = undefined
+            if (cleanId === 'mood' || cleanId.includes('mood')) {
+              snapVal = snap.mood
+            } else if (cleanId === 'energy' || cleanId.includes('energy') || cleanId.includes('readiness')) {
+              snapVal = snap.energy
+            } else if (cleanId === 'stress' || cleanId.includes('stress') || cleanId.includes('anxiety')) {
+              snapVal = snap.stress
+            } else if (cleanId === 'focus' || cleanId.includes('focus') || cleanId.includes('clarity')) {
+              snapVal = snap.focus ?? snap.focus_score
+            } else if (cleanId === 'skin' || cleanId.includes('skin')) {
+              snapVal = snap.skin ?? snap.skin_clarity
+            } else if (snap[cleanId] !== undefined && typeof snap[cleanId] === 'number') {
+              snapVal = snap[cleanId]
+            }
+
+            if (typeof snapVal === 'number') {
+              candidateVal = snapVal
+              candidateTimestamp = snapTime
+              candidateDateStr = snap.timestamp
+              candidateSource = 'anytime_checkin'
+            }
+          }
+        })
+      }
     }
   }
 

@@ -284,6 +284,12 @@ export default function DailyWellbeingCheckin({
 
   // Daytime Anytime Check-in state (Between Morning & Nightly, 10 AM - 6 PM)
   const [showDaytimeCard, setShowDaytimeCard] = useState(false)
+  const [daytimeMood, setDaytimeMood] = useState(5)
+  const [daytimeEnergy, setDaytimeEnergy] = useState(5)
+  const [daytimeStress, setDaytimeStress] = useState(5)
+  const [daytimeFocus, setDaytimeFocus] = useState(5)
+  const [daytimeSkin, setDaytimeSkin] = useState(5)
+  const [daytimeCustomValues, setDaytimeCustomValues] = useState<Record<string, number>>({})
   const [daytimeTouchedOutcomes, setDaytimeTouchedOutcomes] = useState<Record<string, boolean>>({})
   const [daytimeSavedToast, setDaytimeSavedToast] = useState(false)
 
@@ -460,6 +466,19 @@ export default function DailyWellbeingCheckin({
       })
       setTouchedOutcomes(touched)
 
+      // Initialize Daytime Snapshot values from recency without affecting morning baseline
+      const snapMood = getRecentOutcomeSnapshot('mood', initialData)
+      const snapEnergy = getRecentOutcomeSnapshot('energy', initialData)
+      const snapStress = getRecentOutcomeSnapshot('stress', initialData)
+      const snapFocus = getRecentOutcomeSnapshot('focus', initialData)
+      const snapSkin = getRecentOutcomeSnapshot('skin', initialData)
+
+      setDaytimeMood(snapMood.value)
+      setDaytimeEnergy(snapEnergy.value)
+      setDaytimeStress(snapStress.value)
+      setDaytimeFocus(snapFocus.value)
+      setDaytimeSkin(snapSkin.value)
+
       const hasMorningData = initialData.mood_0_10 != null || initialData.energy_0_10 != null || initialData.subjective_sleep_0_10 != null
       const savedBool = Boolean(hasMorningData)
       setIsSaved(savedBool)
@@ -554,22 +573,49 @@ export default function DailyWellbeingCheckin({
 
   const handleDaytimeSave = () => {
     const existingCustom = (initialData as any)?.custom_outcomes_jsonb || {}
-    const combinedCustomOutcomes: Record<string, any> = {
-      ...existingCustom,
-      ...customOutcomeValues
+    const existingAnytimeLogs = Array.isArray(existingCustom._anytime_checkins) ? [...existingCustom._anytime_checkins] : []
+    
+    const nowIso = new Date().toISOString()
+    const nowDisplay = format(new Date(), 'h:mm a')
+
+    const newSnapshot: Record<string, any> = {
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `anytime_${Date.now()}`,
+      timestamp: nowIso,
+      time_display: nowDisplay,
     }
 
-    if (daytimeTouchedOutcomes.skin) combinedCustomOutcomes.skin_clarity = skinClarity
-    if (daytimeTouchedOutcomes.focus) combinedCustomOutcomes.focus_score = focusScore
+    if (daytimeTouchedOutcomes.mood) newSnapshot.mood = daytimeMood
+    if (daytimeTouchedOutcomes.energy) newSnapshot.energy = daytimeEnergy
+    if (daytimeTouchedOutcomes.stress) newSnapshot.stress = daytimeStress
+    if (daytimeTouchedOutcomes.focus) newSnapshot.focus = daytimeFocus
+    if (daytimeTouchedOutcomes.skin) newSnapshot.skin = daytimeSkin
 
-    const newMood = daytimeTouchedOutcomes.mood ? mood : (initialData?.mood_0_10 ?? mood)
-    const newEnergy = daytimeTouchedOutcomes.energy ? energy : (initialData?.energy_0_10 ?? energy)
-    const newStress = daytimeTouchedOutcomes.stress ? stress : (initialData?.stress_0_10 ?? stress)
+    Object.entries(daytimeTouchedOutcomes).forEach(([key, isTouched]) => {
+      if (isTouched && !['mood', 'energy', 'stress', 'focus', 'skin'].includes(key)) {
+        newSnapshot[key] = daytimeCustomValues[key] ?? 5
+      }
+    })
 
+    existingAnytimeLogs.push(newSnapshot)
+
+    const combinedCustomOutcomes: Record<string, any> = {
+      ...existingCustom,
+      _anytime_checkins: existingAnytimeLogs,
+      latest_anytime_checkin: newSnapshot
+    }
+
+    if (daytimeTouchedOutcomes.skin) combinedCustomOutcomes.daytime_skin_clarity = daytimeSkin
+    if (daytimeTouchedOutcomes.focus) combinedCustomOutcomes.daytime_focus_score = daytimeFocus
+    if (daytimeTouchedOutcomes.mood) combinedCustomOutcomes.daytime_mood = daytimeMood
+    if (daytimeTouchedOutcomes.energy) combinedCustomOutcomes.daytime_energy = daytimeEnergy
+    if (daytimeTouchedOutcomes.stress) combinedCustomOutcomes.daytime_stress = daytimeStress
+
+    // CRITICAL: Preserve morning check-in values 100% intact!
+    // NEVER overwrite initialData.mood_0_10, energy_0_10, stress_0_10, subjective_sleep_0_10 with daytime values!
     onSave(
-      newMood, 
-      newEnergy, 
-      newStress, 
+      initialData?.mood_0_10 ?? mood, 
+      initialData?.energy_0_10 ?? energy, 
+      initialData?.stress_0_10 ?? stress, 
       initialData?.subjective_sleep_0_10 ?? subjectiveSleep, 
       initialData?.sleep_score_0_100 ?? (sleepScore === '' ? undefined : Number(sleepScore)), 
       combinedCustomOutcomes, 
@@ -897,240 +943,297 @@ export default function DailyWellbeingCheckin({
           )}
 
           {/* ☀️ DAYTIME ANYTIME CHECK-IN (Between Morning & Nightly, 10 AM - 6 PM) */}
-          {isCurrentDay && currentHour < 18 && (
-            <div className="pt-2.5 mt-2 border-t border-white/10">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Sun size={14} className="text-amber-400 shrink-0" />
-                  <span className="text-amber-300 font-bold text-xs truncate">
-                    Daytime Anytime Check-in
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {daytimeSavedToast && (
-                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30 animate-in fade-in">
-                      ✓ Snapshot Saved!
+          {isCurrentDay && currentHour < 18 && (() => {
+            const customJSON = (initialData as any)?.custom_outcomes_jsonb || {}
+            const anytimeLogs = Array.isArray(customJSON._anytime_checkins) ? customJSON._anytime_checkins : []
+
+            return (
+              <div className="pt-2.5 mt-2 border-t border-white/10 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Sun size={14} className="text-amber-400 shrink-0" />
+                    <span className="text-amber-300 font-bold text-xs truncate">
+                      Daytime Anytime Check-in
                     </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowDaytimeCard(!showDaytimeCard)}
-                    className="text-[11px] font-semibold text-amber-300 hover:text-white bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95"
-                  >
-                    {showDaytimeCard ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                    <span>{showDaytimeCard ? 'Close' : 'Log Snapshot'}</span>
-                  </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {daytimeSavedToast && (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30 animate-in fade-in">
+                        ✓ Snapshot Saved!
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowDaytimeCard(!showDaytimeCard)}
+                      className="text-[11px] font-semibold text-amber-300 hover:text-white bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                    >
+                      {showDaytimeCard ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      <span>{showDaytimeCard ? 'Close' : 'Log Snapshot'}</span>
+                    </button>
+                  </div>
                 </div>
+
+                {/* History of anytime snapshots logged today */}
+                {anytimeLogs.length > 0 && !showDaytimeCard && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <Clock size={10} className="text-amber-400" />
+                      <span>Today ({anytimeLogs.length}):</span>
+                    </span>
+                    {anytimeLogs.map((entry: any, idx: number) => (
+                      <span key={entry.id || idx} className="text-[10px] bg-slate-900 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300 font-mono flex items-center gap-1.5 shadow-sm">
+                        <span className="text-amber-400 font-bold">{entry.time_display || 'Snapshot'}</span>
+                        {entry.mood !== undefined && <span>Mood <strong className="text-white">{entry.mood}</strong></span>}
+                        {entry.energy !== undefined && <span>Energy <strong className="text-white">{entry.energy}</strong></span>}
+                        {entry.stress !== undefined && <span>Stress <strong className="text-white">{entry.stress}</strong></span>}
+                        {entry.focus !== undefined && <span>Focus <strong className="text-white">{entry.focus}</strong></span>}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {showDaytimeCard && (
+                  <div className="space-y-3 pt-3 mt-2 border-t border-amber-500/20 animate-in fade-in">
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Sliders start at your last recorded value if logged within the past 2 hours. Tap any value pill to confirm without sliding:
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* Daytime Mood Slider */}
+                      {(() => {
+                        const isTouched = daytimeTouchedOutcomes.mood
+                        const snap = getRecentOutcomeSnapshot('mood', initialData)
+                        const colorCfg = isTouched ? getOutcomeColorConfig(daytimeMood, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                        return (
+                          <div 
+                            className={`p-3 rounded-xl border space-y-2 transition-all ${isTouched ? colorCfg.borderColor : 'border-white/10'}`}
+                            style={{ backgroundColor: isTouched ? `${colorCfg.accentHex}12` : 'rgba(0,0,0,0.4)' }}
+                          >
+                            <div className="flex justify-between items-center text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-white font-bold">Current Mood</span>
+                                {snap.isRecent && !isTouched && (
+                                  <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+                                    Recent ({snap.timeAgoMinutes}m ago)
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, mood: !prev.mood }))}
+                                className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                                title="Click to confirm this value without sliding"
+                              >
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                                  {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                                </span>
+                                <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                                  {daytimeMood}/10
+                                </span>
+                              </button>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="0" 
+                              max="10" 
+                              value={daytimeMood} 
+                              onChange={(e) => {
+                                setDaytimeMood(parseInt(e.target.value))
+                                setDaytimeTouchedOutcomes(prev => ({ ...prev, mood: true }))
+                              }} 
+                              className="w-full cursor-pointer" 
+                              style={{ accentColor: colorCfg.accentHex }}
+                            />
+                            <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
+                              <span className="text-red-400">0: Low / Down</span>
+                              <span className="text-emerald-400">10: High / Great</span>
+                            </div>
+                          </div>
+                        )
+                      })()}
+
+                      {/* Daytime Energy Slider */}
+                      {(() => {
+                        const isTouched = daytimeTouchedOutcomes.energy
+                        const snap = getRecentOutcomeSnapshot('energy', initialData)
+                        const colorCfg = isTouched ? getOutcomeColorConfig(daytimeEnergy, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                        return (
+                          <div 
+                            className={`p-3 rounded-xl border space-y-2 transition-all ${isTouched ? colorCfg.borderColor : 'border-white/10'}`}
+                            style={{ backgroundColor: isTouched ? `${colorCfg.accentHex}12` : 'rgba(0,0,0,0.4)' }}
+                          >
+                            <div className="flex justify-between items-center text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-white font-bold">Current Energy</span>
+                                {snap.isRecent && !isTouched && (
+                                  <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+                                    Recent ({snap.timeAgoMinutes}m ago)
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, energy: !prev.energy }))}
+                                className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                                title="Click to confirm this value without sliding"
+                              >
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                                  {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                                </span>
+                                <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                                  {daytimeEnergy}/10
+                                </span>
+                              </button>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="0" 
+                              max="10" 
+                              value={daytimeEnergy} 
+                              onChange={(e) => {
+                                setDaytimeEnergy(parseInt(e.target.value))
+                                setDaytimeTouchedOutcomes(prev => ({ ...prev, energy: true }))
+                              }} 
+                              className="w-full cursor-pointer" 
+                              style={{ accentColor: colorCfg.accentHex }}
+                            />
+                            <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
+                              <span className="text-red-400">0: Low / Lethargic</span>
+                              <span className="text-emerald-400">10: Peak / Energized</span>
+                            </div>
+                          </div>
+                        )
+                      })()}
+
+                      {/* Daytime Stress Slider */}
+                      {(() => {
+                        const isTouched = daytimeTouchedOutcomes.stress
+                        const snap = getRecentOutcomeSnapshot('stress', initialData)
+                        const colorCfg = isTouched ? getOutcomeColorConfig(daytimeStress, 'lower_is_better') : getNeutralOutcomeColorConfig()
+                        return (
+                          <div 
+                            className={`p-3 rounded-xl border space-y-2 transition-all ${isTouched ? colorCfg.borderColor : 'border-white/10'}`}
+                            style={{ backgroundColor: isTouched ? `${colorCfg.accentHex}12` : 'rgba(0,0,0,0.4)' }}
+                          >
+                            <div className="flex justify-between items-center text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-white font-bold">Current Stress</span>
+                                {snap.isRecent && !isTouched && (
+                                  <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+                                    Recent ({snap.timeAgoMinutes}m ago)
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, stress: !prev.stress }))}
+                                className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                                title="Click to confirm this value without sliding"
+                              >
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                                  {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                                </span>
+                                <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                                  {daytimeStress}/10
+                                </span>
+                              </button>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="0" 
+                              max="10" 
+                              value={daytimeStress} 
+                              onChange={(e) => {
+                                setDaytimeStress(parseInt(e.target.value))
+                                setDaytimeTouchedOutcomes(prev => ({ ...prev, stress: true }))
+                              }} 
+                              className="w-full cursor-pointer" 
+                              style={{ accentColor: colorCfg.accentHex }}
+                            />
+                            <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
+                              <span className="text-emerald-400">0: Best (Calm / None)</span>
+                              <span className="text-red-400">10: Worst (High / Severe)</span>
+                            </div>
+                          </div>
+                        )
+                      })()}
+
+                      {/* Daytime Focus Slider */}
+                      {(() => {
+                        const isTouched = daytimeTouchedOutcomes.focus
+                        const snap = getRecentOutcomeSnapshot('focus', initialData)
+                        const colorCfg = isTouched ? getOutcomeColorConfig(daytimeFocus, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                        return (
+                          <div 
+                            className={`p-3 rounded-xl border space-y-2 transition-all ${isTouched ? colorCfg.borderColor : 'border-white/10'}`}
+                            style={{ backgroundColor: isTouched ? `${colorCfg.accentHex}12` : 'rgba(0,0,0,0.4)' }}
+                          >
+                            <div className="flex justify-between items-center text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-white font-bold">Mental Focus & Clarity</span>
+                                {snap.isRecent && !isTouched && (
+                                  <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
+                                    Recent ({snap.timeAgoMinutes}m ago)
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, focus: !prev.focus }))}
+                                className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                                title="Click to confirm this value without sliding"
+                              >
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                                  {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                                </span>
+                                <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                                  {daytimeFocus}/10
+                                </span>
+                              </button>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="0" 
+                              max="10" 
+                              value={daytimeFocus} 
+                              onChange={(e) => {
+                                setDaytimeFocus(parseInt(e.target.value))
+                                setDaytimeTouchedOutcomes(prev => ({ ...prev, focus: true }))
+                              }} 
+                              className="w-full cursor-pointer" 
+                              style={{ accentColor: colorCfg.accentHex }}
+                            />
+                            <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
+                              <span className="text-red-400">0: Brain Fog / Low</span>
+                              <span className="text-emerald-400">10: Laser Sharp / Peak</span>
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowDaytimeCard(false)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDaytimeSave}
+                        className="px-4 py-1.5 rounded-lg text-xs font-black bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Sun size={13} />
+                        <span>Save Daytime Snapshot</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {showDaytimeCard && (
-                <div className="space-y-3 pt-3 mt-2 border-t border-amber-500/20 animate-in fade-in">
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Sliders start at your last recorded value if logged within the past 2 hours. Tap any value pill to confirm without sliding:
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {/* Daytime Mood Slider */}
-                    {(() => {
-                      const isTouched = daytimeTouchedOutcomes.mood
-                      const snap = getRecentOutcomeSnapshot('mood', initialData)
-                      const colorCfg = isTouched ? getOutcomeColorConfig(mood, 'higher_is_better') : getNeutralOutcomeColorConfig()
-                      return (
-                        <div className="bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-1.5 text-xs">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-1">
-                              <span className="text-white font-bold">Current Mood</span>
-                              {snap.isRecent && !isTouched && (
-                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-mono">
-                                  {snap.timeAgoMinutes}m ago
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, mood: !prev.mood }))}
-                              className="flex items-center gap-1 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                              title="Click to confirm this value"
-                            >
-                              <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                                {isTouched ? colorCfg.qualityLabel : 'Unconfirmed'}
-                              </span>
-                              <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                                {mood}/10
-                              </span>
-                            </button>
-                          </div>
-                          <input 
-                            type="range" 
-                            min="0" 
-                            max="10" 
-                            value={mood} 
-                            onChange={(e) => {
-                              setMood(parseInt(e.target.value))
-                              setDaytimeTouchedOutcomes(prev => ({ ...prev, mood: true }))
-                            }} 
-                            className="w-full cursor-pointer accent-amber-400" 
-                          />
-                        </div>
-                      )
-                    })()}
-
-                    {/* Daytime Energy Slider */}
-                    {(() => {
-                      const isTouched = daytimeTouchedOutcomes.energy
-                      const snap = getRecentOutcomeSnapshot('energy', initialData)
-                      const colorCfg = isTouched ? getOutcomeColorConfig(energy, 'higher_is_better') : getNeutralOutcomeColorConfig()
-                      return (
-                        <div className="bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-1.5 text-xs">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-1">
-                              <span className="text-white font-bold">Current Energy</span>
-                              {snap.isRecent && !isTouched && (
-                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-mono">
-                                  {snap.timeAgoMinutes}m ago
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, energy: !prev.energy }))}
-                              className="flex items-center gap-1 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                              title="Click to confirm this value"
-                            >
-                              <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                                {isTouched ? colorCfg.qualityLabel : 'Unconfirmed'}
-                              </span>
-                              <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                                {energy}/10
-                              </span>
-                            </button>
-                          </div>
-                          <input 
-                            type="range" 
-                            min="0" 
-                            max="10" 
-                            value={energy} 
-                            onChange={(e) => {
-                              setEnergy(parseInt(e.target.value))
-                              setDaytimeTouchedOutcomes(prev => ({ ...prev, energy: true }))
-                            }} 
-                            className="w-full cursor-pointer accent-amber-400" 
-                          />
-                        </div>
-                      )
-                    })()}
-
-                    {/* Daytime Stress Slider */}
-                    {(() => {
-                      const isTouched = daytimeTouchedOutcomes.stress
-                      const snap = getRecentOutcomeSnapshot('stress', initialData)
-                      const colorCfg = isTouched ? getOutcomeColorConfig(stress, 'lower_is_better') : getNeutralOutcomeColorConfig()
-                      return (
-                        <div className="bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-1.5 text-xs">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-1">
-                              <span className="text-white font-bold">Current Stress</span>
-                              {snap.isRecent && !isTouched && (
-                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-mono">
-                                  {snap.timeAgoMinutes}m ago
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, stress: !prev.stress }))}
-                              className="flex items-center gap-1 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                              title="Click to confirm this value"
-                            >
-                              <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                                {isTouched ? colorCfg.qualityLabel : 'Unconfirmed'}
-                              </span>
-                              <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                                {stress}/10
-                              </span>
-                            </button>
-                          </div>
-                          <input 
-                            type="range" 
-                            min="0" 
-                            max="10" 
-                            value={stress} 
-                            onChange={(e) => {
-                              setStress(parseInt(e.target.value))
-                              setDaytimeTouchedOutcomes(prev => ({ ...prev, stress: true }))
-                            }} 
-                            className="w-full cursor-pointer accent-amber-400" 
-                          />
-                        </div>
-                      )
-                    })()}
-
-                    {/* Daytime Focus Slider */}
-                    {(() => {
-                      const isTouched = daytimeTouchedOutcomes.focus
-                      const snap = getRecentOutcomeSnapshot('focus', initialData)
-                      const colorCfg = isTouched ? getOutcomeColorConfig(focusScore, 'higher_is_better') : getNeutralOutcomeColorConfig()
-                      return (
-                        <div className="bg-black/40 p-2.5 rounded-xl border border-white/10 space-y-1.5 text-xs">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-1">
-                              <span className="text-white font-bold">Mental Focus & Clarity</span>
-                              {snap.isRecent && !isTouched && (
-                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1 py-0.2 rounded font-mono">
-                                  {snap.timeAgoMinutes}m ago
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, focus: !prev.focus }))}
-                              className="flex items-center gap-1 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                              title="Click to confirm this value"
-                            >
-                              <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                                {isTouched ? colorCfg.qualityLabel : 'Unconfirmed'}
-                              </span>
-                              <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                                {focusScore}/10
-                              </span>
-                            </button>
-                          </div>
-                          <input 
-                            type="range" 
-                            min="0" 
-                            max="10" 
-                            value={focusScore} 
-                            onChange={(e) => {
-                              setFocusScore(parseInt(e.target.value))
-                              setDaytimeTouchedOutcomes(prev => ({ ...prev, focus: true }))
-                            }} 
-                            className="w-full cursor-pointer accent-amber-400" 
-                          />
-                        </div>
-                      )
-                    })()}
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setShowDaytimeCard(false)}
-                      className="px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDaytimeSave}
-                      className="px-3.5 py-1 rounded-lg text-xs font-black bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all shadow-md active:scale-95 cursor-pointer"
-                    >
-                      Save Daytime Snapshot
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            )
+          })()}
         </div>
       ) : (
         <div className="glass-card p-4 rounded-xl mb-6 space-y-6 border border-levl-accent/20">
