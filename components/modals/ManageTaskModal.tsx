@@ -66,17 +66,21 @@ const formatSlotName = (str: string) => {
 }
 
 const TIME_BLOCKS = [
+  'waking',
+  'morning_routine',
   'morning',
   'morning_supplement_stack',
   'first_meal',
   'midday',
-  'pre_workout_stack',
+  'midday_stack',
   'afternoon',
-  'post_workout_stack',
-  'with_meal',
+  'late_afternoon',
+  'post_meal',
   'evening',
   'evening_supplement_stack',
+  'wind_down',
   'pre_bed',
+  'bedtime',
   'anytime'
 ]
 

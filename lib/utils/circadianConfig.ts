@@ -175,9 +175,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
   },
   afternoon: {
     key: 'afternoon',
-    label: 'Afternoon Workout & Peak',
+    label: 'Afternoon / Workout',
     timeRange: '2:00 PM – 5:30 PM',
-    circadianPhase: 'Deep Daylight Sky • Peak Muscle Performance & VO2',
+    circadianPhase: 'Deep Daylight Sky',
     skyColorHex: '#5B9BD5',
     startColorHex: '#3B82F6',
     endColorHex: '#5B9BD5',
@@ -195,9 +195,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
   },
   late_afternoon: {
     key: 'late_afternoon',
-    label: 'Late Afternoon & Pre-Sunset',
+    label: 'Late Afternoon',
     timeRange: '3:30 PM – 5:30 PM',
-    circadianPhase: 'Pre-Sunset Lavender Sky • Core Temperature Peak',
+    circadianPhase: 'Late Afternoon Sky',
     skyColorHex: '#9D9EC9',
     startColorHex: '#5B9BD5',
     endColorHex: '#9D9EC9',
@@ -215,41 +215,41 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
   },
   post_meal: {
     key: 'post_meal',
-    label: 'Post-Meal Window',
+    label: 'Post-Meal',
     timeRange: '5:00 PM – 7:30 PM',
-    circadianPhase: 'Golden Hour Sunset & Twilight Rose • Postprandial Glucose Walk & Thermal Drop',
-    skyColorHex: '#F7C275',
-    startColorHex: '#E2B4AA',
-    endColorHex: '#F7C275',
-    gradientCSS: 'linear-gradient(to bottom, #9D9EC9, #E2B4AA, #F7C275)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(226,180,170,0.35), rgba(247,194,117,0.3))',
-    accentGradient: 'from-amber-500/20 via-orange-400/10 to-transparent',
+    circadianPhase: 'Post-Meal Window',
+    skyColorHex: '#F87E38',
+    startColorHex: '#9D9EC9',
+    endColorHex: '#F87E38',
+    gradientCSS: 'linear-gradient(to bottom, #9D9EC9, #F87E38)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(248,126,56,0.35), rgba(240,106,66,0.3))',
+    accentGradient: 'from-orange-500/20 via-amber-400/10 to-transparent',
     icon: Sunset,
-    badgeBg: 'bg-amber-500/15',
-    badgeBorder: 'border-amber-400/40',
-    badgeText: 'text-amber-200',
-    glowShadow: 'shadow-[0_0_16px_rgba(247,194,117,0.5)]',
-    activeRing: 'ring-2 ring-amber-300 ring-offset-2 ring-offset-slate-950',
+    badgeBg: 'bg-orange-500/15',
+    badgeBorder: 'border-orange-400/40',
+    badgeText: 'text-orange-200',
+    glowShadow: 'shadow-[0_0_16px_rgba(248,126,56,0.5)]',
+    activeRing: 'ring-2 ring-orange-300 ring-offset-2 ring-offset-slate-950',
     startHour: 17,
     endHour: 20
   },
   evening: {
     key: 'evening',
-    label: 'Evening & Dinner',
+    label: 'Evening / Sunset',
     timeRange: '5:30 PM – 8:30 PM',
-    circadianPhase: 'Vibrant Sunset Horizon & Persimmon Sky • Blue Light Moderation',
-    skyColorHex: '#F88A20',
-    startColorHex: '#F7C275',
-    endColorHex: '#EA580C',
-    gradientCSS: 'linear-gradient(to bottom, #E2B4AA, #F7C275, #F88A20, #EA580C)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(247,194,117,0.35), rgba(248,138,32,0.35))',
-    accentGradient: 'from-orange-500/25 via-pink-500/15 to-transparent',
+    circadianPhase: 'Evening & Sunset',
+    skyColorHex: '#DF5558',
+    startColorHex: '#F87E38',
+    endColorHex: '#DF5558',
+    gradientCSS: 'linear-gradient(to bottom, #F87E38, #DF5558)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(248,126,56,0.35), rgba(223,85,88,0.35))',
+    accentGradient: 'from-rose-500/25 via-pink-500/15 to-transparent',
     icon: Sunset,
-    badgeBg: 'bg-orange-500/15',
-    badgeBorder: 'border-orange-400/50',
-    badgeText: 'text-orange-200',
-    glowShadow: 'shadow-[0_0_20px_rgba(248,138,32,0.55)]',
-    activeRing: 'ring-2 ring-orange-400 ring-offset-2 ring-offset-slate-950',
+    badgeBg: 'bg-rose-500/15',
+    badgeBorder: 'border-rose-400/50',
+    badgeText: 'text-rose-200',
+    glowShadow: 'shadow-[0_0_20px_rgba(223,85,88,0.55)]',
+    activeRing: 'ring-2 ring-rose-400 ring-offset-2 ring-offset-slate-950',
     startHour: 17,
     endHour: 20
   },
@@ -257,78 +257,78 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     key: 'evening_supplement_stack',
     label: 'Evening Stack',
     timeRange: '7:30 PM – 9:30 PM',
-    circadianPhase: 'Melatonin Synthesis & Cortisol Suppression',
-    skyColorHex: '#EC4899',
-    startColorHex: '#F88A20',
-    endColorHex: '#EC4899',
-    gradientCSS: 'linear-gradient(to bottom, #F88A20, #EC4899, #8B5CF6)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(248,138,32,0.3), rgba(236,72,153,0.25))',
+    circadianPhase: 'Evening Stack',
+    skyColorHex: '#A52D6A',
+    startColorHex: '#DF5558',
+    endColorHex: '#A52D6A',
+    gradientCSS: 'linear-gradient(to bottom, #DF5558, #A52D6A)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(223,85,88,0.3), rgba(165,45,106,0.3))',
     accentGradient: 'from-pink-500/20 via-purple-500/10 to-transparent',
     icon: Moon,
     badgeBg: 'bg-pink-500/15',
     badgeBorder: 'border-pink-400/40',
     badgeText: 'text-pink-300',
-    glowShadow: 'shadow-[0_0_16px_rgba(236,72,153,0.45)]',
+    glowShadow: 'shadow-[0_0_16px_rgba(165,45,106,0.45)]',
     activeRing: 'ring-2 ring-pink-400 ring-offset-2 ring-offset-slate-950',
     startHour: 19,
     endHour: 21
   },
   wind_down: {
     key: 'wind_down',
-    label: 'Evening Wind-Down',
+    label: 'Wind Down',
     timeRange: '8:30 PM – 10:30 PM',
-    circadianPhase: 'Twilight Violet & Indigo • Parasympathetic Tone & Screen Cutoff',
-    skyColorHex: '#8B5CF6',
-    startColorHex: '#8B5CF6',
-    endColorHex: '#6366F1',
-    gradientCSS: 'linear-gradient(to bottom, #EC4899, #8B5CF6, #6366F1)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(139,92,246,0.35), rgba(99,102,241,0.25))',
+    circadianPhase: 'Evening Wind-Down',
+    skyColorHex: '#50236B',
+    startColorHex: '#A52D6A',
+    endColorHex: '#50236B',
+    gradientCSS: 'linear-gradient(to bottom, #A52D6A, #50236B)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(165,45,106,0.35), rgba(80,35,107,0.35))',
     accentGradient: 'from-purple-500/20 via-indigo-600/10 to-transparent',
     icon: Moon,
     badgeBg: 'bg-purple-500/15',
     badgeBorder: 'border-purple-500/40',
-    badgeText: 'text-indigo-300',
-    glowShadow: 'shadow-[0_0_16px_rgba(139,92,246,0.45)]',
+    badgeText: 'text-purple-200',
+    glowShadow: 'shadow-[0_0_16px_rgba(80,35,107,0.55)]',
     activeRing: 'ring-2 ring-purple-400 ring-offset-2 ring-offset-slate-950',
     startHour: 20,
     endHour: 22
   },
   pre_bed: {
     key: 'pre_bed',
-    label: 'Pre-Bed Preparation',
+    label: 'Pre-Bed',
     timeRange: '9:30 PM – 11:00 PM',
-    circadianPhase: 'Deep Twilight • Sleep Architecture Priming',
-    skyColorHex: '#6366F1',
-    startColorHex: '#8B5CF6',
-    endColorHex: '#4F46E5',
-    gradientCSS: 'linear-gradient(to bottom, #8B5CF6, #6366F1, #4F46E5)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(99,102,241,0.35), rgba(79,70,229,0.4))',
+    circadianPhase: 'Pre-Bed Preparation',
+    skyColorHex: '#231A45',
+    startColorHex: '#50236B',
+    endColorHex: '#231A45',
+    gradientCSS: 'linear-gradient(to bottom, #50236B, #231A45)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(80,35,107,0.4), rgba(35,26,69,0.5))',
     accentGradient: 'from-indigo-600/25 via-blue-900/40 to-transparent',
     icon: MoonStar,
     badgeBg: 'bg-indigo-900/30',
     badgeBorder: 'border-indigo-500/40',
     badgeText: 'text-indigo-200',
-    glowShadow: 'shadow-[0_0_20px_rgba(79,70,229,0.5)]',
+    glowShadow: 'shadow-[0_0_20px_rgba(35,26,69,0.7)]',
     activeRing: 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-950',
     startHour: 21,
     endHour: 23
   },
   bedtime: {
     key: 'bedtime',
-    label: 'Bedtime & Sleep',
+    label: 'Bedtime / Overnight',
     timeRange: '10:00 PM – 5:30 AM',
-    circadianPhase: 'Deep Midnight Starlit Abyss • Glymphatic Cleansing & Recovery',
-    skyColorHex: '#1E3A8A',
-    startColorHex: '#6366F1',
+    circadianPhase: 'Bedtime & Overnight',
+    skyColorHex: '#1B1536',
+    startColorHex: '#231A45',
     endColorHex: '#0B132B',
-    gradientCSS: 'linear-gradient(to bottom, #6366F1, #1E3A8A, #172554, #0B132B)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(30,58,138,0.5), rgba(11,19,43,0.7))',
+    gradientCSS: 'linear-gradient(to bottom, #231A45, #1B1536, #0B132B)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(35,26,69,0.5), rgba(11,19,43,0.8))',
     accentGradient: 'from-blue-900/30 via-indigo-950/50 to-transparent',
     icon: MoonStar,
     badgeBg: 'bg-blue-950/70',
     badgeBorder: 'border-blue-700/60',
     badgeText: 'text-blue-300',
-    glowShadow: 'shadow-[0_0_20px_rgba(30,58,138,0.8)]',
+    glowShadow: 'shadow-[0_0_20px_rgba(27,21,54,0.8)]',
     activeRing: 'ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-950',
     startHour: 22,
     endHour: 5
@@ -441,7 +441,7 @@ export function isCurrentCircadianSlot(slotName: string, currentHour?: number): 
  */
 export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   if (!slotKeys || slotKeys.length === 0) {
-    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 8%, #FBBF24 16%, #38BDF8 26%, #0284C7 38%, #5B9BD5 50%, #9D9EC9 62%, #E2B4AA 72%, #F7C275 80%, #F88A20 87%, #EC4899 92%, #8B5CF6 95%, #6366F1 98%, #1E3A8A 100%)'
+    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 8%, #FBBF24 16%, #38BDF8 26%, #0284C7 38%, #5B9BD5 50%, #9D9EC9 60%, #F87E38 70%, #DF5558 78%, #A52D6A 86%, #50236B 92%, #231A45 96%, #1B1536 98%, #0B132B 100%)'
   }
   if (slotKeys.length === 1) {
     return getCircadianConfig(slotKeys[0]).gradientCSS
@@ -460,13 +460,13 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   // Helper to check if color is in the orange/amber sunset family
   const isOrangeFamily = (hex: string) => {
     const h = hex.toLowerCase()
-    return h === '#f97316' || h === '#ea580c' || h === '#f88a20' || h === '#f7c275' || h === '#f59e0b' || h === '#d97706' || h === '#fbbf24'
+    return h === '#f97316' || h === '#ea580c' || h === '#f87e38' || h === '#f88a20' || h === '#f7c275' || h === '#f59e0b' || h === '#d97706' || h === '#fbbf24'
   }
 
-  // Helper to check if color is dark blue
+  // Helper to check if color is dark blue/violet
   const isDarkBlueFamily = (hex: string) => {
     const h = hex.toLowerCase()
-    return h === '#172554' || h === '#1e3a8a' || h === '#0f172a' || h === '#0b132b' || h === '#1d4ed8' || h === '#1e40af' || h === '#2563eb' || h === '#1e1b4b'
+    return h === '#172554' || h === '#1e3a8a' || h === '#0f172a' || h === '#0b132b' || h === '#1d4ed8' || h === '#1e40af' || h === '#2563eb' || h === '#1e1b4b' || h === '#231a45' || h === '#1b1536'
   }
 
   slotKeys.forEach((key, i) => {
@@ -498,21 +498,22 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
         colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
       }
     } else if (cfg.key === 'post_meal') {
-      // Post-meal golden hour sunset: rich transition from Twilight Rose (#E2B4AA) to Golden Apricot (#F7C275)
-      colorStops.push({ color: '#E2B4AA', pct: Math.min(100, Number((startPct + 1.0).toFixed(1))) })
-      colorStops.push({ color: '#F7C275', pct: Math.max(0, Number((endPct - 1.0).toFixed(1))) })
+      colorStops.push({ color: '#F87E38', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
+      colorStops.push({ color: '#F87E38', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
     } else if (cfg.key === 'evening') {
-      // Evening vibrant sunset horizon: Golden Apricot (#F7C275) -> Vivid Sunset Orange (#F88A20) -> Persimmon (#EA580C)
-      colorStops.push({ color: '#F7C275', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
-      colorStops.push({ color: '#F88A20', pct: Number(((startPct + endPct) / 2).toFixed(1)) })
-      colorStops.push({ color: '#EA580C', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
+      colorStops.push({ color: '#DF5558', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
+      colorStops.push({ color: '#DF5558', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
+    } else if (cfg.key === 'evening_supplement_stack') {
+      colorStops.push({ color: '#A52D6A', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
+      colorStops.push({ color: '#A52D6A', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
     } else if (cfg.key === 'wind_down') {
-      // Evening wind-down: Sunset Crimson (#EC4899) -> Twilight Violet (#8B5CF6) -> Indigo (#6366F1)
-      colorStops.push({ color: '#EC4899', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
-      colorStops.push({ color: '#8B5CF6', pct: Number(((startPct + endPct) / 2).toFixed(1)) })
-      colorStops.push({ color: '#6366F1', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
+      colorStops.push({ color: '#50236B', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
+      colorStops.push({ color: '#50236B', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
+    } else if (cfg.key === 'pre_bed') {
+      colorStops.push({ color: '#231A45', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
+      colorStops.push({ color: '#231A45', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
     } else if (i === N - 1) {
-      // Last slot (e.g. Bedtime): begins at startPct, holds rich visible dark midnight blue through to 100%
+      // Last slot (e.g. Bedtime): begins at startPct, holds rich visible dark midnight violet through to 100%
       colorStops.push({ color: cfg.startColorHex || primary, pct: Math.min(100, Number((startPct + 1.0).toFixed(1))) })
       colorStops.push({ color: primary, pct: Number(((startPct + 100) / 2).toFixed(1)) })
       colorStops.push({ color: cfg.endColorHex || '#0B132B', pct: 100 })
@@ -524,11 +525,14 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
     // Bridge seamless transitions
     if (isTransitioningToSunset) {
       colorStops.push({ color: '#9D9EC9', pct: Number((endPct - 0.5).toFixed(1)) })
-      colorStops.push({ color: '#E2B4AA', pct: Number(endPct.toFixed(1)) })
-    } else if (nextPrimary && isOrangeFamily(primary) && (nextPrimary.toLowerCase() === '#ec4899' || nextPrimary.toLowerCase() === '#8b5cf6')) {
-      colorStops.push({ color: '#EC4899', pct: Number(endPct.toFixed(1)) })
-    } else if (nextPrimary && (primary.toLowerCase() === '#8b5cf6' || primary.toLowerCase() === '#6366f1') && isDarkBlueFamily(nextPrimary)) {
-      colorStops.push({ color: '#6366F1', pct: Number(endPct.toFixed(1)) })
+    } else if (nextPrimary && isOrangeFamily(primary) && (nextPrimary.toLowerCase() === '#df5558' || nextPrimary.toLowerCase() === '#a52d6a')) {
+      colorStops.push({ color: '#DF5558', pct: Number(endPct.toFixed(1)) })
+    } else if (nextPrimary && (primary.toLowerCase() === '#df5558') && (nextPrimary.toLowerCase() === '#a52d6a' || nextPrimary.toLowerCase() === '#50236b')) {
+      colorStops.push({ color: '#A52D6A', pct: Number(endPct.toFixed(1)) })
+    } else if (nextPrimary && (primary.toLowerCase() === '#a52d6a') && (nextPrimary.toLowerCase() === '#50236b' || nextPrimary.toLowerCase() === '#231a45')) {
+      colorStops.push({ color: '#50236B', pct: Number(endPct.toFixed(1)) })
+    } else if (nextPrimary && (primary.toLowerCase() === '#50236b') && isDarkBlueFamily(nextPrimary)) {
+      colorStops.push({ color: '#231A45', pct: Number(endPct.toFixed(1)) })
     }
   })
 

@@ -308,11 +308,13 @@ export function resolveOptimalTimingSlot(
 
 function normalizeSlot(slot: string): string {
   const s = slot.toLowerCase().trim()
-  if (s.includes('wind_down') || s.includes('winddown')) return 'wind_down'
-  if (s.includes('bed') || s.includes('sleep') || s.includes('nightly') || s.includes('pre_bed') || s.includes('pre-bed')) return 'bedtime'
+  if (s.includes('wind_down') || s.includes('winddown') || s.includes('wind down') || s.includes('wind-down')) return 'wind_down'
+  if (s.includes('pre_bed') || s.includes('pre-bed') || s.includes('pre bed')) return 'pre_bed'
+  if (s.includes('bed') || s.includes('sleep') || s.includes('nightly') || s.includes('overnight')) return 'bedtime'
   if (s.includes('evening_supplement') || s.includes('dinner_stack')) return 'evening_supplement_stack'
   if (s.includes('evening') || s.includes('dinner')) return 'evening'
   if (s.includes('post_meal') || s.includes('post-meal') || s.includes('post meal') || s.includes('postprandial')) return 'post_meal'
+  if (s.includes('pre_meal') || s.includes('pre-meal') || s.includes('pre meal')) return 'pre_meal'
   if (s.includes('morning_supplement')) return 'morning_supplement_stack'
   if (s.includes('morning') || s.includes('wake') || s.includes('waking')) return 'morning'
   if (s.includes('midday_stack') || s.includes('lunch_stack')) return 'midday_stack'

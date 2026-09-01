@@ -74,6 +74,7 @@ const TIME_BLOCKS = [
   'midday_stack',
   'afternoon',
   'late_afternoon',
+  'pre_meal',
   'post_meal',
   'evening',
   'evening_supplement_stack',
@@ -84,7 +85,7 @@ const TIME_BLOCKS = [
 ]
 
 function getTimeBlockOrder(slot: string): number {
-  if (!slot) return 99
+  if (!slot) return 50
   const s = slot.toLowerCase().trim()
   if (s.includes('wake') || s.includes('sunrise') || s.includes('dawn')) return 0
   if (s.includes('morning_routine')) return 1
@@ -95,14 +96,15 @@ function getTimeBlockOrder(slot: string): number {
   if (s.includes('midday') || s.includes('noon') || s.includes('lunch')) return 5
   if (s.includes('afternoon') || s.includes('workout') || s.includes('training')) return 7
   if (s.includes('late_afternoon')) return 8
-  if (s.includes('post_meal') || s.includes('postprandial') || s.includes('post meal') || s.includes('post-meal')) return 9
-  if (s.includes('evening_supplement') || s.includes('dinner_stack') || s.includes('pm_stack') || s.includes('pm stack')) return 11
-  if (s.includes('evening') || s.includes('dinner') || s.includes('dusk')) return 10
-  if (s.includes('wind_down') || s.includes('winddown') || s.includes('wind down')) return 12
-  if (s.includes('pre_bed') || s.includes('pre-bed')) return 13
-  if (s.includes('bed') || s.includes('night') || s.includes('sleep')) return 14
-  if (s.includes('anytime')) return 20
-  return 16
+  if (s.includes('pre_meal') || s.includes('pre-meal') || s.includes('pre meal')) return 9
+  if (s.includes('post_meal') || s.includes('postprandial') || s.includes('post meal') || s.includes('post-meal')) return 10
+  if (s.includes('evening_supplement') || s.includes('dinner_stack') || s.includes('pm_stack') || s.includes('pm stack')) return 12
+  if (s.includes('evening') || s.includes('dinner') || s.includes('dusk')) return 11
+  if (s.includes('wind_down') || s.includes('winddown') || s.includes('wind down') || s.includes('wind-down') || s.includes('wind')) return 13
+  if (s.includes('pre_bed') || s.includes('pre-bed') || s.includes('pre bed')) return 14
+  if (s.includes('bed') || s.includes('night') || s.includes('sleep') || s.includes('overnight')) return 15
+  if (s.includes('anytime')) return 99
+  return 50
 }
 
 
@@ -1259,9 +1261,12 @@ function TodayPageContent() {
     if (lowerName.includes('first meal') || lowerName.includes('first_meal') || lowerName.includes('breakfast')) return 30
     if (lowerName.includes('metabolic') || lowerName.includes('midday') || lowerName.includes('afternoon') || lowerName.includes('lunch')) return 50
     if (lowerName.includes('standalone') || lowerName.includes('individual')) return 100
+    if (lowerName.includes('pre-meal') || lowerName.includes('pre meal')) return 130
+    if (lowerName.includes('post-meal') || lowerName.includes('post meal') || lowerName.includes('postprandial')) return 140
     if (lowerName.includes('evening') || lowerName.includes('dinner')) return 150
-    if (lowerName.includes('post-meal') || lowerName.includes('post meal') || lowerName.includes('postprandial')) return 170
-    if (lowerName.includes('wind down') || lowerName.includes('bedtime') || lowerName.includes('sleep') || lowerName.includes('cortisol')) return 200
+    if (lowerName.includes('wind down') || lowerName.includes('wind_down') || lowerName.includes('wind-down') || lowerName.includes('winddown')) return 180
+    if (lowerName.includes('pre-bed') || lowerName.includes('pre_bed')) return 190
+    if (lowerName.includes('bedtime') || lowerName.includes('sleep') || lowerName.includes('night') || lowerName.includes('cortisol')) return 200
 
     let minIdx = 999
     groupTasks.forEach(task => {
@@ -1299,8 +1304,8 @@ function TodayPageContent() {
     const colorStops: { color: string; pct: number }[] = []
 
     const isBlueFamily = (hex: string) => ['#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#2563eb', '#3b82f6', '#5b9bd5'].includes(hex.toLowerCase())
-    const isOrangeFamily = (hex: string) => ['#f97316', '#ea580c', '#f88a20', '#f7c275', '#f59e0b', '#d97706', '#fbbf24'].includes(hex.toLowerCase())
-    const isDarkBlueFamily = (hex: string) => ['#1d4ed8', '#1e40af', '#2563eb', '#1e3a8a', '#172554', '#0b132b'].includes(hex.toLowerCase())
+    const isOrangeFamily = (hex: string) => ['#f97316', '#ea580c', '#f87e38', '#f88a20', '#f7c275', '#f59e0b', '#d97706', '#fbbf24'].includes(hex.toLowerCase())
+    const isDarkBlueFamily = (hex: string) => ['#1d4ed8', '#1e40af', '#2563eb', '#1e3a8a', '#172554', '#0b132b', '#231a45', '#1b1536'].includes(hex.toLowerCase())
 
     activeGroups.forEach(([groupName], i) => {
       const el = groupHeaderRefs.current[groupName]
@@ -1342,19 +1347,20 @@ function TodayPageContent() {
           colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
         }
       } else if (cfg.key === 'post_meal') {
-        // Post-meal golden hour sunset: rich transition from Twilight Rose (#E2B4AA) to Golden Apricot (#F7C275)
-        colorStops.push({ color: '#E2B4AA', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: '#F7C275', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+        colorStops.push({ color: '#F87E38', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+        colorStops.push({ color: '#F87E38', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
       } else if (cfg.key === 'evening') {
-        // Evening vibrant sunset horizon: Golden Apricot (#F7C275) -> Vivid Sunset Orange (#F88A20) -> Persimmon (#EA580C)
-        colorStops.push({ color: '#F7C275', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: '#F88A20', pct: Number(((topPct + bottomPct) / 2).toFixed(1)) })
-        colorStops.push({ color: '#EA580C', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+        colorStops.push({ color: '#DF5558', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+        colorStops.push({ color: '#DF5558', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+      } else if (cfg.key === 'evening_supplement_stack') {
+        colorStops.push({ color: '#A52D6A', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+        colorStops.push({ color: '#A52D6A', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
       } else if (cfg.key === 'wind_down') {
-        // Evening wind-down: Sunset Crimson (#EC4899) -> Twilight Violet (#8B5CF6) -> Indigo (#6366F1)
-        colorStops.push({ color: '#EC4899', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: '#8B5CF6', pct: Number(((topPct + bottomPct) / 2).toFixed(1)) })
-        colorStops.push({ color: '#6366F1', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+        colorStops.push({ color: '#50236B', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+        colorStops.push({ color: '#50236B', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+      } else if (cfg.key === 'pre_bed') {
+        colorStops.push({ color: '#231A45', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+        colorStops.push({ color: '#231A45', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
       } else if (i === activeGroups.length - 1) {
         // Last slot (e.g. Bedtime): begins at top seam, holds solid to 100%
         colorStops.push({ color: cfg.startColorHex || primary, pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
@@ -1368,11 +1374,14 @@ function TodayPageContent() {
       // Bridge seamless transitions
       if (isTransitioningToSunset) {
         colorStops.push({ color: '#9D9EC9', pct: Number((bottomPct - 0.5).toFixed(1)) })
-        colorStops.push({ color: '#E2B4AA', pct: Number(bottomPct.toFixed(1)) })
-      } else if (nextPrimary && isOrangeFamily(primary) && (nextPrimary.toLowerCase() === '#ec4899' || nextPrimary.toLowerCase() === '#8b5cf6')) {
-        colorStops.push({ color: '#EC4899', pct: Number(bottomPct.toFixed(1)) })
-      } else if (nextPrimary && (primary.toLowerCase() === '#8b5cf6' || primary.toLowerCase() === '#6366f1') && isDarkBlueFamily(nextPrimary)) {
-        colorStops.push({ color: '#6366F1', pct: Number(bottomPct.toFixed(1)) })
+      } else if (nextPrimary && isOrangeFamily(primary) && (nextPrimary.toLowerCase() === '#df5558' || nextPrimary.toLowerCase() === '#a52d6a')) {
+        colorStops.push({ color: '#DF5558', pct: Number(bottomPct.toFixed(1)) })
+      } else if (nextPrimary && (primary.toLowerCase() === '#df5558') && (nextPrimary.toLowerCase() === '#a52d6a' || nextPrimary.toLowerCase() === '#50236b')) {
+        colorStops.push({ color: '#A52D6A', pct: Number(bottomPct.toFixed(1)) })
+      } else if (nextPrimary && (primary.toLowerCase() === '#a52d6a') && (nextPrimary.toLowerCase() === '#50236b' || nextPrimary.toLowerCase() === '#231a45')) {
+        colorStops.push({ color: '#50236B', pct: Number(bottomPct.toFixed(1)) })
+      } else if (nextPrimary && (primary.toLowerCase() === '#50236b') && isDarkBlueFamily(nextPrimary)) {
+        colorStops.push({ color: '#231A45', pct: Number(bottomPct.toFixed(1)) })
       }
     })
 
