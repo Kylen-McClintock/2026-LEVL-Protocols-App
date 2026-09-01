@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef, Suspense } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
@@ -1249,11 +1249,115 @@ function TodayPageContent() {
 
   const activeGroups = viewMode === 'chronological' ? sortedChronologicalGroups : sortedProtocolGroups
 
-  // Dynamic Circadian Gradient stops generated from the actual active groups on the page
-  const circadianGradientCSS = useMemo(() => {
+  // Fallback static gradient stops
+  const fallbackCircadianGradientCSS = useMemo(() => {
     const groupKeys = activeGroups.map(([groupName]) => groupName)
     return buildDynamicCircadianGradientCSS(groupKeys)
   }, [activeGroups])
+
+  const [measuredCircadianGradientCSS, setMeasuredCircadianGradientCSS] = useState<string>('')
+
+  // Dynamically calculate the spine gradient stops directly from the real, measured DOM boundaries of each time block
+  const recalculateSpineGradient = useCallback(() => {
+    if (!timelineContainerRef.current) return
+    const container = timelineContainerRef.current
+    const totalHeight = container.offsetHeight
+    if (totalHeight <= 0 || activeGroups.length === 0) return
+
+    const colorStops: { color: string; pct: number }[] = []
+
+    const isBlueFamily = (hex: string) => ['#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#2563eb', '#3b82f6'].includes(hex.toLowerCase())
+    const isOrangeFamily = (hex: string) => ['#f97316', '#ea580c', '#f59e0b', '#d97706', '#fbbf24'].includes(hex.toLowerCase())
+    const isDarkBlueFamily = (hex: string) => ['#1d4ed8', '#1e40af', '#2563eb', '#1e3a8a'].includes(hex.toLowerCase())
+
+    activeGroups.forEach(([groupName], i) => {
+      const el = groupHeaderRefs.current[groupName]
+      const cfg = getCircadianConfig(groupName)
+      const primary = cfg.skyColorHex
+
+      let topPct = 0
+      let bottomPct = 100
+
+      if (el) {
+        const topPx = el.offsetTop
+        const heightPx = el.offsetHeight
+        topPct = Math.max(0, Math.min(100, (topPx / totalHeight) * 100))
+        bottomPct = Math.max(0, Math.min(100, ((topPx + heightPx) / totalHeight) * 100))
+      } else {
+        topPct = (i / activeGroups.length) * 100
+        bottomPct = ((i + 1) / activeGroups.length) * 100
+      }
+
+      const nextGroupName = i < activeGroups.length - 1 ? activeGroups[i + 1][0] : null
+      const nextCfg = nextGroupName ? getCircadianConfig(nextGroupName) : null
+      const nextPrimary = nextCfg ? nextCfg.skyColorHex : null
+
+      let seamBridgeColor: string | null = null
+      if (nextPrimary) {
+        if ((isBlueFamily(primary) && isOrangeFamily(nextPrimary)) || (isOrangeFamily(primary) && isBlueFamily(nextPrimary))) {
+          seamBridgeColor = '#A855F7'
+        } else if (isOrangeFamily(primary) && isDarkBlueFamily(nextPrimary)) {
+          seamBridgeColor = '#6366F1'
+        }
+      }
+
+      if (i === 0) {
+        // First slot: starts solid, holds primary across ~98% of its zone until the tail boundary
+        colorStops.push({ color: primary, pct: 0 })
+        colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
+        if (seamBridgeColor) {
+          colorStops.push({ color: seamBridgeColor, pct: Number(bottomPct.toFixed(1)) })
+        }
+      } else if (i === activeGroups.length - 1) {
+        // Last slot: begins at top seam, holds solid to 100%
+        colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 1.0).toFixed(1))) })
+        colorStops.push({ color: cfg.endColorHex || primary, pct: 100 })
+      } else {
+        // Middle slots (e.g. Midday):
+        // HOLDS 100% SOLID PRIMARY across its ENTIRE measured DOM height!
+        // Only blends in a tiny 1.0% seam at the top and bottom edges
+        colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 1.0).toFixed(1))) })
+        colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
+        if (seamBridgeColor) {
+          colorStops.push({ color: seamBridgeColor, pct: Number(bottomPct.toFixed(1)) })
+        }
+      }
+    })
+
+    colorStops.sort((a, b) => a.pct - b.pct)
+    const uniqueStops: { color: string; pct: number }[] = []
+    colorStops.forEach((s) => {
+      if (
+        uniqueStops.length === 0 ||
+        uniqueStops[uniqueStops.length - 1].pct !== s.pct ||
+        uniqueStops[uniqueStops.length - 1].color !== s.color
+      ) {
+        uniqueStops.push(s)
+      }
+    })
+
+    if (uniqueStops.length > 0) {
+      const css = `linear-gradient(to bottom, ${uniqueStops.map((s) => `${s.color} ${s.pct}%`).join(', ')})`
+      setMeasuredCircadianGradientCSS(css)
+    }
+  }, [activeGroups])
+
+  useEffect(() => {
+    recalculateSpineGradient()
+    const timer = setTimeout(recalculateSpineGradient, 100)
+    return () => clearTimeout(timer)
+  }, [activeGroups, tasks.length, viewMode, calendarViewMode, recalculateSpineGradient])
+
+  useEffect(() => {
+    if (!timelineContainerRef.current || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      recalculateSpineGradient()
+    })
+    ro.observe(timelineContainerRef.current)
+    return () => ro.disconnect()
+  }, [recalculateSpineGradient])
+
+  const circadianGradientCSS = measuredCircadianGradientCSS || fallbackCircadianGradientCSS
 
   // Get active tip color for the leading photon spark
   const latestIgnitedSkyColor = useMemo(() => {

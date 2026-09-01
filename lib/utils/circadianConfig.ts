@@ -491,26 +491,29 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
     }
 
     if (i === 0) {
-      // First slot: starts solid, holds primary across ~90% of its zone until the tail boundary
+      // First slot: starts solid, holds primary across ~98% of its zone until the tail boundary
       colorStops.push({ color: primary, pct: 0 })
-      colorStops.push({ color: primary, pct: Math.round(endPct - width * 0.08) })
+      colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
       if (seamBridgeColor) {
-        colorStops.push({ color: seamBridgeColor, pct: Math.round(endPct) })
+        colorStops.push({ color: seamBridgeColor, pct: Number(endPct.toFixed(1)) })
       }
     } else if (i === N - 1) {
-      // Last slot (e.g. Bedtime): begins with primary, holds rich visible dark blue through to 100%
-      colorStops.push({ color: primary, pct: Math.round(startPct + width * 0.08) })
+      // Last slot (e.g. Bedtime): begins with primary at startPct + 1.2%, holds rich visible dark blue through to 100%
+      colorStops.push({ color: primary, pct: Math.min(100, Number((startPct + 1.2).toFixed(1))) })
       colorStops.push({ color: cfg.endColorHex || primary, pct: 100 })
     } else {
       // Middle slots (e.g. Midday, Afternoon, Evening):
-      // Hold 100% solid primary color across ~84% of the slot, only blending in the narrow tail seam
-      colorStops.push({ color: primary, pct: Math.round(startPct + width * 0.08) })
-      colorStops.push({ color: primary, pct: Math.round(endPct - width * 0.08) })
+      // Hold 100% solid primary color across >97% of the slot, only blending in the narrow 1.2% tail seam
+      colorStops.push({ color: primary, pct: Math.min(100, Number((startPct + 1.2).toFixed(1))) })
+      colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
       if (seamBridgeColor) {
-        colorStops.push({ color: seamBridgeColor, pct: Math.round(endPct) })
+        colorStops.push({ color: seamBridgeColor, pct: Number(endPct.toFixed(1)) })
       }
     }
   })
+
+  // Sort stops by percentage
+  colorStops.sort((a, b) => a.pct - b.pct)
 
   // Deduplicate adjacent stops with identical pct & color to keep CSS clean
   const uniqueStops: { color: string; pct: number }[] = []
@@ -523,9 +526,6 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
       uniqueStops.push(s)
     }
   })
-
-  // Sort ascending by percentage
-  uniqueStops.sort((a, b) => a.pct - b.pct)
 
   const stopStrings = uniqueStops.map(s => `${s.color} ${s.pct}%`)
   return `linear-gradient(to bottom, ${stopStrings.join(', ')})`
