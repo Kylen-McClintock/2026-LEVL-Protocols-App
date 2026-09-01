@@ -1298,9 +1298,9 @@ function TodayPageContent() {
 
     const colorStops: { color: string; pct: number }[] = []
 
-    const isBlueFamily = (hex: string) => ['#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#2563eb', '#3b82f6'].includes(hex.toLowerCase())
-    const isOrangeFamily = (hex: string) => ['#f97316', '#ea580c', '#f59e0b', '#d97706', '#fbbf24'].includes(hex.toLowerCase())
-    const isDarkBlueFamily = (hex: string) => ['#1d4ed8', '#1e40af', '#2563eb', '#1e3a8a'].includes(hex.toLowerCase())
+    const isBlueFamily = (hex: string) => ['#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#2563eb', '#3b82f6', '#5b9bd5'].includes(hex.toLowerCase())
+    const isOrangeFamily = (hex: string) => ['#f97316', '#ea580c', '#f88a20', '#f7c275', '#f59e0b', '#d97706', '#fbbf24'].includes(hex.toLowerCase())
+    const isDarkBlueFamily = (hex: string) => ['#1d4ed8', '#1e40af', '#2563eb', '#1e3a8a', '#172554', '#0b132b'].includes(hex.toLowerCase())
 
     activeGroups.forEach(([groupName], i) => {
       const el = groupHeaderRefs.current[groupName]
@@ -1324,17 +1324,10 @@ function TodayPageContent() {
       const nextCfg = nextGroupName ? getCircadianConfig(nextGroupName) : null
       const nextPrimary = nextCfg ? nextCfg.skyColorHex : null
 
-      // Determine seam boundary bridge color for natural atmospheric sky transitions
-      let seamBridgeColor: string | null = null
-      if (nextPrimary) {
-        if ((isBlueFamily(primary) && isOrangeFamily(nextPrimary)) || (isOrangeFamily(primary) && isBlueFamily(nextPrimary))) {
-          seamBridgeColor = '#F59E0B' // Golden hour sun amber (natural atmospheric transition between daytime blue and sunset)
-        } else if (isOrangeFamily(primary) && (nextPrimary.toLowerCase() === '#8b5cf6' || nextPrimary.toLowerCase() === '#a855f7' || nextPrimary.toLowerCase() === '#ec4899')) {
-          seamBridgeColor = '#EC4899' // Sunset rose/crimson
-        } else if ((primary.toLowerCase() === '#8b5cf6' || primary.toLowerCase() === '#a855f7') && isDarkBlueFamily(nextPrimary)) {
-          seamBridgeColor = '#6366F1' // Deep twilight indigo into night
-        }
-      }
+      const isTransitioningToSunset = nextPrimary && (
+        (isBlueFamily(primary) && isOrangeFamily(nextPrimary)) ||
+        (isBlueFamily(primary) && (nextGroupName === 'post_meal' || nextGroupName === 'evening' || nextGroupName === 'late_afternoon'))
+      )
 
       if (i === 0) {
         // First slot: if waking, morning, or morning stack, guarantee warm golden sunrise dawn (#D97706 -> #F59E0B -> #FBBF24) into sky blue
@@ -1348,22 +1341,38 @@ function TodayPageContent() {
           colorStops.push({ color: startCol, pct: 0 })
           colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
         }
-        if (seamBridgeColor) {
-          colorStops.push({ color: seamBridgeColor, pct: Number(bottomPct.toFixed(1)) })
-        }
+      } else if (cfg.key === 'post_meal') {
+        // Post-meal golden hour sunset: rich transition from Twilight Rose (#E2B4AA) to Golden Apricot (#F7C275)
+        colorStops.push({ color: '#E2B4AA', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+        colorStops.push({ color: '#F7C275', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+      } else if (cfg.key === 'evening') {
+        // Evening vibrant sunset horizon: Golden Apricot (#F7C275) -> Vivid Sunset Orange (#F88A20) -> Persimmon (#EA580C)
+        colorStops.push({ color: '#F7C275', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+        colorStops.push({ color: '#F88A20', pct: Number(((topPct + bottomPct) / 2).toFixed(1)) })
+        colorStops.push({ color: '#EA580C', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+      } else if (cfg.key === 'wind_down') {
+        // Evening wind-down: Sunset Crimson (#EC4899) -> Twilight Violet (#8B5CF6) -> Indigo (#6366F1)
+        colorStops.push({ color: '#EC4899', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+        colorStops.push({ color: '#8B5CF6', pct: Number(((topPct + bottomPct) / 2).toFixed(1)) })
+        colorStops.push({ color: '#6366F1', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
       } else if (i === activeGroups.length - 1) {
         // Last slot (e.g. Bedtime): begins at top seam, holds solid to 100%
-        colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 1.0).toFixed(1))) })
-        colorStops.push({ color: cfg.endColorHex || primary, pct: 100 })
+        colorStops.push({ color: cfg.startColorHex || primary, pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+        colorStops.push({ color: primary, pct: Number(((topPct + 100) / 2).toFixed(1)) })
+        colorStops.push({ color: cfg.endColorHex || '#0B132B', pct: 100 })
       } else {
-        // Middle slots (e.g. Morning Routine, Morning Alertness, Midday, Afternoon, Evening):
-        // HOLDS 100% SOLID PRIMARY across its ENTIRE measured DOM height (no duplicate sunrises)!
-        // Only blends in a tiny 1.0% seam at the top and bottom edges
         colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 1.0).toFixed(1))) })
         colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
-        if (seamBridgeColor) {
-          colorStops.push({ color: seamBridgeColor, pct: Number(bottomPct.toFixed(1)) })
-        }
+      }
+
+      // Bridge seamless transitions
+      if (isTransitioningToSunset) {
+        colorStops.push({ color: '#9D9EC9', pct: Number((bottomPct - 0.5).toFixed(1)) })
+        colorStops.push({ color: '#E2B4AA', pct: Number(bottomPct.toFixed(1)) })
+      } else if (nextPrimary && isOrangeFamily(primary) && (nextPrimary.toLowerCase() === '#ec4899' || nextPrimary.toLowerCase() === '#8b5cf6')) {
+        colorStops.push({ color: '#EC4899', pct: Number(bottomPct.toFixed(1)) })
+      } else if (nextPrimary && (primary.toLowerCase() === '#8b5cf6' || primary.toLowerCase() === '#6366f1') && isDarkBlueFamily(nextPrimary)) {
+        colorStops.push({ color: '#6366F1', pct: Number(bottomPct.toFixed(1)) })
       }
     })
 
