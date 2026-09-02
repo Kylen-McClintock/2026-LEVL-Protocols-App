@@ -1634,39 +1634,44 @@ export default function ProtocolTaskCard({
         </div>
       ) : isFastMode ? (
         /* FAST MODE: Streamlined layout (Modality Name + Clickable Dosage on left, Snooze + Green Checkmark on right) */
-        <div className="p-2 sm:px-3 sm:py-2 flex flex-col relative">
+        <div 
+          className="p-2 sm:px-3 sm:py-2 flex flex-col relative cursor-pointer"
+          onClick={() => setExpanded(!expanded)}
+        >
           <div className="flex items-center justify-between gap-2.5">
             {/* Left: Modality Name & Clickable Dynamic Dosage */}
             <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <h3 className="font-extrabold text-sm sm:text-base text-white leading-snug">
+              <h3 className="font-extrabold text-sm sm:text-base text-white leading-snug hover:text-purple-300 transition-colors">
                 {modality.display_name || modality.name}
               </h3>
-              <DosageBadgeButton
-                modality={modality}
-                userProfile={userProfile}
-                task={task}
-                benchItem={benchItem}
-                existingTiming={task.execution_details?.custom_timing || benchItem?.custom_timing}
-                onOpenCustomizeOutcomes={() => setShowCustomizeOutcomesModal(true)}
-                onSavePersonalization={async (customDose, customTiming, notes) => {
-                  const localUserId = getLocalUserId()
-                  const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
-                  await reconcileModalityScheduleAndFutureTasks(localUserId, modality.id, {
-                    customDose,
-                    customTiming,
-                    notes,
-                    fromDate,
-                    protocolStepId: task?.protocol_step_id || undefined,
-                    scheduleConfig: task?.execution_details?.schedule_config
-                  })
-                  window.location.reload()
-                }}
-                protocolContext={null}
-              />
+              <div onClick={(e) => e.stopPropagation()}>
+                <DosageBadgeButton
+                  modality={modality}
+                  userProfile={userProfile}
+                  task={task}
+                  benchItem={benchItem}
+                  existingTiming={task.execution_details?.custom_timing || benchItem?.custom_timing}
+                  onOpenCustomizeOutcomes={() => setShowCustomizeOutcomesModal(true)}
+                  onSavePersonalization={async (customDose, customTiming, notes) => {
+                    const localUserId = getLocalUserId()
+                    const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+                    await reconcileModalityScheduleAndFutureTasks(localUserId, modality.id, {
+                      customDose,
+                      customTiming,
+                      notes,
+                      fromDate,
+                      protocolStepId: task?.protocol_step_id || undefined,
+                      scheduleConfig: task?.execution_details?.schedule_config
+                    })
+                    window.location.reload()
+                  }}
+                  protocolContext={null}
+                />
+              </div>
             </div>
 
-            {/* Right: Snooze Option Button & Green Checkmark Button */}
-            <div className="flex items-center gap-1.5 shrink-0">
+            {/* Right: Snooze Option Button, Green Checkmark Button, & Expand Chevron */}
+            <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
               {task.status === 'pending' ? (
                 <>
                   <button 
@@ -1727,6 +1732,20 @@ export default function ProtocolTaskCard({
                   </button>
                 </div>
               )}
+
+              {/* Expand / Collapse Chevron */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpanded(!expanded);
+                }}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer ml-0.5"
+                title={expanded ? "Collapse modality details" : "Expand modality details"}
+                aria-label="Toggle modality details"
+              >
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180 text-white' : ''}`} />
+              </button>
             </div>
           </div>
 
@@ -2077,7 +2096,7 @@ export default function ProtocolTaskCard({
     )}
 
       {/* Expanded view details */}
-      {expanded && !isFastMode && !showSkipReason && !showEliminateReason && (
+      {expanded && !showSkipReason && !showEliminateReason && (
         <div className="px-4 pb-4 pt-2 border-t border-white/5 animate-in slide-in-from-top-2">
           {(task.status === 'skipped' || task.status === 'not_today' || task.status_reason || (task as any).ai_coach_reason) && (
             <div className="mb-4 p-3.5 bg-slate-900/80 border border-slate-500/30 rounded-xl text-xs space-y-1 animate-in fade-in shadow-md">
