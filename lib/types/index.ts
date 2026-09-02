@@ -177,6 +177,8 @@ export type Modality = {
   timing_summary?: string
   default_timing_slot?: string
   frequency?: string
+  duration?: string
+  temperature?: string
   schedule_pattern?: string
   difficulty?: string
   cost_tier?: string
@@ -218,7 +220,8 @@ export type Modality = {
   scientific_references?: {
     title: string
     url: string
-    type: string
+    type?: string
+    pmid?: string
   }[]
   peptide_metadata?: PeptideModalityMetadata
   cadence_layer?: 'intra_day' | 'daily' | 'weekly' | 'monthly' | 'multi_month' | 'infrequent'

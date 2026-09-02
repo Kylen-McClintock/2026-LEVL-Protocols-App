@@ -495,7 +495,7 @@ export default function ProtocolFocusPage() {
       
       {/* Top Header Toolbar */}
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 sm:px-6">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto flex items-center justify-between gap-4">
           <button
             onClick={() => router.back()}
             className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800 cursor-pointer active:scale-95"
@@ -513,7 +513,7 @@ export default function ProtocolFocusPage() {
       </header>
 
       {/* Main Focus Container */}
-      <main className="max-w-5xl mx-auto px-4 py-5 sm:px-6 space-y-5">
+      <main className="max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto px-4 py-5 sm:px-6 space-y-5">
 
         {/* COMPACT HERO PROTOCOL FOCUS CARD */}
         <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/40 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden">

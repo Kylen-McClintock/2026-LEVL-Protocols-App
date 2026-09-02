@@ -2129,7 +2129,7 @@ function TodayPageContent() {
       )}
 
       {/* Main Container */}
-      <div className={`mx-auto px-3 sm:px-6 pt-4 sm:pt-6 ${calendarViewMode === 'today' ? 'max-w-4xl' : 'max-w-7xl'}`}>
+      <div className={`mx-auto px-3 sm:px-6 pt-4 sm:pt-6 ${calendarViewMode === 'today' ? 'max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl' : 'max-w-7xl'}`}>
         
         {/* Protocol Filter Header if specific protocol filtered */}
         {selectedProtocolFilter !== 'all' && (

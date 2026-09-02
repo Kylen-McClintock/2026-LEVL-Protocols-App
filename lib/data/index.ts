@@ -69,6 +69,7 @@ export function clearModalitiesCache() {
 
 import { BUILT_IN_TRAINING_PROTOCOLS } from './builtInTrainingProtocols'
 import { BUILT_IN_PEPTIDE_PROTOCOLS, BUILT_IN_PEPTIDE_MODALITIES } from './builtInPeptideProtocols'
+import { BUILT_IN_LONGEVITY_MODALITIES } from './builtInLongevityModalities'
 
 const ALL_BUILT_IN_PROTOCOLS = [...BUILT_IN_TRAINING_PROTOCOLS, ...BUILT_IN_PEPTIDE_PROTOCOLS]
 
@@ -85,7 +86,16 @@ function getBuiltInModalities(): Modality[] {
     }
   })
 
-  // 2. Modalities from built-in protocols
+  // 2. Built-in longevity & evidence-based tip/NBA modalities
+  BUILT_IN_LONGEVITY_MODALITIES.forEach(m => {
+    const key = (m.id || '').toLowerCase()
+    if (key && !seen.has(key)) {
+      seen.add(key)
+      mods.push(m)
+    }
+  })
+
+  // 3. Modalities from built-in protocols
   ALL_BUILT_IN_PROTOCOLS.forEach(p => {
     p.steps.forEach(s => {
       if (s.modality) {

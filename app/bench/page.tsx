@@ -135,7 +135,7 @@ export default function BenchPage() {
   const remainingBenchItems = filteredItems.length > 1 ? filteredItems.slice(1) : []
 
   return (
-    <div className="p-4 max-w-xl mx-auto pt-8">
+    <div className="p-4 max-w-xl lg:max-w-5xl xl:max-w-6xl mx-auto pt-8">
       <header className="mb-6">
         <div className="flex justify-between items-center mb-4 gap-3">
           <div>

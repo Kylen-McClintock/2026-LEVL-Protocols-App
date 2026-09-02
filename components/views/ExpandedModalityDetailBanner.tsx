@@ -403,37 +403,40 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
         )
       })()}
 
-      {/* Synergies & Stacking Section */}
-      {synergyData && (
-        <div className="bg-emerald-950/20 border border-emerald-500/30 p-3.5 rounded-xl space-y-1">
-          <span className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider block flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" /> Known Synergies & Stacking Protocol
-          </span>
-          {synergyData.pairsWith && (
-            <p className="text-xs font-bold text-emerald-200">
-              Pairs well with: <span className="text-white font-normal">{synergyData.pairsWith}</span>
-            </p>
+      {/* Synergies & Stacking / Antagonisms Grid (Side-by-Side on Desktop) */}
+      {(synergyData || antagonismData) && (
+        <div className={`grid grid-cols-1 ${synergyData && antagonismData ? 'lg:grid-cols-2' : ''} gap-3.5`}>
+          {synergyData && (
+            <div className="bg-emerald-950/20 border border-emerald-500/30 p-3.5 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider block flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" /> Known Synergies & Stacking Protocol
+              </span>
+              {synergyData.pairsWith && (
+                <p className="text-xs font-bold text-emerald-200">
+                  Pairs well with: <span className="text-white font-normal">{synergyData.pairsWith}</span>
+                </p>
+              )}
+              <p className="text-xs text-emerald-100/90 leading-relaxed">
+                {synergyData.rationale}
+              </p>
+            </div>
           )}
-          <p className="text-xs text-emerald-100/90 leading-relaxed">
-            {synergyData.rationale}
-          </p>
-        </div>
-      )}
 
-      {/* Antagonisms & Conflicts Section */}
-      {antagonismData && (
-        <div className="bg-red-950/20 border border-red-500/30 p-3.5 rounded-xl space-y-1">
-          <span className="text-[10px] font-extrabold text-red-400 uppercase tracking-wider block flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5" /> Timing Conflicts & Contraindications
-          </span>
-          {antagonismData.avoidWith && (
-            <p className="text-xs font-bold text-red-200">
-              Avoid combining with: <span className="text-white font-normal">{antagonismData.avoidWith}</span>
-            </p>
+          {antagonismData && (
+            <div className="bg-red-950/20 border border-red-500/30 p-3.5 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-red-400 uppercase tracking-wider block flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" /> Timing Conflicts & Contraindications
+              </span>
+              {antagonismData.avoidWith && (
+                <p className="text-xs font-bold text-red-200">
+                  Avoid combining with: <span className="text-white font-normal">{antagonismData.avoidWith}</span>
+                </p>
+              )}
+              <p className="text-xs text-red-100/90 leading-relaxed">
+                {antagonismData.rationale}
+              </p>
+            </div>
           )}
-          <p className="text-xs text-red-100/90 leading-relaxed">
-            {antagonismData.rationale}
-          </p>
         </div>
       )}
 
@@ -481,46 +484,49 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
               </div>
             </div>
 
-            {/* Mechanism of Action */}
-            {mod.mechanism_of_action && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-extrabold text-purple-300 uppercase tracking-wider block">
-                  Mechanism of Action
-                </span>
-                <p className="text-xs text-slate-300 leading-relaxed font-sans">
-                  {mod.mechanism_of_action}
-                </p>
-              </div>
-            )}
-
-            {/* PubMed & Source Material Links */}
-            {refs.length > 0 && (
-              <div className="space-y-2 pt-1 border-t border-slate-800/80">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block flex items-center gap-1">
-                  <BookOpen className="w-3.5 h-3.5 text-cyan-400" /> Source Material & PubMed Citations
-                </span>
-
-                <div className="space-y-1.5">
-                  {refs.map((ref: any, idx: number) => {
-                    const title = typeof ref === 'string' ? ref : ref.title || ref.citation || `PubMed Research #${idx + 1}`
-                    const url = typeof ref === 'object' ? (ref.url || ref.pubmed_url || `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(modName)}`) : `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(modName)}`
-
-                    return (
-                      <a
-                        key={idx}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-cyan-500/60 text-xs text-cyan-300 hover:text-cyan-200 transition-all group"
-                      >
-                        <span className="truncate pr-2 font-medium">{title}</span>
-                        <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-75 group-hover:opacity-100" />
-                      </a>
-                    )
-                  })}
+            {/* Detailed Mechanism & PubMed Citations Grid on Desktop */}
+            <div className={`grid grid-cols-1 ${mod.mechanism_of_action && refs.length > 0 ? 'lg:grid-cols-2' : ''} gap-4`}>
+              {/* Mechanism of Action */}
+              {mod.mechanism_of_action && (
+                <div className="space-y-1 bg-black/30 p-3 rounded-xl border border-white/5">
+                  <span className="text-[10px] font-extrabold text-purple-300 uppercase tracking-wider block">
+                    Mechanism of Action
+                  </span>
+                  <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                    {mod.mechanism_of_action}
+                  </p>
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* PubMed & Source Material Links */}
+              {refs.length > 0 && (
+                <div className="space-y-2 bg-black/30 p-3 rounded-xl border border-white/5">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block flex items-center gap-1">
+                    <BookOpen className="w-3.5 h-3.5 text-cyan-400" /> Source Material & PubMed Citations
+                  </span>
+
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto scrollbar-thin">
+                    {refs.map((ref: any, idx: number) => {
+                      const title = typeof ref === 'string' ? ref : ref.title || ref.citation || `PubMed Research #${idx + 1}`
+                      const url = typeof ref === 'object' ? (ref.url || ref.pubmed_url || `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(modName)}`) : `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(modName)}`
+
+                      return (
+                        <a
+                          key={idx}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800 hover:border-cyan-500/60 text-xs text-cyan-300 hover:text-cyan-200 transition-all group"
+                        >
+                          <span className="truncate pr-2 font-medium">{title}</span>
+                          <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-75 group-hover:opacity-100" />
+                        </a>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Expandable Disclaimer Button */}
             <div className="pt-2 border-t border-slate-800/80">
