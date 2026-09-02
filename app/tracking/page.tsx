@@ -144,6 +144,7 @@ export default function TrackingPage() {
     if (authLoading) return
 
     async function load() {
+      window.dispatchEvent(new CustomEvent('levl_sync_start'))
       const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
       const today = new Date().toISOString().split('T')[0]
       const thirtyDaysAgoDate = new Date()
@@ -344,6 +345,7 @@ export default function TrackingPage() {
       // Keep collapsed by default
       setExpandedOutcomes(new Set())
       setLoading(false)
+      window.dispatchEvent(new CustomEvent('levl_sync_end'))
     }
     load()
 

@@ -34,6 +34,7 @@ export default function BenchPage() {
   const [editorType, setEditorType] = useState<'modality' | 'protocol'>('modality')
 
   const load = async () => {
+    window.dispatchEvent(new CustomEvent('levl_sync_start'))
     const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
     const todayStr = format(new Date(), 'yyyy-MM-dd')
 
@@ -100,6 +101,7 @@ export default function BenchPage() {
     setDraftModalities(draftModData)
     setDraftProtocols(draftProtoData)
     setLoading(false)
+    window.dispatchEvent(new CustomEvent('levl_sync_end'))
   }
 
   useEffect(() => {

@@ -124,12 +124,45 @@ function TodayPageContent() {
   const dateParam = searchParams.get('date')
 
   const { user: authUser, localUserId: authUserId, loading: authLoading } = useAuth()
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [tasks, setTasks] = useState<DailyProtocolTask[]>([])
+
+  // SWR Instant Local Hydration (0ms initial render)
+  const initialDateStr = dateParam || format(new Date(), 'yyyy-MM-dd')
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('levl_cached_user_profile')
+        if (cached) return JSON.parse(cached)
+      } catch (e) {}
+    }
+    return null
+  })
+  const [tasks, setTasks] = useState<DailyProtocolTask[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(`levl_cached_tasks_${initialDateStr}`)
+        if (cached) return JSON.parse(cached)
+      } catch (e) {}
+    }
+    return []
+  })
+  const [benchItems, setBenchItems] = useState<UserBenchItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('levl_cached_bench_items')
+        if (cached) return JSON.parse(cached)
+      } catch (e) {}
+    }
+    return []
+  })
+
   const [allModalities, setAllModalities] = useState<Modality[]>([])
   const [allOutcomes, setAllOutcomes] = useState<OutcomeDimension[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [isDateSwitching, setIsDateSwitching] = useState(false)
+
+  // Next Best Action deferred lazy mount state & sentinel
+  const [shouldMountNBA, setShouldMountNBA] = useState(false)
+  const nbaSentinelRef = useRef<HTMLDivElement | null>(null)
 
   const hasLoadedInitialCatalogRef = useRef(false)
   const activeDateReqIdRef = useRef(0)
@@ -156,6 +189,53 @@ function TodayPageContent() {
   const isPastDate = isBefore(startOfDay(currentDate), startOfDay(new Date()))
   const isFutureTimeline = isBefore(startOfDay(new Date()), startOfDay(currentDate))
   const isCurrentDay = dateStr === format(new Date(), 'yyyy-MM-dd')
+
+  // Always anchor viewport strictly at the top of the day view on load and date switch
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'instant' })
+    }
+    setShouldMountNBA(false)
+  }, [dateStr])
+
+  // Lazy mount Next Best Action only when user scrolls near the bottom of their day
+  useEffect(() => {
+    if (shouldMountNBA || isPastDate || tasks.length === 0) return
+    const sentinel = nbaSentinelRef.current
+    if (!sentinel) return
+
+    if (typeof IntersectionObserver !== 'undefined') {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting) {
+            setShouldMountNBA(true)
+            observer.disconnect()
+          }
+        },
+        { rootMargin: '300px' }
+      )
+      observer.observe(sentinel)
+      return () => observer.disconnect()
+    } else {
+      setShouldMountNBA(true)
+    }
+  }, [shouldMountNBA, isPastDate, tasks.length])
+
+  // Asynchronously fetch catalog for deferred widgets (NBA, Explore) without blocking page load
+  useEffect(() => {
+    let isMounted = true
+    const timer = setTimeout(() => {
+      getModalities().then(mods => {
+        if (isMounted && mods && mods.length > 0) {
+          setAllModalities(mods)
+        }
+      })
+    }, 300)
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+    }
+  }, [])
 
   const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewMode>('today')
   const [viewMode, setViewMode] = useState<'chronological' | 'protocol'>('chronological')
@@ -184,7 +264,6 @@ function TodayPageContent() {
   const [multiDayTasks, setMultiDayTasks] = useState<Record<string, DailyProtocolTask[]>>({})
 
   const [availableProtocols, setAvailableProtocols] = useState<{ id: string; name: string; colorHex?: string }[]>([])
-  const [benchItems, setBenchItems] = useState<UserBenchItem[]>([])
   const [dismissedTipIds, setDismissedTipIds] = useState<string[]>([])
   const [wellbeingCheckin, setWellbeingCheckin] = useState<WellbeingType | null>(null)
 
@@ -336,15 +415,22 @@ function TodayPageContent() {
   }
 
   const refreshTodayTasks = async () => {
+    window.dispatchEvent(new CustomEvent('levl_sync_start'))
     const localUserId = authUserId || getLocalUserId()
-    const [currentTasks, allMods, bench] = await Promise.all([
-      getDailyProtocolTasks(localUserId, dateStr),
-      getModalities(true),
-      getBenchItems(localUserId)
-    ])
-    setTasks(currentTasks)
-    if (allMods && allMods.length > 0) setAllModalities(allMods)
-    if (bench) setBenchItems(bench)
+    try {
+      const [currentTasks, bench] = await Promise.all([
+        getDailyProtocolTasks(localUserId, dateStr),
+        getBenchItems(localUserId)
+      ])
+      setTasks(currentTasks)
+      if (bench) setBenchItems(bench)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
+        if (bench) localStorage.setItem('levl_cached_bench_items', JSON.stringify(bench))
+      }
+    } finally {
+      window.dispatchEvent(new CustomEvent('levl_sync_end'))
+    }
   }
 
   useEffect(() => {
@@ -376,10 +462,13 @@ function TodayPageContent() {
     async function loadData() {
       const reqId = ++activeDateReqIdRef.current
       const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+      window.dispatchEvent(new CustomEvent('levl_sync_start'))
 
       try {
         if (!hasLoadedInitialCatalogRef.current) {
-          setLoading(true)
+          if (!tasks || tasks.length === 0) {
+            setLoading(true)
+          }
           const userProfile = await getOrCreateUserProfile(localUserId)
 
           const hasCompletedOnboarding = typeof window !== 'undefined' && localStorage.getItem('levl_onboarding_completed') === 'true'
@@ -393,13 +482,12 @@ function TodayPageContent() {
             router.push('/onboarding')
             return
           }
-          const [currentTasks, outcomes, protocols, bench, todayCheckin, fetchedMods] = await Promise.all([
+          const [currentTasks, outcomes, protocols, bench, todayCheckin] = await Promise.all([
             getDailyProtocolTasks(localUserId, dateStr),
             getOutcomeDimensions(),
             getProtocols(),
             getBenchItems(localUserId),
-            getDailyWellbeingCheckin(localUserId, dateStr),
-            getModalities()
+            getDailyWellbeingCheckin(localUserId, dateStr)
           ])
 
           if (reqId !== activeDateReqIdRef.current) return
@@ -410,11 +498,24 @@ function TodayPageContent() {
           setAvailableProtocols(protocols.map((p: any) => ({ id: p.id, name: p.name })))
           setBenchItems(bench)
           setWellbeingCheckin(todayCheckin || null)
-          setAllModalities(fetchedMods || [])
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('levl_cached_user_profile', JSON.stringify(userProfile))
+            localStorage.setItem('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
+            if (bench) localStorage.setItem('levl_cached_bench_items', JSON.stringify(bench))
+          }
           hasLoadedInitialCatalogRef.current = true
         } else {
           // Fast in-place transition without unmounting DOM tree
           setIsDateSwitching(true)
+          // Immediate SWR hydration from localStorage for target date
+          if (typeof window !== 'undefined') {
+            try {
+              const cached = localStorage.getItem(`levl_cached_tasks_${dateStr}`)
+              if (cached) {
+                setTasks(JSON.parse(cached))
+              }
+            } catch (e) {}
+          }
           const [currentTasks, todayCheckin] = await Promise.all([
             getDailyProtocolTasks(localUserId, dateStr),
             getDailyWellbeingCheckin(localUserId, dateStr)
@@ -424,6 +525,9 @@ function TodayPageContent() {
 
           setTasks(currentTasks)
           setWellbeingCheckin(todayCheckin || null)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
+          }
         }
       } catch (err) {
         console.error('Error loading Today data:', err)
@@ -431,6 +535,7 @@ function TodayPageContent() {
         if (reqId === activeDateReqIdRef.current) {
           setLoading(false)
           setIsDateSwitching(false)
+          window.dispatchEvent(new CustomEvent('levl_sync_end'))
         }
       }
     }
@@ -2214,7 +2319,7 @@ function TodayPageContent() {
     })
   }
 
-  if ((loading && tasks.length === 0) || authLoading || !profile) {
+  if (!profile && (loading || authLoading)) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 max-w-4xl mx-auto space-y-5 animate-pulse">
         {/* Shimmer Header */}
@@ -3020,25 +3125,34 @@ function TodayPageContent() {
               </div>
             )}
 
-            {/* Bottom 80/20 Stack Simplification & Adaptive Recommendation Banner */}
-            {allModalities.length > 0 && tasks.length > 0 && !isPastDate && (
-              <div className="mt-8 pt-6 border-t border-white/10">
-                <AdaptiveRecommendationBanner
-                  tasks={tasks}
-                  allModalities={allModalities}
-                  userProfile={profile}
-                  streakDays={0}
-                  benchItems={benchItems}
-                  onAddToToday={async (modalityId: string) => {
-                    if (profile) {
-                      await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
-                      await refreshTodayTasks()
-                    }
-                  }}
-                  onMoveToBench={async (modalityId: string) => {
-                    await handleMoveToBench(modalityId)
-                  }}
-                />
+            {/* Bottom 80/20 Stack Simplification & Adaptive Recommendation Banner (Deferred Lazy Mount) */}
+            {tasks.length > 0 && !isPastDate && (
+              <div ref={nbaSentinelRef} className="mt-8 pt-6 border-t border-white/10">
+                {shouldMountNBA && allModalities.length > 0 ? (
+                  <AdaptiveRecommendationBanner
+                    tasks={tasks}
+                    allModalities={allModalities}
+                    userProfile={profile}
+                    streakDays={0}
+                    benchItems={benchItems}
+                    onAddToToday={async (modalityId: string) => {
+                      if (profile) {
+                        await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
+                        await refreshTodayTasks()
+                      }
+                    }}
+                    onMoveToBench={async (modalityId: string) => {
+                      await handleMoveToBench(modalityId)
+                    }}
+                  />
+                ) : (
+                  <div className="py-6 flex items-center justify-center text-xs text-slate-500 font-mono">
+                    <span className="flex items-center gap-1.5 opacity-60">
+                      <Sparkles size={12} className="text-purple-400" />
+                      <span>Scroll to view Next Best Action &amp; Stack Insights</span>
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </>
