@@ -24,6 +24,7 @@ interface ViewSelectorHeaderProps {
   onEnrollClick?: () => void
   completionMode?: CompletionTrackingMode
   onCompletionModeChange?: (mode: CompletionTrackingMode) => void
+  showCategoryFilters?: boolean
 }
 
 export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
@@ -41,7 +42,8 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
   onToggleLayoutOrientation,
   onEnrollClick,
   completionMode = 'outcome',
-  onCompletionModeChange
+  onCompletionModeChange,
+  showCategoryFilters = true
 }) => {
   const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false)
   const [isProtocolDropdownOpen, setIsProtocolDropdownOpen] = useState(false)
@@ -203,15 +205,17 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
       </div>
 
       {/* Control Bar: Modality Category Filter Pills & Side-by-Side vs Vertical Toggle */}
-      <CategoryFiltersBar
-        selectedMainCategories={selectedMainCategories}
-        selectedSubCategories={selectedSubCategories}
-        onToggleMainCategory={onToggleMainCategory}
-        onToggleSubCategory={onToggleSubCategory}
-        viewMode={viewMode}
-        layoutOrientation={layoutOrientation}
-        onToggleLayoutOrientation={onToggleLayoutOrientation}
-      />
+      {showCategoryFilters && (
+        <CategoryFiltersBar
+          selectedMainCategories={selectedMainCategories}
+          selectedSubCategories={selectedSubCategories}
+          onToggleMainCategory={onToggleMainCategory}
+          onToggleSubCategory={onToggleSubCategory}
+          viewMode={viewMode}
+          layoutOrientation={layoutOrientation}
+          onToggleLayoutOrientation={onToggleLayoutOrientation}
+        />
+      )}
     </div>
   )
 }
@@ -281,6 +285,7 @@ export const CategoryFiltersBar: React.FC<{
   viewMode?: CalendarViewMode
   layoutOrientation?: LayoutOrientation
   onToggleLayoutOrientation?: (orientation: LayoutOrientation) => void
+  className?: string
 }> = ({
   selectedMainCategories,
   selectedSubCategories,
@@ -288,7 +293,8 @@ export const CategoryFiltersBar: React.FC<{
   onToggleSubCategory,
   viewMode,
   layoutOrientation,
-  onToggleLayoutOrientation
+  onToggleLayoutOrientation,
+  className = ''
 }) => {
   const isAllActive = selectedMainCategories.includes('all') || selectedMainCategories.length === 0
 
@@ -305,7 +311,7 @@ export const CategoryFiltersBar: React.FC<{
   }, [selectedMainCategories, isAllActive])
 
   return (
-    <div className="flex flex-col gap-2 bg-slate-950/60 p-2 sm:p-2.5 rounded-2xl border border-slate-800/80 my-4 shadow-lg backdrop-blur-md">
+    <div className={`flex flex-col gap-2 bg-slate-950/60 p-2 sm:p-2.5 rounded-2xl border border-slate-800/80 mb-3 shadow-lg backdrop-blur-md ${className}`}>
       {/* Top Row: Main Broad Categories & Orientation Toggle */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">

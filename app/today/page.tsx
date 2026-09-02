@@ -35,7 +35,7 @@ import { DailyLongevityTipBanner } from '@/components/banners/DailyLongevityTipB
 import { AdaptiveRecommendationBanner } from '@/components/banners/AdaptiveRecommendationBanner'
 import { LongevityCoachInputBar } from '@/components/ai/LongevityCoachInputBar'
 import { DailyHistoricalDebriefHeader } from '@/components/cards/DailyHistoricalDebriefHeader'
-import { ViewSelectorHeader, CalendarViewMode, LayoutOrientation, MainCategory, SUB_CATEGORIES_MAP } from '@/components/ui/ViewSelectorHeader'
+import { ViewSelectorHeader, CalendarViewMode, LayoutOrientation, MainCategory, SUB_CATEGORIES_MAP, CategoryFiltersBar } from '@/components/ui/ViewSelectorHeader'
 import { ThreeDaySplitView } from '@/components/views/ThreeDaySplitView'
 import { SevenDayWeekView } from '@/components/views/SevenDayWeekView'
 import { MonthMatrixView } from '@/components/views/MonthMatrixView'
@@ -2117,6 +2117,7 @@ function TodayPageContent() {
           onEnrollClick={() => setIsEnrollModalOpen(true)}
           completionMode={completionMode}
           onCompletionModeChange={handleCompletionModeChange}
+          showCategoryFilters={calendarViewMode !== 'today'}
         />
 
         {/* 2. PRIMARY DATE NAVIGATION TOOLBAR (Always at Top directly below ViewSelector) */}
@@ -2534,6 +2535,17 @@ function TodayPageContent() {
                 )}
               </div>
             )}
+
+            {/* Modality Category Filter Row (Positioned directly above Time Blocks / Protocols / Track Outcomes / Fast Mode viewer row) */}
+            <CategoryFiltersBar
+              selectedMainCategories={selectedMainCategories}
+              selectedSubCategories={selectedSubCategories}
+              onToggleMainCategory={handleToggleMainCategory}
+              onToggleSubCategory={handleToggleSubCategory}
+              viewMode={calendarViewMode}
+              layoutOrientation={layoutOrientation}
+              onToggleLayoutOrientation={setLayoutOrientation}
+            />
 
             {/* Timeline Layout Mode & Completion Mode Toggle Bar (Single Non-Scrolling Row) */}
             <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 p-1 sm:p-2 rounded-2xl mb-3 backdrop-blur-md shadow-sm gap-1 sm:gap-2">
