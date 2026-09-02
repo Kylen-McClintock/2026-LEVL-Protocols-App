@@ -74,21 +74,28 @@ export default function CustomizeCheckinOutcomesModal({
 
   const isTracked = (id: string, tab: 'morning' | 'anytime' | 'nightly') => {
     const key = getKey(id, tab)
-    const val = preferences[key] ?? preferences[id]
-    if (val === undefined) {
-      if (tab === 'anytime') return RECOMMENDED_ANYTIME_IDS.includes(id) || ['mood', 'energy', 'stress', 'focus'].includes(id)
-      return RECOMMENDED_IDS.includes(id)
+    const val = preferences[key]
+    if (val !== undefined) {
+      return val >= 7
     }
-    return val >= 7
+    // Strictly tab-specific default fallbacks
+    if (tab === 'anytime') {
+      return ['mood', 'energy', 'stress', 'focus'].includes(id)
+    }
+    if (tab === 'morning') {
+      return ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep'].includes(id)
+    }
+    if (tab === 'nightly') {
+      return ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep', 'digestive_comfort'].includes(id)
+    }
+    return false
   }
 
   const toggleOutcomeTracked = (id: string) => {
     const key = getKey(id, activeTab)
-    setPreferences(prev => {
-      const currentlyTracked = isTracked(id, activeTab)
-      const newScore = currentlyTracked ? 0 : 9
-      return { ...prev, [key]: newScore }
-    })
+    const currentlyTracked = isTracked(id, activeTab)
+    const newScore = currentlyTracked ? 0 : 9
+    setPreferences(prev => ({ ...prev, [key]: newScore }))
   }
 
   const isExposureTracked = (id: string) => {

@@ -358,16 +358,16 @@ export default function DailyWellbeingCheckin({
   const isOutcomeTracked = (id: string, mode: 'morning' | 'nightly') => {
     const prefs = localProfile?.outcome_preference_scores
     const key = `${mode}:${id}`
-    const val = prefs ? (prefs[key] ?? prefs[id]) : undefined
-    if (val === undefined) {
-      // Default recommended items if no explicit preference set yet
-      if (mode === 'morning') {
-        return ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep', 'waking_restedness'].includes(id)
-      } else {
-        return ['mood', 'energy', 'stress', 'focus', 'focus_score', 'mental_clarity', 'digestive_comfort'].includes(id)
-      }
+    const val = prefs ? prefs[key] : undefined
+    if (val !== undefined) {
+      return val >= 7
     }
-    return val >= 7
+    // Default recommended items if no explicit preference set yet
+    if (mode === 'morning') {
+      return ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep', 'waking_restedness'].includes(id)
+    } else {
+      return ['mood', 'energy', 'stress', 'focus', 'focus_score', 'mental_clarity', 'digestive_comfort'].includes(id)
+    }
   }
 
   // Calculate dynamic non-sleep custom outcomes to track for Morning Check-in
@@ -910,153 +910,55 @@ export default function DailyWellbeingCheckin({
 
   return (
     <>
-      {/* ⚡ CURRENT STATE / REAL-TIME WELLBEING SNAPSHOT CARD */}
+      {/* ⚡ CONNECTED CONTAINER: Top Row (Morning Check-in Status / Edit) + Current State 4-Box Grid */}
       {(isSaved && !isEditing) || isCollapsedAll ? (
-        <div className="glass-card py-3 px-3 sm:px-4 rounded-2xl mb-4 border border-emerald-500/30 bg-slate-950/60 shadow-xl animate-in fade-in space-y-2.5">
-          {/* Top Header */}
-          <div className="flex items-center justify-between gap-2">
-            <div 
-              className="flex items-center gap-2 min-w-0 cursor-pointer group"
-              onClick={() => setIsCurrentStateExpanded(!isCurrentStateExpanded)}
-              title="Click to toggle detailed provenance & trends"
-            >
-              <div className="relative flex items-center justify-center shrink-0">
-                <div className={`w-2.5 h-2.5 rounded-full ${isSaved ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                <div className={`absolute w-4 h-4 rounded-full animate-ping opacity-60 ${isSaved ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-              </div>
-              <div className="truncate">
-                <div className="flex items-center gap-2">
-                  <span className="text-white font-black text-xs sm:text-sm tracking-wide flex items-center gap-1.5">
-                    {isCurrentDay ? 'Current State' : 'Daily Wellbeing Snapshot'}
-                  </span>
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-mono tracking-wider uppercase hidden sm:inline-flex items-center gap-1">
-                    <Activity size={10} className="animate-pulse" /> Live
-                  </span>
-                </div>
-              </div>
+        <div className="glass-card mb-4 rounded-2xl border border-emerald-500/30 bg-slate-950/70 shadow-xl overflow-hidden animate-in fade-in">
+          {/* SMALL CONNECTED ROW DIRECTLY ABOVE: Morning Check-in Status & Edit */}
+          <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-black/40 border-b border-white/10 text-xs">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${isSaved ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+              <span className="font-bold text-white text-xs">
+                {isSaved ? '☀️ Morning Check-in: Complete' : '☀️ Morning Check-in: Pending'}
+              </span>
+              {isSaved && (
+                <span className="text-[10px] text-gray-400 font-mono hidden xs:inline">
+                  (Mood: {mood}, Energy: {energy}, Stress: {stress})
+                </span>
+              )}
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setOutcomesModalTitle("Customize Tracked Outcomes")
-                  setOutcomesModalMode("anytime")
-                  setIsOutcomesModalOpen(true)
-                }}
-                className="text-[11px] font-semibold text-gray-300 hover:text-white bg-white/10 hover:bg-white/15 border border-white/15 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm"
-                title="Edit which bio-signals are tracked in Current State"
-              >
-                <Sliders size={12} /> <span className="hidden sm:inline">Tracked Outcomes</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsCurrentStateExpanded(!isCurrentStateExpanded)}
-                className="text-[11px] font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/15 px-2 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                title={isCurrentStateExpanded ? "Collapse trend details" : "Expand trend details"}
-              >
-                {isCurrentStateExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                <span className="hidden xs:inline">{isCurrentStateExpanded ? 'Less' : 'Trends'}</span>
-              </button>
-
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setIsCollapsedAll(false)
                   setIsEditing(true)
                 }}
-                className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
               >
-                {isSaved ? 'Edit Baseline' : 'Expand'}
+                <span>{isSaved ? '✏ Edit' : 'Start Check-in'}</span>
               </button>
             </div>
           </div>
-          
-          {/* Outcome Boxes Grid (supports 4+ items cleanly!) */}
-          <div className={`grid gap-1.5 sm:gap-2 text-xs ${
-            activeAnytimeDimensions.length <= 4 
-              ? 'grid-cols-2 sm:grid-cols-4' 
-              : activeAnytimeDimensions.length <= 6 
-                ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6' 
-                : 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-8'
-          }`}>
-            {activeAnytimeDimensions.map(outcome => {
-              const liveState = liveStateMap[outcome.id] || getLatestOutcomeLiveState(outcome.id, initialData, recentTasks, allOutcomes)
-              const val = liveState.currentValue ?? 5
-              const colorCfg = getOutcomeColorConfig(val, liveState.directionality)
-              const delta = liveState.delta
 
-              return (
-                <div 
-                  key={outcome.id}
-                  onClick={() => {
-                    setQuickModalOutcome(liveState)
-                    setIsQuickModalOpen(true)
-                  }}
-                  className={`py-2 px-2 rounded-xl border text-center transition-all cursor-pointer group hover:scale-[1.02] active:scale-95 relative overflow-hidden ${colorCfg.borderColor}`}
-                  style={{ backgroundColor: `${colorCfg.accentHex}15` }}
-                  title={`Click to quick-log / adjust ${liveState.name}`}
-                >
-                  <div className="flex items-center justify-between gap-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
-                    <span className="truncate group-hover:text-white transition-colors">{liveState.name}</span>
-                    <span className={`text-[8px] font-extrabold px-1.5 py-0.2 rounded ${colorCfg.badgeBg} ${colorCfg.textColor}`}>
-                      {colorCfg.qualityLabel}
-                    </span>
-                  </div>
-
-                  <div className="flex items-baseline justify-center gap-0.5 my-0.5">
-                    <span className={`font-mono font-black text-base sm:text-lg ${colorCfg.textColor}`}>
-                      {liveState.currentValue != null ? liveState.currentValue : '—'}
-                    </span>
-                    <span className="text-gray-500 text-[10px] font-mono">/10</span>
-                  </div>
-
-                  {/* Expanded Trends & Provenance (shown when Current State is expanded) */}
-                  {isCurrentStateExpanded ? (
-                    <div className="pt-1.5 mt-1 border-t border-white/10 space-y-1 animate-in fade-in">
-                      {/* Trend Delta badge */}
-                      {delta !== 0 && liveState.morningBaseline != null ? (
-                        <div className="flex items-center justify-center gap-0.5 text-[9px] font-mono font-bold">
-                          <span className={`flex items-center gap-0.5 px-1.5 py-0.2 rounded-md border ${
-                            (liveState.directionality === 'higher_is_better' ? delta > 0 : delta < 0)
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                              : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                          }`}>
-                            {delta > 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
-                            {delta > 0 ? `+${delta}` : delta} vs AM
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="text-[9px] font-mono text-slate-400">
-                          {liveState.morningBaseline != null ? `Baseline (${liveState.morningBaseline})` : 'Unrecorded'}
-                        </div>
-                      )}
-
-                      {/* Source tag */}
-                      <div className="text-[9px] text-slate-400 truncate px-0.5" title={liveState.sourceLabel}>
-                        {liveState.sourceLabel}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-[8px] text-slate-500 group-hover:text-slate-300 font-mono transition-colors">
-                      Tap to edit
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Expanded Section Footer with History and Shortcuts */}
-          {isCurrentStateExpanded && (
-            <div className="pt-2 mt-2 border-t border-white/10 flex items-center justify-between flex-wrap gap-2 text-[11px] animate-in fade-in">
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <Sparkles size={12} className="text-purple-400" />
-                <span>Tap any box above to quick-adjust that single bio-signal in 1 tap.</span>
+          {/* CURRENT STATE SECTION */}
+          <div className="p-3 sm:p-4 space-y-2.5">
+            {/* Top Header */}
+            <div className="flex items-center justify-between gap-2">
+              <div 
+                className="flex items-center gap-2 min-w-0 cursor-pointer group"
+                onClick={() => setIsCurrentStateExpanded(!isCurrentStateExpanded)}
+                title="Click to toggle trend details"
+              >
+                <span className="text-white font-black text-xs sm:text-sm tracking-wide">
+                  {isCurrentDay ? 'Current State' : 'Daily Wellbeing Snapshot'}
+                </span>
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-mono tracking-wider uppercase inline-flex items-center gap-1">
+                  <Activity size={10} className="animate-pulse" /> Live
+                </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1064,13 +966,110 @@ export default function DailyWellbeingCheckin({
                     setOutcomesModalMode("anytime")
                     setIsOutcomesModalOpen(true)
                   }}
-                  className="text-xs font-semibold text-indigo-300 hover:text-white bg-indigo-500/20 border border-indigo-500/30 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] font-semibold text-gray-300 hover:text-white bg-white/10 hover:bg-white/15 border border-white/15 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-sm"
+                  title="Edit which bio-signals are tracked in Current State"
                 >
-                  <Sliders size={12} /> Customize Outcomes ({activeAnytimeDimensions.length})
+                  <Sliders size={12} /> <span className="hidden sm:inline">Tracked Outcomes</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCurrentStateExpanded(!isCurrentStateExpanded)}
+                  className="text-[11px] font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/15 px-2 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                  title={isCurrentStateExpanded ? "Collapse trend details" : "Expand trend details"}
+                >
+                  {isCurrentStateExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  <span className="hidden xs:inline">{isCurrentStateExpanded ? 'Less' : 'Trends'}</span>
                 </button>
               </div>
             </div>
-          )}
+            
+            {/* Outcome Boxes Grid: ALWAYS 4 WIDE (grid-cols-4) */}
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-xs">
+              {activeAnytimeDimensions.map(outcome => {
+                const liveState = liveStateMap[outcome.id] || getLatestOutcomeLiveState(outcome.id, initialData, recentTasks, allOutcomes)
+                const val = liveState.currentValue ?? 5
+                const colorCfg = getOutcomeColorConfig(val, liveState.directionality)
+                const delta = liveState.delta
+
+                return (
+                  <div 
+                    key={outcome.id}
+                    onClick={() => {
+                      setQuickModalOutcome(liveState)
+                      setIsQuickModalOpen(true)
+                    }}
+                    className={`py-2 px-1.5 sm:px-2 rounded-xl border text-center transition-all cursor-pointer group hover:scale-[1.02] active:scale-95 relative overflow-hidden flex flex-col items-center justify-between ${colorCfg.borderColor}`}
+                    style={{ backgroundColor: `${colorCfg.accentHex}18` }}
+                    title={`Click to adjust ${liveState.name}`}
+                  >
+                    {/* Outcome Name */}
+                    <div className="w-full text-center">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-gray-300 group-hover:text-white transition-colors truncate block">
+                        {liveState.name}
+                      </span>
+                    </div>
+
+                    {/* Score Number with Colored Accent */}
+                    <div className="my-1 flex items-baseline justify-center gap-0.5">
+                      <span className={`font-mono font-black text-base sm:text-xl ${colorCfg.textColor}`}>
+                        {liveState.currentValue != null ? liveState.currentValue : '—'}
+                      </span>
+                      <span className="text-gray-500 text-[9px] sm:text-[10px] font-mono">/10</span>
+                    </div>
+
+                    {/* If expanded, show trend delta and source */}
+                    {isCurrentStateExpanded && (
+                      <div className="w-full pt-1 mt-0.5 border-t border-white/10 space-y-0.5 animate-in fade-in">
+                        {delta !== 0 && liveState.morningBaseline != null ? (
+                          <div className="flex items-center justify-center text-[8px] sm:text-[9px] font-mono font-bold">
+                            <span className={`flex items-center gap-0.5 px-1 py-0.2 rounded border ${
+                              (liveState.directionality === 'higher_is_better' ? delta > 0 : delta < 0)
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                            }`}>
+                              {delta > 0 ? <ArrowUpRight size={9} /> : <ArrowDownRight size={9} />}
+                              {delta > 0 ? `+${delta}` : delta} vs AM
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-[8px] sm:text-[9px] font-mono text-slate-400 truncate">
+                            {liveState.morningBaseline != null ? `AM: ${liveState.morningBaseline}` : 'Unrecorded'}
+                          </div>
+                        )}
+                        <div className="text-[8px] text-slate-400 truncate px-0.5" title={liveState.sourceLabel}>
+                          {liveState.sourceLabel}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Expanded Section Footer with Shortcuts */}
+            {isCurrentStateExpanded && (
+              <div className="pt-2 mt-1 border-t border-white/10 flex items-center justify-between flex-wrap gap-2 text-[11px] animate-in fade-in">
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <Sparkles size={12} className="text-purple-400" />
+                  <span>Tap any box to adjust that single bio-signal in 1 tap.</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOutcomesModalTitle("Customize Tracked Outcomes")
+                      setOutcomesModalMode("anytime")
+                      setIsOutcomesModalOpen(true)
+                    }}
+                    className="text-xs font-semibold text-indigo-300 hover:text-white bg-indigo-500/20 border border-indigo-500/30 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sliders size={12} /> Customize Outcomes ({activeAnytimeDimensions.length})
+                  </button>
+                </div>
+              </div>
+            )}
 
           {/* Optional compact secondary chips if logged */}
           {(sleepScore || (isSaved && (skinClarity !== 5 || focusScore !== 5 || alcoholDrinks !== 'skip' || lateCaffeine !== 'skip' || lateMeal !== 'skip' || blueLight !== 'skip'))) && (
@@ -1402,6 +1401,7 @@ export default function DailyWellbeingCheckin({
               </div>
             )
           })()}
+          </div>
         </div>
       ) : (
         <div className="glass-card p-4 rounded-xl mb-6 space-y-6 border border-levl-accent/20">

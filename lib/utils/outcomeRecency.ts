@@ -253,31 +253,63 @@ export function getLatestOutcomeLiveState(
     }
   }
 
-  // Check completed modality tasks
+  // Check completed modality tasks or tasks with logged outcome ratings
   if (recentTasks && recentTasks.length > 0) {
     recentTasks.forEach(task => {
-      if (task.status === 'completed' && task.completed_at) {
-        const taskTime = new Date(task.completed_at).getTime()
-        const tracked = task.execution_details?.outcomes_tracked || task.execution_details?.outcome_ratings || {}
+      const isDone = task.status === 'completed'
+      const rawDetails = task.execution_details || {}
+      const hasLoggedOutcomes = Array.isArray(rawDetails.logged_outcomes) && rawDetails.logged_outcomes.length > 0
+      const hasTrackedOutcomes = rawDetails.outcomes_tracked || rawDetails.outcome_ratings
+
+      if (isDone || hasLoggedOutcomes || hasTrackedOutcomes) {
+        const rawTime = task.completed_at || task.updated_at || task.created_at
+        const taskTime = rawTime ? new Date(rawTime).getTime() : Date.now()
         
         let taskOutcomeVal: number | undefined = undefined
-        if (tracked[cleanId] !== undefined && typeof tracked[cleanId] === 'number') {
-          taskOutcomeVal = tracked[cleanId]
-        } else {
-          // Check key match
-          Object.entries(tracked).forEach(([k, v]) => {
-            if (typeof v === 'number' && (k.toLowerCase() === cleanId || k.toLowerCase().includes(cleanId) || cleanId.includes(k.toLowerCase()))) {
-              taskOutcomeVal = v
+
+        // A. Check logged_outcomes array format (used by ProtocolTaskCard)
+        if (Array.isArray(rawDetails.logged_outcomes)) {
+          rawDetails.logged_outcomes.forEach((item: any) => {
+            const oId = (item.outcomeId || item.outcome_id || '').toLowerCase().trim()
+            const oName = (item.outcomeName || item.name || '').toLowerCase().trim()
+            if (oId === cleanId || oName === cleanId || oId.includes(cleanId) || cleanId.includes(oId)) {
+              const val = item.postValue ?? item.post_value ?? item.preValue ?? item.pre_value ?? item.value
+              if (typeof val === 'number') {
+                taskOutcomeVal = val
+              }
             }
           })
+        }
+
+        // B. Check outcomes_tracked or outcome_ratings map format
+        if (taskOutcomeVal === undefined) {
+          const tracked = rawDetails.outcomes_tracked || rawDetails.outcome_ratings || {}
+          if (tracked[cleanId] !== undefined && typeof tracked[cleanId] === 'number') {
+            taskOutcomeVal = tracked[cleanId]
+          } else {
+            Object.entries(tracked).forEach(([k, v]) => {
+              if (typeof v === 'number' && (k.toLowerCase() === cleanId || k.toLowerCase().includes(cleanId) || cleanId.includes(k.toLowerCase()))) {
+                taskOutcomeVal = v
+              }
+            })
+          }
+        }
+
+        // C. Check direct keys on execution_details
+        if (taskOutcomeVal === undefined) {
+          if (typeof rawDetails[cleanId] === 'number') {
+            taskOutcomeVal = rawDetails[cleanId]
+          } else if (typeof rawDetails[`${cleanId}_score`] === 'number') {
+            taskOutcomeVal = rawDetails[`${cleanId}_score`]
+          }
         }
 
         if (typeof taskOutcomeVal === 'number' && taskTime >= latestTimestamp) {
           latestVal = taskOutcomeVal
           latestTimestamp = taskTime
-          latestDateStr = task.completed_at
-          const modName = task.loose_modality?.name || task.protocol_step?.modality?.name || 'Modality'
-          const timeStr = new Date(task.completed_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+          latestDateStr = rawTime || new Date().toISOString()
+          const modName = task.loose_modality?.display_name || task.loose_modality?.name || task.protocol_step?.modality?.display_name || task.protocol_step?.modality?.name || 'Modality'
+          const timeStr = new Date(taskTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
           latestSourceLabel = `${modName} (${timeStr})`
         }
       }
