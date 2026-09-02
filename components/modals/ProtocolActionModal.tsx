@@ -805,7 +805,7 @@ export default function ProtocolActionModal({
             >
               {actionType === 'eliminate' ? (
                 <>
-                  <Trash2 size={15} /> Confirm Elimination ({scope === 'all' ? 'All' : selectedModalityIds.size})
+                  <Trash2 size={15} /> Confirm Elimination (Kept in Library) ({scope === 'all' ? 'All' : selectedModalityIds.size})
                 </>
               ) : (
                 <>
@@ -837,7 +837,7 @@ export default function ProtocolActionModal({
                   onClick={() => setActionType('eliminate')}
                   className="flex-1 py-2.5 px-4 rounded-xl bg-red-950/90 hover:bg-red-900 text-red-200 font-bold text-xs border border-red-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 touch-manipulation"
                 >
-                  <Trash2 size={14} /> Eliminate Entirely Instead
+                  <Trash2 size={14} /> Eliminate (Kept in Library) Instead
                 </button>
               )}
             </div>

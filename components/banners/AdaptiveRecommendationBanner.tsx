@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { Modality, UserProfile, DailyProtocolTask } from '@/lib/types'
 import ExploreCard from '@/components/cards/ExploreCard'
+import ScheduleModalityModal from '@/components/modals/ScheduleModalityModal'
 import {
   evaluateUserAdherenceState,
   generateNextBestActionRecommendation,
@@ -114,15 +115,16 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
     const handleBenchModality = async (modalityId: string, name: string) => {
       setProcessingModalityId(modalityId)
       setIsProcessing(true)
-      // Instant optimistic collapse & confirmation
-      setBenchedIds(prev => Array.from(new Set([...prev, modalityId])))
-      setBenchedNamesMap(prev => ({ ...prev, [modalityId]: name }))
-      setIsCollapsed(true)
-
       try {
         if (onMoveToBench) {
           await onMoveToBench(modalityId)
         }
+        // 0.5-second visual confirmation before collapsing/removing
+        await new Promise(r => setTimeout(r, 500))
+        setBenchedIds(prev => Array.from(new Set([...prev, modalityId])))
+        setBenchedNamesMap(prev => ({ ...prev, [modalityId]: name }))
+        setIsCollapsed(true)
+        window.dispatchEvent(new CustomEvent('levl_bench_updated', { detail: { modalityId } }))
       } catch (err) {
         console.error('Error benching modality:', err)
       } finally {
@@ -405,14 +407,20 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
 
   const [isNbaExpanded, setIsNbaExpanded] = useState(false)
   const [isNbaBenched, setIsNbaBenched] = useState(false)
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
+  const [actionSuccess, setActionSuccess] = useState<'bench' | 'added' | null>(null)
 
   const handleAddModality = async () => {
     setIsProcessing(true)
     try {
+      setActionSuccess('added')
       await onAddToToday(targetMod.id)
+      // 0.5-second visual confirmation before disappearing
+      await new Promise(r => setTimeout(r, 500))
       setIsActionDone(true)
     } catch (err) {
       console.error('Error adding next best action:', err)
+      setActionSuccess(null)
     } finally {
       setIsProcessing(false)
     }
@@ -422,13 +430,22 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
     if (!onMoveToBench) return
     setIsProcessing(true)
     try {
+      setActionSuccess('bench')
       await onMoveToBench(targetMod.id)
+      // 0.5-second visual confirmation before disappearing
+      await new Promise(r => setTimeout(r, 500))
       setIsNbaBenched(true)
     } catch (err) {
       console.error('Error benching next best action:', err)
+      setActionSuccess(null)
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  // If already enrolled in today, benched, or dismissed, immediately disappear
+  if (isActionDone || isDismissed || isNbaBenched || activeModalityIds.has(targetMod.id)) {
+    return null
   }
 
   return (
@@ -450,7 +467,7 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
                 Longevity Score: {recommendation.longevityImpactScore}/10
               </span>
             </div>
-            <h3 className="text-sm sm:text-base font-extrabold text-white mt-0.5 truncate">
+            <h3 className="text-sm sm:text-base font-extrabold text-white mt-0.5 break-words leading-snug">
               {recommendation.title}
             </h3>
           </div>
@@ -540,45 +557,62 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
       )}
 
       {/* Action Buttons Row */}
-      <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-white/10 relative z-10 flex-wrap">
+      <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-white/10 relative z-10 flex-wrap w-full">
         {onMoveToBench && (
           <button
             type="button"
             onClick={handleBenchNba}
             disabled={isNbaBenched || isActionDone || isProcessing}
-            className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
-              isNbaBenched
+            className={`w-full sm:w-auto px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
+              actionSuccess === 'bench' || isNbaBenched
                 ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
                 : 'bg-white/5 hover:bg-white/10 border-white/15 text-slate-300 hover:text-white'
             }`}
           >
-            {isNbaBenched ? <Check size={13} /> : <Bookmark size={13} />}
-            <span>{isNbaBenched ? 'Saved to Bench (14 Days)' : 'Save to Bench'}</span>
+            {actionSuccess === 'bench' || isNbaBenched ? <Check size={14} className="stroke-[3]" /> : <Bookmark size={14} />}
+            <span>{actionSuccess === 'bench' || isNbaBenched ? 'Saved to Bench • Disappearing...' : 'Save to Bench'}</span>
           </button>
         )}
 
         <button
           type="button"
-          onClick={handleAddModality}
-          disabled={isActionDone || isProcessing}
-          className={`w-full sm:w-auto px-4 sm:px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] ${
-            isActionDone
+          onClick={() => setIsScheduleModalOpen(true)}
+          disabled={isActionDone || isProcessing || actionSuccess !== null}
+          className={`w-full sm:w-auto px-4 sm:px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] ${
+            actionSuccess === 'added' || isActionDone
               ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
               : 'bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white shadow-purple-900/40'
           }`}
         >
-          {isActionDone ? <Check size={14} strokeWidth={2.5} /> : <Plus size={14} strokeWidth={2.5} />}
-          <span>
-            {isActionDone ? (
-              'Enrolled in Today'
+          {actionSuccess === 'added' || isActionDone ? (
+            <Check size={15} strokeWidth={2.5} />
+          ) : (
+            <Plus size={15} strokeWidth={2.5} />
+          )}
+          <span className="break-words">
+            {actionSuccess === 'added' || isActionDone ? (
+              'Added to Today • Disappearing...'
             ) : (
-              <>
-                Add <span className="hidden sm:inline">{targetMod.display_name || targetMod.name} </span>to Today
-              </>
+              `Add ${targetMod.display_name || targetMod.name} to Today`
             )}
           </span>
         </button>
       </div>
+
+      {/* Explore-Identical Scheduling Flow Modal */}
+      <ScheduleModalityModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        modality={targetMod}
+        onSuccess={async (destination) => {
+          setIsScheduleModalOpen(false)
+          if (destination === 'bench') {
+            await handleBenchNba()
+          } else {
+            await handleAddModality()
+          }
+        }}
+      />
     </div>
   )
 }

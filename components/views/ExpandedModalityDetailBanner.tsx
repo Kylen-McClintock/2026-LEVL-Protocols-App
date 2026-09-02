@@ -47,6 +47,7 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
   const [showGeekMode, setShowGeekMode] = useState(false)
   const [isDisclaimerExpanded, setIsDisclaimerExpanded] = useState(false)
   const [actionModalType, setActionModalType] = useState<'bench' | 'eliminate' | null>(null)
+  const [actionSuccess, setActionSuccess] = useState<'bench' | 'eliminate' | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -114,16 +115,21 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
     )
   }
 
-  const handleConfirmAction = () => {
+  const handleConfirmAction = async () => {
     if (actionModalType === 'eliminate') {
+      setActionSuccess('eliminate')
       if (onEliminateEntirely) {
         onEliminateEntirely(task, customNote || 'User eliminated modality', selectedReasons)
       }
     } else if (actionModalType === 'bench') {
+      setActionSuccess('bench')
       if (onMoveToBench) {
         onMoveToBench(task)
       }
     }
+    // 0.5-second visual confirmation before closing
+    await new Promise(r => setTimeout(r, 500))
+    setActionSuccess(null)
     setActionModalType(null)
     onClose()
   }
@@ -151,11 +157,11 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
                   {actionModalType === 'eliminate' ? <Trash2 size={22} /> : <Archive size={22} />}
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white leading-tight">
-                    {actionModalType === 'eliminate' ? `Eliminate "${modName}" Entirely?` : `Move "${modName}" to Bench?`}
-                  </h3>
+                  <h4 className="text-base font-extrabold text-white leading-tight">
+                    {actionModalType === 'eliminate' ? `Eliminate "${modName}" from Schedule?` : `Move "${modName}" to Bench?`}
+                  </h4>
                   <p className={`text-xs font-medium ${actionModalType === 'eliminate' ? 'text-red-300/90' : 'text-purple-300/90'}`}>
-                    {actionModalType === 'eliminate' ? 'Active Timeline & Schedule Removal' : 'Saved on Bench for Future Use'}
+                    {actionModalType === 'eliminate' ? 'Active Schedule Removal • Still Available in Library' : 'Saved on Bench for Future Use'}
                   </p>
                 </div>
               </div>
@@ -172,13 +178,14 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
             <div className="space-y-4 overflow-y-auto pr-1 flex-1 pb-2">
               <div className="bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 space-y-2 text-xs text-slate-300 leading-relaxed">
                 <p>
-                  {actionModalType === 'eliminate' 
-                    ? <>Eliminating <strong className="text-white">{modName}</strong> removes it completely from your active daily timeline and protocol schedule.</>
-                    : <>Moving <strong className="text-white">{modName}</strong> to your Bench removes it from your active daily timeline while keeping it safely saved on your personal Bench.</>
-                  }
+                  {actionModalType === 'eliminate' ? (
+                    <>Eliminating <strong className="text-white">{modName}</strong> removes it completely from your active daily timeline and schedule.</>
+                  ) : (
+                    <>Moving <strong className="text-white">{modName}</strong> to your Bench removes it from your active daily timeline while keeping it safely saved on your personal Bench.</>
+                  )}
                 </p>
                 <p className="text-slate-400 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                  💡 <strong className="text-teal-300">Don't worry:</strong> {actionModalType === 'eliminate' ? 'This modality will still be available in your Protocol Library whenever you wish to re-enroll.' : 'You can re-add this benched modality to your active schedule at any time.'}
+                  💡 <strong className="text-teal-300">Don't worry:</strong> {actionModalType === 'eliminate' ? 'This modality will remain saved in your Protocol Library to re-add at any time.' : 'You can re-add this benched modality to your schedule anytime.'}
                 </p>
               </div>
 
@@ -236,19 +243,30 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
 
             {/* Action Toolbar (Sticky at bottom of modal to ensure buttons are NEVER covered) */}
             <div className="flex flex-col gap-2.5 pt-3 border-t border-slate-800 bg-slate-950 shrink-0">
-              {/* Full Width Primary Action */}
+              {/* Full Width Primary Action with 0.5s confirmation state */}
               <button
                 type="button"
                 onClick={handleConfirmAction}
+                disabled={actionSuccess !== null}
                 className={`w-full py-3 px-4 rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-lg active:scale-95 touch-manipulation ${
-                  actionModalType === 'eliminate'
+                  actionSuccess
+                    ? 'bg-emerald-600 text-white shadow-emerald-600/30 ring-2 ring-emerald-400'
+                    : actionModalType === 'eliminate'
                     ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30'
                     : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
                 }`}
               >
-                {actionModalType === 'eliminate' ? (
+                {actionSuccess === 'eliminate' ? (
                   <>
-                    <Trash2 size={15} /> Confirm Elimination
+                    <Check size={16} className="stroke-[3]" /> Eliminated (Saved in Library)
+                  </>
+                ) : actionSuccess === 'bench' ? (
+                  <>
+                    <Check size={16} className="stroke-[3]" /> Moved to Bench
+                  </>
+                ) : actionModalType === 'eliminate' ? (
+                  <>
+                    <Trash2 size={15} /> Confirm Elimination (Kept in Library)
                   </>
                 ) : (
                   <>
@@ -281,7 +299,7 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
                     onClick={() => setActionModalType('eliminate')}
                     className="flex-1 py-2.5 px-4 rounded-xl bg-red-950/90 hover:bg-red-900 text-red-200 font-bold text-xs border border-red-700/80 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md active:scale-95 touch-manipulation"
                   >
-                    <Trash2 size={14} /> Eliminate Entirely Instead
+                    <Trash2 size={14} /> Eliminate (Kept in Library) Instead
                   </button>
                 )}
               </div>
@@ -565,14 +583,14 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
           <span>Move to Bench</span>
         </button>
 
-        {/* Eliminate Entirely Button (Opens Confirmation Modal with Reason Pills) */}
+        {/* Eliminate Button (Opens Confirmation Modal with Reason Pills) */}
         <button
           onClick={() => setActionModalType('eliminate')}
           className="py-2 px-3.5 rounded-xl bg-red-950/90 hover:bg-red-900 text-red-200 font-bold text-xs border border-red-700/80 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-          title="Eliminate modality entirely with custom confirmation"
+          title="Eliminates from active schedule. Still available in Library anytime."
         >
           <Trash2 className="w-3.5 h-3.5" />
-          <span>Eliminate Entirely</span>
+          <span>Eliminate (Kept in Library)</span>
         </button>
 
         {onOpenRescheduleModal && (

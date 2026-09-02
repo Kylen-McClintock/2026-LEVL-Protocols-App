@@ -325,7 +325,7 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
                 </div>
               </button>
 
-              {/* Option 7: Eliminate Entirely */}
+              {/* Option 7: Eliminate from Schedule */}
               <button
                 type="button"
                 onClick={() => onExecuteReschedule('eliminate_entirely')}
@@ -336,11 +336,11 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
                 </div>
                 <div className="space-y-0.5 flex-1 min-w-0">
                   <div className="text-xs font-bold text-rose-300 flex items-center gap-2">
-                    <span>Eliminate Entirely</span>
-                    <span className="text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-semibold">Permanent</span>
+                    <span>Eliminate from Schedule</span>
+                    <span className="text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-semibold">Kept in Library</span>
                   </div>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Permanently eliminate this modality and cancel all future scheduled sessions from your stack.
+                    Removes this modality and future sessions from your daily schedule. It will remain saved and accessible in your Protocol Library at any time.
                   </p>
                 </div>
               </button>
