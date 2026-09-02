@@ -1878,6 +1878,8 @@ function TodayPageContent() {
                           onOpenRescheduleModal={handleOpenRescheduleModal}
                           completionMode={completionMode}
                           isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
+                          isProtocolGroupView={true}
+                          protocolGroupName={groupName}
                         />
                       )
                     })}
@@ -2133,6 +2135,8 @@ function TodayPageContent() {
                       onOpenRescheduleModal={handleOpenRescheduleModal}
                       completionMode={completionMode}
                       isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
+                      isProtocolGroupView={viewMode === 'protocol'}
+                      protocolGroupName={viewMode === 'protocol' ? groupName : undefined}
                     />
                   )
                 })}
@@ -2539,6 +2543,8 @@ function TodayPageContent() {
                                 onOutcomesSaved={handleOutcomesSaved}
                                 outcomesRefreshKey={outcomesRefreshKey}
                                 completionMode={completionMode}
+                                isProtocolGroupView={viewMode === 'protocol'}
+                                protocolGroupName={viewMode === 'protocol' ? groupKey : undefined}
                               />
                             )
                           })}
@@ -2600,6 +2606,8 @@ function TodayPageContent() {
                           onOutcomesSaved={handleOutcomesSaved}
                           outcomesRefreshKey={outcomesRefreshKey}
                           completionMode={completionMode}
+                          isProtocolGroupView={viewMode === 'protocol'}
+                          protocolGroupName={viewMode === 'protocol' ? (task.lineages?.[0]?.protocol_name || task.protocol_step?.protocol?.name) : undefined}
                         />
                       )
                     })}
@@ -2658,6 +2666,8 @@ function TodayPageContent() {
                           onOutcomesSaved={handleOutcomesSaved}
                           outcomesRefreshKey={outcomesRefreshKey}
                           completionMode={completionMode}
+                          isProtocolGroupView={viewMode === 'protocol'}
+                          protocolGroupName={viewMode === 'protocol' ? (task.lineages?.[0]?.protocol_name || task.protocol_step?.protocol?.name) : undefined}
                         />
                       )
                     })}

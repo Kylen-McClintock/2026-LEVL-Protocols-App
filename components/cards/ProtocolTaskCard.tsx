@@ -43,6 +43,8 @@ import { saveInjectionSiteLog } from '@/lib/peptides/reconstitutionEngine'
 import { useTemperatureUnit } from '@/lib/utils/useTemperatureUnit'
 import { isPreLoggableOutcome, hasAnyPreLoggableOutcome, getOutcomePhaseType } from '@/lib/utils/outcomePhaseRules'
 import { getPeakOnsetGuidance } from '@/lib/utils/peakOnsetGuidance'
+import { getCircadianConfig } from '@/lib/utils/circadianConfig'
+import { resolveOptimalTimingSlot } from '@/lib/data/resolveOptimalTiming'
 import { getModalityArchetype } from '@/lib/data/modalityArchetypes'
 import dynamic from 'next/dynamic'
 
@@ -433,6 +435,8 @@ type ProtocolTaskCardProps = {
   outcomesRefreshKey?: number
   completionMode?: 'outcome' | 'fast'
   defaultExpanded?: boolean
+  isProtocolGroupView?: boolean
+  protocolGroupName?: string
 }
 
 export default function ProtocolTaskCard({ 
@@ -451,7 +455,9 @@ export default function ProtocolTaskCard({
   outcomesRefreshKey,
   onOpenRescheduleModal,
   completionMode = 'outcome',
-  defaultExpanded = false
+  defaultExpanded = false,
+  isProtocolGroupView = false,
+  protocolGroupName
 }: ProtocolTaskCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
   const [showSkipReason, setShowSkipReason] = useState(false)
@@ -1275,6 +1281,33 @@ export default function ProtocolTaskCard({
     })
   }
 
+  // When viewed under a protocol umbrella in Today:
+  // Instead of re-listing the same protocol umbrella name on every card,
+  // display the correct time block in the same smaller less prominent font.
+  const effectiveSlot = useMemo(() => {
+    return resolveOptimalTimingSlot(
+      modality, 
+      task.protocol_step, 
+      task.timing_slot || (task as any).execution_details?.timing_slot || task.execution_details?.custom_timing
+    )
+  }, [modality, task.protocol_step, task.timing_slot, (task as any).execution_details?.timing_slot, task.execution_details?.custom_timing])
+
+  const circadian = useMemo(() => getCircadianConfig(effectiveSlot), [effectiveSlot])
+  const CircadianIcon = circadian?.icon || Clock
+
+  const timeBlockLabel = useMemo(() => {
+    if (task.execution_details?.split_dose_label) {
+      return task.execution_details.split_dose_label
+    }
+    return circadian?.label || effectiveSlot.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+  }, [task.execution_details?.split_dose_label, circadian?.label, effectiveSlot])
+
+  const displayLineages = useMemo(() => {
+    if (!isProtocolGroupView || !protocolGroupName) return lineages
+    const umbrellaLower = protocolGroupName.toLowerCase().trim()
+    return lineages.filter(l => l.protocol_name.toLowerCase().trim() !== umbrellaLower)
+  }, [isProtocolGroupView, protocolGroupName, lineages])
+
   const { formatText: formatTemp } = useTemperatureUnit()
 
   // Display strings fallbacks (Execution Details -> Bench Item -> Protocol Step -> Modality)
@@ -1600,10 +1633,27 @@ export default function ProtocolTaskCard({
         /* PENDING & OTHER STATUSES HEADER */
         <div className={`${isSupplement ? 'p-3 sm:px-4 sm:py-3 gap-1.5' : 'p-4 sm:p-5 gap-3'} flex flex-col relative cursor-pointer`} onClick={() => setExpanded(!expanded)}>
         
-        {/* Lineage Badges */}
-        {lineages.length > 0 && (
-          <div className={`flex flex-wrap ${isSupplement ? 'gap-1 mb-0.5' : 'gap-1.5 mb-1'}`}>
-            {lineages.map((lineage, idx) => {
+        {/* Under Protocol View: Show Time Block instead of redundant parent protocol. In Chronological view: Show Lineage Badges */}
+        {(isProtocolGroupView || displayLineages.length > 0) && (
+          <div className={`flex flex-wrap items-center ${isSupplement ? 'gap-1 mb-0.5' : 'gap-1.5 mb-1'}`}>
+            {/* When under protocol view, display the correct time block here in the same smaller less prominent font */}
+            {isProtocolGroupView && (
+              <span
+                className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border flex items-center gap-1 shadow-sm"
+                style={{
+                  backgroundColor: `${circadian?.skyColorHex || '#A855F7'}1A`, // 10% opacity
+                  color: circadian?.skyColorHex || '#A855F7',
+                  borderColor: `${circadian?.skyColorHex || '#A855F7'}33` // 20% opacity
+                }}
+                title={`Scheduled Time Block: ${timeBlockLabel}`}
+              >
+                <CircadianIcon size={9} className="shrink-0" />
+                <span>{timeBlockLabel}</span>
+              </span>
+            )}
+
+            {/* Other lineages (if any exist that are not the current umbrella protocol) */}
+            {displayLineages.map((lineage, idx) => {
               const protoTargetId = (lineage as any).protocol_id || task.protocol_step?.protocol_id || lineage.protocol_name
               return (
                 <Link 
