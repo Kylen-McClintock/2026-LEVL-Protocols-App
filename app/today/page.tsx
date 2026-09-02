@@ -1560,6 +1560,11 @@ function TodayPageContent() {
     return getScoredLongevityTips(profile, checkinProps, tasks, dismissedTipIds, dateStr)
   }, [profile, wellbeingCheckin, tasks, dismissedTipIds, dateStr])
 
+  const isTipActedUpon = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    return Boolean(localStorage.getItem('levl_daily_tip_acted_' + dateStr))
+  }, [dateStr, dismissedTipIds])
+
   const threeDates = useMemo(() => {
     const d1 = subDays(currentDate, 1)
     const d2 = currentDate
@@ -2383,33 +2388,46 @@ function TodayPageContent() {
               />
             </div>
 
-            {/* 5. Daily Longevity Tip Banner (collapsed by default on past dates) */}
-            <div className="mb-4">
-              <DailyLongevityTipBanner 
-                scoredTips={scoredTips}
-                allModalities={allModalities}
-                userProfile={profile}
-                dateStr={dateStr}
-                onAddToToday={async (modalityOrProtocolId: string) => {
-                  if (profile) {
-                    await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityOrProtocolId)
-                    await refreshTodayTasks()
-                  }
-                }}
-                onAddToBench={async (modalityId: string) => {
-                  await handleMoveToBench(modalityId)
-                }}
-                onDismiss={(tipId: string) => setDismissedTipIds(prev => [...prev, tipId])}
-                isCollapsedByDefault={isPastDate}
-              />
-            </div>
+            {/* 5. Daily Longevity Tip Banner (Hidden once added to today, benched, or skipped) */}
+            {!isTipActedUpon && (
+              <div className="mb-4">
+                <DailyLongevityTipBanner 
+                  scoredTips={scoredTips}
+                  allModalities={allModalities}
+                  userProfile={profile}
+                  dateStr={dateStr}
+                  onAddToToday={async (modalityOrProtocolId: string) => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('levl_daily_tip_acted_' + dateStr, 'true')
+                    }
+                    if (profile) {
+                      await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityOrProtocolId)
+                      await refreshTodayTasks()
+                    }
+                  }}
+                  onAddToBench={async (modalityId: string) => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('levl_daily_tip_acted_' + dateStr, 'true')
+                    }
+                    await handleMoveToBench(modalityId)
+                  }}
+                  onDismiss={(tipId: string) => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('levl_daily_tip_acted_' + dateStr, 'true')
+                    }
+                    setDismissedTipIds(prev => [...prev, tipId])
+                  }}
+                  isCollapsedByDefault={isPastDate}
+                />
+              </div>
+            )}
 
             {/* Full-Width AI Longevity Coach Input Bar */}
             <div className="mb-6">
               <LongevityCoachInputBar
                 userProfile={profile}
                 todayTasks={tasks}
-                currentTipHeadline={scoredTips && scoredTips.length > 0 ? scoredTips[0].tip.headline : undefined}
+                currentTipHeadline={!isTipActedUpon && scoredTips && scoredTips.length > 0 ? scoredTips[0].tip.headline : undefined}
                 onAddToToday={async (nameOrId: string) => {
                   if (profile) {
                     await addModalityOrProtocolToToday(profile.local_user_id, dateStr, nameOrId)

@@ -87,6 +87,15 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
     }
   }, [isCollapsedByDefault])
 
+  // Synchronize effectiveDateStr state if date changes
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && effectiveDateStr) {
+      setIsActedUpon(Boolean(localStorage.getItem('levl_daily_tip_acted_' + effectiveDateStr)))
+    }
+  }, [effectiveDateStr])
+
+  // If already added to today, benched, or skipped for today, do not show it
+  if (isActedUpon) return null
   if (!scoredTips || scoredTips.length === 0) return null
 
   const currentScored = scoredTips[currentIndex % scoredTips.length]
@@ -120,13 +129,34 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
   const handleAdd = async () => {
     if (!tip.modality_id) return
     setIsAdding(true)
-    await onAddToToday(tip.modality_id)
-    setIsAdding(false)
-    setAddedSuccess(true)
-    setIsActedUpon(true)
     if (typeof window !== 'undefined' && effectiveDateStr) {
       localStorage.setItem('levl_daily_tip_acted_' + effectiveDateStr, tip.id)
     }
+    setIsActedUpon(true)
+    await onAddToToday(tip.modality_id)
+    setIsAdding(false)
+    setAddedSuccess(true)
+  }
+
+  const handleBench = async (mId: string) => {
+    if (typeof window !== 'undefined' && effectiveDateStr) {
+      localStorage.setItem('levl_daily_tip_acted_' + effectiveDateStr, tip.id)
+    }
+    setIsActedUpon(true)
+    if (onAddToBench) {
+      await onAddToBench(mId)
+    } else {
+      const localUserId = userProfile?.local_user_id || getLocalUserId()
+      await addToBench(localUserId, mId)
+    }
+  }
+
+  const handleDismiss = () => {
+    if (typeof window !== 'undefined' && effectiveDateStr) {
+      localStorage.setItem('levl_daily_tip_acted_' + effectiveDateStr, tip.id)
+    }
+    setIsActedUpon(true)
+    onDismiss(tip.id)
   }
 
   if (!isExpanded) {
@@ -161,14 +191,24 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
             </div>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setIsExpanded(true)}
-            className="text-xs font-bold text-purple-300 hover:text-white flex items-center gap-1.5 px-3 py-1.5 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/50 rounded-full transition-all cursor-pointer shrink-0 shadow-sm"
-          >
-            <span>Show Tip</span>
-            <ChevronDown size={14} className="text-purple-300" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(true)}
+              className="text-xs font-bold text-purple-300 hover:text-white flex items-center gap-1.5 px-3 py-1.5 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/50 rounded-full transition-all cursor-pointer shadow-sm"
+            >
+              <span>Show Tip</span>
+              <ChevronDown size={14} className="text-purple-300" />
+            </button>
+            <button
+              type="button"
+              onClick={handleDismiss}
+              className="p-1.5 rounded-xl text-slate-500 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Skip tip for today"
+            >
+              <X size={15} />
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -224,11 +264,12 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
           </button>
 
           <button
-            onClick={() => onDismiss(tip.id)}
-            className="p-1 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Dismiss tip for today"
+            onClick={handleDismiss}
+            className="text-xs font-bold text-slate-400 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-800 px-2.5 py-1 rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
+            title="Skip tip for today"
           >
-            <X size={16} />
+            <X size={14} />
+            <span>Skip</span>
           </button>
         </div>
       </div>
@@ -330,20 +371,11 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
               modality={resolvedModality}
               userProfile={userProfile}
               activeStatus={currentScored.isInTodayStack || addedSuccess || isActedUpon ? 'today' : null}
-              onAddToToday={async (mId) => {
+              onAddToToday={async () => {
                 await handleAdd()
               }}
               onAddToBench={async (mId) => {
-                if (onAddToBench) {
-                  await onAddToBench(mId)
-                } else {
-                  const localUserId = userProfile?.local_user_id || getLocalUserId()
-                  await addToBench(localUserId, mId)
-                }
-                setIsActedUpon(true)
-                if (typeof window !== 'undefined' && effectiveDateStr) {
-                  localStorage.setItem('levl_daily_tip_acted_' + effectiveDateStr, tip.id)
-                }
+                await handleBench(mId)
               }}
             />
           </div>
