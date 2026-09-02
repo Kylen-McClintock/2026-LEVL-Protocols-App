@@ -261,14 +261,32 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
   }
 
   // 10. SLEEP ENVIRONMENT & SANCTUARY
+  // Oral supplements taken at night (e.g. Magnesium, Apigenin, GABA, Theanine) are supplements, not sleep environment
+  const isOralSleepSupp = (
+    logType === 'supplement' || 
+    modType === 'supplement' || 
+    cat.includes('supplement') || 
+    cat.includes('nutraceutical') ||
+    name.includes('apigenin') ||
+    name.includes('magnesium') ||
+    name.includes('gaba') ||
+    name.includes('theanine') ||
+    name.includes('melatonin') ||
+    name.includes('glycine') ||
+    name.includes('inositol')
+  )
+
   if (
-    logType === 'sleep' || 
-    cat.includes('sleep') || 
-    name.includes('sleep') || 
-    name.includes('mouth tape') || 
-    name.includes('dark & cool') || 
-    name.includes('blackout') || 
-    name.includes('circadian wind-down')
+    !isOralSleepSupp && (
+      logType === 'sleep' || 
+      cat.includes('sleep') || 
+      name.includes('sleep') || 
+      name.includes('mouth tape') || 
+      name.includes('mouth tap') || 
+      name.includes('dark & cool') || 
+      name.includes('blackout') || 
+      name.includes('circadian wind-down')
+    )
   ) {
     return {
       archetype: 'sleep',
@@ -455,7 +473,30 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
   }
 
   // 14. SUPPLEMENTS & NUTRACEUTICALS
-  const isSupplementMatch = (
+  const isNonSupplementIntervention = (
+    logType === 'sleep' ||
+    logType === 'breathwork' ||
+    logType === 'thermal' ||
+    logType === 'cardio' ||
+    logType === 'strength' ||
+    logType === 'fasting' ||
+    logType === 'cgm' ||
+    logType === 'red_light' ||
+    name.includes('mouth tape') ||
+    name.includes('mouth tap') ||
+    name.includes('dark & cool') ||
+    name.includes('4-7-8') ||
+    name.includes('breathing') ||
+    name.includes('sighing') ||
+    name.includes('screen time') ||
+    name.includes('digital sunset') ||
+    name.includes('floss') ||
+    name.includes('gargl') ||
+    name.includes('sleep environment') ||
+    name.includes('sleep consistency')
+  )
+
+  const isSupplementMatch = !isNonSupplementIntervention && (
     logType === 'supplement' || 
     modType === 'supplement' || 
     cat.includes('supplement') || 

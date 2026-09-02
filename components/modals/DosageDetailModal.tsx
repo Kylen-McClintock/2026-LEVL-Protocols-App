@@ -420,7 +420,9 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
               <span className="text-xs font-bold uppercase tracking-wider text-teal-400 bg-teal-950/80 border border-teal-800/60 px-3 py-1 rounded-full flex items-center gap-1.5">
                 <Scale className="w-3.5 h-3.5" /> Dosage & Timing Intelligence
               </span>
-              <span className="text-xs text-slate-300 font-medium">• {modality.category || 'Supplement'}</span>
+              <span className="text-xs text-slate-300 font-medium">
+                • {modality.category || (modality.modality_type ? modality.modality_type.charAt(0).toUpperCase() + modality.modality_type.slice(1).replace(/_/g, ' ') : 'Protocol Modality')}
+              </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-white mt-1">{modality.name}</h2>
             {modality.headline_benefit && (

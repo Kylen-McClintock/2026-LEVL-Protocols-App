@@ -319,7 +319,9 @@ export function resolveRecommendedDose(
     else if (isExerciseOrPhysical || isBreathOrMind || isThermal) unit = 'mins'
     else if (isSleepOrFasting) unit = 'hours'
     else if (isDiagnostic) unit = 'sessions'
-    else unit = 'mg'
+    else if (typeLower.includes('habit') || typeLower.includes('lifestyle') || typeLower.includes('environmental') || typeLower.includes('behavioral') || catLower.includes('hygiene') || catLower.includes('airway') || catLower.includes('habit') || nameLower.includes('floss') || nameLower.includes('gargl')) unit = 'session'
+    else if (isPeptideOrHighRisk || catLower.includes('supplement') || catLower.includes('nutraceutical') || catLower.includes('nootropic') || catLower.includes('biochemistry') || typeLower.includes('supplement')) unit = 'mg'
+    else unit = 'session'
   }
 
   let starter = profile?.starter_dose ? { value: profile.starter_dose, unit, notes: profile.starter_notes } : parsedFallback?.starter

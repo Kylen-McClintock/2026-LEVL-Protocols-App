@@ -1057,9 +1057,10 @@ function TodayPageContent() {
     if (selectedMainCategories.includes('all') || selectedMainCategories.length === 0) return true
 
     const modalityCat = (task.loose_modality?.category || task.protocol_step?.modality?.category || '').toLowerCase()
+    const modalityType = (task.loose_modality?.modality_type || task.protocol_step?.modality?.modality_type || '').toLowerCase()
     const modalityName = (task.loose_modality?.name || task.protocol_step?.modality?.name || (task as any).name || '').toLowerCase()
-    const stepName = ((task.protocol_step as any)?.step_name || task.protocol_step?.instructions || '').toLowerCase()
-    const combinedText = `${modalityCat} ${modalityName} ${stepName}`
+    const stepName = ((task.protocol_step as any)?.step_name || '').toLowerCase()
+    const combinedText = `${modalityCat} ${modalityType} ${modalityName} ${stepName}`
 
     return selectedMainCategories.some(cat => {
       const subItems = SUB_CATEGORIES_MAP[cat] || []
@@ -1068,7 +1069,17 @@ function TodayPageContent() {
       if (activeSubIds.length === 0) {
         if (cat === 'peptides') return combinedText.includes('peptide') || combinedText.includes('bpc') || combinedText.includes('tb500') || combinedText.includes('tb-500') || combinedText.includes('cjc') || combinedText.includes('ipamorelin') || combinedText.includes('semax') || combinedText.includes('selank') || combinedText.includes('tirzepatide') || combinedText.includes('subq')
         if (cat === 'fitness') return combinedText.includes('fitness') || combinedText.includes('exercise') || combinedText.includes('workout') || combinedText.includes('cardio') || combinedText.includes('strength') || combinedText.includes('sauna') || combinedText.includes('cold') || combinedText.includes('physical') || combinedText.includes('training')
-        if (cat === 'nutrition') return combinedText.includes('nutrition') || combinedText.includes('supplement') || combinedText.includes('fast') || combinedText.includes('food') || combinedText.includes('diet') || combinedText.includes('meal') || combinedText.includes('protein') || combinedText.includes('vitamin') || combinedText.includes('biochemistry')
+        if (cat === 'nutrition') {
+          if (
+            modalityCat.includes('sleep') || 
+            modalityCat.includes('breath') || 
+            modalityName.includes('mouth tape') || 
+            modalityName.includes('mouth tap') || 
+            modalityName.includes('4-7-8') ||
+            modalityName.includes('dark & cool')
+          ) return false
+          return combinedText.includes('nutrition') || combinedText.includes('supplement') || combinedText.includes('fast') || combinedText.includes('food') || combinedText.includes('diet') || combinedText.includes('meal') || combinedText.includes('protein') || combinedText.includes('vitamin') || combinedText.includes('biochemistry')
+        }
         if (cat === 'sleep') return combinedText.includes('sleep') || combinedText.includes('circadian') || combinedText.includes('light') || combinedText.includes('wind down') || combinedText.includes('bed') || combinedText.includes('night')
         if (cat === 'mind') return combinedText.includes('mind') || combinedText.includes('nervous') || combinedText.includes('breath') || combinedText.includes('meditat') || combinedText.includes('nsdr') || combinedText.includes('vagal') || combinedText.includes('neurology') || combinedText.includes('autonomic')
         if (cat === 'other') return combinedText.includes('skin') || combinedText.includes('hair') || combinedText.includes('biomarker') || combinedText.includes('lab') || combinedText.includes('diagnostics') || combinedText.includes('hygiene') || combinedText.includes('dental')
@@ -1088,7 +1099,24 @@ function TodayPageContent() {
         if (subId === 'strength') return combinedText.includes('strength') || combinedText.includes('lift') || combinedText.includes('resistance') || combinedText.includes('pushup') || combinedText.includes('squat')
         if (subId === 'flexibility') return combinedText.includes('stretch') || combinedText.includes('flexibility') || combinedText.includes('yoga') || combinedText.includes('mobility')
         if (subId === 'thermal') return combinedText.includes('sauna') || combinedText.includes('cold') || combinedText.includes('plunge') || combinedText.includes('thermal') || combinedText.includes('ice')
-        if (subId === 'supplements') return combinedText.includes('supplement') || combinedText.includes('pill') || combinedText.includes('magnesium') || combinedText.includes('creatine') || combinedText.includes('omega') || combinedText.includes('vitamin')
+        if (subId === 'supplements') {
+          if (
+            modalityCat.includes('sleep') || 
+            modalityCat.includes('breath') || 
+            modalityCat.includes('circadian') || 
+            modalityCat.includes('exercise') || 
+            modalityCat.includes('physical') ||
+            modalityCat.includes('habit') || 
+            modalityName.includes('mouth tape') || 
+            modalityName.includes('mouth tap') || 
+            modalityName.includes('dark & cool') || 
+            modalityName.includes('4-7-8') || 
+            modalityName.includes('screen') ||
+            modalityName.includes('floss') ||
+            modalityName.includes('gargl')
+          ) return false
+          return combinedText.includes('supplement') || combinedText.includes('pill') || combinedText.includes('magnesium') || combinedText.includes('creatine') || combinedText.includes('omega') || combinedText.includes('vitamin')
+        }
         if (subId === 'fasting') return combinedText.includes('fast')
         if (subId === 'whole_foods') return combinedText.includes('food') || combinedText.includes('diet') || combinedText.includes('meal') || combinedText.includes('protein') || combinedText.includes('glucose')
         if (subId === 'hygiene') return combinedText.includes('hygiene') || combinedText.includes('cool bedroom') || combinedText.includes('darkness')
@@ -1661,19 +1689,56 @@ function TodayPageContent() {
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
+  const getModalityIcon = (mod: any) => {
+    if (!mod) return '✨'
+    const cat = (mod.category || '').toLowerCase()
+    const type = (mod.modality_type || '').toLowerCase()
+    const name = (mod.display_name || mod.name || '').toLowerCase()
+
+    if (cat.includes('breath') || type.includes('breath') || name.includes('breath') || name.includes('sigh') || name.includes('4-7-8')) return '🫁'
+    if (cat.includes('sleep') || name.includes('mouth tape') || name.includes('mouth tap') || name.includes('sleep') || name.includes('bed') || name.includes('dark & cool') || name.includes('blue light') || name.includes('screen')) return '🌙'
+    if (cat.includes('fast') || type.includes('fast') || name.includes('fast')) return '⏱️'
+    if (cat.includes('sauna') || cat.includes('cold') || cat.includes('thermal') || type.includes('heat') || type.includes('cold')) return '❄️'
+    if (cat.includes('exercise') || cat.includes('physical') || cat.includes('strength') || cat.includes('cardio') || type.includes('exercise')) return '⚡'
+    if (cat.includes('peptide') || type.includes('peptide') || name.includes('bpc') || name.includes('cjc') || name.includes('ipamorelin')) return '💉'
+    if (cat.includes('supplement') || cat.includes('nutraceutical') || type === 'supplement') return '💊'
+    return '✨'
+  }
+
   const isSupplementGroup = (gName: string, gTasks: DailyProtocolTask[]) => {
     const gLower = gName.toLowerCase()
-    if (gLower.includes('supplement_stack') || gLower.includes('supplement stack') || gLower.includes('stack')) {
+    // Explicit supplement stack groups
+    if (
+      gLower === 'morning_supplement_stack' || 
+      gLower === 'evening_supplement_stack' || 
+      gLower.includes('supplement_stack') || 
+      gLower.includes('supplement stack')
+    ) {
       return true
+    }
+    // NEVER treat diurnal circadian blocks, bedtime, routines, or general protocol groups as a supplement tray
+    if (
+      gLower.includes('bedtime') || 
+      gLower.includes('sleep') || 
+      gLower.includes('wind_down') || 
+      gLower.includes('wind down') || 
+      gLower.includes('pre_bed') || 
+      gLower.includes('routine') || 
+      gLower.includes('waking') || 
+      gLower.includes('midday') || 
+      gLower.includes('afternoon') || 
+      gLower.includes('evening') ||
+      gLower.includes('anytime')
+    ) {
+      return false
     }
     const suppCount = gTasks.filter(t => {
       const mod = t.loose_modality || t.protocol_step?.modality
       const cat = (mod?.category || '').toLowerCase()
       const type = (mod?.modality_type || '').toLowerCase()
-      const mName = (mod?.name || '').toLowerCase()
-      return cat.includes('supplement') || cat.includes('vitamin') || cat.includes('nootropic') || cat.includes('electrolyte') || type.includes('supplement') || mName.includes('supplement')
+      return cat.includes('supplement') || cat.includes('nutraceutical') || type === 'supplement'
     }).length
-    return gTasks.length > 0 && suppCount >= Math.ceil(gTasks.length * 0.6)
+    return gTasks.length > 0 && suppCount === gTasks.length
   }
 
   const isGroupCollapsed = (groupName: string, groupTasks: DailyProtocolTask[]) => {
@@ -1815,10 +1880,11 @@ function TodayPageContent() {
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                     {groupTasks.map((t) => {
                       const mod = t.loose_modality || t.protocol_step?.modality
-                      const name = mod?.display_name || mod?.name || 'Supplement'
+                      const name = mod?.display_name || mod?.name || 'Modality'
                       const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
                       const dose = t.execution_details?.custom_dose || bench?.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount}${t.protocol_step.dose_unit || ''}` : '') || mod?.dose_or_exposure || ''
                       const isDone = t.status === 'completed'
+                      const icon = getModalityIcon(mod)
 
                       return (
                         <span 
@@ -1832,7 +1898,7 @@ function TodayPageContent() {
                           {isDone ? (
                             <Check size={11} className="text-emerald-400 stroke-[3] shrink-0" />
                           ) : (
-                            <span className="text-[10px] opacity-70">💊</span>
+                            <span className="text-[10px] opacity-70">{icon}</span>
                           )}
                           <span className={isDone ? 'line-through opacity-80' : 'text-white'}>{name}</span>
                           {dose && (
@@ -2071,10 +2137,11 @@ function TodayPageContent() {
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                 {groupTasks.map((t) => {
                   const mod = t.loose_modality || t.protocol_step?.modality
-                  const name = mod?.display_name || mod?.name || 'Supplement'
+                  const name = mod?.display_name || mod?.name || 'Modality'
                   const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
                   const dose = t.execution_details?.custom_dose || bench?.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount}${t.protocol_step.dose_unit || ''}` : '') || mod?.dose_or_exposure || ''
                   const isDone = t.status === 'completed'
+                  const icon = getModalityIcon(mod)
 
                   return (
                     <span 
@@ -2088,7 +2155,7 @@ function TodayPageContent() {
                       {isDone ? (
                         <Check size={11} className="text-emerald-400 stroke-[3] shrink-0" />
                       ) : (
-                        <span className="text-[10px] opacity-70">💊</span>
+                        <span className="text-[10px] opacity-70">{icon}</span>
                       )}
                       <span className={isDone ? 'line-through opacity-80' : 'text-white'}>{name}</span>
                       {dose && (

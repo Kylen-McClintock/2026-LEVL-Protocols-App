@@ -1638,7 +1638,7 @@ export default function ProtocolTaskCard({
           <div className="flex items-center justify-between gap-2.5">
             {/* Left: Modality Name & Clickable Dynamic Dosage */}
             <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <h3 className="font-extrabold text-sm sm:text-base text-white truncate max-w-[180px] sm:max-w-xs md:max-w-md">
+              <h3 className="font-extrabold text-sm sm:text-base text-white leading-snug">
                 {modality.display_name || modality.name}
               </h3>
               <DosageBadgeButton
