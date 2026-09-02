@@ -961,38 +961,47 @@ export default function ExplorePage() {
           </Link>
         </div>
 
-        <div className="flex justify-between items-start pt-2 gap-3">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2"><Compass size={24} className="text-levl-accent" /> Explore</h1>
-            <p className="text-levl-text-secondary text-sm">Discover what works for you.</p>
-            <p className="text-xs text-levl-accent font-medium mt-1.5 flex items-center gap-1.5">
+        <div className="space-y-2 pt-2">
+          {/* Top Row: Title & Action Buttons */}
+          <div className="flex justify-between items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Compass size={24} className="text-levl-accent" /> Explore
+              </h1>
+              <p className="text-levl-text-secondary text-xs sm:text-sm">Discover what works for you.</p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-sky-500/20 cursor-pointer active:scale-95"
+              >
+                <Sparkles size={13} />
+                <span>+ Create Modality</span>
+              </button>
+              <Link
+                href="/guide#explore"
+                className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+                title="View Explore Catalog Guide"
+              >
+                <HelpCircle size={13} className="text-purple-400" /> Guide
+              </Link>
+            </div>
+          </div>
+
+          {/* Full-Width Sort & Count Status Row */}
+          <div className="w-full flex items-center justify-between gap-2 text-xs text-levl-accent font-medium pt-0.5">
+            <span className="flex items-center gap-1.5">
               {sortMode === 'popularity' ? '🔥 Sorted by Cultural Popularity & Proven Efficacy' :
                sortMode === 'nba' ? '★ Sorted by Next Best Action' :
                sortMode === 'evidence' ? '⭐ Sorted by Scientific Evidence' :
                sortMode === 'impact' ? '📈 Sorted by Longevity Benefit' :
                '🔤 Sorted by Direct Relevance'}
-              <span className="text-slate-500 ml-1.5 font-mono text-[11px]">
-                ({activeTab === 'modalities' ? `${filteredModalities.length} modalities` : `${filteredProtocols.length} protocols`})
-              </span>
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-sky-500/20 cursor-pointer active:scale-95"
-            >
-              <Sparkles size={13} />
-              <span>+ Create Modality</span>
-            </button>
-            <Link
-              href="/guide#explore"
-              className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
-              title="View Explore Catalog Guide"
-            >
-              <HelpCircle size={13} className="text-purple-400" /> Guide
-            </Link>
+            </span>
+            <span className="text-slate-400 font-mono text-[11px] shrink-0">
+              ({activeTab === 'modalities' ? `${filteredModalities.length} modalities` : `${filteredProtocols.length} protocols`})
+            </span>
           </div>
         </div>
 
