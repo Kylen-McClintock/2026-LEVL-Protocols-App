@@ -251,15 +251,24 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
             </span>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
             <button
               type="button"
               onClick={() => setShowCulpritDetails(!showCulpritDetails)}
               className="text-[11px] font-bold text-amber-300 hover:text-white px-3 py-1.5 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
               title="Inspect full modality specs before deciding to bench"
             >
-              <Info size={13} className="text-amber-400" />
-              <span>{showCulpritDetails ? 'Hide Modality Card' : 'View Full Modality Details'}</span>
+              <Info size={13} className="text-amber-400 shrink-0" />
+              <span>
+                {showCulpritDetails ? (
+                  'Hide Details'
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">View Full Modality Details</span>
+                    <span className="sm:hidden">Full Details</span>
+                  </>
+                )}
+              </span>
               {showCulpritDetails ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
 
@@ -267,14 +276,22 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
               type="button"
               onClick={() => handleBenchModality(culprit.id, culpritName)}
               disabled={isCulpritBenched || isProcessing}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer ${
+              className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer ${
                 isCulpritBenched
                   ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
                   : 'bg-amber-600 hover:bg-amber-500 text-black font-extrabold shadow-amber-900/30 active:scale-95'
               }`}
             >
               {isCulpritBenched ? <Check size={13} /> : <Bookmark size={13} />}
-              <span>{isCulpritBenched ? 'Moved to Bench • Stack Reset' : `Bench ${culpritName} (14 Days)`}</span>
+              <span>
+                {isCulpritBenched ? (
+                  'Moved to Bench • Stack Reset'
+                ) : (
+                  <>
+                    Bench <span className="hidden sm:inline">{culpritName} </span>(14 Days)
+                  </>
+                )}
+              </span>
             </button>
           </div>
         </div>
@@ -415,25 +432,25 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
   }
 
   return (
-    <div className="rounded-2xl border border-purple-500/40 bg-gradient-to-br from-purple-950/60 via-slate-900 to-slate-950 p-4 sm:p-5 shadow-2xl relative overflow-hidden backdrop-blur-md animate-in fade-in slide-in-from-top-2 space-y-4">
+    <div className="w-full max-w-full overflow-hidden rounded-2xl border border-purple-500/40 bg-gradient-to-br from-purple-950/60 via-slate-900 to-slate-950 p-3.5 sm:p-5 shadow-2xl relative backdrop-blur-md animate-in fade-in slide-in-from-top-2 space-y-4">
       <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header Bar */}
       <div className="flex items-start justify-between gap-3 relative z-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold shadow-[0_0_14px_rgba(168,85,247,0.3)] shrink-0">
             <Sparkles size={18} />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300">
                 Next Best Action (Stack Progression)
               </span>
-              <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-700/80">
+              <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-700/80 shrink-0">
                 Longevity Score: {recommendation.longevityImpactScore}/10
               </span>
             </div>
-            <h3 className="text-sm sm:text-base font-extrabold text-white mt-0.5">
+            <h3 className="text-sm sm:text-base font-extrabold text-white mt-0.5 truncate">
               {recommendation.title}
             </h3>
           </div>
@@ -442,7 +459,7 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
         <button
           type="button"
           onClick={() => setIsDismissed(true)}
-          className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+          className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
           title="Dismiss suggestion"
         >
           <X size={14} />
@@ -456,7 +473,7 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
 
       {/* Metadata Badges & Learn More Toggle */}
       <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-white/5 relative z-10">
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
           <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md border ${effort.badgeColor}`}>
             {effort.shortLabel}
           </span>
@@ -477,23 +494,32 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
         <button
           type="button"
           onClick={() => setIsNbaExpanded(!isNbaExpanded)}
-          className="text-[11px] font-bold text-purple-300 hover:text-white px-3 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ml-auto sm:ml-0"
+          className="text-[11px] font-bold text-purple-300 hover:text-white px-3 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ml-auto sm:ml-0 shrink-0"
         >
-          <Info size={13} className="text-purple-400" />
-          <span>{isNbaExpanded ? 'Hide Full Modality Details' : 'View Full Modality Details & Specs'}</span>
+          <Info size={13} className="text-purple-400 shrink-0" />
+          <span>
+            {isNbaExpanded ? (
+              'Hide Details'
+            ) : (
+              <>
+                <span className="hidden sm:inline">View Full Modality Details &amp; Specs</span>
+                <span className="sm:hidden">Full Details</span>
+              </>
+            )}
+          </span>
           {isNbaExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
       </div>
 
       {/* EXPANDED INLINE CLINICAL & PROTOCOL SPECIFICATIONS VIA EXPLORE CARD */}
       {isNbaExpanded && (
-        <div className="p-2 sm:p-3 bg-slate-950/90 border border-purple-500/30 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 relative z-10 shadow-inner">
+        <div className="p-2 sm:p-3 bg-slate-950/90 border border-purple-500/30 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 relative z-10 shadow-inner w-full max-w-full overflow-hidden">
           <div className="flex items-center justify-between pb-1 border-b border-white/10 px-1">
             <span className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
-              <Sparkles size={14} className="text-purple-400" /> Full Modality Profile & Clinical Protocols
+              <Sparkles size={14} className="text-purple-400" /> Full Modality Profile &amp; Clinical Protocols
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">
-              Complete dosing, timing, mechanisms, GeekMode & citations
+            <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
+              Complete dosing, timing, mechanisms, GeekMode &amp; citations
             </span>
           </div>
 
@@ -520,7 +546,7 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
             type="button"
             onClick={handleBenchNba}
             disabled={isNbaBenched || isActionDone || isProcessing}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer ${
+            className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
               isNbaBenched
                 ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
                 : 'bg-white/5 hover:bg-white/10 border-white/15 text-slate-300 hover:text-white'
@@ -535,14 +561,22 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
           type="button"
           onClick={handleAddModality}
           disabled={isActionDone || isProcessing}
-          className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg flex items-center gap-2 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] ${
+          className={`w-full sm:w-auto px-4 sm:px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98] ${
             isActionDone
               ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
               : 'bg-gradient-to-r from-purple-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white shadow-purple-900/40'
           }`}
         >
           {isActionDone ? <Check size={14} strokeWidth={2.5} /> : <Plus size={14} strokeWidth={2.5} />}
-          <span>{isActionDone ? 'Enrolled in Today' : `Add ${targetMod.display_name || targetMod.name} to Today`}</span>
+          <span>
+            {isActionDone ? (
+              'Enrolled in Today'
+            ) : (
+              <>
+                Add <span className="hidden sm:inline">{targetMod.display_name || targetMod.name} </span>to Today
+              </>
+            )}
+          </span>
         </button>
       </div>
     </div>

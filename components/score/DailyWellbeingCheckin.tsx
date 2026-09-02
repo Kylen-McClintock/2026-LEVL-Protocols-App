@@ -1229,6 +1229,11 @@ export default function DailyWellbeingCheckin({
                     <span className="text-white font-bold text-xs truncate">
                       Anytime Check-in
                     </span>
+                    {anytimeLogs.length > 0 && (
+                      <span className="text-[10px] font-medium text-slate-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full shrink-0">
+                        {anytimeLogs.length} {anytimeLogs.length === 1 ? 'logged' : 'logged'}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {daytimeSavedToast && (
@@ -1259,9 +1264,8 @@ export default function DailyWellbeingCheckin({
                   </div>
                 </div>
 
-                {/* History of anytime snapshots logged today */}
-                {anytimeLogs.length > 0 && !showDaytimeCard && (
-                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                {showDaytimeCard && anytimeLogs.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1 pb-1 border-b border-white/10">
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                       <Clock size={10} className="text-slate-400" />
                       <span>Today ({anytimeLogs.length}):</span>

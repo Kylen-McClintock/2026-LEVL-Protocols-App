@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { CalendarDays, ChevronDown, Check, Filter, LayoutGrid, Calendar, Columns, Rows, AlignJustify, Zap, Activity, HelpCircle } from 'lucide-react'
+import { CalendarDays, ChevronDown, Check, Filter, LayoutGrid, Calendar, Columns, Rows, AlignJustify, Zap, Activity, HelpCircle, Bookmark } from 'lucide-react'
 
 export type CalendarViewMode = 'today' | '3day' | 'week' | 'month'
 export type LayoutOrientation = 'columns' | 'stack'
@@ -116,18 +116,36 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
                 <span>Month Matrix</span>
                 {viewMode === 'month' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
               </button>
+
+              <div className="pt-1 mt-1 border-t border-slate-800/80">
+                <Link
+                  href="/bench"
+                  onClick={() => setIsViewDropdownOpen(false)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-purple-300 hover:bg-purple-950/60 hover:text-white transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Bookmark className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Protocol Bench</span>
+                  </div>
+                  <span className="text-[9px] uppercase font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30">
+                    Saved
+                  </span>
+                </Link>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Center: Dynamic Date Range / Title */}
-        <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight flex items-center gap-2">
-          {dateTitle}
-        </h1>
+        {/* Center: Dynamic Date Range / Title (Hidden on Today view & on mobile to prevent redundant duplicate dates) */}
+        {viewMode !== 'today' ? (
+          <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight hidden sm:flex items-center gap-2">
+            {dateTitle}
+          </h1>
+        ) : null}
 
-        {/* Right: Protocol Filter Dropdown */}
+        {/* Right: Protocol Filter Dropdown (Hidden on mobile) */}
         <div className="flex items-center gap-2">
-          <div className={`relative ${isProtocolDropdownOpen ? 'z-[100]' : 'z-20'}`} ref={protocolDropdownRef}>
+          <div className={`relative ${isProtocolDropdownOpen ? 'z-[100]' : 'z-20'} hidden md:block`} ref={protocolDropdownRef}>
             <button
               onClick={() => setIsProtocolDropdownOpen(!isProtocolDropdownOpen)}
               className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-950/40 border border-purple-800/40 hover:border-purple-700/60 text-purple-200 font-bold text-xs transition-all cursor-pointer shadow-sm max-w-[200px] truncate"

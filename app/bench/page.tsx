@@ -11,6 +11,7 @@ import BenchCard from '@/components/cards/BenchCard'
 import ProtocolCard from '@/components/cards/ProtocolCard'
 import DraftCard from '@/components/cards/DraftCard'
 import DraftEditorModal from '@/components/modals/DraftEditorModal'
+import CreateCustomModalityModal from '@/components/modals/CreateCustomModalityModal'
 import { CategoryPills } from '@/components/ui/CategoryPills'
 import { getMacroCategory, MACRO_CATEGORIES, getColorForProtocol } from '@/lib/utils/categories'
 import { calculateNextBestAction } from '@/lib/ranking/nextBestAction'
@@ -23,6 +24,7 @@ export default function BenchPage() {
   const [benchedProtocols, setBenchedProtocols] = useState<any[]>([])
   const [draftModalities, setDraftModalities] = useState<Modality[]>([])
   const [draftProtocols, setDraftProtocols] = useState<Protocol[]>([])
+  const [isCreateModalityModalOpen, setIsCreateModalityModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'modalities' | 'protocols' | 'drafts'>('modalities')
   const [filterCategory, setFilterCategory] = useState('all')
@@ -268,14 +270,14 @@ export default function BenchPage() {
             </div>
             <div className="flex space-x-2">
               <button 
-                onClick={() => { setEditorItem(null); setEditorType('modality'); setEditorOpen(true); }}
-                className="flex items-center text-xs bg-levl-surface-highlight hover:bg-levl-border border border-levl-border text-white px-3 py-2 rounded-lg transition-colors"
+                onClick={() => setIsCreateModalityModalOpen(true)}
+                className="flex items-center text-xs bg-sky-600 hover:bg-sky-500 border border-sky-400 text-white font-bold px-3 py-2 rounded-lg transition-colors cursor-pointer shadow-sm"
               >
                 <Plus size={14} className="mr-1" /> Modality
               </button>
               <button 
                 onClick={() => { setEditorItem(null); setEditorType('protocol'); setEditorOpen(true); }}
-                className="flex items-center text-xs bg-levl-surface-highlight hover:bg-levl-border border border-levl-border text-white px-3 py-2 rounded-lg transition-colors"
+                className="flex items-center text-xs bg-levl-surface-highlight hover:bg-levl-border border border-levl-border text-white px-3 py-2 rounded-lg transition-colors cursor-pointer"
               >
                 <Plus size={14} className="mr-1" /> Protocol
               </button>
@@ -322,7 +324,7 @@ export default function BenchPage() {
         </div>
       )}
 
-      {/* Unified Editor Modal */}
+      {/* Unified Editor Modal for Protocols and Edits */}
       <DraftEditorModal 
         isOpen={editorOpen}
         onClose={() => setEditorOpen(false)}
@@ -330,6 +332,13 @@ export default function BenchPage() {
         type={editorType}
         localUserId={getLocalUserId()}
         onSaveSuccess={load}
+      />
+
+      {/* 1st-Class Custom Modality Creator Studio */}
+      <CreateCustomModalityModal
+        isOpen={isCreateModalityModalOpen}
+        onClose={() => setIsCreateModalityModalOpen(false)}
+        onCreated={load}
       />
     </div>
   )

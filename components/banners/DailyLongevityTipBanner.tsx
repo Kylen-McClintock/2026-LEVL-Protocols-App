@@ -26,6 +26,7 @@ interface DailyLongevityTipBannerProps {
   scoredTips: ScoredLongevityTip[]
   allModalities?: Modality[]
   userProfile?: UserProfile | null
+  dateStr?: string
   onAddToToday: (modalityId: string) => Promise<void>
   onAddToBench?: (modalityId: string) => Promise<void>
   onDismiss: (tipId: string) => void
@@ -36,6 +37,7 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
   scoredTips,
   allModalities,
   userProfile,
+  dateStr,
   onAddToToday,
   onAddToBench,
   onDismiss,
@@ -46,6 +48,15 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
   const [addedSuccess, setAddedSuccess] = useState<boolean>(false)
   const [modalitiesList, setModalitiesList] = useState<Modality[]>(allModalities || [])
   const [showFullModalityCard, setShowFullModalityCard] = useState<boolean>(false)
+
+  const effectiveDateStr = dateStr || (typeof window !== 'undefined' ? new Date().toISOString().split('T')[0] : '')
+  const [isActedUpon, setIsActedUpon] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && effectiveDateStr) {
+      return Boolean(localStorage.getItem('levl_daily_tip_acted_' + effectiveDateStr))
+    }
+    return false
+  })
+
   const [isExpanded, setIsExpanded] = useState<boolean>(() => {
     if (isCollapsedByDefault) return false
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -112,6 +123,10 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
     await onAddToToday(tip.modality_id)
     setIsAdding(false)
     setAddedSuccess(true)
+    setIsActedUpon(true)
+    if (typeof window !== 'undefined' && effectiveDateStr) {
+      localStorage.setItem('levl_daily_tip_acted_' + effectiveDateStr, tip.id)
+    }
   }
 
   if (!isExpanded) {
@@ -129,11 +144,16 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
             <div className="flex flex-col min-w-0 gap-0.5 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[11px] sm:text-xs font-black text-white uppercase tracking-wider">
-                  Daily Longevity Tip
+                  Daily Longevity Tip {isActedUpon && '✓ Completed'}
                 </span>
                 <span className="text-[10px] bg-slate-950 border border-slate-800 text-teal-300 px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
                   {tip.category}
                 </span>
+                {isActedUpon && (
+                  <span className="text-[10px] text-emerald-400 font-mono font-bold shrink-0">
+                    • 1 per day
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400 truncate leading-snug pr-2">
                 {tip.headline}
@@ -179,14 +199,20 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
 
         {/* Right side controls */}
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleNextTip}
-            className="text-xs font-bold text-slate-400 hover:text-white bg-slate-900/80 border border-slate-800 px-2.5 py-1 rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
-            title="Next tip"
-          >
-            <RotateCw size={13} />
-            <span className="hidden sm:inline">Next Tip</span>
-          </button>
+          {!isActedUpon && !addedSuccess ? (
+            <button
+              onClick={handleNextTip}
+              className="text-xs font-bold text-slate-400 hover:text-white bg-slate-900/80 border border-slate-800 px-2.5 py-1 rounded-xl flex items-center gap-1 transition-colors cursor-pointer"
+              title="Next tip"
+            >
+              <RotateCw size={13} />
+              <span className="hidden sm:inline">Next Tip</span>
+            </button>
+          ) : (
+            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-lg font-mono">
+              1 Tip Per Day
+            </span>
+          )}
 
           <button
             onClick={() => setIsExpanded(false)}
@@ -270,9 +296,9 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
         {/* Add to Today's Stack Button */}
         {tip.modality_id && (
           <div className="shrink-0 ml-auto">
-            {currentScored.isInTodayStack || addedSuccess ? (
+            {currentScored.isInTodayStack || addedSuccess || isActedUpon ? (
               <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
-                <Check size={14} className="stroke-[3]" /> In Today&apos;s Stack
+                <Check size={14} className="stroke-[3]" /> Added to Today • 1 Tip Per Day
               </span>
             ) : (
               <button
@@ -303,7 +329,7 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
             <ExploreCard
               modality={resolvedModality}
               userProfile={userProfile}
-              activeStatus={currentScored.isInTodayStack || addedSuccess ? 'today' : null}
+              activeStatus={currentScored.isInTodayStack || addedSuccess || isActedUpon ? 'today' : null}
               onAddToToday={async (mId) => {
                 await handleAdd()
               }}
@@ -313,6 +339,10 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
                 } else {
                   const localUserId = userProfile?.local_user_id || getLocalUserId()
                   await addToBench(localUserId, mId)
+                }
+                setIsActedUpon(true)
+                if (typeof window !== 'undefined' && effectiveDateStr) {
+                  localStorage.setItem('levl_daily_tip_acted_' + effectiveDateStr, tip.id)
                 }
               }}
             />

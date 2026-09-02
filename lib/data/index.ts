@@ -3652,20 +3652,33 @@ export async function moveModalityToBench(localUserId: string, modalityId: strin
     }])
   }
 
-  // Update all pending daily protocol tasks for this modality to skipped with status_reason
-  await supabase
-    .from('daily_protocol_tasks')
-    .update({ status: 'skipped', status_reason: 'Moved to Bench' })
-    .eq('local_user_id', localUserId)
-    .eq('modality_id', modalityId)
-    .eq('status', 'pending')
+  const todayStr = format(new Date(), 'yyyy-MM-dd')
 
+  // 1. Mark current task / today's task as skipped with status_reason
   if (currentTaskId) {
     await supabase
       .from('daily_protocol_tasks')
       .update({ status: 'skipped', status_reason: 'Moved to Bench' })
       .eq('id', currentTaskId)
   }
+
+  // Update pending daily tasks up to today to skipped
+  await supabase
+    .from('daily_protocol_tasks')
+    .update({ status: 'skipped', status_reason: 'Moved to Bench' })
+    .eq('local_user_id', localUserId)
+    .eq('modality_id', modalityId)
+    .lte('scheduled_date', todayStr)
+    .eq('status', 'pending')
+
+  // 2. Prune uncompleted pending/skipped tasks on future days so they NEVER appear in future days' skipped section
+  await supabase
+    .from('daily_protocol_tasks')
+    .delete()
+    .eq('local_user_id', localUserId)
+    .eq('modality_id', modalityId)
+    .gt('scheduled_date', todayStr)
+    .in('status', ['pending', 'skipped'])
 
   return true
 }
@@ -3679,6 +3692,7 @@ export async function benchEntireProtocol(
 ) {
   if (!supabase || !localUserId || !modalityIds || modalityIds.length === 0) return false
   const client = supabase
+  const todayStr = format(new Date(), 'yyyy-MM-dd')
 
   const updates = modalityIds.map(async (mId) => {
     if (!mId) return
@@ -3707,13 +3721,23 @@ export async function benchEntireProtocol(
       }])
     }
 
-    // Update pending daily tasks for this modality
+    // Update pending daily tasks up to today for this modality
     await client
       .from('daily_protocol_tasks')
       .update({ status: 'skipped', status_reason: reason })
       .eq('local_user_id', localUserId)
       .eq('modality_id', mId)
+      .lte('scheduled_date', todayStr)
       .eq('status', 'pending')
+
+    // Prune uncompleted tasks on future days so they don't pollute future skipped sections
+    await client
+      .from('daily_protocol_tasks')
+      .delete()
+      .eq('local_user_id', localUserId)
+      .eq('modality_id', mId)
+      .gt('scheduled_date', todayStr)
+      .in('status', ['pending', 'skipped'])
   })
 
   await Promise.all(updates)
@@ -3886,8 +3910,8 @@ export async function createCustomModality(
     name: cleanName,
     display_name: cleanName,
     category: data.category || 'Other',
-    status: 'published',
-    visibility: 'user_custom',
+    status: 'draft_manual',
+    visibility: 'private',
     local_user_id: localUserId,
     brief_description: data.brief_description || 'Custom user-created modality',
     default_timing_slot: data.default_timing_slot || 'anytime',
@@ -3897,7 +3921,19 @@ export async function createCustomModality(
   if (supabase) {
     const { data: inserted, error } = await supabase
       .from('modalities')
-      .insert([newMod])
+      .insert([{
+        id: newMod.id,
+        slug: newMod.slug,
+        name: newMod.name,
+        display_name: newMod.display_name,
+        category: newMod.category,
+        status: 'draft_manual',
+        visibility: 'private',
+        local_user_id: localUserId,
+        brief_description: newMod.brief_description,
+        default_timing_slot: newMod.default_timing_slot,
+        dose_or_exposure: newMod.dose_or_exposure
+      }])
       .select()
       .single()
 
@@ -3905,6 +3941,12 @@ export async function createCustomModality(
       console.warn('Supabase insert custom modality notice (fallback to local):', error?.message || error)
     }
   }
+
+  // Update in-memory catalog cache so it instantly appears in getModalities & getModalityById
+  if (modalitiesCache) {
+    modalitiesCache.data = [newMod, ...modalitiesCache.data]
+  }
+  setPersistentCache('modalities', modalitiesCache ? modalitiesCache.data : [newMod])
 
   // Update in-memory/localStorage catalog cache so it instantly appears
   if (typeof window !== 'undefined') {

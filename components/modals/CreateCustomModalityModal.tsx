@@ -11,6 +11,7 @@ import {
   addModalityOrProtocolToToday, 
   addToBench, 
   reconcileModalityScheduleAndFutureTasks, 
+  upsertBenchItemOverride,
   ModalityScheduleConfig 
 } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
@@ -219,27 +220,34 @@ export default function CreateCustomModalityModal({
         const todayStr = format(new Date(), 'yyyy-MM-dd')
         await addModalityOrProtocolToToday(localUserId, todayStr, createdMod.id)
 
-        // Reconcile future schedule cadence if not daily
-        if (cadenceMode !== 'daily') {
-          await reconcileModalityScheduleAndFutureTasks(localUserId, createdMod.id, {
-            scheduleConfig,
-            fromDate: todayStr,
-            customDose: finalDose,
-            customTiming: primaryTiming,
-            notes: instructions.trim() || undefined
-          })
-        }
+        // Always reconcile schedule, update custom dose and circadian timing slot across all active future dates
+        await reconcileModalityScheduleAndFutureTasks(localUserId, createdMod.id, {
+          scheduleConfig,
+          fromDate: todayStr,
+          customDose: finalDose,
+          customTiming: primaryTiming,
+          notes: instructions.trim() || undefined
+        })
       }
 
       // 2. Add to Protocol Bench
       if (saveToBench) {
         await addToBench(localUserId, createdMod.id)
+        await upsertBenchItemOverride(
+          localUserId, 
+          createdMod.id, 
+          finalDose, 
+          primaryTiming, 
+          instructions.trim() || undefined
+        )
       }
 
       // Notify other views
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('levl_modality_created', { detail: createdMod }))
+        window.dispatchEvent(new CustomEvent('levl_task_status_changed'))
         window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+        window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
       }
 
       setSuccessMsg('Modality created and scheduled successfully!')

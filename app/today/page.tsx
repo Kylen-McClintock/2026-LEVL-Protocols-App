@@ -336,8 +336,14 @@ function TodayPageContent() {
 
   const refreshTodayTasks = async () => {
     const localUserId = authUserId || getLocalUserId()
-    const currentTasks = await getDailyProtocolTasks(localUserId, dateStr)
+    const [currentTasks, allMods, bench] = await Promise.all([
+      getDailyProtocolTasks(localUserId, dateStr),
+      getModalities(true),
+      getBenchItems(localUserId)
+    ])
     setTasks(currentTasks)
+    if (allMods && allMods.length > 0) setAllModalities(allMods)
+    if (bench) setBenchItems(bench)
   }
 
   useEffect(() => {
@@ -346,9 +352,22 @@ function TodayPageContent() {
         setProfile(e.detail)
       }
     }
+    const handleTaskOrModalityUpdate = () => {
+      refreshTodayTasks()
+    }
     window.addEventListener('levl_profile_updated', handleProfileUpdate)
-    return () => window.removeEventListener('levl_profile_updated', handleProfileUpdate)
-  }, [])
+    window.addEventListener('levl_modality_created', handleTaskOrModalityUpdate)
+    window.addEventListener('levl_task_status_changed', handleTaskOrModalityUpdate)
+    window.addEventListener('levl_bench_updated', handleTaskOrModalityUpdate)
+    window.addEventListener('levl_schedule_updated', handleTaskOrModalityUpdate)
+    return () => {
+      window.removeEventListener('levl_profile_updated', handleProfileUpdate)
+      window.removeEventListener('levl_modality_created', handleTaskOrModalityUpdate)
+      window.removeEventListener('levl_task_status_changed', handleTaskOrModalityUpdate)
+      window.removeEventListener('levl_bench_updated', handleTaskOrModalityUpdate)
+      window.removeEventListener('levl_schedule_updated', handleTaskOrModalityUpdate)
+    }
+  }, [dateStr, authUserId])
 
   useEffect(() => {
     if (authLoading) return
@@ -1145,6 +1164,11 @@ function TodayPageContent() {
           routine.push(task)
         }
       } else if (isSkipped) {
+        // If viewing a future date, never show benched modalities in the skipped section (only on the day it was skipped)
+        const isBenchedReason = task.status_reason?.toLowerCase().includes('bench')
+        if (isFutureTimeline && isBenchedReason) {
+          return
+        }
         skippedTop.push(task)
         if (showSkippedInline) {
           routine.push(task)
@@ -2365,6 +2389,7 @@ function TodayPageContent() {
                 scoredTips={scoredTips}
                 allModalities={allModalities}
                 userProfile={profile}
+                dateStr={dateStr}
                 onAddToToday={async (modalityOrProtocolId: string) => {
                   if (profile) {
                     await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityOrProtocolId)

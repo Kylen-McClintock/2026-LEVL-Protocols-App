@@ -28,6 +28,7 @@ import ModalityCompareModal from '@/components/modals/ModalityCompareModal'
 import ProtocolCompareModal from '@/components/modals/ProtocolCompareModal'
 import AlgorithmTransparencyModal from '@/components/modals/AlgorithmTransparencyModal'
 import StackFitInspectorModal from '@/components/modals/StackFitInspectorModal'
+import CreateCustomModalityModal from '@/components/modals/CreateCustomModalityModal'
 import { StackFitResult } from '@/lib/synergy/stackFitEngine'
 import { semanticSearchModalities, SemanticSearchResult } from '@/app/actions/search'
 import { Protocol } from '@/lib/types'
@@ -38,6 +39,7 @@ export default function ExplorePage() {
   const [protocols, setProtocols] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'modalities' | 'protocols'>('modalities')
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   const [todayModalityIds, setTodayModalityIds] = useState<Set<string>>(new Set())
   const [benchModalityIds, setBenchModalityIds] = useState<Set<string>>(new Set())
@@ -975,13 +977,23 @@ export default function ExplorePage() {
             </p>
           </div>
 
-          <Link
-            href="/guide#explore"
-            className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
-            title="View Explore Catalog Guide"
-          >
-            <HelpCircle size={13} className="text-purple-400" /> Guide
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-sky-500/20 cursor-pointer active:scale-95"
+            >
+              <Sparkles size={13} />
+              <span>+ Create Modality</span>
+            </button>
+            <Link
+              href="/guide#explore"
+              className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+              title="View Explore Catalog Guide"
+            >
+              <HelpCircle size={13} className="text-purple-400" /> Guide
+            </Link>
+          </div>
         </div>
 
         <div className="flex p-1 bg-black/40 rounded-xl border border-white/5">
@@ -1269,28 +1281,38 @@ export default function ExplorePage() {
             {filteredModalities.length === 0 ? (
               <div className="col-span-full text-center p-8 bg-white/5 rounded-2xl text-gray-400 text-sm space-y-3">
                 <p>No modalities found matching your search and filter criteria.</p>
-                {(searchQuery || selectedMainCategories.length > 1 || selectedMainCategories[0] !== 'all' || selectedSubCategories.length > 0 || showFilters) && (
+                <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => {
-                      setSearchQuery('')
-                      setSearchResults([])
-                      setSelectedMainCategories(['all'])
-                      setSelectedSubCategories([])
-                      setDiurnalRange([0, 4])
-                      setSelectedSpecificTimings([])
-                      setFilterCost('all')
-                      setFilterEffort('all')
-                      setFilterEvidence('all')
-                      setFilterSafety('all')
-                      setSelectedOutcomes([])
-                      setFilterBenchHistoryStatus('all')
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-300 font-bold text-xs hover:bg-orange-500/30 cursor-pointer"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-sky-500/20 cursor-pointer active:scale-95"
                   >
-                    Reset Search &amp; Filters
+                    <Sparkles size={13} />
+                    <span>+ Create Custom Modality</span>
                   </button>
-                )}
+                  {(searchQuery || selectedMainCategories.length > 1 || selectedMainCategories[0] !== 'all' || selectedSubCategories.length > 0 || showFilters) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('')
+                        setSearchResults([])
+                        setSelectedMainCategories(['all'])
+                        setSelectedSubCategories([])
+                        setDiurnalRange([0, 4])
+                        setSelectedSpecificTimings([])
+                        setFilterCost('all')
+                        setFilterEffort('all')
+                        setFilterEvidence('all')
+                        setFilterSafety('all')
+                        setSelectedOutcomes([])
+                        setFilterBenchHistoryStatus('all')
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-300 font-bold text-xs hover:bg-orange-500/30 cursor-pointer"
+                    >
+                      Reset Search &amp; Filters
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               filteredModalities.slice(0, visibleCount).map((mod, index) => {
@@ -1510,6 +1532,13 @@ export default function ExplorePage() {
         exploringModality={inspectStackFitModal.modality}
         stackFit={inspectStackFitModal.stackFit}
         onSuccess={loadData}
+      />
+
+      {/* 1st-Class Custom Modality Creator Studio */}
+      <CreateCustomModalityModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreated={() => loadData()}
       />
     </div>
   )
