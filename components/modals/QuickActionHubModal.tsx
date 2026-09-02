@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { 
   X, Plus, Sparkles, Zap, Flame, Wind, Droplets, 
-  FileText, Activity, Layers, ArrowRight, BookOpen, ShieldCheck, Dumbbell, Mic 
+  FileText, Activity, Layers, ArrowRight, BookOpen, ShieldCheck, Dumbbell, Mic, Pill, Camera 
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
@@ -11,6 +11,7 @@ import CreateCustomModalityModal from './CreateCustomModalityModal'
 import EnrollProtocolModal from './EnrollProtocolModal'
 import VoiceLogModal from './VoiceLogModal'
 import AdHocLoggerModal from './AdHocLoggerModal'
+import SupplementScannerModal from './SupplementScannerModal'
 import Breathing478Applet from '@/components/applets/Breathing478Applet'
 import BoxBreathingApplet from '@/components/applets/BoxBreathingApplet'
 import ManageHotkeysModal from '@/components/quicklog/ManageHotkeysModal'
@@ -33,13 +34,14 @@ export default function QuickActionHubModal({
 
   const [showVoiceLog, setShowVoiceLog] = useState(false)
   const [showCreateCustom, setShowCreateCustom] = useState(false)
+  const [showSupplementScanner, setShowSupplementScanner] = useState(false)
   const [showEnrollProtocol, setShowEnrollProtocol] = useState(false)
   const [showAdHocLog, setShowAdHocLog] = useState(false)
   const [showHotkeysModal, setShowHotkeysModal] = useState(false)
   const [show478Breathing, setShow478Breathing] = useState(false)
   const [showBoxBreathing, setShowBoxBreathing] = useState(false)
 
-  if (!isOpen && !showVoiceLog && !showCreateCustom && !showEnrollProtocol && !showAdHocLog && !showHotkeysModal && !show478Breathing && !showBoxBreathing) {
+  if (!isOpen && !showVoiceLog && !showCreateCustom && !showSupplementScanner && !showEnrollProtocol && !showAdHocLog && !showHotkeysModal && !show478Breathing && !showBoxBreathing) {
     return null
   }
 
@@ -126,7 +128,34 @@ export default function QuickActionHubModal({
                 <ArrowRight size={16} className="text-slate-500 group-hover:text-purple-300 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
               </button>
 
-              {/* Option 3: Create Custom Modality from Scratch */}
+              {/* Option 3: Add a Supplement (Scan Facts Label) */}
+              <button
+                onClick={() => {
+                  onClose()
+                  setShowSupplementScanner(true)
+                }}
+                className="w-full text-left p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-600/10 border border-amber-500/35 hover:border-amber-400/60 hover:bg-amber-500/20 transition-all group flex items-center justify-between cursor-pointer shadow-lg shadow-amber-500/5"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/30 to-orange-500/30 border border-amber-500/40 flex items-center justify-center text-amber-300 group-hover:scale-105 transition-transform shadow-md shadow-amber-500/10">
+                    <Pill size={20} className="text-amber-200" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-white group-hover:text-amber-200 transition-colors flex items-center gap-1.5">
+                      Add a Supplement
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/25 border border-amber-500/40 text-amber-300 font-mono font-bold flex items-center gap-1">
+                        <Camera size={10} /> SCAN LABEL
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      Snap or upload a Supplement Facts label to auto-extract dosing, timing & ingredients
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight size={16} className="text-slate-500 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+              </button>
+
+              {/* Option 4: Create Custom Modality from Scratch */}
               <button
                 onClick={() => {
                   onClose()
@@ -141,10 +170,10 @@ export default function QuickActionHubModal({
                   <div>
                     <div className="text-sm font-semibold text-white group-hover:text-sky-200 transition-colors flex items-center gap-1.5">
                       Create Custom Modality
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono font-medium">NEW</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono font-medium">CUSTOM</span>
                     </div>
                     <div className="text-xs text-slate-400">
-                      Build your own supplement, exercise, or protocol from scratch
+                      Build your own exercise, device, therapy, or habit from scratch
                     </div>
                   </div>
                 </div>
@@ -296,6 +325,21 @@ export default function QuickActionHubModal({
         <CreateCustomModalityModal
           isOpen={showCreateCustom}
           onClose={() => setShowCreateCustom(false)}
+        />
+      )}
+
+      {showSupplementScanner && (
+        <SupplementScannerModal
+          isOpen={showSupplementScanner}
+          onClose={() => setShowSupplementScanner(false)}
+          onIngestSuccess={() => {
+            setShowSupplementScanner(false)
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('levl_modality_created'))
+              window.dispatchEvent(new CustomEvent('levl_task_status_changed'))
+              window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+            }
+          }}
         />
       )}
 
