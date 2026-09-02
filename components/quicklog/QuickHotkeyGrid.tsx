@@ -277,10 +277,10 @@ export default function QuickHotkeyGrid({
         </div>
       </div>
 
-      {/* 3-Wide Square Grid Layout */}
+      {/* Responsive Grid Layout: 3-wide on mobile, 4-5 on tablet, 6-8 on desktop */}
       {!isCollapsed && (
         visibleHotkeys.length > 0 ? (
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 animate-in fade-in duration-200">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-8 gap-2 sm:gap-2.5 md:gap-3 animate-in fade-in duration-200">
             {visibleHotkeys.map(hotkey => {
               const IconComp = ICON_MAP[hotkey.icon] || Activity
               const hotkeyLogs = logs.filter(l => l.hotkey_id === hotkey.id)
@@ -300,7 +300,7 @@ export default function QuickHotkeyGrid({
             <div
               key={hotkey.id}
               onClick={(e) => handleQuickTapIncrement(e, hotkey)}
-              className={`aspect-square rounded-2xl border transition-all flex flex-col justify-between p-2 sm:p-3 overflow-hidden relative select-none shadow-md cursor-pointer hover:bg-white/[0.03] active:scale-[0.97] group/card ${
+              className={`min-h-[110px] sm:min-h-[120px] md:min-h-[128px] aspect-[1/1] sm:aspect-[1.05/1] md:aspect-square rounded-2xl border transition-all flex flex-col justify-between p-2.5 sm:p-3 overflow-hidden relative select-none shadow-md cursor-pointer hover:bg-white/[0.03] active:scale-[0.97] group/card ${
                 isTapped
                   ? isNegative
                     ? 'ring-2 ring-rose-400 scale-[0.96] bg-slate-800'
@@ -344,7 +344,7 @@ export default function QuickHotkeyGrid({
               {/* TOP ROW: Icon + Increment Badge */}
               <div className="flex items-center justify-between gap-1 w-full pl-0.5">
                 <div
-                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center border text-[11px] shrink-0 transition-colors ${
+                  className={`w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-lg sm:rounded-xl flex items-center justify-center border text-[11px] shrink-0 transition-colors ${
                     isNegative
                       ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
                       : isNeutral
@@ -356,11 +356,11 @@ export default function QuickHotkeyGrid({
                       : 'bg-slate-800 border-white/5 text-slate-300 group-hover/card:text-white'
                   }`}
                 >
-                  <IconComp size={13} />
+                  <IconComp size={14} className="sm:size-4" />
                 </div>
 
                 <span
-                  className={`px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-mono font-black border transition-all flex items-baseline gap-0.5 shadow-sm ${
+                  className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md text-[10px] sm:text-xs md:text-[12.5px] font-mono font-black border transition-all flex items-baseline gap-0.5 shadow-sm ${
                     isNegative
                       ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 group-hover/card:bg-rose-500 group-hover/card:text-white'
                       : isNeutral
@@ -370,14 +370,14 @@ export default function QuickHotkeyGrid({
                       : 'bg-orange-500/20 text-orange-300 border-orange-500/40 group-hover/card:bg-orange-500 group-hover/card:text-black'
                   }`}
                 >
-                  <Plus size={9} strokeWidth={3} className="shrink-0 self-center" />
+                  <Plus size={10} strokeWidth={3} className="shrink-0 self-center" />
                   <span className="font-black">{hotkey.default_increment}</span>
-                  <span className="text-[7.5px] sm:text-[8.5px] font-bold opacity-80 uppercase tracking-tighter ml-0.5">{hotkey.unit}</span>
+                  <span className="text-[8px] sm:text-[9px] md:text-[10px] font-bold opacity-80 uppercase tracking-tighter ml-0.5">{hotkey.unit}</span>
                 </span>
               </div>
 
-              {/* FULL-WIDTH NAME ROW: Placed upwards so text displays full width without being crowded by chevron */}
-              <div className={`w-full pl-0.5 text-[11px] sm:text-[12.5px] font-bold text-slate-200 transition-colors truncate leading-tight ${
+              {/* FULL-WIDTH NAME ROW: Prominent and readable text scaling proportionately */}
+              <div className={`w-full pl-0.5 text-xs sm:text-sm md:text-[14.5px] font-extrabold text-slate-100 tracking-tight transition-colors truncate leading-tight ${
                 isNegative
                   ? 'group-hover/card:text-rose-300'
                   : isNeutral
@@ -390,19 +390,19 @@ export default function QuickHotkeyGrid({
               {/* BOTTOM ROW: Numerator & Denominator Value Metric + Expand/Detail Chevron on the right */}
               <div className="flex items-end justify-between gap-1 w-full pl-0.5">
                 <div className="flex items-baseline gap-1 min-w-0 flex-wrap">
-                  <span className={`text-lg sm:text-2xl font-black font-mono tracking-tight leading-none transition-colors ${
+                  <span className={`text-xl sm:text-2xl md:text-3xl font-black font-mono tracking-tight leading-none transition-colors ${
                     isGoalReached && !isNegative ? 'text-emerald-400' : 'text-white'
                   }`}>
                     {totalVal}
                   </span>
                   {hotkey.daily_goal && !isNegative ? (
-                    <span className={`text-xs sm:text-sm font-bold font-mono transition-colors truncate ${
+                    <span className={`text-xs sm:text-sm md:text-[14px] font-bold font-mono transition-colors truncate ${
                       isGoalReached ? 'text-emerald-400 font-bold' : 'text-slate-300'
                     }`}>
-                      /{hotkey.daily_goal} <span className="text-[10px] sm:text-xs font-semibold text-slate-400">{hotkey.unit}</span>
+                      /{hotkey.daily_goal} <span className="text-[10px] sm:text-xs md:text-[12.5px] font-semibold text-slate-400">{hotkey.unit}</span>
                     </span>
                   ) : (
-                    <span className="text-xs sm:text-sm font-bold font-mono text-slate-400 truncate">
+                    <span className="text-xs sm:text-sm md:text-[13px] font-bold font-mono text-slate-400 truncate">
                       {hotkey.unit}
                     </span>
                   )}
@@ -424,18 +424,18 @@ export default function QuickHotkeyGrid({
           )
         })}
 
-        {/* 3-Wide Add Hotkey Square Card */}
+        {/* Add Hotkey Card */}
         <div
           onClick={() => setIsManageModalOpen(true)}
-          className="aspect-square rounded-2xl border border-dashed border-slate-800 hover:border-orange-500/50 bg-slate-950/40 hover:bg-orange-950/10 transition-all cursor-pointer flex flex-col items-center justify-center text-center p-2 space-y-1 group shadow-sm"
+          className="min-h-[110px] sm:min-h-[120px] md:min-h-[128px] aspect-[1/1] sm:aspect-[1.05/1] md:aspect-square rounded-2xl border border-dashed border-slate-800 hover:border-orange-500/50 bg-slate-950/40 hover:bg-orange-950/10 transition-all cursor-pointer flex flex-col items-center justify-center text-center p-2.5 sm:p-3 space-y-1.5 group shadow-sm"
         >
-          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-white/5 group-hover:bg-orange-500/20 text-slate-400 group-hover:text-orange-400 flex items-center justify-center transition-colors">
-            <Plus size={14} />
+          <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-lg sm:rounded-xl bg-white/5 group-hover:bg-orange-500/20 text-slate-400 group-hover:text-orange-400 flex items-center justify-center transition-colors">
+            <Plus size={15} />
           </div>
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 group-hover:text-white transition-colors">
+          <span className="text-[11px] sm:text-xs md:text-sm font-bold text-slate-300 group-hover:text-white transition-colors">
             + Add Hotkey
           </span>
-          <span className="text-[8px] sm:text-[9px] text-slate-600">Custom / Preset</span>
+          <span className="text-[8.5px] sm:text-[9.5px] md:text-[10.5px] text-slate-500">Custom / Preset</span>
         </div>
       </div>
       ) : (

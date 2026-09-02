@@ -2652,16 +2652,18 @@ function TodayPageContent() {
               </div>
             )}
 
-            {/* Modality Category Filter Row (Positioned directly above Time Blocks / Protocols / Track Outcomes / Fast Mode viewer row) */}
-            <CategoryFiltersBar
-              selectedMainCategories={selectedMainCategories}
-              selectedSubCategories={selectedSubCategories}
-              onToggleMainCategory={handleToggleMainCategory}
-              onToggleSubCategory={handleToggleSubCategory}
-              viewMode={calendarViewMode}
-              layoutOrientation={layoutOrientation}
-              onToggleLayoutOrientation={setLayoutOrientation}
-            />
+            {/* Modality Category Filter Row (Desktop only; on mobile it is in the top header half-width dropdown) */}
+            <div className="hidden md:block">
+              <CategoryFiltersBar
+                selectedMainCategories={selectedMainCategories}
+                selectedSubCategories={selectedSubCategories}
+                onToggleMainCategory={handleToggleMainCategory}
+                onToggleSubCategory={handleToggleSubCategory}
+                viewMode={calendarViewMode}
+                layoutOrientation={layoutOrientation}
+                onToggleLayoutOrientation={setLayoutOrientation}
+              />
+            </div>
 
             {/* Timeline Layout Mode & Completion Mode Toggle Bar (Single Non-Scrolling Row) */}
             <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 p-1 sm:p-2 rounded-2xl mb-3 backdrop-blur-md shadow-sm gap-1 sm:gap-2">
