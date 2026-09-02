@@ -1855,7 +1855,7 @@ function TodayPageContent() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
                   {groupTasks
                     .sort((a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0))
                     .map(task => {
@@ -1903,8 +1903,8 @@ function TodayPageContent() {
           ref={(el) => { groupHeaderRefs.current[groupName] = el }}
           className={`relative ${
             isAnytime 
-              ? 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2.5 sm:p-3 space-y-2.5 my-3' 
-              : 'pl-1.5 sm:pl-2.5 space-y-3'
+              ? (completionMode === 'fast' ? 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2 sm:p-2.5 space-y-2 my-2' : 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2.5 sm:p-3 space-y-2.5 my-3')
+              : (completionMode === 'fast' ? 'pl-1.5 sm:pl-2.5 space-y-2' : 'pl-1.5 sm:pl-2.5 space-y-3')
           } group/circadian-block`}
         >
           <div className={`flex items-center justify-between ${isAnytime ? 'border-b border-dashed border-white/10 pb-2' : 'border-b border-white/10 pb-2.5'} flex-wrap gap-2`}>
@@ -2112,7 +2112,7 @@ function TodayPageContent() {
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
               {groupTasks
                 .sort((a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0))
                 .map(task => {
@@ -2524,7 +2524,7 @@ function TodayPageContent() {
                           <span>{completedSortBy === 'chronological' ? (viewMode === 'chronological' ? formatSlotName(groupKey) : groupKey) : 'Completed Log'}</span>
                           <span className="text-[10px] text-gray-500 font-normal">({tasksInGroup.length})</span>
                         </div>
-                        <div className="space-y-3 pt-1">
+                        <div className={completionMode === 'fast' ? "space-y-1.5 pt-1" : "space-y-3 pt-1"}>
                           {tasksInGroup.map(task => {
                             const mId = task.modality_id || task.protocol_step?.modality_id || ''
                             const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -2587,7 +2587,7 @@ function TodayPageContent() {
                 </div>
 
                 {isSnoozedSectionExpanded && (
-                  <div className="p-4 space-y-3 bg-black/40 animate-in fade-in slide-in-from-top-2">
+                  <div className={completionMode === 'fast' ? "p-3 space-y-1.5 bg-black/40 animate-in fade-in" : "p-4 space-y-3 bg-black/40 animate-in fade-in"}>
                     {allSnoozedTasks.map(task => {
                       const mId = task.modality_id || task.protocol_step?.modality_id || ''
                       const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -2647,7 +2647,7 @@ function TodayPageContent() {
                 </div>
 
                 {isSkippedSectionExpanded && (
-                  <div className="p-4 space-y-3 bg-black/40 animate-in fade-in slide-in-from-top-2">
+                  <div className={completionMode === 'fast' ? "p-3 space-y-1.5 bg-black/40 animate-in fade-in" : "p-4 space-y-3 bg-black/40 animate-in fade-in"}>
                     {allSkippedTasks.map(task => {
                       const mId = task.modality_id || task.protocol_step?.modality_id || ''
                       const benchItem = benchItems.find(b => b.modality_id === mId)

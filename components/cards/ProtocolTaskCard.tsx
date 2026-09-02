@@ -493,6 +493,7 @@ export default function ProtocolTaskCard({
   const [showHyperApplet, setShowHyperApplet] = useState(false)
   const [showCoherentApplet, setShowCoherentApplet] = useState(false)
   const lastCheckClickTimeRef = useRef<number>(0)
+  const isFastMode = completionMode === 'fast'
 
   const cardModalityId = task.modality_id || task.protocol_step?.modality_id || task.loose_modality?.id
 
@@ -1552,6 +1553,8 @@ export default function ProtocolTaskCard({
               ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.05)]' 
               : isSnoozed
               ? 'bg-amber-950/20 border-amber-500/30 hover:border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.05)]'
+              : isFastMode
+              ? 'bg-slate-900/70 border-white/10 hover:border-white/20 hover:bg-slate-900/90 shadow-sm'
               : 'bg-white/5 border-white/5 hover:bg-white/10'
         } `}>
       
@@ -1628,6 +1631,132 @@ export default function ProtocolTaskCard({
               {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
           </div>
+        </div>
+      ) : isFastMode ? (
+        /* FAST MODE: Streamlined layout (Modality Name + Clickable Dosage on left, Snooze + Green Checkmark on right) */
+        <div className="p-2 sm:px-3 sm:py-2 flex flex-col relative">
+          <div className="flex items-center justify-between gap-2.5">
+            {/* Left: Modality Name & Clickable Dynamic Dosage */}
+            <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <h3 className="font-extrabold text-sm sm:text-base text-white truncate max-w-[180px] sm:max-w-xs md:max-w-md">
+                {modality.display_name || modality.name}
+              </h3>
+              <DosageBadgeButton
+                modality={modality}
+                userProfile={userProfile}
+                task={task}
+                benchItem={benchItem}
+                existingTiming={task.execution_details?.custom_timing || benchItem?.custom_timing}
+                onOpenCustomizeOutcomes={() => setShowCustomizeOutcomesModal(true)}
+                onSavePersonalization={async (customDose, customTiming, notes) => {
+                  const localUserId = getLocalUserId()
+                  const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+                  await reconcileModalityScheduleAndFutureTasks(localUserId, modality.id, {
+                    customDose,
+                    customTiming,
+                    notes,
+                    fromDate,
+                    protocolStepId: task?.protocol_step_id || undefined,
+                    scheduleConfig: task?.execution_details?.schedule_config
+                  })
+                  window.location.reload()
+                }}
+                protocolContext={null}
+              />
+            </div>
+
+            {/* Right: Snooze Option Button & Green Checkmark Button */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {task.status === 'pending' ? (
+                <>
+                  <button 
+                    type="button"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (onOpenRescheduleModal) onOpenRescheduleModal(task);
+                      else setShowSkipReason(true); 
+                    }}
+                    disabled={isFutureTask}
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 active:scale-90 active:opacity-80 transition-all disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer shrink-0 touch-manipulation"
+                    title="Snooze or reschedule modality"
+                    aria-label="Snooze or reschedule"
+                  >
+                    <SkipForward size={13} className="ml-0.5" />
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (task.status === 'completed') {
+                        onStatusChange(task.id, 'pending');
+                      } else {
+                        const effectiveDetails = (executionDetails && Object.keys(executionDetails).length > 0) ? executionDetails : task.execution_details
+                        let metrics: any = undefined
+                        if (effectiveDetails?.duration || effectiveDetails?.distance) {
+                          metrics = {}
+                          if (effectiveDetails.duration) metrics.duration_mins = parseFloat(effectiveDetails.duration)
+                          if (effectiveDetails.distance) metrics.distance = parseFloat(effectiveDetails.distance)
+                        }
+                        if (isPeptide) {
+                          const site = effectiveDetails?.injection_site || 'abdomen_lower_right'
+                          saveInjectionSiteLog(modalityKey, site)
+                        }
+                        onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails);
+                      }
+                    }}
+                    disabled={isFutureTask}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 active:opacity-85 touch-manipulation disabled:opacity-20 disabled:cursor-not-allowed ${
+                      isRecentlyCompleted || (task.status as string) === 'completed'
+                        ? 'bg-emerald-500 text-slate-950 scale-105 shadow-[0_0_12px_rgba(16,185,129,0.8)]'
+                        : 'bg-emerald-500/20 border border-emerald-500/60 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 hover:shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                    }`}
+                    title={isFutureTask ? "Cannot complete future tasks" : "Complete modality instantly"}
+                    aria-label="Complete modality"
+                  >
+                    <Check size={15} strokeWidth={isRecentlyCompleted || (task.status as string) === 'completed' ? 3 : 2.5} />
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-levl-text-secondary">
+                    {task.status}
+                  </span>
+                  <button onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, 'pending'); }} className="text-[10px] text-levl-accent underline cursor-pointer">
+                    Undo
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Fast Mode Inline Skip Reason */}
+          {showSkipReason && (
+            <div className="mt-2 pt-2 border-t border-white/10 flex items-center gap-2 animate-in fade-in" onClick={e => e.stopPropagation()}>
+              <input 
+                type="text" 
+                value={skipReason}
+                onChange={e => setSkipReason(e.target.value)}
+                placeholder="Reason for skipping today..."
+                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-purple-400"
+                autoFocus
+              />
+              <button 
+                type="button"
+                onClick={handleSkipSubmit}
+                className="px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 text-xs font-bold border border-red-500/30 cursor-pointer"
+              >
+                Skip
+              </button>
+              <button 
+                type="button"
+                onClick={() => setShowSkipReason(false)}
+                className="p-1 text-gray-400 hover:text-white cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         /* PENDING & OTHER STATUSES HEADER */
@@ -1838,20 +1967,6 @@ export default function ProtocolTaskCard({
                     e.stopPropagation(); 
                     if (task.status === 'completed') {
                       onStatusChange(task.id, 'pending');
-                    } else if (completionMode === 'fast') {
-                      // FAST MODE: complete instantly without expanding inline outcome sliders
-                      const effectiveDetails = (executionDetails && Object.keys(executionDetails).length > 0) ? executionDetails : task.execution_details
-                      let metrics: any = undefined
-                      if (effectiveDetails?.duration || effectiveDetails?.distance) {
-                        metrics = {}
-                        if (effectiveDetails.duration) metrics.duration_mins = parseFloat(effectiveDetails.duration)
-                        if (effectiveDetails.distance) metrics.distance = parseFloat(effectiveDetails.distance)
-                      }
-                      if (isPeptide) {
-                        const site = effectiveDetails?.injection_site || 'abdomen_lower_right'
-                        saveInjectionSiteLog(modalityKey, site)
-                      }
-                      onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails);
                     } else {
                       // TRACKED OUTCOME MODE:
                       // If inline outcomes are ALREADY showing or if checkmark is clicked twice, complete immediately independent of how many outcomes have been tracked!
@@ -1889,7 +2004,7 @@ export default function ProtocolTaskCard({
                       ? 'bg-emerald-500/30 border-2 border-emerald-400 text-emerald-300 ring-2 ring-emerald-400/50 hover:bg-emerald-500 hover:text-black animate-pulse'
                       : 'bg-levl-accent/20 border border-levl-accent text-levl-accent hover:bg-levl-accent hover:text-white'
                   }`}
-                  title={isFutureTask ? "Cannot complete future tasks" : completionMode === 'fast' ? "Complete modality instantly (Fast Mode)" : showInlineOutcomes ? "Click again to complete session" : "Click once to track outcomes, or click twice to complete"}
+                  title={isFutureTask ? "Cannot complete future tasks" : showInlineOutcomes ? "Click again to complete session" : "Click once to track outcomes, or click twice to complete"}
                 >
                   <Check size={14} strokeWidth={isRecentlyCompleted || (task.status as string) === 'completed' ? 3 : 2} />
                 </button>
@@ -1962,10 +2077,8 @@ export default function ProtocolTaskCard({
     )}
 
       {/* Expanded view details */}
-      {expanded && !showSkipReason && !showEliminateReason && (
+      {expanded && !isFastMode && !showSkipReason && !showEliminateReason && (
         <div className="px-4 pb-4 pt-2 border-t border-white/5 animate-in slide-in-from-top-2">
-          
-          {/* SKIPPED REASON BANNER */}
           {(task.status === 'skipped' || task.status === 'not_today' || task.status_reason || (task as any).ai_coach_reason) && (
             <div className="mb-4 p-3.5 bg-slate-900/80 border border-slate-500/30 rounded-xl text-xs space-y-1 animate-in fade-in shadow-md">
               <div className="flex items-center justify-between">
