@@ -114,15 +114,15 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
     : 'border-levl-accent/20 glass-card'
 
   return (
-    <div className={`rounded-xl overflow-hidden transition-all duration-300 ${cardContainerStyle}`}>
+    <div className={`rounded-xl overflow-hidden transition-all duration-300 w-full min-w-0 ${cardContainerStyle}`}>
       <div 
-        className="p-4 cursor-pointer flex flex-col gap-3 hover:bg-white/5 transition-colors"
+        className="p-4 cursor-pointer flex flex-col gap-3 hover:bg-white/5 transition-colors w-full min-w-0"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex justify-between items-start gap-2">
-          <div>
+        <div className="flex justify-between items-start gap-2 w-full min-w-0">
+          <div className="w-full min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-bold text-lg text-white">
+              <h3 className="font-bold text-lg text-white break-words">
                 <Link 
                   href={`/protocols/${encodeURIComponent(protocol.id || protocol.name)}`}
                   onClick={(e) => e.stopPropagation()}

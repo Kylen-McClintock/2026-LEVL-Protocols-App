@@ -1329,7 +1329,7 @@ export default function ExplorePage() {
                 const searchScore = searchQuery ? searchResults.find(r => r.id === mod.id)?.similarity : undefined
                 
                 return (
-                  <div key={mod.id} ref={isLast ? lastElementRef : null}>
+                  <div key={mod.id} ref={isLast ? lastElementRef : null} className="min-w-0 w-full">
                     <ExploreCard 
                       modality={mod}
                       userProfile={profile}
@@ -1404,15 +1404,16 @@ export default function ExplorePage() {
             </div>
           ) : (
             filteredProtocols.map(protocol => (
-              <ProtocolCard 
-                key={protocol.id}
-                protocol={protocol}
-                activeStatus={getProtocolActiveStatus(protocol)}
-                onAddToBench={handleAddProtocolToBench}
-                onAddToToday={handleAddProtocolToToday}
-                onCompare={handlePinProtocol}
-                isPinnedForCompare={pinnedProtocols.some(p => p.id === protocol.id)}
-              />
+              <div key={protocol.id} className="min-w-0 w-full">
+                <ProtocolCard 
+                  protocol={protocol}
+                  activeStatus={getProtocolActiveStatus(protocol)}
+                  onAddToBench={handleAddProtocolToBench}
+                  onAddToToday={handleAddProtocolToToday}
+                  onCompare={handlePinProtocol}
+                  isPinnedForCompare={pinnedProtocols.some(p => p.id === protocol.id)}
+                />
+              </div>
             ))
           )}
         </div>

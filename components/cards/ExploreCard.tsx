@@ -97,132 +97,130 @@ export default function ExploreCard({
     : 'glass-card'
 
   return (
-    <div className={`rounded-xl overflow-hidden transition-all duration-300 ${cardContainerStyle}`}>
+    <div className={`rounded-xl overflow-hidden transition-all duration-300 w-full min-w-0 ${cardContainerStyle}`}>
       <div 
-        className="p-4 cursor-pointer flex flex-col gap-3"
+        className="p-4 cursor-pointer flex flex-col gap-3 w-full min-w-0"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex justify-between items-start gap-2">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-bold text-lg text-white">{modality.display_name || modality.name}</h3>
-              
-              {/* Active Today / Bench / Conflict / Eliminated History Status Badges */}
-              {isCurrentlyActiveInToday && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    router.push(`/today?modality=${encodeURIComponent(modality.id)}`)
-                  }}
-                  className="flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] transition-colors cursor-pointer"
-                >
-                  <CheckCircle2 size={11} className="text-emerald-400" /> In Today&apos;s Plan
-                </button>
-              )}
-              {isCurrentlyOnBench && !isCurrentlyActiveInToday && (
-                <span className="flex items-center gap-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(6,182,212,0.3)]">
-                  <Bookmark size={11} className="text-cyan-400" /> Saved on Bench
-                </span>
-              )}
-              {benchHistoryItem?.status === 'eliminated' && !isCurrentlyActiveInToday && (
-                <span className="flex items-center gap-1 bg-red-950/90 text-red-300 border border-red-500/60 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(239,68,68,0.3)]">
-                  <Ban size={11} className="text-red-400" /> Previously Eliminated
-                </span>
-              )}
-              {benchHistoryItem?.status === 'benched' && !isCurrentlyOnBench && !isCurrentlyActiveInToday && (
-                <span className="flex items-center gap-1 bg-purple-950/90 text-purple-300 border border-purple-500/60 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                  <History size={11} className="text-purple-400" /> Previously Benched
-                </span>
-              )}
-              {hasConflict && !isCurrentlyActiveInToday && !isCurrentlyOnBench && !benchHistoryItem && (
-                <span className="flex items-center gap-1 bg-red-500/20 text-red-300 border border-red-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(239,68,68,0.3)]">
-                  <AlertTriangle size={11} className="text-red-400" /> Profile Conflict
-                </span>
-              )}
-
-              {modality.modality_type === 'prescription_supported' && (
-                <span className="text-[9px] uppercase bg-red-900/40 text-red-300 px-2 py-0.5 rounded border border-red-900/50 whitespace-nowrap">Prescription Rx</span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-[10px] font-bold text-levl-text-secondary uppercase tracking-wider">{modality.category}</p>
-              
-              {modality.cadence_layer && (
-                <div className="flex items-center gap-1 bg-white/5 border border-white/10 text-gray-300 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
-                  {modality.cadence_layer.replace('_', ' ')}
-                </div>
-              )}
-              
-              {modality.minimum_cooldown_hours ? (
-                <div className="flex items-center gap-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                  {Math.round(modality.minimum_cooldown_hours / 24)}d Cooldown
-                </div>
-              ) : null}
-              {searchScore ? (
-                <div className="flex items-center gap-1 bg-levl-accent/20 border border-levl-accent/40 text-levl-accent px-1.5 py-0.5 rounded text-[10px] font-bold">
-                  <Search size={10} />
-                  {searchScore}% Search Match
-                </div>
-              ) : popularityScore !== undefined ? (
-                <div className="flex items-center gap-1 bg-amber-500/15 border border-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded text-[10px] font-bold shadow-[0_0_8px_rgba(245,158,11,0.15)]">
-                  <Flame size={10} className="text-amber-400" />
-                  {popularityScore >= 95 ? 'Top 1% Proven' : popularityScore >= 90 ? 'Bio-Optimizer Staple' : `${popularityScore} Popularity`}
-                </div>
-              ) : modality.nba_result && (
-                <div className="flex items-center gap-1 bg-levl-accent/10 border border-levl-accent/30 text-levl-accent px-1.5 py-0.5 rounded text-[10px] font-bold">
-                  <Sparkles size={10} />
-                  {modality.nba_result.matchPercentage}% Match
-                </div>
-              )}
-            </div>
-
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <DosageBadgeButton modality={modality} userProfile={userProfile} />
-            </div>
-
-            {/* Interactive Stack Synergy & Conflict Fit Badge */}
-            {stackFit && !isCurrentlyActiveInToday && (
-              <div 
+        <div className="w-full min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-bold text-lg text-white break-words">{modality.display_name || modality.name}</h3>
+            
+            {/* Active Today / Bench / Conflict / Eliminated History Status Badges */}
+            {isCurrentlyActiveInToday && (
+              <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (onInspectStackFit) onInspectStackFit(modality, stackFit)
+                  router.push(`/today?modality=${encodeURIComponent(modality.id)}`)
                 }}
-                className={`mt-2 p-2 rounded-xl border text-xs flex items-center justify-between gap-2 transition-all cursor-pointer hover:brightness-110 shadow-sm ${
-                  stackFit.badge.type === 'synergy'
-                    ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
-                    : stackFit.badge.type === 'conflict' || stackFit.badge.type === 'caution'
-                    ? 'bg-amber-950/40 border-amber-500/40 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.15)]'
-                    : 'bg-cyan-950/20 border-cyan-500/30 text-cyan-300'
-                }`}
+                className="flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] transition-colors cursor-pointer shrink-0"
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="shrink-0">
-                    {stackFit.badge.type === 'synergy' ? (
-                      <Sparkles size={14} className="text-emerald-400" />
-                    ) : stackFit.badge.type === 'conflict' || stackFit.badge.type === 'caution' ? (
-                      <AlertTriangle size={14} className="text-amber-400" />
-                    ) : (
-                      <ShieldCheck size={14} className="text-cyan-400" />
-                    )}
-                  </div>
-                  <div className="min-w-0 truncate">
-                    <div className="flex items-center gap-1.5 font-bold">
-                      <span className="text-[11px] font-black uppercase tracking-wider">{stackFit.badge.title}</span>
-                      <span className="text-[10px] opacity-60">•</span>
-                      <span className="text-xs truncate font-medium text-slate-200">{stackFit.badge.subtitle}</span>
-                    </div>
-                  </div>
-                </div>
+                <CheckCircle2 size={11} className="text-emerald-400" /> In Today&apos;s Plan
+              </button>
+            )}
+            {isCurrentlyOnBench && !isCurrentlyActiveInToday && (
+              <span className="flex items-center gap-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(6,182,212,0.3)] shrink-0">
+                <Bookmark size={11} className="text-cyan-400" /> Saved on Bench
+              </span>
+            )}
+            {benchHistoryItem?.status === 'eliminated' && !isCurrentlyActiveInToday && (
+              <span className="flex items-center gap-1 bg-red-950/90 text-red-300 border border-red-500/60 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(239,68,68,0.3)] shrink-0">
+                <Ban size={11} className="text-red-400" /> Previously Eliminated
+              </span>
+            )}
+            {benchHistoryItem?.status === 'benched' && !isCurrentlyOnBench && !isCurrentlyActiveInToday && (
+              <span className="flex items-center gap-1 bg-purple-950/90 text-purple-300 border border-purple-500/60 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                <History size={11} className="text-purple-400" /> Previously Benched
+              </span>
+            )}
+            {hasConflict && !isCurrentlyActiveInToday && !isCurrentlyOnBench && !benchHistoryItem && (
+              <span className="flex items-center gap-1 bg-red-500/20 text-red-300 border border-red-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(239,68,68,0.3)] shrink-0">
+                <AlertTriangle size={11} className="text-red-400" /> Profile Conflict
+              </span>
+            )}
 
-                <div className="text-[10px] font-mono font-extrabold uppercase shrink-0 px-2 py-0.5 rounded-md bg-black/50 border border-white/10 flex items-center gap-1 text-slate-300 hover:text-white">
-                  <span>Inspect</span>
-                  <span>→</span>
-                </div>
+            {modality.modality_type === 'prescription_supported' && (
+              <span className="text-[9px] uppercase bg-red-900/40 text-red-300 px-2 py-0.5 rounded border border-red-900/50 whitespace-nowrap shrink-0">Prescription Rx</span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 mt-1.5">
+            <p className="text-[10px] font-bold text-levl-text-secondary uppercase tracking-wider shrink-0">{modality.category}</p>
+            
+            {modality.cadence_layer && (
+              <div className="flex items-center gap-1 bg-white/5 border border-white/10 text-gray-300 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0">
+                {modality.cadence_layer.replace('_', ' ')}
+              </div>
+            )}
+            
+            {modality.minimum_cooldown_hours ? (
+              <div className="flex items-center gap-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">
+                {Math.round(modality.minimum_cooldown_hours / 24)}d Cooldown
+              </div>
+            ) : null}
+            {searchScore ? (
+              <div className="flex items-center gap-1 bg-levl-accent/20 border border-levl-accent/40 text-levl-accent px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">
+                <Search size={10} />
+                {searchScore}% Search Match
+              </div>
+            ) : popularityScore !== undefined ? (
+              <div className="flex items-center gap-1 bg-amber-500/15 border border-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded text-[10px] font-bold shadow-[0_0_8px_rgba(245,158,11,0.15)] shrink-0">
+                <Flame size={10} className="text-amber-400" />
+                {popularityScore >= 95 ? 'Top 1% Proven' : popularityScore >= 90 ? 'Bio-Optimizer Staple' : `${popularityScore} Popularity`}
+              </div>
+            ) : modality.nba_result && (
+              <div className="flex items-center gap-1 bg-levl-accent/10 border border-levl-accent/30 text-levl-accent px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">
+                <Sparkles size={10} />
+                {modality.nba_result.matchPercentage}% Match
               </div>
             )}
           </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <DosageBadgeButton modality={modality} userProfile={userProfile} />
+          </div>
+
+          {/* Interactive Stack Synergy & Conflict Fit Badge */}
+          {stackFit && !isCurrentlyActiveInToday && (
+            <div 
+              onClick={(e) => {
+                e.stopPropagation()
+                if (onInspectStackFit) onInspectStackFit(modality, stackFit)
+              }}
+              className={`mt-2 p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2.5 transition-all cursor-pointer hover:brightness-110 shadow-sm w-full min-w-0 ${
+                stackFit.badge.type === 'synergy'
+                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                  : stackFit.badge.type === 'conflict' || stackFit.badge.type === 'caution'
+                  ? 'bg-amber-950/40 border-amber-500/40 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.15)]'
+                  : 'bg-cyan-950/20 border-cyan-500/30 text-cyan-300'
+              }`}
+            >
+              <div className="flex items-start sm:items-center gap-2 min-w-0 flex-1">
+                <div className="shrink-0 mt-0.5 sm:mt-0">
+                  {stackFit.badge.type === 'synergy' ? (
+                    <Sparkles size={14} className="text-emerald-400" />
+                  ) : stackFit.badge.type === 'conflict' || stackFit.badge.type === 'caution' ? (
+                    <AlertTriangle size={14} className="text-amber-400" />
+                  ) : (
+                    <ShieldCheck size={14} className="text-cyan-400" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap sm:flex-nowrap items-baseline sm:items-center gap-x-1.5 gap-y-0.5 leading-snug">
+                    <span className="text-[11px] font-black uppercase tracking-wider shrink-0">{stackFit.badge.title}</span>
+                    <span className="text-[10px] opacity-60 hidden sm:inline">•</span>
+                    <span className="text-xs font-medium text-slate-200 break-words line-clamp-2 sm:line-clamp-1">{stackFit.badge.subtitle}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-[10px] font-mono font-extrabold uppercase shrink-0 px-2 py-1 rounded-md bg-black/50 border border-white/10 flex items-center gap-1 text-slate-300 hover:text-white self-center">
+                <span>Inspect</span>
+                <span>→</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Similar Active Modality Banner & Compare Trigger */}
