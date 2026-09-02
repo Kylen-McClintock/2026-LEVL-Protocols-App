@@ -129,14 +129,29 @@ function TodayPageContent() {
   const [allModalities, setAllModalities] = useState<Modality[]>([])
   const [allOutcomes, setAllOutcomes] = useState<OutcomeDimension[]>([])
   const [loading, setLoading] = useState(true)
+  const [isDateSwitching, setIsDateSwitching] = useState(false)
 
-  const currentDate = useMemo(() => {
+  const hasLoadedInitialCatalogRef = useRef(false)
+  const activeDateReqIdRef = useRef(0)
+
+  const [activeDate, setActiveDate] = useState<Date>(() => {
     if (dateParam) {
       return parseLocalDate(dateParam)
     }
     return new Date()
+  })
+
+  // Synchronize activeDate if URL searchParams change externally (e.g. browser back/forward buttons)
+  useEffect(() => {
+    if (dateParam) {
+      const parsed = parseLocalDate(dateParam)
+      setActiveDate(parsed)
+    } else {
+      setActiveDate(new Date())
+    }
   }, [dateParam])
 
+  const currentDate = activeDate
   const dateStr = format(currentDate, 'yyyy-MM-dd')
   const isPastDate = isBefore(startOfDay(currentDate), startOfDay(new Date()))
   const isFutureTimeline = isBefore(startOfDay(new Date()), startOfDay(currentDate))
@@ -266,12 +281,12 @@ function TodayPageContent() {
   }
 
   const navigateToDate = (targetDate: Date) => {
+    setActiveDate(targetDate)
     const todayFormatted = format(new Date(), 'yyyy-MM-dd')
     const dStr = format(targetDate, 'yyyy-MM-dd')
-    if (dStr === todayFormatted) {
-      router.push('/today')
-    } else {
-      router.push(`/today?date=${dStr}`)
+    const url = dStr === todayFormatted ? '/today' : `/today?date=${dStr}`
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', url)
     }
   }
 
@@ -329,47 +344,70 @@ function TodayPageContent() {
     if (authLoading) return
 
     async function loadData() {
+      const reqId = ++activeDateReqIdRef.current
+      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+
       try {
-        setLoading(true)
-        const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
-        const userProfile = await getOrCreateUserProfile(localUserId)
+        if (!hasLoadedInitialCatalogRef.current) {
+          setLoading(true)
+          const userProfile = await getOrCreateUserProfile(localUserId)
 
-        const hasCompletedOnboarding = typeof window !== 'undefined' && localStorage.getItem('levl_onboarding_completed') === 'true'
+          const hasCompletedOnboarding = typeof window !== 'undefined' && localStorage.getItem('levl_onboarding_completed') === 'true'
 
-        if (!hasCompletedOnboarding) {
-          router.replace('/onboarding')
-          return
+          if (!hasCompletedOnboarding) {
+            router.replace('/onboarding')
+            return
+          }
+
+          if (!userProfile) {
+            router.push('/onboarding')
+            return
+          }
+          const [currentTasks, outcomes, protocols, bench, todayCheckin, fetchedMods] = await Promise.all([
+            getDailyProtocolTasks(localUserId, dateStr),
+            getOutcomeDimensions(),
+            getProtocols(),
+            getBenchItems(localUserId),
+            getDailyWellbeingCheckin(localUserId, dateStr),
+            getModalities()
+          ])
+
+          if (reqId !== activeDateReqIdRef.current) return
+
+          setProfile(userProfile)
+          setTasks(currentTasks)
+          setAllOutcomes(outcomes)
+          setAvailableProtocols(protocols.map((p: any) => ({ id: p.id, name: p.name })))
+          setBenchItems(bench)
+          setWellbeingCheckin(todayCheckin || null)
+          setAllModalities(fetchedMods || [])
+          hasLoadedInitialCatalogRef.current = true
+        } else {
+          // Fast in-place transition without unmounting DOM tree
+          setIsDateSwitching(true)
+          const [currentTasks, todayCheckin] = await Promise.all([
+            getDailyProtocolTasks(localUserId, dateStr),
+            getDailyWellbeingCheckin(localUserId, dateStr)
+          ])
+
+          if (reqId !== activeDateReqIdRef.current) return
+
+          setTasks(currentTasks)
+          setWellbeingCheckin(todayCheckin || null)
         }
-
-        if (!userProfile) {
-          router.push('/onboarding')
-          return
-        }
-        const [currentTasks, outcomes, protocols, bench, todayCheckin, fetchedMods] = await Promise.all([
-          getDailyProtocolTasks(localUserId, dateStr),
-          getOutcomeDimensions(),
-          getProtocols(),
-          getBenchItems(localUserId),
-          getDailyWellbeingCheckin(localUserId, dateStr),
-          getModalities()
-        ])
-
-        setProfile(userProfile)
-        setTasks(currentTasks)
-        setAllOutcomes(outcomes)
-        setAvailableProtocols(protocols.map((p: any) => ({ id: p.id, name: p.name })))
-        setBenchItems(bench)
-        setWellbeingCheckin(todayCheckin || null)
-        setAllModalities(fetchedMods || [])
       } catch (err) {
         console.error('Error loading Today data:', err)
       } finally {
-        setLoading(false)
+        if (reqId === activeDateReqIdRef.current) {
+          setLoading(false)
+          setIsDateSwitching(false)
+        }
       }
     }
     loadData()
 
     const handleAuthChange = () => {
+      hasLoadedInitialCatalogRef.current = false
       loadData()
     }
     window.addEventListener('levl_auth_user_changed', handleAuthChange)
@@ -1411,11 +1449,18 @@ function TodayPageContent() {
 
   useEffect(() => {
     if (!timelineContainerRef.current || typeof ResizeObserver === 'undefined') return
+    let rafId: number
     const ro = new ResizeObserver(() => {
-      recalculateSpineGradient()
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        recalculateSpineGradient()
+      })
     })
     ro.observe(timelineContainerRef.current)
-    return () => ro.disconnect()
+    return () => {
+      cancelAnimationFrame(rafId)
+      ro.disconnect()
+    }
   }, [recalculateSpineGradient])
 
   const circadianGradientCSS = measuredCircadianGradientCSS || fallbackCircadianGradientCSS
@@ -2144,7 +2189,7 @@ function TodayPageContent() {
                 </button>
               )}
 
-              <span className="text-sm sm:text-base font-extrabold text-white tracking-tight">
+              <span className={`text-sm sm:text-base font-extrabold text-white tracking-tight transition-opacity duration-150 ${isDateSwitching ? 'opacity-60' : 'opacity-100'}`}>
                 {format(currentDate, 'EEEE, MMM d, yyyy')}
               </span>
 
@@ -2207,7 +2252,10 @@ function TodayPageContent() {
             selectedIsolatedOutcome={selectedIsolatedOutcome}
             layoutOrientation={layoutOrientation}
             userProfile={profile}
-            onSelectDate={(dStr: string) => router.push(`/today?date=${dStr}`)}
+            onSelectDate={(dStr: string) => {
+              navigateToDate(parseLocalDate(dStr))
+              setCalendarViewMode('today')
+            }}
             onTaskStatusChange={handleStatusChange}
             onOpenDosageModal={(mod: any) => setActiveModality(mod)}
             onOpenRescheduleModal={handleOpenRescheduleModal}
@@ -2225,7 +2273,10 @@ function TodayPageContent() {
             selectedIsolatedOutcome={selectedIsolatedOutcome}
             layoutOrientation={layoutOrientation}
             userProfile={profile}
-            onSelectDate={(dStr: string) => router.push(`/today?date=${dStr}`)}
+            onSelectDate={(dStr: string) => {
+              navigateToDate(parseLocalDate(dStr))
+              setCalendarViewMode('today')
+            }}
             onTaskStatusChange={handleStatusChange}
             onOpenDosageModal={(mod: any) => setActiveModality(mod)}
             onOpenRescheduleModal={handleOpenRescheduleModal}
@@ -2241,7 +2292,10 @@ function TodayPageContent() {
             selectedProtocolFilter={selectedProtocolFilter}
             selectedIsolatedOutcome={selectedIsolatedOutcome}
             layoutOrientation={layoutOrientation}
-            onSelectDate={(dStr: string) => router.push(`/today?date=${dStr}`)}
+            onSelectDate={(dStr: string) => {
+              navigateToDate(parseLocalDate(dStr))
+              setCalendarViewMode('today')
+            }}
             onMoveToBench={handleMoveToBench}
             onEliminateEntirely={handleEliminateEntirely}
           />
