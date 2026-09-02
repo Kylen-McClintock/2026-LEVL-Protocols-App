@@ -14,8 +14,8 @@ interface AuthContextType {
   loading: boolean
   isGuest: boolean
   localUserId: string
-  signInWithGoogle: () => Promise<{ error: AuthError | null }>
-  signInWithMagicLink: (email: string) => Promise<{ error: AuthError | null }>
+  signInWithGoogle: (customRedirect?: string) => Promise<{ error: AuthError | null }>
+  signInWithMagicLink: (email: string, customRedirect?: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
   openAuthModal: () => void
   closeAuthModal: () => void
@@ -27,8 +27,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 /**
  * Returns the exact public or local callback URL for Supabase Auth
  */
-function getAuthRedirectUrl(): string {
+function getAuthRedirectUrl(customRedirect?: string): string {
   if (typeof window === 'undefined') return ''
+  if (customRedirect) {
+    return `${window.location.origin}/auth/callback?next=${encodeURIComponent(customRedirect)}`
+  }
   return `${window.location.origin}/auth/callback`
 }
 
@@ -143,9 +146,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // 1-Tap Google Sign-In
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithGoogle = useCallback(async (customRedirect?: string) => {
     if (!supabase) return { error: null }
-    const redirectTo = getAuthRedirectUrl()
+    const redirectTo = getAuthRedirectUrl(customRedirect)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -156,9 +159,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // 1-Click Magic Link
-  const signInWithMagicLink = useCallback(async (email: string) => {
+  const signInWithMagicLink = useCallback(async (email: string, customRedirect?: string) => {
     if (!supabase) return { error: null }
-    const redirectTo = getAuthRedirectUrl()
+    const redirectTo = getAuthRedirectUrl(customRedirect)
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {

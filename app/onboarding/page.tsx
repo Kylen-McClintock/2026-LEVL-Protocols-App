@@ -8,12 +8,14 @@ import { updateUserProfile, createDailyTask, getOrCreateUserProfile } from '@/li
 import { saveUserHotkeys } from '@/lib/storage/quickLogsStorage'
 import { POPULAR_HOTKEY_LIBRARY, DEFAULT_STARTER_HOTKEYS } from '@/lib/quicklog/quickHotkeyLibrary'
 import { format } from 'date-fns'
+import { useAuth } from '@/contexts/AuthContext'
 import { 
   Sparkles, Check, ArrowRight, ArrowLeft, ShieldCheck, Zap, Moon, 
   Brain, Dna, Dumbbell, Flame, Droplets, Watch, Pill, Activity, 
   Heart, Shield, Clock, Sun, Sunrise, Sunset, Utensils, Award, 
   RotateCcw, CheckCircle2, ChevronRight, Info, Eye, Camera, FileText,
-  Sliders, Thermometer, Coffee, ShieldAlert, Edit3, X, HelpCircle, ArrowUpRight
+  Sliders, Thermometer, Coffee, ShieldAlert, Edit3, X, HelpCircle, ArrowUpRight,
+  Mail, AlertCircle
 } from 'lucide-react'
 
 export interface ModalityOption {
@@ -315,10 +317,56 @@ function OnboardingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isRecalibrateMode = searchParams?.get('mode') === 'recalibrate'
+  const stepParam = searchParams?.get('step')
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1)
+  const { user, signInWithGoogle, signInWithMagicLink, loading: authLoading } = useAuth()
+
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(() => {
+    if (isRecalibrateMode || stepParam === '1') return 1
+    return 0
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
+
+  // Step 0: Auth State
+  const [authEmail, setAuthEmail] = useState('')
+  const [authSent, setAuthSent] = useState(false)
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+
+  // Automatically advance to Step 1 if user is logged in
+  useEffect(() => {
+    if (user && step === 0) {
+      setStep(1)
+    }
+  }, [user, step])
+
+  const handleGoogleSignIn = async () => {
+    setAuthSubmitting(true)
+    setAuthError(null)
+    const { error } = await signInWithGoogle('/onboarding?step=1')
+    if (error) {
+      setAuthError(error.message || 'Failed to initiate Google sign in.')
+      setAuthSubmitting(false)
+    }
+  }
+
+  const handleSendMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!authEmail.trim() || !authEmail.includes('@')) {
+      setAuthError('Please enter a valid email address.')
+      return
+    }
+    setAuthSubmitting(true)
+    setAuthError(null)
+    const { error } = await signInWithMagicLink(authEmail.trim(), '/onboarding?step=1')
+    setAuthSubmitting(false)
+    if (error) {
+      setAuthError(error.message || 'Failed to send login link. Please try again.')
+    } else {
+      setAuthSent(true)
+    }
+  }
 
   // Step 1: Biological Profile & Demographics
   const [displayName, setDisplayName] = useState('')
@@ -896,25 +944,166 @@ function OnboardingContent() {
         )}
 
         {/* Step Progress Indicator Header */}
-        <div className="space-y-3 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-extrabold uppercase tracking-wider">
-            <Sparkles size={12} className="text-emerald-400" />
-            <span>
-              {step === 1 ? 'Step 1 of 5: Biometrics & Demographics' 
-                : step === 2 ? 'Step 2 of 5: Circadian Sleep Anchors' 
-                : step === 3 ? 'Step 3 of 5: Training & Equipment' 
-                : step === 4 ? 'Step 4 of 5: Goals & Outcomes' 
-                : 'Step 5 of 5: Calibrated Starter Stack'}
-            </span>
-          </div>
+        {step > 0 && (
+          <div className="space-y-3 text-center animate-in fade-in duration-300">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-extrabold uppercase tracking-wider">
+              <Sparkles size={12} className="text-emerald-400" />
+              <span>
+                {step === 1 ? 'Step 1 of 5: Biometrics & Demographics' 
+                  : step === 2 ? 'Step 2 of 5: Circadian Sleep Anchors' 
+                  : step === 3 ? 'Step 3 of 5: Training & Equipment' 
+                  : step === 4 ? 'Step 4 of 5: Goals & Outcomes' 
+                  : 'Step 5 of 5: Calibrated Starter Stack'}
+              </span>
+            </div>
 
-          <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 transition-all duration-500 ease-out"
-              style={{ width: `${(step / 5) * 100}%` }}
-            />
+            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 transition-all duration-500 ease-out"
+                style={{ width: `${(step / 5) * 100}%` }}
+              />
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* ---------------------------------------------------- */}
+        {/* STEP 0: WELCOME & AUTH SIGN-IN */}
+        {/* ---------------------------------------------------- */}
+        {step === 0 && (
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/95 border border-purple-500/30 shadow-2xl space-y-6 text-white text-center animate-in fade-in duration-300 backdrop-blur-md relative overflow-hidden">
+            {/* Ambient Background Glow */}
+            <div className="absolute -top-24 -right-24 w-56 h-56 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 w-56 h-56 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="space-y-3 relative z-10">
+              <img 
+                src="/logo.png" 
+                alt="LEVL Protocols" 
+                className="h-9 w-auto object-contain mx-auto"
+              />
+
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-[11px] font-extrabold uppercase tracking-wider">
+                <Sparkles size={12} className="text-purple-400" />
+                <span>Precision Longevity Protocol</span>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-snug">
+                Outpace Aging
+              </h1>
+
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+                Outpace Aging with a personalized longevity protocol calibrated to your goals, availability, and biomarkers.
+              </p>
+            </div>
+
+            {authError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-center gap-2 animate-in fade-in relative z-10">
+                <AlertCircle size={15} className="shrink-0 text-rose-400" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            {authSent ? (
+              <div className="p-6 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 space-y-3 relative z-10 animate-in fade-in">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 mx-auto">
+                  <Check size={20} />
+                </div>
+                <h3 className="text-base font-bold text-white">Check Your Inbox</h3>
+                <p className="text-xs text-slate-300">
+                  We sent a secure 1-click sign-in link to <span className="font-semibold text-white">{authEmail}</span>.
+                </p>
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 transition-colors cursor-pointer"
+                  >
+                    Continue to Protocol Setup →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAuthSent(false); setAuthEmail(''); }}
+                    className="text-xs text-slate-400 hover:text-white underline cursor-pointer"
+                  >
+                    Use a different email
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-1 relative z-10">
+                {/* 1-Tap Google Sign In */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={authSubmitting}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-100 active:scale-[0.98] text-slate-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all shadow-lg cursor-pointer disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24Z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.04 0 12s.45 3.82 1.25 5.42l4.03-3.15Z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"
+                    />
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3 text-slate-500 text-xs py-1">
+                  <div className="h-px bg-white/10 flex-1" />
+                  <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">or continue with email</span>
+                  <div className="h-px bg-white/10 flex-1" />
+                </div>
+
+                {/* Email Magic Link Form */}
+                <form onSubmit={handleSendMagicLink} className="space-y-3">
+                  <div className="relative">
+                    <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="email"
+                      placeholder="name@example.com"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      disabled={authSubmitting}
+                      className="w-full pl-10 pr-4 py-3 rounded-2xl bg-black/40 border border-white/10 text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:border-purple-500/60 transition-colors"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={authSubmitting || !authEmail.trim()}
+                    className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-purple-500/20 cursor-pointer disabled:opacity-40"
+                  >
+                    <span>Send Magic Link</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </form>
+
+                {/* Discreet "Preview as guest" bypass */}
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer inline-flex items-center gap-1 group py-1"
+                  >
+                    <span>Preview protocol builder as guest</span>
+                    <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform text-slate-500 group-hover:text-white" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ---------------------------------------------------- */}
         {/* STEP 1: BIOLOGICAL PROFILE & DEMOGRAPHICS */}
@@ -1083,7 +1272,18 @@ function OnboardingContent() {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
+            <div className="pt-2 flex items-center justify-between gap-3">
+              {!user && !isRecalibrateMode ? (
+                <button
+                  type="button"
+                  onClick={() => setStep(0)}
+                  className="px-4 py-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <ArrowLeft size={14} />
+                  <span>Sign In</span>
+                </button>
+              ) : <div />}
+
               <button
                 type="button"
                 onClick={() => setStep(2)}
