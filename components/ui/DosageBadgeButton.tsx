@@ -41,7 +41,15 @@ function cleanDosagePillText(text: string): string {
   // 3. Remove trailing parenthesized protocol/dose type names (e.g. "(Blueprint 2026)", "(Starter Dose)", "(Bryan Johnson)")
   cleaned = cleaned.replace(/\s*\((?:starter\s*dose|conservative\s*starter|blueprint\s*\d*|bryan\s*johnson\s*\d*|longo\s*protocol|attia\s*protocol|huberman\s*protocol)\)/gi, '')
 
-  // 4. Strip trailing punctuation like trailing periods from sentences
+  // 4. Strip verbose parenthetical ingredient lists (e.g. "1 Bowl (Macadamia, Walnut, Chia, Flax, Berries...)")
+  cleaned = cleaned.replace(/^(\d+(?:\.\d+)?(?:\/\d+)?\s*(?:bowl|serving|meal|cup|tbsp|tsp|shake|packet|scoop|plate)s?)\s*\([^)]+\)/i, '$1')
+
+  // 5. Strip trailing secondary notes in parentheses if string is long (e.g. "(1.5-2.0 mmol/L lactate)", "(2-3 min rest)")
+  if (cleaned.length > 28) {
+    cleaned = cleaned.replace(/\s*\([^)]*(?:mmol|lactate|rest|min rest|hr|bpm)[^)]*\)/i, '')
+  }
+
+  // 6. Strip trailing punctuation like trailing periods from sentences
   cleaned = cleaned.replace(/\.$/, '').trim()
 
   return cleaned
@@ -140,7 +148,7 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
           e.stopPropagation()
           setIsModalOpen(true)
         }}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-semibold tracking-wide transition-all shadow-sm group max-w-full overflow-hidden leading-tight ${colorStyles} ${className}`}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] font-semibold tracking-wide transition-all shadow-sm group max-w-full min-w-0 overflow-hidden leading-tight ${colorStyles} ${className}`}
         title={`${formatTemp(displayDoseText)} (${resolved.sourceLabel}) - Click to customize`}
       >
         <span className="shrink-0">
@@ -149,7 +157,7 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
           {resolved.source === 'personalized_target' && <CheckCircle2 className="w-3 h-3 text-blue-400" />}
         </span>
 
-        <span className="font-mono text-white text-[11px] font-bold truncate">{formatTemp(displayDoseText)}</span>
+        <span className="font-mono text-white text-[11px] font-bold truncate min-w-0 shrink">{formatTemp(displayDoseText)}</span>
 
         <Sliders className="w-3 h-3 ml-0.5 opacity-80 group-hover:opacity-100 transition-opacity shrink-0" />
       </button>

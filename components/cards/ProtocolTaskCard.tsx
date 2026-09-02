@@ -1640,11 +1640,11 @@ export default function ProtocolTaskCard({
         >
           <div className="flex items-center justify-between gap-2.5">
             {/* Left: Modality Name & Clickable Dynamic Dosage */}
-            <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5 sm:gap-2 overflow-hidden">
               <h3 className="font-extrabold text-sm sm:text-base text-white leading-snug hover:text-purple-300 transition-colors">
                 {modality.display_name || modality.name}
               </h3>
-              <div onClick={(e) => e.stopPropagation()}>
+              <div onClick={(e) => e.stopPropagation()} className="min-w-0 max-w-full">
                 <DosageBadgeButton
                   modality={modality}
                   userProfile={userProfile}
@@ -1671,7 +1671,7 @@ export default function ProtocolTaskCard({
             </div>
 
             {/* Right: Snooze Option Button, Green Checkmark Button, & Expand Chevron */}
-            <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1.5 shrink-0 z-10 relative" onClick={(e) => e.stopPropagation()}>
               {task.status === 'pending' ? (
                 <>
                   <button 
