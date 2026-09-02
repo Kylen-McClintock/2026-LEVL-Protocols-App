@@ -341,6 +341,16 @@ function TodayPageContent() {
   }
 
   useEffect(() => {
+    const handleProfileUpdate = (e: any) => {
+      if (e?.detail) {
+        setProfile(e.detail)
+      }
+    }
+    window.addEventListener('levl_profile_updated', handleProfileUpdate)
+    return () => window.removeEventListener('levl_profile_updated', handleProfileUpdate)
+  }, [])
+
+  useEffect(() => {
     if (authLoading) return
 
     async function loadData() {
@@ -2334,11 +2344,16 @@ function TodayPageContent() {
             <div className="mb-4">
               <DailyLongevityTipBanner 
                 scoredTips={scoredTips}
+                allModalities={allModalities}
+                userProfile={profile}
                 onAddToToday={async (modalityOrProtocolId: string) => {
                   if (profile) {
                     await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityOrProtocolId)
                     await refreshTodayTasks()
                   }
+                }}
+                onAddToBench={async (modalityId: string) => {
+                  await handleMoveToBench(modalityId)
                 }}
                 onDismiss={(tipId: string) => setDismissedTipIds(prev => [...prev, tipId])}
                 isCollapsedByDefault={isPastDate}

@@ -2615,8 +2615,43 @@ export default function ProtocolTaskCard({
                             setTouchedPostOutcomes(prev => ({ ...prev, [outcome.id]: true }))
                           }
                         }} 
-                        className="w-full cursor-pointer" 
+                        onPointerDown={() => {
+                          if (activeOutcomePhase === 'pre') {
+                            if (!touchedPreOutcomes[outcome.id]) {
+                              setTouchedPreOutcomes(prev => ({ ...prev, [outcome.id]: true }))
+                              if (inlinePreValues[outcome.id] === undefined) {
+                                setInlinePreValues(prev => ({ ...prev, [outcome.id]: currentVal }))
+                              }
+                            }
+                          } else {
+                            if (!touchedPostOutcomes[outcome.id]) {
+                              setTouchedPostOutcomes(prev => ({ ...prev, [outcome.id]: true }))
+                              if (inlinePostValues[outcome.id] === undefined) {
+                                setInlinePostValues(prev => ({ ...prev, [outcome.id]: currentVal }))
+                              }
+                            }
+                          }
+                        }}
+                        onClick={() => {
+                          if (activeOutcomePhase === 'pre') {
+                            if (!touchedPreOutcomes[outcome.id]) {
+                              setTouchedPreOutcomes(prev => ({ ...prev, [outcome.id]: true }))
+                              if (inlinePreValues[outcome.id] === undefined) {
+                                setInlinePreValues(prev => ({ ...prev, [outcome.id]: currentVal }))
+                              }
+                            }
+                          } else {
+                            if (!touchedPostOutcomes[outcome.id]) {
+                              setTouchedPostOutcomes(prev => ({ ...prev, [outcome.id]: true }))
+                              if (inlinePostValues[outcome.id] === undefined) {
+                                setInlinePostValues(prev => ({ ...prev, [outcome.id]: currentVal }))
+                              }
+                            }
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
                         style={{ accentColor: colorCfg.accentHex }}
+                        title={isCurrentPhaseTouched ? `Rating: ${currentVal}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                       />
                       
                       <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-gray-400">
@@ -2801,8 +2836,19 @@ export default function ProtocolTaskCard({
                             max="10" 
                             value={displayPreVal} 
                             onChange={(e) => setEditPreValues(prev => ({ ...prev, [outcome.id]: parseInt(e.target.value) }))} 
-                            className="w-full cursor-pointer" 
+                            onPointerDown={() => {
+                              if (editPreValues[outcome.id] === undefined) {
+                                setEditPreValues(prev => ({ ...prev, [outcome.id]: displayPreVal }))
+                              }
+                            }}
+                            onClick={() => {
+                              if (editPreValues[outcome.id] === undefined) {
+                                setEditPreValues(prev => ({ ...prev, [outcome.id]: displayPreVal }))
+                              }
+                            }}
+                            className="w-full cursor-pointer touch-manipulation" 
                             style={{ accentColor: preCfg.accentHex }}
+                            title={isPreRecorded ? `Baseline: ${displayPreVal}/10 (Confirmed)` : 'Click dot to confirm baseline, or drag to adjust'}
                           />
                         </div>
 
@@ -2825,8 +2871,19 @@ export default function ProtocolTaskCard({
                             max="10" 
                             value={displayPostVal} 
                             onChange={(e) => setEditPostValues(prev => ({ ...prev, [outcome.id]: parseInt(e.target.value) }))} 
-                            className="w-full cursor-pointer" 
+                            onPointerDown={() => {
+                              if (editPostValues[outcome.id] === undefined) {
+                                setEditPostValues(prev => ({ ...prev, [outcome.id]: displayPostVal }))
+                              }
+                            }}
+                            onClick={() => {
+                              if (editPostValues[outcome.id] === undefined) {
+                                setEditPostValues(prev => ({ ...prev, [outcome.id]: displayPostVal }))
+                              }
+                            }}
+                            className="w-full cursor-pointer touch-manipulation" 
                             style={{ accentColor: postCfg.accentHex }}
+                            title={isPostRecorded ? `Post: ${displayPostVal}/10 (Confirmed)` : 'Click dot to confirm rating, or drag to adjust'}
                           />
                         </div>
                       </div>

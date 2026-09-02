@@ -24,6 +24,7 @@ import {
   BookOpen
 } from 'lucide-react'
 import { Modality, UserProfile, DailyProtocolTask } from '@/lib/types'
+import ExploreCard from '@/components/cards/ExploreCard'
 import {
   evaluateUserAdherenceState,
   generateNextBestActionRecommendation,
@@ -59,6 +60,7 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
   const [benchedNamesMap, setBenchedNamesMap] = useState<Record<string, string>>({})
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [showOtherCandidates, setShowOtherCandidates] = useState(false)
+  const [showCulpritDetails, setShowCulpritDetails] = useState(false)
   const [processingModalityId, setProcessingModalityId] = useState<string | null>(null)
 
   // 0. Extract set of all known benched/eliminated modality IDs
@@ -249,20 +251,60 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => handleBenchModality(culprit.id, culpritName)}
-            disabled={isCulpritBenched || isProcessing}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer ${
-              isCulpritBenched
-                ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
-                : 'bg-amber-600 hover:bg-amber-500 text-black font-extrabold shadow-amber-900/30 active:scale-95'
-            }`}
-          >
-            {isCulpritBenched ? <Check size={13} /> : <Bookmark size={13} />}
-            <span>{isCulpritBenched ? 'Moved to Bench • Stack Reset' : `Bench ${culpritName} (14 Days)`}</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowCulpritDetails(!showCulpritDetails)}
+              className="text-[11px] font-bold text-amber-300 hover:text-white px-3 py-1.5 rounded-xl bg-amber-950/40 hover:bg-amber-900/50 border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title="Inspect full modality specs before deciding to bench"
+            >
+              <Info size={13} className="text-amber-400" />
+              <span>{showCulpritDetails ? 'Hide Modality Card' : 'View Full Modality Details'}</span>
+              {showCulpritDetails ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleBenchModality(culprit.id, culpritName)}
+              disabled={isCulpritBenched || isProcessing}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer ${
+                isCulpritBenched
+                  ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
+                  : 'bg-amber-600 hover:bg-amber-500 text-black font-extrabold shadow-amber-900/30 active:scale-95'
+              }`}
+            >
+              {isCulpritBenched ? <Check size={13} /> : <Bookmark size={13} />}
+              <span>{isCulpritBenched ? 'Moved to Bench • Stack Reset' : `Bench ${culpritName} (14 Days)`}</span>
+            </button>
+          </div>
         </div>
+
+        {/* Inline Expanded Full Modality Card for Culprit */}
+        {showCulpritDetails && (
+          <div className="mt-3 p-2 sm:p-3 rounded-2xl bg-slate-950/90 border border-amber-500/30 animate-in fade-in slide-in-from-top-2 relative z-10 shadow-inner">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10 px-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                <Sparkles size={13} className="text-amber-400" /> Full Modality Profile: {culpritName}
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                Review dosing, timing, mechanisms & GeekMode before benching
+              </span>
+            </div>
+            <ExploreCard
+              modality={culprit}
+              userProfile={userProfile}
+              activeStatus={isCulpritBenched ? 'bench' : 'today'}
+              todayModalities={allModalities.filter(m => activeModalityIds.has(m.id))}
+              benchModalities={allModalities.filter(m => benchedModalityIds.has(m.id))}
+              onAddToToday={async (mId) => {
+                await onAddToToday(mId)
+              }}
+              onAddToBench={async (mId) => {
+                await handleBenchModality(mId, culpritName)
+              }}
+            />
+          </div>
+        )}
 
         {/* Expandable Secondary Candidates */}
         {recommendation.otherCandidates && recommendation.otherCandidates.length > 0 && (
@@ -438,109 +480,36 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
           className="text-[11px] font-bold text-purple-300 hover:text-white px-3 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ml-auto sm:ml-0"
         >
           <Info size={13} className="text-purple-400" />
-          <span>{isNbaExpanded ? 'Hide Protocol Specs' : 'Learn More & Protocol Specs'}</span>
+          <span>{isNbaExpanded ? 'Hide Full Modality Details' : 'View Full Modality Details & Specs'}</span>
           {isNbaExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
       </div>
 
-      {/* EXPANDED INLINE CLINICAL & PROTOCOL SPECIFICATIONS */}
+      {/* EXPANDED INLINE CLINICAL & PROTOCOL SPECIFICATIONS VIA EXPLORE CARD */}
       {isNbaExpanded && (
-        <div className="p-4 bg-slate-950/90 border border-purple-500/30 rounded-xl space-y-4 animate-in fade-in slide-in-from-top-2 relative z-10 shadow-inner">
-          {/* Scientific Mechanism & Clinical Rationale */}
-          {(targetMod.expanded_why || targetMod.brief_description || targetMod.mechanism_of_action || targetMod.headline_benefit || targetMod.implementation_summary) && (
-            <div className="space-y-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
-                <Microscope size={13} className="text-purple-400" /> Scientific Mechanism &amp; Evidence
-              </span>
-              <p className="text-xs text-slate-300 leading-relaxed pl-5">
-                {targetMod.expanded_why || targetMod.brief_description || targetMod.mechanism_of_action || targetMod.headline_benefit || targetMod.implementation_summary}
-              </p>
-            </div>
-          )}
-
-          {/* Clinical Protocol Specifications 4-Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-            {/* Prescribed Dose */}
-            <div className="p-3 bg-black/40 border border-white/10 rounded-xl space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                💊 Prescribed Protocol Dose
-              </span>
-              <span className="text-xs font-bold text-emerald-300 font-mono">
-                {targetMod.dose_or_exposure || 'Standard Clinically Validated Dose'}
-              </span>
-            </div>
-
-            {/* Optimal Circadian Window */}
-            <div className="p-3 bg-black/40 border border-white/10 rounded-xl space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                ⏰ Circadian Timing Window
-              </span>
-              <span className="text-xs font-bold text-cyan-300 font-mono">
-                {targetMod.timing_summary || targetMod.default_timing_slot || 'Target Timing Window'}
-              </span>
-            </div>
-
-            {/* Recommended Cadence */}
-            <div className="p-3 bg-black/40 border border-white/10 rounded-xl space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                📅 Frequency &amp; Cadence
-              </span>
-              <span className="text-xs font-bold text-purple-300 font-mono">
-                {targetMod.frequency || 'Daily Protocol'}
-              </span>
-            </div>
-
-            {/* Administration Route */}
-            <div className="p-3 bg-black/40 border border-white/10 rounded-xl space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                🧬 Modality Type &amp; Category
-              </span>
-              <span className="text-xs font-bold text-amber-300 font-mono capitalize">
-                {targetMod.category?.replace(/_/g, ' ') || targetMod.modality_type || 'Biological Optimization'}
-              </span>
-            </div>
+        <div className="p-2 sm:p-3 bg-slate-950/90 border border-purple-500/30 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 relative z-10 shadow-inner">
+          <div className="flex items-center justify-between pb-1 border-b border-white/10 px-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+              <Sparkles size={14} className="text-purple-400" /> Full Modality Profile & Clinical Protocols
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              Complete dosing, timing, mechanisms, GeekMode & citations
+            </span>
           </div>
 
-          {/* Primary Outcome & Secondary Impacts */}
-          {(targetMod.primary_outcome || (targetMod.secondary_outcomes && targetMod.secondary_outcomes.length > 0)) && (
-            <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center text-xs">
-              {targetMod.primary_outcome && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-slate-400 font-semibold text-[11px]">Primary Target:</span>
-                  <span className="px-2.5 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-800 rounded-full font-bold text-[10px] uppercase tracking-wider">
-                    {targetMod.primary_outcome.replace(/_/g, ' ')}
-                  </span>
-                </div>
-              )}
-
-              {targetMod.secondary_outcomes && targetMod.secondary_outcomes.length > 0 && (
-                <div className="flex items-center gap-1.5 text-slate-300 text-[11px] flex-wrap">
-                  <span className="text-purple-300 font-semibold">Secondary Outcomes:</span>
-                  {targetMod.secondary_outcomes.slice(0, 3).map((out, idx) => (
-                    <span key={idx} className="px-2 py-0.5 bg-slate-800/80 text-slate-300 border border-slate-700 rounded-md text-[10px]">
-                      {out.replace(/_/g, ' ')}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Research Paper Link */}
-          {targetMod.scientific_references && targetMod.scientific_references.length > 0 && targetMod.scientific_references[0].url && (
-            <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
-              <span className="text-slate-400 text-[11px]">Clinical Validation:</span>
-              <a
-                href={targetMod.scientific_references[0].url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 font-bold text-[11px]"
-              >
-                <span>{targetMod.scientific_references[0].title || 'Read PubMed Research Paper'}</span>
-                <ExternalLink size={12} />
-              </a>
-            </div>
-          )}
+          <ExploreCard
+            modality={targetMod}
+            userProfile={userProfile}
+            todayModalities={allModalities.filter(m => activeModalityIds.has(m.id))}
+            benchModalities={allModalities.filter(m => benchedModalityIds.has(m.id))}
+            activeStatus={isActionDone ? 'today' : isNbaBenched ? 'bench' : null}
+            onAddToToday={async (mId) => {
+              await handleAddModality()
+            }}
+            onAddToBench={async (mId) => {
+              await handleBenchNba()
+            }}
+          />
         </div>
       )}
 

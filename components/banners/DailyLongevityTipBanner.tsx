@@ -3,6 +3,10 @@
 import React, { useState } from 'react'
 import { LongevityTip } from '@/lib/data/longevityTips'
 import { ScoredLongevityTip } from '@/lib/ranking/tipPersonalization'
+import { Modality, UserProfile } from '@/lib/types'
+import ExploreCard from '@/components/cards/ExploreCard'
+import { getModalities, addToBench } from '@/lib/data'
+import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { 
   Sparkles, 
   ExternalLink, 
@@ -14,25 +18,34 @@ import {
   ShieldCheck, 
   Activity,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Info
 } from 'lucide-react'
 
 interface DailyLongevityTipBannerProps {
   scoredTips: ScoredLongevityTip[]
+  allModalities?: Modality[]
+  userProfile?: UserProfile | null
   onAddToToday: (modalityId: string) => Promise<void>
+  onAddToBench?: (modalityId: string) => Promise<void>
   onDismiss: (tipId: string) => void
   isCollapsedByDefault?: boolean
 }
 
 export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = ({
   scoredTips,
+  allModalities,
+  userProfile,
   onAddToToday,
+  onAddToBench,
   onDismiss,
   isCollapsedByDefault = false
 }) => {
   const [currentIndex, setCurrentIndex] = useState<number>(0)
   const [isAdding, setIsAdding] = useState<boolean>(false)
   const [addedSuccess, setAddedSuccess] = useState<boolean>(false)
+  const [modalitiesList, setModalitiesList] = useState<Modality[]>(allModalities || [])
+  const [showFullModalityCard, setShowFullModalityCard] = useState<boolean>(false)
   const [isExpanded, setIsExpanded] = useState<boolean>(() => {
     if (isCollapsedByDefault) return false
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -40,6 +53,17 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
     }
     return true
   })
+
+  // Synchronize or fetch modalities list
+  React.useEffect(() => {
+    if (allModalities && allModalities.length > 0) {
+      setModalitiesList(allModalities)
+    } else {
+      getModalities(true).then(mods => {
+        if (mods && mods.length > 0) setModalitiesList(mods)
+      }).catch(console.error)
+    }
+  }, [allModalities])
 
   // Detect mobile & sync state if isCollapsedByDefault changes
   React.useEffect(() => {
@@ -57,8 +81,28 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
   const currentScored = scoredTips[currentIndex % scoredTips.length]
   const tip = currentScored.tip
 
+  // Resolve matching Modality object
+  const resolvedModality = React.useMemo(() => {
+    if (!tip.modality_id || modalitiesList.length === 0) return null
+    const rawId = tip.modality_id.trim().toLowerCase()
+    const slug = rawId.replace(/[^a-z0-9]+/g, '_')
+    const words = rawId.replace(/_/g, ' ')
+
+    return modalitiesList.find(m => 
+      m.id.toLowerCase() === rawId ||
+      m.id.toLowerCase() === slug ||
+      (m.slug && m.slug.toLowerCase() === slug) ||
+      m.name.toLowerCase() === words ||
+      m.name.toLowerCase() === rawId ||
+      (m.display_name && m.display_name.toLowerCase() === words) ||
+      m.name.toLowerCase().includes(words) ||
+      words.includes(m.name.toLowerCase())
+    ) || null
+  }, [tip.modality_id, modalitiesList])
+
   const handleNextTip = () => {
     setAddedSuccess(false)
+    setShowFullModalityCard(false)
     setCurrentIndex(prev => (prev + 1) % scoredTips.length)
   }
 
@@ -203,6 +247,24 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
               Protocol: <span className="text-slate-300 font-semibold">{tip.author_attribution}</span>
             </span>
           )}
+
+          {/* Inline Full Modality Details Toggle */}
+          {resolvedModality && (
+            <button
+              type="button"
+              onClick={() => setShowFullModalityCard(!showFullModalityCard)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                showFullModalityCard
+                  ? 'bg-purple-900/80 border-purple-400 text-white shadow-md'
+                  : 'bg-slate-950/90 hover:bg-slate-800 border-purple-500/40 text-purple-300 hover:text-white'
+              }`}
+              title="Inspect full dosage, timing, mechanism, outcomes & GeekMode clinical evidence"
+            >
+              <Info size={13} className="text-purple-400" />
+              <span>{showFullModalityCard ? 'Hide Full Modality Details' : 'View Full Modality Details'}</span>
+              {showFullModalityCard ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+          )}
         </div>
 
         {/* Add to Today's Stack Button */}
@@ -225,6 +287,38 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
           </div>
         )}
       </div>
+
+      {/* Inline Expanded Full Modality Card */}
+      {showFullModalityCard && resolvedModality && (
+        <div className="pt-3 border-t border-purple-500/20 space-y-2 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center justify-between flex-wrap gap-2 px-1">
+            <span className="text-[11px] uppercase font-bold tracking-wider text-purple-300 flex items-center gap-1.5">
+              <Sparkles size={12} className="text-purple-400" /> Full Modality Profile & Clinical Protocols
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              Review dosing, timing, mechanisms & GeekMode before adding
+            </span>
+          </div>
+          <div className="bg-slate-950/60 rounded-2xl border border-white/10 p-2 sm:p-3 shadow-inner">
+            <ExploreCard
+              modality={resolvedModality}
+              userProfile={userProfile}
+              activeStatus={currentScored.isInTodayStack || addedSuccess ? 'today' : null}
+              onAddToToday={async (mId) => {
+                await handleAdd()
+              }}
+              onAddToBench={async (mId) => {
+                if (onAddToBench) {
+                  await onAddToBench(mId)
+                } else {
+                  const localUserId = userProfile?.local_user_id || getLocalUserId()
+                  await addToBench(localUserId, mId)
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   )

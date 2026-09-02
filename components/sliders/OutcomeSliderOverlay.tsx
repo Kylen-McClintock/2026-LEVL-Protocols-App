@@ -132,8 +132,19 @@ export default function OutcomeSliderOverlay({ outcomes, modality, onSave, onClo
                   max="10" 
                   value={val} 
                   onChange={(e) => handleChange(outcome.id, parseInt(e.target.value))} 
-                  className="w-full cursor-pointer" 
+                  onPointerDown={() => {
+                    if (!isTouched) {
+                      setTouched(prev => ({ ...prev, [outcome.id]: true }))
+                    }
+                  }}
+                  onClick={() => {
+                    if (!isTouched) {
+                      setTouched(prev => ({ ...prev, [outcome.id]: true }))
+                    }
+                  }}
+                  className="w-full cursor-pointer touch-manipulation" 
                   style={{ accentColor: colorCfg.accentHex }}
+                  title={isTouched ? `${val}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                 />
                 
                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">

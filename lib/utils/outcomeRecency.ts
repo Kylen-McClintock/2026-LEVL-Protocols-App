@@ -21,6 +21,7 @@ export interface RecentOutcomeSnapshot {
   isRecent: boolean
   recordedAt?: string | null
   timeAgoMinutes?: number
+  timestamp?: number
   source?: 'morning_checkin' | 'anytime_checkin' | 'modality_observation' | 'default'
 }
 
@@ -72,7 +73,20 @@ export function getRecentOutcomeSnapshot(
     const rawCreated = (wellbeingCheckin as any).created_at
     const checkinTime = rawUpdated 
       ? new Date(rawUpdated).getTime() 
-      : (rawCreated ? new Date(rawCreated).getTime() : 0)
+      : (rawCreated ? new Date(rawCreated).getTime() : Date.now() - 3600 * 1000)
+
+    let customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
+    if (typeof customJSON === 'string') {
+      try { customJSON = JSON.parse(customJSON) } catch (e) {}
+    }
+    if (!customJSON || Object.keys(customJSON).length === 0) {
+      if ((wellbeingCheckin as any).notes) {
+        try {
+          const parsedNotes = JSON.parse((wellbeingCheckin as any).notes)
+          customJSON = parsedNotes.custom_outcomes_jsonb || parsedNotes.custom_outcomes || {}
+        } catch (e) {}
+      }
+    }
 
     if (checkinTime > 0) {
       let checkinVal: number | undefined = undefined
@@ -83,32 +97,43 @@ export function getRecentOutcomeSnapshot(
         checkinVal = wellbeingCheckin.energy_0_10 ?? undefined
       } else if (cleanId === 'stress' || cleanId.includes('stress') || cleanId.includes('anxiety')) {
         checkinVal = wellbeingCheckin.stress_0_10 ?? undefined
-      } else if (cleanId === 'sleep' || cleanId.includes('sleep') || cleanId === 'subjective_sleep') {
+      } else if (cleanId === 'sleep' || cleanId.includes('sleep') || cleanId === 'subjective_sleep' || cleanId === 'sleep_quality') {
         checkinVal = wellbeingCheckin.subjective_sleep_0_10 ?? undefined
       } else {
-        const customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
-        if (customJSON[cleanId] !== undefined && typeof customJSON[cleanId] === 'number') {
-          checkinVal = customJSON[cleanId]
-        } else if (customJSON.focus_score !== undefined && (cleanId === 'focus' || cleanId.includes('focus') || cleanId.includes('clarity'))) {
-          checkinVal = customJSON.focus_score
-        } else if (customJSON.skin_clarity !== undefined && (cleanId === 'skin' || cleanId.includes('skin'))) {
-          checkinVal = customJSON.skin_clarity
+        const candidates = [
+          cleanId,
+          cleanId.replace(/\s+/g, '_'),
+          cleanId.replace(/_/g, ' '),
+          `${cleanId}_score`,
+          cleanId.replace(/_score$/, '')
+        ]
+        for (const k of candidates) {
+          if (customJSON[k] !== undefined && typeof customJSON[k] === 'number') {
+            checkinVal = customJSON[k]
+            break
+          }
+        }
+        if (checkinVal === undefined) {
+          if (cleanId === 'focus' || cleanId.includes('focus') || cleanId.includes('clarity')) {
+            checkinVal = customJSON.focus_score ?? customJSON.focus
+          } else if (cleanId === 'skin' || cleanId.includes('skin')) {
+            checkinVal = customJSON.skin_clarity ?? customJSON.skin
+          }
         }
       }
 
-      if (typeof checkinVal === 'number' && checkinTime > candidateTimestamp) {
+      if (typeof checkinVal === 'number' && checkinTime >= candidateTimestamp) {
         candidateVal = checkinVal
         candidateTimestamp = checkinTime
-        candidateDateStr = rawUpdated || rawCreated || null
+        candidateDateStr = rawUpdated || rawCreated || new Date(checkinTime).toISOString()
         candidateSource = rawUpdated ? 'anytime_checkin' : 'morning_checkin'
       }
 
       // Check anytime check-in snapshots array if present
-      const customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
       if (Array.isArray(customJSON._anytime_checkins) && customJSON._anytime_checkins.length > 0) {
         customJSON._anytime_checkins.forEach((snap: any) => {
           const snapTime = snap.timestamp ? new Date(snap.timestamp).getTime() : 0
-          if (snapTime > 0 && snapTime > candidateTimestamp) {
+          if (snapTime > 0 && snapTime >= candidateTimestamp) {
             let snapVal: number | undefined = undefined
             if (cleanId === 'mood' || cleanId.includes('mood')) {
               snapVal = snap.mood
@@ -122,6 +147,20 @@ export function getRecentOutcomeSnapshot(
               snapVal = snap.skin ?? snap.skin_clarity
             } else if (snap[cleanId] !== undefined && typeof snap[cleanId] === 'number') {
               snapVal = snap[cleanId]
+            } else {
+              const snapCandidates = [
+                cleanId,
+                cleanId.replace(/\s+/g, '_'),
+                cleanId.replace(/_/g, ' '),
+                `${cleanId}_score`,
+                cleanId.replace(/_score$/, '')
+              ]
+              for (const k of snapCandidates) {
+                if (snap[k] !== undefined && typeof snap[k] === 'number') {
+                  snapVal = snap[k]
+                  break
+                }
+              }
             }
 
             if (typeof snapVal === 'number') {
@@ -136,28 +175,17 @@ export function getRecentOutcomeSnapshot(
     }
   }
 
-  // 3. Evaluate if candidate was recorded within the 2-hour window
-  if (candidateVal !== null && candidateTimestamp > 0) {
-    const ageMs = now - candidateTimestamp
-    if (ageMs >= 0 && ageMs <= maxAgeMs) {
-      const timeAgoMinutes = Math.max(1, Math.round(ageMs / (60 * 1000)))
-      return {
-        value: candidateVal,
-        isRecent: true,
-        recordedAt: candidateDateStr,
-        timeAgoMinutes,
-        source: candidateSource
-      }
-    }
-  }
+  // 3. Fallback to default neutral (5) if no logs exist
+  const isRecent = candidateTimestamp > 0 && (Date.now() - candidateTimestamp < 2 * 60 * 60 * 1000)
+  const timeAgoMinutes = candidateTimestamp > 0 ? Math.floor((Date.now() - candidateTimestamp) / (1000 * 60)) : undefined
 
-  // 4. Default fallback when older than 2 hours or not logged today
   return {
-    value: 5,
-    isRecent: false,
-    recordedAt: null,
-    timeAgoMinutes: undefined,
-    source: 'default'
+    value: candidateVal ?? 5,
+    recordedAt: candidateDateStr,
+    timestamp: candidateTimestamp,
+    isRecent,
+    timeAgoMinutes,
+    source: candidateSource
   }
 }
 
@@ -196,9 +224,22 @@ export function getLatestOutcomeLiveState(
   let morningRecordedAt: string | null = null
 
   if (wellbeingCheckin) {
-    const rawCreated = (wellbeingCheckin as any).created_at
-    morningTimestamp = rawCreated ? new Date(rawCreated).getTime() : 0
-    morningRecordedAt = rawCreated || null
+    const rawTime = (wellbeingCheckin as any).updated_at || (wellbeingCheckin as any).created_at
+    morningTimestamp = rawTime ? new Date(rawTime).getTime() : Date.now() - 3600 * 1000
+    morningRecordedAt = rawTime || new Date(morningTimestamp).toISOString()
+
+    let customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
+    if (typeof customJSON === 'string') {
+      try { customJSON = JSON.parse(customJSON) } catch (e) {}
+    }
+    if (!customJSON || Object.keys(customJSON).length === 0) {
+      if ((wellbeingCheckin as any).notes) {
+        try {
+          const parsedNotes = JSON.parse((wellbeingCheckin as any).notes)
+          customJSON = parsedNotes.custom_outcomes_jsonb || parsedNotes.custom_outcomes || {}
+        } catch (e) {}
+      }
+    }
 
     if (cleanId === 'mood' || cleanId.includes('mood')) {
       morningBaseline = wellbeingCheckin.mood_0_10 ?? null
@@ -206,16 +247,28 @@ export function getLatestOutcomeLiveState(
       morningBaseline = wellbeingCheckin.energy_0_10 ?? null
     } else if (cleanId === 'stress' || cleanId.includes('stress') || cleanId.includes('anxiety')) {
       morningBaseline = wellbeingCheckin.stress_0_10 ?? null
-    } else if (cleanId === 'sleep' || cleanId.includes('sleep') || cleanId === 'subjective_sleep') {
+    } else if (cleanId === 'sleep' || cleanId.includes('sleep') || cleanId === 'subjective_sleep' || cleanId === 'sleep_quality') {
       morningBaseline = wellbeingCheckin.subjective_sleep_0_10 ?? null
     } else {
-      const customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
-      if (customJSON[cleanId] !== undefined && typeof customJSON[cleanId] === 'number') {
-        morningBaseline = customJSON[cleanId]
-      } else if (customJSON.focus_score !== undefined && (cleanId === 'focus' || cleanId.includes('focus'))) {
-        morningBaseline = customJSON.focus_score
-      } else if (customJSON.skin_clarity !== undefined && (cleanId === 'skin' || cleanId.includes('skin'))) {
-        morningBaseline = customJSON.skin_clarity
+      const candidates = [
+        cleanId,
+        cleanId.replace(/\s+/g, '_'),
+        cleanId.replace(/_/g, ' '),
+        `${cleanId}_score`,
+        cleanId.replace(/_score$/, '')
+      ]
+      for (const k of candidates) {
+        if (customJSON[k] !== undefined && typeof customJSON[k] === 'number') {
+          morningBaseline = customJSON[k]
+          break
+        }
+      }
+      if (morningBaseline === null) {
+        if (cleanId === 'focus' || cleanId.includes('focus')) {
+          morningBaseline = customJSON.focus_score ?? customJSON.focus ?? null
+        } else if (cleanId === 'skin' || cleanId.includes('skin')) {
+          morningBaseline = customJSON.skin_clarity ?? customJSON.skin ?? null
+        }
       }
     }
   }
@@ -228,7 +281,19 @@ export function getLatestOutcomeLiveState(
 
   // Check anytime check-in snapshots
   if (wellbeingCheckin) {
-    const customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
+    let customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
+    if (typeof customJSON === 'string') {
+      try { customJSON = JSON.parse(customJSON) } catch (e) {}
+    }
+    if (!customJSON || Object.keys(customJSON).length === 0) {
+      if ((wellbeingCheckin as any).notes) {
+        try {
+          const parsedNotes = JSON.parse((wellbeingCheckin as any).notes)
+          customJSON = parsedNotes.custom_outcomes_jsonb || parsedNotes.custom_outcomes || {}
+        } catch (e) {}
+      }
+    }
+
     if (Array.isArray(customJSON._anytime_checkins) && customJSON._anytime_checkins.length > 0) {
       customJSON._anytime_checkins.forEach((snap: any) => {
         const snapTime = snap.timestamp ? new Date(snap.timestamp).getTime() : 0
@@ -240,6 +305,21 @@ export function getLatestOutcomeLiveState(
           else if (cleanId === 'focus' || cleanId.includes('focus')) snapVal = snap.focus ?? snap.focus_score
           else if (cleanId === 'skin' || cleanId.includes('skin')) snapVal = snap.skin ?? snap.skin_clarity
           else if (snap[cleanId] !== undefined && typeof snap[cleanId] === 'number') snapVal = snap[cleanId]
+          else {
+            const snapCandidates = [
+              cleanId,
+              cleanId.replace(/\s+/g, '_'),
+              cleanId.replace(/_/g, ' '),
+              `${cleanId}_score`,
+              cleanId.replace(/_score$/, '')
+            ]
+            for (const k of snapCandidates) {
+              if (snap[k] !== undefined && typeof snap[k] === 'number') {
+                snapVal = snap[k]
+                break
+              }
+            }
+          }
 
           if (typeof snapVal === 'number') {
             latestVal = snapVal

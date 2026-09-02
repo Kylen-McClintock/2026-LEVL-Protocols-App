@@ -13,7 +13,7 @@ type CustomizeCheckinOutcomesModalProps = {
   mode?: 'morning' | 'anytime' | 'nightly'
   allOutcomes: OutcomeDimension[]
   userProfile?: UserProfile | null
-  onOutcomesUpdated?: (updatedPreferences?: Record<string, number>) => void
+  onOutcomesUpdated?: (updatedPreferences?: Record<string, number>, updatedProfile?: UserProfile | null) => void
 }
 
 const RECOMMENDED_IDS = ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep']
@@ -78,14 +78,23 @@ export default function CustomizeCheckinOutcomesModal({
     if (val !== undefined) {
       return val >= 7
     }
-    // Strictly tab-specific default fallbacks
+    // Tab-specific default fallbacks
     if (tab === 'anytime') {
+      if (userProfile?.anytime_checkin_dimensions && userProfile.anytime_checkin_dimensions.length > 0) {
+        return userProfile.anytime_checkin_dimensions.includes(id)
+      }
       return ['mood', 'energy', 'stress', 'focus'].includes(id)
     }
     if (tab === 'morning') {
+      if (userProfile?.morning_checkin_dimensions && userProfile.morning_checkin_dimensions.length > 0) {
+        return userProfile.morning_checkin_dimensions.includes(id)
+      }
       return ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep'].includes(id)
     }
     if (tab === 'nightly') {
+      if (userProfile?.evening_checkin_dimensions && userProfile.evening_checkin_dimensions.length > 0) {
+        return userProfile.evening_checkin_dimensions.includes(id)
+      }
       return ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep', 'digestive_comfort'].includes(id)
     }
     return false
@@ -149,11 +158,8 @@ export default function CustomizeCheckinOutcomesModal({
         o.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         (o.description || '').toLowerCase().includes(searchQuery.toLowerCase())
       
-      const matchesCat = selectedCategory === 'all' || o.category === selectedCategory
-
-      return matchesSearch && matchesCat
-    }).sort((a, b) => {
-      return a.name.localeCompare(b.name)
+      const matchesCategory = selectedCategory === 'all' || o.category === selectedCategory
+      return matchesSearch && matchesCategory
     })
   }, [additionalOutcomes, searchQuery, selectedCategory])
 
@@ -165,15 +171,32 @@ export default function CustomizeCheckinOutcomesModal({
     })
   }, [recommendedOutcomes, searchQuery])
 
+  const categories = useMemo(() => {
+    const cats = new Set<string>()
+    allOutcomes.forEach(o => {
+      if (o.category) cats.add(o.category)
+    })
+    return Array.from(cats).sort()
+  }, [allOutcomes])
+
   if (!isOpen) return null
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
       const localId = getLocalUserId()
-      await updateUserProfile(localId, { outcome_preference_scores: preferences })
+      const anytimeIds = allOutcomes.filter(o => isTracked(o.id, 'anytime')).map(o => o.id)
+      const morningIds = allOutcomes.filter(o => isTracked(o.id, 'morning')).map(o => o.id)
+      const nightlyIds = allOutcomes.filter(o => isTracked(o.id, 'nightly')).map(o => o.id)
+
+      const updated = await updateUserProfile(localId, { 
+        outcome_preference_scores: preferences,
+        anytime_checkin_dimensions: anytimeIds,
+        morning_checkin_dimensions: morningIds,
+        evening_checkin_dimensions: nightlyIds
+      })
       if (onOutcomesUpdated) {
-        onOutcomesUpdated(preferences)
+        onOutcomesUpdated(preferences, updated)
       }
       onClose()
     } catch (err) {
@@ -184,8 +207,8 @@ export default function CustomizeCheckinOutcomesModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in overflow-y-auto">
-      <div className="bg-slate-900 border border-indigo-500/30 w-full max-w-xl rounded-3xl p-4 sm:p-6 shadow-2xl relative space-y-4 max-h-[88vh] flex flex-col my-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 pb-28 sm:pb-6 animate-in fade-in overflow-y-auto">
+      <div className="bg-slate-900 border border-indigo-500/30 w-full max-w-xl rounded-3xl p-4 sm:p-6 shadow-2xl relative space-y-4 max-h-[82vh] sm:max-h-[88vh] flex flex-col my-auto">
         <button 
           onClick={onClose}
           className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-white p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors z-10 cursor-pointer"
@@ -300,7 +323,9 @@ export default function CustomizeCheckinOutcomesModal({
                         active 
                           ? activeTab === 'morning'
                             ? 'bg-amber-950/40 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' 
-                            : 'bg-rose-950/40 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+                            : activeTab === 'anytime'
+                              ? 'bg-indigo-950/40 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
+                              : 'bg-rose-950/40 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
                           : 'bg-black/40 border-white/10 hover:border-white/20'
                       }`}
                     >
@@ -309,7 +334,9 @@ export default function CustomizeCheckinOutcomesModal({
                           active 
                             ? activeTab === 'morning'
                               ? 'bg-amber-500 text-white border-amber-400' 
-                              : 'bg-rose-500 text-white border-rose-400'
+                              : activeTab === 'anytime'
+                                ? 'bg-indigo-500 text-white border-indigo-400'
+                                : 'bg-rose-500 text-white border-rose-400'
                             : 'bg-black/50 text-gray-500 border-white/10'
                         }`}>
                           {active ? <Check size={14} strokeWidth={3} /> : <div className="w-3.5 h-3.5" />}
@@ -332,7 +359,9 @@ export default function CustomizeCheckinOutcomesModal({
                         active 
                           ? activeTab === 'morning'
                             ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' 
-                            : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                            : activeTab === 'anytime'
+                              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                              : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
                           : 'bg-white/5 text-gray-500 border-white/10'
                       }`}>
                         {active ? 'Tracked' : 'Hidden'}
@@ -428,7 +457,9 @@ export default function CustomizeCheckinOutcomesModal({
                         active 
                           ? activeTab === 'morning'
                             ? 'bg-amber-950/30 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.15)]' 
-                            : 'bg-rose-950/30 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]'
+                            : activeTab === 'anytime'
+                              ? 'bg-indigo-950/30 border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.15)]'
+                              : 'bg-rose-950/30 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]'
                           : 'bg-black/40 border-white/10 hover:border-white/20'
                       }`}
                     >
@@ -437,7 +468,9 @@ export default function CustomizeCheckinOutcomesModal({
                           active 
                             ? activeTab === 'morning'
                               ? 'bg-amber-500 text-white border-amber-400' 
-                              : 'bg-rose-500 text-white border-rose-400'
+                              : activeTab === 'anytime'
+                                ? 'bg-indigo-500 text-white border-indigo-400'
+                                : 'bg-rose-500 text-white border-rose-400'
                             : 'bg-black/50 text-gray-500 border-white/10'
                         }`}>
                           {active ? <Check size={14} strokeWidth={3} /> : <div className="w-3.5 h-3.5" />}
@@ -460,7 +493,9 @@ export default function CustomizeCheckinOutcomesModal({
                         active 
                           ? activeTab === 'morning'
                             ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' 
-                            : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                            : activeTab === 'anytime'
+                              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                              : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
                           : 'bg-white/5 text-gray-500 border-white/10'
                       }`}>
                         {active ? 'Tracked' : 'Hidden'}
@@ -478,7 +513,7 @@ export default function CustomizeCheckinOutcomesModal({
         </div>
 
         {/* Modal Action Buttons */}
-        <div className="flex items-center gap-3 pt-3 border-t border-white/10 shrink-0">
+        <div className="flex items-center gap-3 pt-3 border-t border-white/10 shrink-0 sticky bottom-0 bg-slate-900/95 backdrop-blur-md pb-1 z-10">
           <button
             onClick={onClose}
             className="flex-1 py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition cursor-pointer"
@@ -490,7 +525,7 @@ export default function CustomizeCheckinOutcomesModal({
             disabled={isSaving}
             className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
-            {isSaving ? 'Saving Preferences...' : `Save ${activeTab === 'morning' ? 'Morning' : 'Nightly'} Outcomes`}
+            {isSaving ? 'Saving Preferences...' : `Save ${activeTab === 'morning' ? 'Morning' : activeTab === 'anytime' ? 'Anytime' : 'Nightly'} Outcomes`}
           </button>
         </div>
       </div>

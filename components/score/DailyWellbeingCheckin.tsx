@@ -354,8 +354,26 @@ export default function DailyWellbeingCheckin({
     if (profile) setLocalProfile(profile)
   }, [profile])
 
+  // Listen for realtime profile updates dispatched across app (e.g. from CustomizeCheckinOutcomesModal)
+  useEffect(() => {
+    const handleProfileUpdate = (e: any) => {
+      if (e?.detail) {
+        setLocalProfile(e.detail)
+      }
+    }
+    window.addEventListener('levl_profile_updated', handleProfileUpdate)
+    return () => window.removeEventListener('levl_profile_updated', handleProfileUpdate)
+  }, [])
+
   // Helper to determine if an outcome is tracked in morning vs nightly mode
   const isOutcomeTracked = (id: string, mode: 'morning' | 'nightly') => {
+    if (mode === 'morning' && localProfile?.morning_checkin_dimensions && localProfile.morning_checkin_dimensions.length > 0) {
+      return localProfile.morning_checkin_dimensions.includes(id)
+    }
+    if (mode === 'nightly' && localProfile?.evening_checkin_dimensions && localProfile.evening_checkin_dimensions.length > 0) {
+      return localProfile.evening_checkin_dimensions.includes(id)
+    }
+
     const prefs = localProfile?.outcome_preference_scores
     const key = `${mode}:${id}`
     const val = prefs ? prefs[key] : undefined
@@ -404,11 +422,19 @@ export default function DailyWellbeingCheckin({
     })
   }, [localProfile, allOutcomes])
 
-  // Active Anytime Tracked Outcomes (can be more than 4, configurable independently)
+  // Active Anytime Tracked Outcomes (matches CustomizeCheckinOutcomesModal selection)
   const activeAnytimeDimensions = useMemo(() => {
+    // 1. Check explicit anytime_checkin_dimensions array from user profile
+    if (localProfile?.anytime_checkin_dimensions && Array.isArray(localProfile.anytime_checkin_dimensions) && localProfile.anytime_checkin_dimensions.length > 0) {
+      const fromDims = localProfile.anytime_checkin_dimensions
+        .map(id => allOutcomes.find(o => o.id === id || o.id === `${id}_score`))
+        .filter(Boolean) as OutcomeDimension[]
+      if (fromDims.length > 0) return fromDims
+    }
+
     const prefs = localProfile?.outcome_preference_scores || {}
     
-    // Check for explicit anytime: outcome preferences
+    // 2. Check for explicit anytime: outcome preferences in outcome_preference_scores
     const fromPrefs = allOutcomes.filter(o => {
       const key = `anytime:${o.id}`
       const val = prefs[key]
@@ -418,7 +444,7 @@ export default function DailyWellbeingCheckin({
 
     if (fromPrefs.length > 0) return fromPrefs
 
-    // Default 4: Mood, Energy, Stress, Focus
+    // 3. Default 4: Mood, Energy, Stress, Focus
     const defaultIds = ['mood', 'energy', 'stress', 'focus']
     const matched = defaultIds.map(id => allOutcomes.find(o => o.id === id || o.id === `${id}_score`)).filter(Boolean) as OutcomeDimension[]
     
@@ -438,14 +464,58 @@ export default function DailyWellbeingCheckin({
     return finalOutcomes
   }, [localProfile, allOutcomes])
 
+  // Effective check-in data combining initialData with active in-memory user inputs
+  const effectiveCheckinData = useMemo(() => {
+    let customJSON: Record<string, any> = {}
+    if (initialData) {
+      if ((initialData as any).custom_outcomes_jsonb) {
+        customJSON = { ...(initialData as any).custom_outcomes_jsonb }
+      } else if ((initialData as any).notes) {
+        try {
+          const parsedNotes = JSON.parse((initialData as any).notes)
+          customJSON = { ...(parsedNotes.custom_outcomes_jsonb || parsedNotes.custom_outcomes || {}) }
+        } catch (e) {}
+      }
+    }
+
+    // Merge active user state so live state updates immediately without waiting for server round-trip
+    customJSON = {
+      ...customJSON,
+      ...customOutcomeValues,
+      skin_clarity: skinClarity,
+      focus_score: focusScore,
+      focus: focusScore,
+      skin: skinClarity
+    }
+
+    const dateStr = date ? format(date, 'yyyy-MM-dd') : ''
+    const hasSavedMorning = isSaved || initialData?.mood_0_10 != null || initialData?.energy_0_10 != null
+
+    return {
+      id: initialData?.id || `checkin_${dateStr}`,
+      local_user_id: initialData?.local_user_id || localProfile?.local_user_id || 'user',
+      checkin_date: initialData?.checkin_date || dateStr,
+      created_at: (initialData as any)?.created_at || (hasSavedMorning ? new Date().toISOString() : new Date().toISOString()),
+      updated_at: (initialData as any)?.updated_at || (hasSavedMorning ? new Date().toISOString() : (initialData as any)?.created_at || new Date().toISOString()),
+      notes: initialData?.notes,
+      sleep_score_0_100: initialData?.sleep_score_0_100,
+      last_food_time: initialData?.last_food_time,
+      mood_0_10: touchedOutcomes.mood || hasSavedMorning ? mood : (initialData?.mood_0_10 ?? null),
+      energy_0_10: touchedOutcomes.energy || hasSavedMorning ? energy : (initialData?.energy_0_10 ?? null),
+      stress_0_10: touchedOutcomes.stress || hasSavedMorning ? stress : (initialData?.stress_0_10 ?? null),
+      subjective_sleep_0_10: touchedOutcomes.sleep || hasSavedMorning ? subjectiveSleep : (initialData?.subjective_sleep_0_10 ?? null),
+      custom_outcomes_jsonb: customJSON,
+    } as WellbeingType
+  }, [initialData, mood, energy, stress, subjectiveSleep, skinClarity, focusScore, customOutcomeValues, touchedOutcomes, isSaved, date, localProfile])
+
   // Real-time live outcome state map aggregating latest readings across all sources
   const liveStateMap = useMemo(() => {
     const map: Record<string, OutcomeLiveState> = {}
     activeAnytimeDimensions.forEach(dim => {
-      map[dim.id] = getLatestOutcomeLiveState(dim.id, initialData, recentTasks, allOutcomes)
+      map[dim.id] = getLatestOutcomeLiveState(dim.id, effectiveCheckinData, recentTasks, allOutcomes)
     })
     return map
-  }, [activeAnytimeDimensions, initialData, recentTasks, allOutcomes])
+  }, [activeAnytimeDimensions, effectiveCheckinData, recentTasks, allOutcomes])
 
   // Initialize custom outcome states
   useEffect(() => {
@@ -635,17 +705,26 @@ export default function DailyWellbeingCheckin({
       time_display: nowDisplay,
     }
 
-    if (daytimeTouchedOutcomes.mood) newSnapshot.mood = daytimeMood
-    if (daytimeTouchedOutcomes.energy) newSnapshot.energy = daytimeEnergy
-    if (daytimeTouchedOutcomes.stress) newSnapshot.stress = daytimeStress
-    if (daytimeTouchedOutcomes.focus) newSnapshot.focus = daytimeFocus
-    if (daytimeTouchedOutcomes.skin) newSnapshot.skin = daytimeSkin
+    // Save all active anytime dimensions that have been touched or adjusted
+    activeAnytimeDimensions.forEach(dim => {
+      if (daytimeTouchedOutcomes[dim.id]) {
+        let val = 5
+        if (dim.id === 'mood') val = daytimeMood
+        else if (dim.id === 'energy') val = daytimeEnergy
+        else if (dim.id === 'stress') val = daytimeStress
+        else if (dim.id === 'focus' || dim.id === 'focus_score') val = daytimeFocus
+        else val = daytimeCustomValues[dim.id] ?? 5
 
-    Object.entries(daytimeTouchedOutcomes).forEach(([key, isTouched]) => {
-      if (isTouched && !['mood', 'energy', 'stress', 'focus', 'skin'].includes(key)) {
-        newSnapshot[key] = daytimeCustomValues[key] ?? 5
+        newSnapshot[dim.id] = val
       }
     })
+
+    // Fallbacks for core metrics
+    if (daytimeTouchedOutcomes.mood && newSnapshot.mood === undefined) newSnapshot.mood = daytimeMood
+    if (daytimeTouchedOutcomes.energy && newSnapshot.energy === undefined) newSnapshot.energy = daytimeEnergy
+    if (daytimeTouchedOutcomes.stress && newSnapshot.stress === undefined) newSnapshot.stress = daytimeStress
+    if (daytimeTouchedOutcomes.focus && newSnapshot.focus === undefined) newSnapshot.focus = daytimeFocus
+    if (daytimeTouchedOutcomes.skin && newSnapshot.skin === undefined) newSnapshot.skin = daytimeSkin
 
     existingAnytimeLogs.push(newSnapshot)
 
@@ -654,6 +733,12 @@ export default function DailyWellbeingCheckin({
       _anytime_checkins: existingAnytimeLogs,
       latest_anytime_checkin: newSnapshot
     }
+
+    activeAnytimeDimensions.forEach(dim => {
+      if (daytimeTouchedOutcomes[dim.id] && newSnapshot[dim.id] !== undefined) {
+        combinedCustomOutcomes[`daytime_${dim.id}`] = newSnapshot[dim.id]
+      }
+    })
 
     if (daytimeTouchedOutcomes.skin) combinedCustomOutcomes.daytime_skin_clarity = daytimeSkin
     if (daytimeTouchedOutcomes.focus) combinedCustomOutcomes.daytime_focus_score = daytimeFocus
@@ -1166,178 +1251,48 @@ export default function DailyWellbeingCheckin({
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {/* Daytime Mood Slider */}
-                      {(() => {
-                        const isTouched = daytimeTouchedOutcomes.mood
-                        const snap = getRecentOutcomeSnapshot('mood', initialData)
-                        const colorCfg = isTouched ? getOutcomeColorConfig(daytimeMood, 'higher_is_better') : getNeutralOutcomeColorConfig()
-                        return (
-                          <div 
-                            className={`p-3 rounded-xl border space-y-2 transition-all ${isTouched ? colorCfg.borderColor : 'border-white/10'}`}
-                            style={{ backgroundColor: isTouched ? `${colorCfg.accentHex}12` : 'rgba(0,0,0,0.4)' }}
-                          >
-                            <div className="flex justify-between items-center text-xs">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-white font-bold">Current Mood</span>
-                                {snap.isRecent && !isTouched && (
-                                  <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
-                                    Recent ({snap.timeAgoMinutes}m ago)
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, mood: !prev.mood }))}
-                                className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                                title="Click to confirm this value without sliding"
-                              >
-                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                                  {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
-                                </span>
-                                <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                                  {daytimeMood}/10
-                                </span>
-                              </button>
-                            </div>
-                            <input 
-                              type="range" 
-                              min="0" 
-                              max="10" 
-                              value={daytimeMood} 
-                              onChange={(e) => {
-                                setDaytimeMood(parseInt(e.target.value))
-                                setDaytimeTouchedOutcomes(prev => ({ ...prev, mood: true }))
-                              }} 
-                              className="w-full cursor-pointer" 
-                              style={{ accentColor: colorCfg.accentHex }}
-                            />
-                            <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
-                              <span className="text-red-400">0: Low / Down</span>
-                              <span className="text-emerald-400">10: High / Great</span>
-                            </div>
-                          </div>
-                        )
-                      })()}
+                      {activeAnytimeDimensions.map(dim => {
+                        const isTouched = Boolean(daytimeTouchedOutcomes[dim.id])
+                        const snap = getRecentOutcomeSnapshot(dim.id, effectiveCheckinData)
 
-                      {/* Daytime Energy Slider */}
-                      {(() => {
-                        const isTouched = daytimeTouchedOutcomes.energy
-                        const snap = getRecentOutcomeSnapshot('energy', initialData)
-                        const colorCfg = isTouched ? getOutcomeColorConfig(daytimeEnergy, 'higher_is_better') : getNeutralOutcomeColorConfig()
-                        return (
-                          <div 
-                            className={`p-3 rounded-xl border space-y-2 transition-all ${isTouched ? colorCfg.borderColor : 'border-white/10'}`}
-                            style={{ backgroundColor: isTouched ? `${colorCfg.accentHex}12` : 'rgba(0,0,0,0.4)' }}
-                          >
-                            <div className="flex justify-between items-center text-xs">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-white font-bold">Current Energy</span>
-                                {snap.isRecent && !isTouched && (
-                                  <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
-                                    Recent ({snap.timeAgoMinutes}m ago)
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, energy: !prev.energy }))}
-                                className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                                title="Click to confirm this value without sliding"
-                              >
-                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                                  {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
-                                </span>
-                                <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                                  {daytimeEnergy}/10
-                                </span>
-                              </button>
-                            </div>
-                            <input 
-                              type="range" 
-                              min="0" 
-                              max="10" 
-                              value={daytimeEnergy} 
-                              onChange={(e) => {
-                                setDaytimeEnergy(parseInt(e.target.value))
-                                setDaytimeTouchedOutcomes(prev => ({ ...prev, energy: true }))
-                              }} 
-                              className="w-full cursor-pointer" 
-                              style={{ accentColor: colorCfg.accentHex }}
-                            />
-                            <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
-                              <span className="text-red-400">0: Low / Lethargic</span>
-                              <span className="text-emerald-400">10: Peak / Energized</span>
-                            </div>
-                          </div>
-                        )
-                      })()}
+                        let currentValue = 5
+                        if (dim.id === 'mood') currentValue = daytimeMood
+                        else if (dim.id === 'energy') currentValue = daytimeEnergy
+                        else if (dim.id === 'stress') currentValue = daytimeStress
+                        else if (dim.id === 'focus' || dim.id === 'focus_score') currentValue = daytimeFocus
+                        else if (daytimeCustomValues[dim.id] !== undefined) currentValue = daytimeCustomValues[dim.id]
+                        else if (snap.value !== undefined) currentValue = snap.value
 
-                      {/* Daytime Stress Slider */}
-                      {(() => {
-                        const isTouched = daytimeTouchedOutcomes.stress
-                        const snap = getRecentOutcomeSnapshot('stress', initialData)
-                        const colorCfg = isTouched ? getOutcomeColorConfig(daytimeStress, 'lower_is_better') : getNeutralOutcomeColorConfig()
-                        return (
-                          <div 
-                            className={`p-3 rounded-xl border space-y-2 transition-all ${isTouched ? colorCfg.borderColor : 'border-white/10'}`}
-                            style={{ backgroundColor: isTouched ? `${colorCfg.accentHex}12` : 'rgba(0,0,0,0.4)' }}
-                          >
-                            <div className="flex justify-between items-center text-xs">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-white font-bold">Current Stress</span>
-                                {snap.isRecent && !isTouched && (
-                                  <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
-                                    Recent ({snap.timeAgoMinutes}m ago)
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, stress: !prev.stress }))}
-                                className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                                title="Click to confirm this value without sliding"
-                              >
-                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                                  {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
-                                </span>
-                                <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                                  {daytimeStress}/10
-                                </span>
-                              </button>
-                            </div>
-                            <input 
-                              type="range" 
-                              min="0" 
-                              max="10" 
-                              value={daytimeStress} 
-                              onChange={(e) => {
-                                setDaytimeStress(parseInt(e.target.value))
-                                setDaytimeTouchedOutcomes(prev => ({ ...prev, stress: true }))
-                              }} 
-                              className="w-full cursor-pointer" 
-                              style={{ accentColor: colorCfg.accentHex }}
-                            />
-                            <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
-                              <span className="text-emerald-400">0: Best (Calm / None)</span>
-                              <span className="text-red-400">10: Worst (High / Severe)</span>
-                            </div>
-                          </div>
-                        )
-                      })()}
+                        const isLowerBetter = dim.directionality === 'lower_is_better'
+                        const colorCfg = isTouched 
+                          ? getOutcomeColorConfig(currentValue, isLowerBetter ? 'lower_is_better' : 'higher_is_better') 
+                          : getNeutralOutcomeColorConfig()
 
-                      {/* Daytime Focus Slider */}
-                      {(() => {
-                        const isTouched = daytimeTouchedOutcomes.focus
-                        const snap = getRecentOutcomeSnapshot('focus', initialData)
-                        const colorCfg = isTouched ? getOutcomeColorConfig(daytimeFocus, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                        const setValue = (val: number) => {
+                          if (dim.id === 'mood') setDaytimeMood(val)
+                          else if (dim.id === 'energy') setDaytimeEnergy(val)
+                          else if (dim.id === 'stress') setDaytimeStress(val)
+                          else if (dim.id === 'focus' || dim.id === 'focus_score') setDaytimeFocus(val)
+                          else setDaytimeCustomValues(prev => ({ ...prev, [dim.id]: val }))
+                          setDaytimeTouchedOutcomes(prev => ({ ...prev, [dim.id]: true }))
+                        }
+
+                        const toggleTouched = () => {
+                          setDaytimeTouchedOutcomes(prev => ({ ...prev, [dim.id]: !prev[dim.id] }))
+                        }
+
+                        const lowLabel = isLowerBetter ? '0: Best (Calm/None)' : '0: Low / Poor'
+                        const highLabel = isLowerBetter ? '10: Worst (Severe)' : '10: Peak / Great'
+
                         return (
                           <div 
+                            key={dim.id}
                             className={`p-3 rounded-xl border space-y-2 transition-all ${isTouched ? colorCfg.borderColor : 'border-white/10'}`}
                             style={{ backgroundColor: isTouched ? `${colorCfg.accentHex}12` : 'rgba(0,0,0,0.4)' }}
                           >
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-white font-bold">Mental Focus & Clarity</span>
+                                <span className="text-white font-bold">{dim.name}</span>
                                 {snap.isRecent && !isTouched && (
                                   <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
                                     Recent ({snap.timeAgoMinutes}m ago)
@@ -1346,7 +1301,7 @@ export default function DailyWellbeingCheckin({
                               </div>
                               <button
                                 type="button"
-                                onClick={() => setDaytimeTouchedOutcomes(prev => ({ ...prev, focus: !prev.focus }))}
+                                onClick={toggleTouched}
                                 className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
                                 title="Click to confirm this value without sliding"
                               >
@@ -1354,7 +1309,7 @@ export default function DailyWellbeingCheckin({
                                   {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
                                 </span>
                                 <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                                  {daytimeFocus}/10
+                                  {currentValue}/10
                                 </span>
                               </button>
                             </div>
@@ -1362,21 +1317,29 @@ export default function DailyWellbeingCheckin({
                               type="range" 
                               min="0" 
                               max="10" 
-                              value={daytimeFocus} 
-                              onChange={(e) => {
-                                setDaytimeFocus(parseInt(e.target.value))
-                                setDaytimeTouchedOutcomes(prev => ({ ...prev, focus: true }))
-                              }} 
-                              className="w-full cursor-pointer" 
+                              value={currentValue} 
+                              onChange={(e) => setValue(parseInt(e.target.value))} 
+                              onPointerDown={() => {
+                                if (!isTouched) {
+                                  setDaytimeTouchedOutcomes(prev => ({ ...prev, [dim.id]: true }))
+                                }
+                              }}
+                              onClick={() => {
+                                if (!isTouched) {
+                                  setDaytimeTouchedOutcomes(prev => ({ ...prev, [dim.id]: true }))
+                                }
+                              }}
+                              className="w-full cursor-pointer touch-manipulation" 
                               style={{ accentColor: colorCfg.accentHex }}
+                              title={isTouched ? `${dim.name}: ${currentValue}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                             />
                             <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
-                              <span className="text-red-400">0: Brain Fog / Low</span>
-                              <span className="text-emerald-400">10: Laser Sharp / Peak</span>
+                              <span className={isLowerBetter ? "text-emerald-400" : "text-red-400"}>{lowLabel}</span>
+                              <span className={isLowerBetter ? "text-red-400" : "text-emerald-400"}>{highLabel}</span>
                             </div>
                           </div>
                         )
-                      })()}
+                      })}
                     </div>
 
                     <div className="flex justify-end gap-2 pt-1">
@@ -1686,8 +1649,19 @@ export default function DailyWellbeingCheckin({
                       setSubjectiveSleep(parseInt(e.target.value))
                       setTouchedOutcomes(prev => ({ ...prev, sleep: true }))
                     }} 
-                    className="w-full cursor-pointer" 
+                    onPointerDown={() => {
+                      if (!isTouched) {
+                        setTouchedOutcomes(prev => ({ ...prev, sleep: true }))
+                      }
+                    }}
+                    onClick={() => {
+                      if (!isTouched) {
+                        setTouchedOutcomes(prev => ({ ...prev, sleep: true }))
+                      }
+                    }}
+                    className="w-full cursor-pointer touch-manipulation" 
                     style={{ accentColor: colorCfg.accentHex }}
+                    title={isTouched ? `Sleep Quality: ${subjectiveSleep}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                   />
                   <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
                     <span className="text-red-400">0: Poor / Restless</span>
@@ -1725,8 +1699,19 @@ export default function DailyWellbeingCheckin({
                       setCustomOutcomeValues(prev => ({ ...prev, [outcome.id]: newVal }))
                       setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: true }))
                     }} 
-                    className="w-full cursor-pointer" 
+                    onPointerDown={() => {
+                      if (!isTouched) {
+                        setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: true }))
+                      }
+                    }}
+                    onClick={() => {
+                      if (!isTouched) {
+                        setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: true }))
+                      }
+                    }}
+                    className="w-full cursor-pointer touch-manipulation" 
                     style={{ accentColor: colorCfg.accentHex }}
+                    title={isTouched ? `${outcome.name}: ${val}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                   />
                   <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
                     <span className={isLowerBetter ? 'text-emerald-400' : 'text-red-400'}>
@@ -1872,8 +1857,19 @@ export default function DailyWellbeingCheckin({
                           setMood(parseInt(e.target.value))
                           setTouchedOutcomes(prev => ({ ...prev, mood: true }))
                         }} 
-                        className="w-full cursor-pointer" 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, mood: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, mood: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
                         style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `Mood: ${mood}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                       />
                       <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
                         <span className="text-red-400">0: Low / Down</span>
@@ -1922,8 +1918,19 @@ export default function DailyWellbeingCheckin({
                           setEnergy(parseInt(e.target.value))
                           setTouchedOutcomes(prev => ({ ...prev, energy: true }))
                         }} 
-                        className="w-full cursor-pointer" 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, energy: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, energy: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
                         style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `Energy: ${energy}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                       />
                       <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
                         <span className="text-red-400">0: Low / Lethargic</span>
@@ -1972,8 +1979,19 @@ export default function DailyWellbeingCheckin({
                           setStress(parseInt(e.target.value))
                           setTouchedOutcomes(prev => ({ ...prev, stress: true }))
                         }} 
-                        className="w-full cursor-pointer" 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, stress: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, stress: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
                         style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `Stress: ${stress}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                       />
                       <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
                         <span className="text-emerald-400">0: Best (Calm / None)</span>
@@ -2024,8 +2042,19 @@ export default function DailyWellbeingCheckin({
                           setSkinClarity(parseInt(e.target.value))
                           setTouchedOutcomes(prev => ({ ...prev, skin: true }))
                         }} 
-                        className="w-full cursor-pointer" 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, skin: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, skin: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
                         style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `Skin Clarity: ${skinClarity}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                       />
                       <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
                         <span className="text-red-400">0: Dull / Inflamed / Breakout</span>
@@ -2076,8 +2105,19 @@ export default function DailyWellbeingCheckin({
                           setFocusScore(parseInt(e.target.value))
                           setTouchedOutcomes(prev => ({ ...prev, focus: true }))
                         }} 
-                        className="w-full cursor-pointer" 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, focus: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, focus: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
                         style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `Mental Focus: ${focusScore}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                       />
                       <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
                         <span className="text-red-400">0: Brain Fog / Distracted</span>
@@ -2150,8 +2190,19 @@ export default function DailyWellbeingCheckin({
                       setCustomOutcomeValues(prev => ({...prev, [outcome.id]: parseInt(e.target.value)}))
                       setTouchedOutcomes(prev => ({...prev, [outcome.id]: true}))
                     }} 
-                    className="w-full cursor-pointer" 
+                    onPointerDown={() => {
+                      if (!isTouched) {
+                        setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: true }))
+                      }
+                    }}
+                    onClick={() => {
+                      if (!isTouched) {
+                        setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: true }))
+                      }
+                    }}
+                    className="w-full cursor-pointer touch-manipulation" 
                     style={{ accentColor: colorCfg.accentHex }}
+                    title={isTouched ? `${outcome.name}: ${val}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                   />
                   <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
                     <span className={isLowerBetter ? 'text-emerald-400' : 'text-red-400'}>
@@ -2395,7 +2446,18 @@ export default function DailyWellbeingCheckin({
                       setMood(parseInt(e.target.value))
                       setTouchedOutcomes(prev => ({ ...prev, mood: true }))
                     }}
-                    className="w-full accent-indigo-400 cursor-pointer"
+                    onPointerDown={() => {
+                      if (!touchedOutcomes['mood']) {
+                        setTouchedOutcomes(prev => ({ ...prev, mood: true }))
+                      }
+                    }}
+                    onClick={() => {
+                      if (!touchedOutcomes['mood']) {
+                        setTouchedOutcomes(prev => ({ ...prev, mood: true }))
+                      }
+                    }}
+                    className="w-full accent-indigo-400 cursor-pointer touch-manipulation"
+                    title={touchedOutcomes['mood'] ? `Overall Mood: ${mood}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                   />
                   <div className="flex justify-between text-[9px] text-gray-400">
                     <span>0: Low / Down</span><span>10: High / Great</span>
@@ -2425,7 +2487,18 @@ export default function DailyWellbeingCheckin({
                       setEnergy(parseInt(e.target.value))
                       setTouchedOutcomes(prev => ({ ...prev, energy: true }))
                     }}
-                    className="w-full accent-indigo-400 cursor-pointer"
+                    onPointerDown={() => {
+                      if (!touchedOutcomes['energy']) {
+                        setTouchedOutcomes(prev => ({ ...prev, energy: true }))
+                      }
+                    }}
+                    onClick={() => {
+                      if (!touchedOutcomes['energy']) {
+                        setTouchedOutcomes(prev => ({ ...prev, energy: true }))
+                      }
+                    }}
+                    className="w-full accent-indigo-400 cursor-pointer touch-manipulation"
+                    title={touchedOutcomes['energy'] ? `Overall Energy: ${energy}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                   />
                   <div className="flex justify-between text-[9px] text-gray-400">
                     <span>0: Lethargic</span><span>10: Peak Energy</span>
@@ -2455,7 +2528,18 @@ export default function DailyWellbeingCheckin({
                       setStress(parseInt(e.target.value))
                       setTouchedOutcomes(prev => ({ ...prev, stress: true }))
                     }}
-                    className="w-full accent-indigo-400 cursor-pointer"
+                    onPointerDown={() => {
+                      if (!touchedOutcomes['stress']) {
+                        setTouchedOutcomes(prev => ({ ...prev, stress: true }))
+                      }
+                    }}
+                    onClick={() => {
+                      if (!touchedOutcomes['stress']) {
+                        setTouchedOutcomes(prev => ({ ...prev, stress: true }))
+                      }
+                    }}
+                    className="w-full accent-indigo-400 cursor-pointer touch-manipulation"
+                    title={touchedOutcomes['stress'] ? `Overall Stress: ${stress}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                   />
                   <div className="flex justify-between text-[9px] text-gray-400">
                     <span>0: Calm / None</span><span>10: Severe Stress</span>
@@ -2493,8 +2577,19 @@ export default function DailyWellbeingCheckin({
                           setCustomOutcomeValues(prev => ({ ...prev, [outcome.id]: newVal }))
                           setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: true }))
                         }} 
-                        className="w-full cursor-pointer" 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
                         style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `${outcome.name}: ${val}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
                       />
                       <div className="flex justify-between text-[9px] text-gray-400 uppercase font-bold">
                         <span className={isLowerBetter ? 'text-emerald-400' : 'text-red-400'}>
@@ -2569,8 +2664,10 @@ export default function DailyWellbeingCheckin({
         mode={outcomesModalMode}
         allOutcomes={allOutcomes}
         userProfile={localProfile}
-        onOutcomesUpdated={(updatedPreferences) => {
-          if (updatedPreferences) {
+        onOutcomesUpdated={(updatedPreferences, updatedProfile) => {
+          if (updatedProfile) {
+            setLocalProfile(updatedProfile)
+          } else if (updatedPreferences) {
             setLocalProfile(prev => prev ? {
               ...prev,
               outcome_preference_scores: updatedPreferences
