@@ -2551,48 +2551,145 @@ function TodayPageContent() {
               />
             </div>
 
-            {/* Completed Modalities Section */}
-            {allCompletedTasks.length > 0 && (
-              <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-950/20 overflow-hidden shadow-[0_0_20px_rgba(16,185,129,0.1)] transition-all duration-300">
-                <div className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-emerald-500/10 border-b border-emerald-500/20 gap-2">
-                  <button 
-                    type="button"
-                    onClick={() => setIsCompletedSectionExpanded(!isCompletedSectionExpanded)}
-                    className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-1 min-w-0 text-left"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] shrink-0">
-                      <Check size={13} strokeWidth={3} />
-                    </div>
-                    <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider whitespace-nowrap truncate">
-                      Completed Modalities
-                    </h2>
-                    <span className="text-[11px] sm:text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 sm:px-2.5 py-0.5 rounded-full font-mono font-bold shrink-0">
-                      {allCompletedTasks.length}
-                    </span>
-                  </button>
+            {/* Completed, Snoozed, & Skipped Modalities Group (Zero Space Between Them) */}
+            {(() => {
+              const activeStatusSections: ('completed' | 'snoozed' | 'skipped')[] = []
+              if (allCompletedTasks.length > 0) activeStatusSections.push('completed')
+              if (allSnoozedTasks.length > 0) activeStatusSections.push('snoozed')
+              if (allSkippedTasks.length > 0) activeStatusSections.push('skipped')
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setIsCompletedSectionExpanded(!isCompletedSectionExpanded)}
-                      className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium px-1.5 sm:px-2 py-1 cursor-pointer shrink-0"
-                    >
-                      <span>{isCompletedSectionExpanded ? 'Hide' : 'Show All'}</span>
-                      {isCompletedSectionExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
-                  </div>
-                </div>
+              if (activeStatusSections.length === 0) return null
 
-                {isCompletedSectionExpanded && (
-                  <div className="p-4 space-y-4 bg-black/40 animate-in fade-in slide-in-from-top-2">
-                    {sortedCompletedGroups.map(([groupKey, tasksInGroup]) => (
-                      <div key={groupKey} className="space-y-3">
-                        <div className="flex items-center justify-between text-xs font-bold text-emerald-400 uppercase tracking-wider border-b border-white/10 pb-1">
-                          <span>{completedSortBy === 'chronological' ? (viewMode === 'chronological' ? formatSlotName(groupKey) : groupKey) : 'Completed Log'}</span>
-                          <span className="text-[10px] text-gray-500 font-normal">({tasksInGroup.length})</span>
+              const getStatusSectionClasses = (sectionName: 'completed' | 'snoozed' | 'skipped') => {
+                const index = activeStatusSections.indexOf(sectionName)
+                if (index === -1) return ''
+                const isFirst = index === 0
+                const isLast = index === activeStatusSections.length - 1
+
+                if (isFirst && isLast) {
+                  return 'rounded-xl'
+                }
+                if (isFirst) {
+                  return 'rounded-t-xl rounded-b-none border-b-0'
+                }
+                if (isLast) {
+                  return 'rounded-b-xl rounded-t-none border-t-0'
+                }
+                return 'rounded-none border-t-0 border-b-0'
+              }
+
+              const isCompletedLast = activeStatusSections.indexOf('completed') === activeStatusSections.length - 1
+              const isSnoozedLast = activeStatusSections.indexOf('snoozed') === activeStatusSections.length - 1
+
+              return (
+                <div className="mb-6 flex flex-col space-y-0">
+                  {/* Completed Modalities Section */}
+                  {allCompletedTasks.length > 0 && (
+                    <div className={`overflow-hidden border border-emerald-500/30 bg-emerald-950/20 shadow-[0_0_20px_rgba(16,185,129,0.1)] transition-all duration-300 ${getStatusSectionClasses('completed')}`}>
+                      <div className={`w-full flex items-center justify-between p-3 sm:p-3.5 bg-emerald-500/10 gap-2 ${isCompletedSectionExpanded || !isCompletedLast ? 'border-b border-emerald-500/20' : ''}`}>
+                        <button 
+                          type="button"
+                          onClick={() => setIsCompletedSectionExpanded(!isCompletedSectionExpanded)}
+                          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-1 min-w-0 text-left"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] shrink-0">
+                            <Check size={13} strokeWidth={3} />
+                          </div>
+                          <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider whitespace-nowrap truncate">
+                            Completed Modalities
+                          </h2>
+                          <span className="text-[11px] sm:text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 sm:px-2.5 py-0.5 rounded-full font-mono font-bold shrink-0">
+                            {allCompletedTasks.length}
+                          </span>
+                        </button>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setIsCompletedSectionExpanded(!isCompletedSectionExpanded)}
+                            className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-medium px-1.5 sm:px-2 py-1 cursor-pointer shrink-0"
+                          >
+                            <span>{isCompletedSectionExpanded ? 'Hide' : 'Show All'}</span>
+                            {isCompletedSectionExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
                         </div>
-                        <div className={completionMode === 'fast' ? "space-y-1.5 pt-1" : "space-y-3 pt-1"}>
-                          {tasksInGroup.map(task => {
+                      </div>
+
+                      {isCompletedSectionExpanded && (
+                        <div className={`p-4 space-y-4 bg-black/40 animate-in fade-in slide-in-from-top-2 ${!isCompletedLast ? 'border-b border-emerald-500/20' : ''}`}>
+                          {sortedCompletedGroups.map(([groupKey, tasksInGroup]) => (
+                            <div key={groupKey} className="space-y-3">
+                              <div className="flex items-center justify-between text-xs font-bold text-emerald-400 uppercase tracking-wider border-b border-white/10 pb-1">
+                                <span>{completedSortBy === 'chronological' ? (viewMode === 'chronological' ? formatSlotName(groupKey) : groupKey) : 'Completed Log'}</span>
+                                <span className="text-[10px] text-gray-500 font-normal">({tasksInGroup.length})</span>
+                              </div>
+                              <div className={completionMode === 'fast' ? "space-y-1.5 pt-1" : "space-y-3 pt-1"}>
+                                {tasksInGroup.map(task => {
+                                  const mId = task.modality_id || task.protocol_step?.modality_id || ''
+                                  const benchItem = benchItems.find(b => b.modality_id === mId)
+                                  return (
+                                    <ProtocolTaskCard 
+                                      key={task.id} 
+                                      task={task} 
+                                      onStatusChange={handleStatusChange} 
+                                      onTrackOutcomes={openTracker}
+                                      initialBenchItem={benchItem}
+                                      recentTasks={tasks}
+                                      allOutcomes={allOutcomes}
+                                      userProfile={profile}
+                                      wellbeingCheckin={wellbeingCheckin}
+                                      onSaveCustomOutcomes={handleSaveCustomOutcomes}
+                                      onOutcomesSaved={handleOutcomesSaved}
+                                      outcomesRefreshKey={outcomesRefreshKey}
+                                      completionMode={completionMode}
+                                      isProtocolGroupView={viewMode === 'protocol'}
+                                      protocolGroupName={viewMode === 'protocol' ? groupKey : undefined}
+                                    />
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Snoozed Modalities Section */}
+                  {allSnoozedTasks.length > 0 && (
+                    <div className={`overflow-hidden border border-amber-500/30 bg-amber-950/20 shadow-[0_0_20px_rgba(245,158,11,0.1)] transition-all duration-300 ${getStatusSectionClasses('snoozed')}`}>
+                      <div className={`w-full flex items-center justify-between p-3 sm:p-3.5 bg-amber-500/10 gap-2 ${isSnoozedSectionExpanded || !isSnoozedLast ? 'border-b border-amber-500/20' : ''}`}>
+                        <button 
+                          type="button"
+                          onClick={() => setIsSnoozedSectionExpanded(!isSnoozedSectionExpanded)}
+                          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-1 min-w-0 text-left"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold shadow-[0_0_8px_rgba(245,158,11,0.3)] shrink-0">
+                            <Clock size={13} strokeWidth={2.5} />
+                          </div>
+                          <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider whitespace-nowrap truncate">
+                            Snoozed Modalities
+                          </h2>
+                          <span className="text-[11px] sm:text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 sm:px-2.5 py-0.5 rounded-full font-mono font-bold shrink-0">
+                            {allSnoozedTasks.length}
+                          </span>
+                        </button>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setIsSnoozedSectionExpanded(!isSnoozedSectionExpanded)}
+                            className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium px-1.5 sm:px-2 py-1 cursor-pointer shrink-0"
+                          >
+                            <span>{isSnoozedSectionExpanded ? 'Hide' : 'Show All'}</span>
+                            {isSnoozedSectionExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {isSnoozedSectionExpanded && (
+                        <div className={`${completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3"} bg-black/40 animate-in fade-in ${!isSnoozedLast ? 'border-b border-amber-500/20' : ''}`}>
+                          {allSnoozedTasks.map(task => {
                             const mId = task.modality_id || task.protocol_step?.modality_id || ''
                             const benchItem = benchItems.find(b => b.modality_id === mId)
                             return (
@@ -2611,137 +2708,79 @@ function TodayPageContent() {
                                 outcomesRefreshKey={outcomesRefreshKey}
                                 completionMode={completionMode}
                                 isProtocolGroupView={viewMode === 'protocol'}
-                                protocolGroupName={viewMode === 'protocol' ? groupKey : undefined}
+                                protocolGroupName={viewMode === 'protocol' ? (task.lineages?.[0]?.protocol_name || task.protocol_step?.protocol?.name) : undefined}
                               />
                             )
                           })}
                         </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Skipped Modalities Section */}
+                  {allSkippedTasks.length > 0 && (
+                    <div className={`overflow-hidden border border-slate-500/30 bg-slate-950/20 shadow-[0_0_20px_rgba(148,163,184,0.1)] transition-all duration-300 ${getStatusSectionClasses('skipped')}`}>
+                      <div className={`w-full flex items-center justify-between p-3 sm:p-3.5 bg-slate-500/10 gap-2 ${isSkippedSectionExpanded ? 'border-b border-slate-500/20' : ''}`}>
+                        <button 
+                          type="button"
+                          onClick={() => setIsSkippedSectionExpanded(!isSkippedSectionExpanded)}
+                          className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-1 min-w-0 text-left"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-slate-500/20 border border-slate-500/40 text-slate-400 flex items-center justify-center font-bold shadow-[0_0_8px_rgba(148,163,184,0.3)] shrink-0">
+                            <Slash size={13} strokeWidth={2.5} />
+                          </div>
+                          <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider whitespace-nowrap truncate">
+                            Skipped Modalities
+                          </h2>
+                          <span className="text-[11px] sm:text-xs bg-slate-500/20 text-slate-300 border border-slate-500/30 px-2 sm:px-2.5 py-0.5 rounded-full font-mono font-bold shrink-0">
+                            {allSkippedTasks.length}
+                          </span>
+                        </button>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setIsSkippedSectionExpanded(!isSkippedSectionExpanded)}
+                            className="text-xs text-slate-400 hover:text-slate-300 flex items-center gap-1 font-medium px-1.5 sm:px-2 py-1 cursor-pointer shrink-0"
+                          >
+                            <span>{isSkippedSectionExpanded ? 'Hide' : 'Show All'}</span>
+                            {isSkippedSectionExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* Snoozed Modalities Section */}
-            {allSnoozedTasks.length > 0 && (
-              <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-950/20 overflow-hidden shadow-[0_0_20px_rgba(245,158,11,0.1)] transition-all duration-300">
-                <div className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-amber-500/10 border-b border-amber-500/20 gap-2">
-                  <button 
-                    type="button"
-                    onClick={() => setIsSnoozedSectionExpanded(!isSnoozedSectionExpanded)}
-                    className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-1 min-w-0 text-left"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold shadow-[0_0_8px_rgba(245,158,11,0.3)] shrink-0">
-                      <Clock size={13} strokeWidth={2.5} />
+                      {isSkippedSectionExpanded && (
+                        <div className={`${completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3"} bg-black/40 animate-in fade-in`}>
+                          {allSkippedTasks.map(task => {
+                            const mId = task.modality_id || task.protocol_step?.modality_id || ''
+                            const benchItem = benchItems.find(b => b.modality_id === mId)
+                            return (
+                              <ProtocolTaskCard 
+                                key={task.id} 
+                                task={task} 
+                                onStatusChange={handleStatusChange} 
+                                onTrackOutcomes={openTracker}
+                                initialBenchItem={benchItem}
+                                recentTasks={tasks}
+                                allOutcomes={allOutcomes}
+                                userProfile={profile}
+                                wellbeingCheckin={wellbeingCheckin}
+                                onSaveCustomOutcomes={handleSaveCustomOutcomes}
+                                onOutcomesSaved={handleOutcomesSaved}
+                                outcomesRefreshKey={outcomesRefreshKey}
+                                completionMode={completionMode}
+                                isProtocolGroupView={viewMode === 'protocol'}
+                                protocolGroupName={viewMode === 'protocol' ? (task.lineages?.[0]?.protocol_name || task.protocol_step?.protocol?.name) : undefined}
+                              />
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider whitespace-nowrap truncate">
-                      Snoozed Modalities
-                    </h2>
-                    <span className="text-[11px] sm:text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 sm:px-2.5 py-0.5 rounded-full font-mono font-bold shrink-0">
-                      {allSnoozedTasks.length}
-                    </span>
-                  </button>
-
-                  <button 
-                    type="button"
-                    onClick={() => setIsSnoozedSectionExpanded(!isSnoozedSectionExpanded)}
-                    className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium px-1.5 sm:px-2 py-1 cursor-pointer shrink-0"
-                  >
-                    <span>{isSnoozedSectionExpanded ? 'Hide' : 'Show All'}</span>
-                    {isSnoozedSectionExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
+                  )}
                 </div>
-
-                {isSnoozedSectionExpanded && (
-                  <div className={completionMode === 'fast' ? "p-3 space-y-1.5 bg-black/40 animate-in fade-in" : "p-4 space-y-3 bg-black/40 animate-in fade-in"}>
-                    {allSnoozedTasks.map(task => {
-                      const mId = task.modality_id || task.protocol_step?.modality_id || ''
-                      const benchItem = benchItems.find(b => b.modality_id === mId)
-                      return (
-                        <ProtocolTaskCard 
-                          key={task.id} 
-                          task={task} 
-                          onStatusChange={handleStatusChange} 
-                          onTrackOutcomes={openTracker}
-                          initialBenchItem={benchItem}
-                          recentTasks={tasks}
-                          allOutcomes={allOutcomes}
-                          userProfile={profile}
-                          wellbeingCheckin={wellbeingCheckin}
-                          onSaveCustomOutcomes={handleSaveCustomOutcomes}
-                          onOutcomesSaved={handleOutcomesSaved}
-                          outcomesRefreshKey={outcomesRefreshKey}
-                          completionMode={completionMode}
-                          isProtocolGroupView={viewMode === 'protocol'}
-                          protocolGroupName={viewMode === 'protocol' ? (task.lineages?.[0]?.protocol_name || task.protocol_step?.protocol?.name) : undefined}
-                        />
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Skipped Modalities Section */}
-            {allSkippedTasks.length > 0 && (
-              <div className="mb-6 rounded-xl border border-slate-500/30 bg-slate-950/20 overflow-hidden shadow-[0_0_20px_rgba(148,163,184,0.1)] transition-all duration-300">
-                <div className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-slate-500/10 border-b border-slate-500/20 gap-2">
-                  <button 
-                    type="button"
-                    onClick={() => setIsSkippedSectionExpanded(!isSkippedSectionExpanded)}
-                    className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-1 min-w-0 text-left"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-slate-500/20 border border-slate-500/40 text-slate-400 flex items-center justify-center font-bold shadow-[0_0_8px_rgba(148,163,184,0.3)] shrink-0">
-                      <Slash size={13} strokeWidth={2.5} />
-                    </div>
-                    <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider whitespace-nowrap truncate">
-                      Skipped Modalities
-                    </h2>
-                    <span className="text-[11px] sm:text-xs bg-slate-500/20 text-slate-300 border border-slate-500/30 px-2 sm:px-2.5 py-0.5 rounded-full font-mono font-bold shrink-0">
-                      {allSkippedTasks.length}
-                    </span>
-                  </button>
-
-                  <button 
-                    type="button"
-                    onClick={() => setIsSkippedSectionExpanded(!isSkippedSectionExpanded)}
-                    className="text-xs text-slate-400 hover:text-slate-300 flex items-center gap-1 font-medium px-1.5 sm:px-2 py-1 cursor-pointer shrink-0"
-                  >
-                    <span>{isSkippedSectionExpanded ? 'Hide' : 'Show All'}</span>
-                    {isSkippedSectionExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
-                </div>
-
-                {isSkippedSectionExpanded && (
-                  <div className={completionMode === 'fast' ? "p-3 space-y-1.5 bg-black/40 animate-in fade-in" : "p-4 space-y-3 bg-black/40 animate-in fade-in"}>
-                    {allSkippedTasks.map(task => {
-                      const mId = task.modality_id || task.protocol_step?.modality_id || ''
-                      const benchItem = benchItems.find(b => b.modality_id === mId)
-                      return (
-                        <ProtocolTaskCard 
-                          key={task.id} 
-                          task={task} 
-                          onStatusChange={handleStatusChange} 
-                          onTrackOutcomes={openTracker}
-                          initialBenchItem={benchItem}
-                          recentTasks={tasks}
-                          allOutcomes={allOutcomes}
-                          userProfile={profile}
-                          wellbeingCheckin={wellbeingCheckin}
-                          onSaveCustomOutcomes={handleSaveCustomOutcomes}
-                          onOutcomesSaved={handleOutcomesSaved}
-                          outcomesRefreshKey={outcomesRefreshKey}
-                          completionMode={completionMode}
-                          isProtocolGroupView={viewMode === 'protocol'}
-                          protocolGroupName={viewMode === 'protocol' ? (task.lineages?.[0]?.protocol_name || task.protocol_step?.protocol?.name) : undefined}
-                        />
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+              )
+            })()}
 
             {/* Proactive Diagnostics Section */}
             {infrequentTasks.length > 0 && (
