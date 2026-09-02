@@ -999,28 +999,28 @@ export default function DailyWellbeingCheckin({
                       setQuickModalOutcome(liveState)
                       setIsQuickModalOpen(true)
                     }}
-                    className={`py-2 px-1.5 sm:px-2 rounded-xl border text-center transition-all cursor-pointer group hover:scale-[1.02] active:scale-95 relative overflow-hidden flex flex-col items-center justify-between ${colorCfg.borderColor}`}
-                    style={{ backgroundColor: `${colorCfg.accentHex}18` }}
+                    className={`py-1.5 px-1.5 sm:py-2 sm:px-2 rounded-xl border text-center transition-all cursor-pointer group hover:scale-[1.02] active:scale-95 relative overflow-hidden flex flex-col items-center justify-center ${colorCfg.borderColor}`}
+                    style={{ backgroundColor: `${colorCfg.accentHex}16` }}
                     title={`Click to adjust ${liveState.name}`}
                   >
                     {/* Outcome Name */}
                     <div className="w-full text-center">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-gray-300 group-hover:text-white transition-colors truncate block">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-gray-300 group-hover:text-white transition-colors truncate block leading-tight">
                         {liveState.name}
                       </span>
                     </div>
 
                     {/* Score Number with Colored Accent */}
-                    <div className="my-1 flex items-baseline justify-center gap-0.5">
-                      <span className={`font-mono font-black text-base sm:text-xl ${colorCfg.textColor}`}>
+                    <div className="mt-0.5 flex items-baseline justify-center gap-0.5 leading-none">
+                      <span className={`font-mono font-black text-sm sm:text-lg ${colorCfg.textColor}`}>
                         {liveState.currentValue != null ? liveState.currentValue : '—'}
                       </span>
-                      <span className="text-gray-500 text-[9px] sm:text-[10px] font-mono">/10</span>
+                      <span className="text-gray-500 text-[8px] sm:text-[9px] font-mono">/10</span>
                     </div>
 
                     {/* If expanded, show trend delta and source */}
                     {isCurrentStateExpanded && (
-                      <div className="w-full pt-1 mt-0.5 border-t border-white/10 space-y-0.5 animate-in fade-in">
+                      <div className="w-full pt-1 mt-1 border-t border-white/10 space-y-0.5 animate-in fade-in">
                         {delta !== 0 && liveState.morningBaseline != null ? (
                           <div className="flex items-center justify-center text-[8px] sm:text-[9px] font-mono font-bold">
                             <span className={`flex items-center gap-0.5 px-1 py-0.2 rounded border ${

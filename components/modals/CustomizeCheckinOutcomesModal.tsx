@@ -199,10 +199,18 @@ export default function CustomizeCheckinOutcomesModal({
             <Sliders size={15} /> Check-in Outcome Preferences
           </div>
           <h2 className="text-lg sm:text-xl font-bold text-white leading-tight">
-            Customize Tracked Bio-Signals
+            {activeTab === 'anytime' 
+              ? 'Customize Current State Bio-Signals' 
+              : activeTab === 'morning' 
+                ? 'Customize Morning Check-in Outcomes' 
+                : 'Customize Nightly Check-in Outcomes'}
           </h2>
           <p className="text-[11px] text-gray-400 mt-1">
-            Toggle any bio-signal ON or OFF for your <span className="text-amber-300 font-semibold">Morning</span>, <span className="text-purple-300 font-semibold">Anytime (Current State)</span>, and <span className="text-rose-300 font-semibold">Nightly</span> check-ins.
+            {activeTab === 'anytime'
+              ? 'Choose which bio-signals are tracked in your Current State 4-box live dashboard.'
+              : activeTab === 'morning'
+                ? 'Choose which baseline bio-signals are recorded during your Morning Check-in.'
+                : 'Choose which bio-signals and nocturnal exposures are reviewed during your Nightly Check-in.'}
           </p>
         </div>
 
@@ -336,62 +344,64 @@ export default function CustomizeCheckinOutcomesModal({
             </div>
           )}
 
-          {/* 🚫 LIFESTYLE & NEGATIVE EXPOSURES TO TRACK */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-rose-300 border-b border-rose-500/20 pb-1">
-              <span className="flex items-center gap-1.5">
-                <span>🚫</span>
-                <span>Check-in Exposures &amp; Lifestyle Factors</span>
-              </span>
-              <span className="text-[10px] text-slate-400 font-normal">
-                ({CHECKIN_EXPOSURES_METADATA.filter(e => isExposureTracked(e.id)).length} Active)
-              </span>
-            </div>
+          {/* 🚫 LIFESTYLE & NEGATIVE EXPOSURES TO TRACK (ONLY FOR NIGHTLY CHECK-IN) */}
+          {activeTab === 'nightly' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-rose-300 border-b border-rose-500/20 pb-1">
+                <span className="flex items-center gap-1.5">
+                  <span>🚫</span>
+                  <span>Check-in Exposures &amp; Lifestyle Factors</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  ({CHECKIN_EXPOSURES_METADATA.filter(e => isExposureTracked(e.id)).length} Active)
+                </span>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {CHECKIN_EXPOSURES_METADATA.map(exp => {
-                const active = isExposureTracked(exp.id)
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {CHECKIN_EXPOSURES_METADATA.map(exp => {
+                  const active = isExposureTracked(exp.id)
 
-                return (
-                  <div
-                    key={exp.id}
-                    onClick={() => toggleExposureTracked(exp.id)}
-                    className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                      active
-                        ? 'bg-rose-950/30 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]'
-                        : 'bg-black/40 border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <div className={`p-1.5 rounded-xl border shrink-0 ${
+                  return (
+                    <div
+                      key={exp.id}
+                      onClick={() => toggleExposureTracked(exp.id)}
+                      className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                         active
-                          ? 'bg-rose-500 text-white border-rose-400'
-                          : 'bg-black/50 text-gray-500 border-white/10'
-                      }`}>
-                        {active ? <Check size={12} strokeWidth={3} /> : <div className="w-3 h-3" />}
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs">{exp.icon}</span>
-                          <span className="font-bold text-white text-xs truncate">{exp.name}</span>
+                          ? 'bg-rose-950/30 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]'
+                          : 'bg-black/40 border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <div className={`p-1.5 rounded-xl border shrink-0 ${
+                          active
+                            ? 'bg-rose-500 text-white border-rose-400'
+                            : 'bg-black/50 text-gray-500 border-white/10'
+                        }`}>
+                          {active ? <Check size={12} strokeWidth={3} /> : <div className="w-3 h-3" />}
                         </div>
-                        <p className="text-[9px] text-gray-400 truncate">{exp.description}</p>
-                      </div>
-                    </div>
 
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ml-1 ${
-                      active
-                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                        : 'bg-white/5 text-gray-500 border-white/10'
-                    }`}>
-                      {active ? 'Tracked' : 'Hidden'}
-                    </span>
-                  </div>
-                )
-              })}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs">{exp.icon}</span>
+                            <span className="font-bold text-white text-xs truncate">{exp.name}</span>
+                          </div>
+                          <p className="text-[9px] text-gray-400 truncate">{exp.description}</p>
+                        </div>
+                      </div>
+
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ml-1 ${
+                        active
+                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                          : 'bg-white/5 text-gray-500 border-white/10'
+                      }`}>
+                        {active ? 'Tracked' : 'Hidden'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ⚡ ADDITIONAL BIO-SIGNALS & GOALS SECTION */}
           <div className="space-y-2">
