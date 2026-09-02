@@ -570,6 +570,23 @@ function TodayPageContent() {
     customOutcomes?: Record<string, any>, 
     lastFoodTime?: string
   ) => {
+    // Optimistic in-memory update so child cards and live viewers update instantly
+    const optimistic: WellbeingType = {
+      id: wellbeingCheckin?.id || `checkin_${dateStr}`,
+      local_user_id: getLocalUserId(),
+      checkin_date: dateStr,
+      mood_0_10: mood,
+      energy_0_10: energy,
+      stress_0_10: stress,
+      subjective_sleep_0_10: sleep,
+      sleep_score_0_100: sleepScore,
+      last_food_time: lastFoodTime,
+      custom_outcomes_jsonb: customOutcomes || {},
+      created_at: (wellbeingCheckin as any)?.created_at || (customOutcomes?._morning_logged_at) || `${dateStr}T08:00:00.000Z`,
+      updated_at: new Date().toISOString()
+    }
+    setWellbeingCheckin(optimistic)
+
     const localUserId = getLocalUserId()
     const saved = await saveDailyWellbeingCheckin(localUserId, dateStr, mood, energy, stress, sleep, sleepScore, lastFoodTime, customOutcomes)
     setWellbeingCheckin(saved)
@@ -1803,6 +1820,7 @@ function TodayPageContent() {
                           recentTasks={tasks}
                           allOutcomes={allOutcomes}
                           userProfile={profile}
+                          wellbeingCheckin={wellbeingCheckin}
                           onSaveCustomOutcomes={handleSaveCustomOutcomes}
                           onOutcomesSaved={handleOutcomesSaved}
                           outcomesRefreshKey={outcomesRefreshKey}
@@ -2057,6 +2075,7 @@ function TodayPageContent() {
                       recentTasks={tasks}
                       allOutcomes={allOutcomes}
                       userProfile={profile}
+                      wellbeingCheckin={wellbeingCheckin}
                       onSaveCustomOutcomes={handleSaveCustomOutcomes}
                       onOutcomesSaved={handleOutcomesSaved}
                       outcomesRefreshKey={outcomesRefreshKey}
@@ -2429,6 +2448,7 @@ function TodayPageContent() {
                                 recentTasks={tasks}
                                 allOutcomes={allOutcomes}
                                 userProfile={profile}
+                                wellbeingCheckin={wellbeingCheckin}
                                 onSaveCustomOutcomes={handleSaveCustomOutcomes}
                                 onOutcomesSaved={handleOutcomesSaved}
                                 outcomesRefreshKey={outcomesRefreshKey}
@@ -2489,6 +2509,7 @@ function TodayPageContent() {
                           recentTasks={tasks}
                           allOutcomes={allOutcomes}
                           userProfile={profile}
+                          wellbeingCheckin={wellbeingCheckin}
                           onSaveCustomOutcomes={handleSaveCustomOutcomes}
                           onOutcomesSaved={handleOutcomesSaved}
                           outcomesRefreshKey={outcomesRefreshKey}
@@ -2546,6 +2567,7 @@ function TodayPageContent() {
                           recentTasks={tasks}
                           allOutcomes={allOutcomes}
                           userProfile={profile}
+                          wellbeingCheckin={wellbeingCheckin}
                           onSaveCustomOutcomes={handleSaveCustomOutcomes}
                           onOutcomesSaved={handleOutcomesSaved}
                           outcomesRefreshKey={outcomesRefreshKey}

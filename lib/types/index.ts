@@ -407,6 +407,9 @@ export type DailyWellbeingCheckin = {
   sleep_score_0_100?: number
   last_food_time?: string
   notes?: string
+  custom_outcomes_jsonb?: Record<string, any>
+  created_at?: string
+  updated_at?: string
 }
 
 export type UserModalityHabit = {

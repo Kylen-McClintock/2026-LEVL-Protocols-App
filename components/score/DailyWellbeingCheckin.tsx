@@ -300,6 +300,7 @@ export default function DailyWellbeingCheckin({
   const [daytimeCustomValues, setDaytimeCustomValues] = useState<Record<string, number>>({})
   const [daytimeTouchedOutcomes, setDaytimeTouchedOutcomes] = useState<Record<string, boolean>>({})
   const [daytimeSavedToast, setDaytimeSavedToast] = useState(false)
+  const [localAnytimeLogs, setLocalAnytimeLogs] = useState<any[]>([])
 
   // Tracked Outcomes Modal state
   const [isOutcomesModalOpen, setIsOutcomesModalOpen] = useState(false)
@@ -488,15 +489,36 @@ export default function DailyWellbeingCheckin({
       skin: skinClarity
     }
 
+    // Merge daytime anytime checkins so live state reflects them immediately
+    const allAnytime = [
+      ...(Array.isArray(customJSON._anytime_checkins) ? customJSON._anytime_checkins : []),
+      ...localAnytimeLogs
+    ]
+    if (allAnytime.length > 0) {
+      customJSON._anytime_checkins = allAnytime
+      customJSON.latest_anytime_checkin = allAnytime[allAnytime.length - 1]
+    }
+
+    // Merge active daytime custom values
+    Object.entries(daytimeCustomValues).forEach(([k, v]) => {
+      customJSON[`daytime_${k}`] = v
+    })
+    if (daytimeTouchedOutcomes.mood) customJSON.daytime_mood = daytimeMood
+    if (daytimeTouchedOutcomes.energy) customJSON.daytime_energy = daytimeEnergy
+    if (daytimeTouchedOutcomes.stress) customJSON.daytime_stress = daytimeStress
+    if (daytimeTouchedOutcomes.focus) customJSON.daytime_focus = daytimeFocus
+    if (daytimeTouchedOutcomes.skin) customJSON.daytime_skin = daytimeSkin
+
     const dateStr = date ? format(date, 'yyyy-MM-dd') : ''
     const hasSavedMorning = isSaved || initialData?.mood_0_10 != null || initialData?.energy_0_10 != null
+    const morningCreatedAt = (initialData as any)?.created_at || (customJSON._morning_logged_at) || (hasSavedMorning ? `${dateStr}T08:00:00.000Z` : undefined)
 
     return {
       id: initialData?.id || `checkin_${dateStr}`,
       local_user_id: initialData?.local_user_id || localProfile?.local_user_id || 'user',
       checkin_date: initialData?.checkin_date || dateStr,
-      created_at: (initialData as any)?.created_at || (hasSavedMorning ? new Date().toISOString() : new Date().toISOString()),
-      updated_at: (initialData as any)?.updated_at || (hasSavedMorning ? new Date().toISOString() : (initialData as any)?.created_at || new Date().toISOString()),
+      created_at: morningCreatedAt,
+      updated_at: (initialData as any)?.updated_at || (hasSavedMorning ? new Date().toISOString() : undefined),
       notes: initialData?.notes,
       sleep_score_0_100: initialData?.sleep_score_0_100,
       last_food_time: initialData?.last_food_time,
@@ -506,7 +528,7 @@ export default function DailyWellbeingCheckin({
       subjective_sleep_0_10: touchedOutcomes.sleep || hasSavedMorning ? subjectiveSleep : (initialData?.subjective_sleep_0_10 ?? null),
       custom_outcomes_jsonb: customJSON,
     } as WellbeingType
-  }, [initialData, mood, energy, stress, subjectiveSleep, skinClarity, focusScore, customOutcomeValues, touchedOutcomes, isSaved, date, localProfile])
+  }, [initialData, mood, energy, stress, subjectiveSleep, skinClarity, focusScore, customOutcomeValues, touchedOutcomes, isSaved, date, localProfile, localAnytimeLogs, daytimeMood, daytimeEnergy, daytimeStress, daytimeFocus, daytimeSkin, daytimeCustomValues, daytimeTouchedOutcomes])
 
   // Real-time live outcome state map aggregating latest readings across all sources
   const liveStateMap = useMemo(() => {
@@ -650,7 +672,8 @@ export default function DailyWellbeingCheckin({
     const combinedCustomOutcomes: Record<string, any> = {
       ...customOutcomeValues,
       skin_clarity: skinClarity,
-      focus_score: focusScore
+      focus_score: focusScore,
+      _morning_logged_at: (initialData as any)?.custom_outcomes_jsonb?._morning_logged_at || new Date().toISOString()
     }
 
     if (alcoholDrinks !== 'skip') combinedCustomOutcomes.alcohol_drinks = Number(alcoholDrinks)
@@ -727,6 +750,7 @@ export default function DailyWellbeingCheckin({
     if (daytimeTouchedOutcomes.skin && newSnapshot.skin === undefined) newSnapshot.skin = daytimeSkin
 
     existingAnytimeLogs.push(newSnapshot)
+    setLocalAnytimeLogs(prev => [...prev, newSnapshot])
 
     const combinedCustomOutcomes: Record<string, any> = {
       ...existingCustom,
@@ -764,6 +788,15 @@ export default function DailyWellbeingCheckin({
   }
 
   const handleQuickOutcomeSave = async (outcomeId: string, newValue: number) => {
+    // 1. Immediately update daytime states so everything in memory reflects instantly
+    if (outcomeId === 'mood') setDaytimeMood(newValue)
+    if (outcomeId === 'energy') setDaytimeEnergy(newValue)
+    if (outcomeId === 'stress') setDaytimeStress(newValue)
+    if (outcomeId === 'focus' || outcomeId === 'focus_score') setDaytimeFocus(newValue)
+    if (outcomeId === 'skin' || outcomeId === 'skin_clarity') setDaytimeSkin(newValue)
+    setDaytimeCustomValues(prev => ({ ...prev, [outcomeId]: newValue }))
+    setDaytimeTouchedOutcomes(prev => ({ ...prev, [outcomeId]: true }))
+
     const existingCustom = (initialData as any)?.custom_outcomes_jsonb || {}
     const existingAnytimeLogs = Array.isArray(existingCustom._anytime_checkins) ? [...existingCustom._anytime_checkins] : []
     
@@ -778,6 +811,7 @@ export default function DailyWellbeingCheckin({
     }
 
     existingAnytimeLogs.push(newSnapshot)
+    setLocalAnytimeLogs(prev => [...prev, newSnapshot])
 
     const combinedCustomOutcomes: Record<string, any> = {
       ...existingCustom,

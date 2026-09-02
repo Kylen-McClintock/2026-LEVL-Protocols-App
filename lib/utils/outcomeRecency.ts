@@ -36,7 +36,8 @@ export function getRecentOutcomeSnapshot(
   outcomeId: string,
   wellbeingCheckin?: DailyWellbeingCheckin | null,
   recentObservations?: GenericOutcomeObservation[] | null,
-  maxAgeHours: number = 2
+  maxAgeHours: number = 2,
+  recentTasks?: any[] | null
 ): RecentOutcomeSnapshot {
   const maxAgeMs = maxAgeHours * 60 * 60 * 1000
   const now = Date.now()
@@ -46,6 +47,15 @@ export function getRecentOutcomeSnapshot(
   let candidateTimestamp = 0
   let candidateDateStr: string | null = null
   let candidateSource: 'morning_checkin' | 'anytime_checkin' | 'modality_observation' = 'morning_checkin'
+
+  // Helper to match outcome variations
+  const candidateKeys = [
+    cleanId,
+    cleanId.replace(/\s+/g, '_'),
+    cleanId.replace(/_/g, ' '),
+    `${cleanId}_score`,
+    cleanId.replace(/_score$/, '')
+  ]
 
   // 1. Check recent modality observations
   if (recentObservations && recentObservations.length > 0) {
@@ -67,14 +77,66 @@ export function getRecentOutcomeSnapshot(
     })
   }
 
-  // 2. Check daily wellbeing check-in (mood, energy, stress, or custom outcomes)
-  if (wellbeingCheckin) {
-    const rawUpdated = (wellbeingCheckin as any).updated_at
-    const rawCreated = (wellbeingCheckin as any).created_at
-    const checkinTime = rawUpdated 
-      ? new Date(rawUpdated).getTime() 
-      : (rawCreated ? new Date(rawCreated).getTime() : Date.now() - 3600 * 1000)
+  // 2. Check recent completed modality tasks
+  if (recentTasks && recentTasks.length > 0) {
+    recentTasks.forEach(task => {
+      const rawDetails = task.execution_details || {}
+      const hasLoggedOutcomes = Array.isArray(rawDetails.logged_outcomes) && rawDetails.logged_outcomes.length > 0
+      const hasTrackedOutcomes = rawDetails.outcomes_tracked || rawDetails.outcome_ratings
 
+      if (task.status === 'completed' || hasLoggedOutcomes || hasTrackedOutcomes) {
+        const rawTime = task.completed_at || task.updated_at || task.created_at
+        const taskTime = rawTime ? new Date(rawTime).getTime() : 0
+        
+        let taskOutcomeVal: number | undefined = undefined
+
+        // A. Check logged_outcomes array format
+        if (Array.isArray(rawDetails.logged_outcomes)) {
+          rawDetails.logged_outcomes.forEach((item: any) => {
+            const oId = (item.outcomeId || item.outcome_id || '').toLowerCase().trim()
+            const oName = (item.outcomeName || item.name || '').toLowerCase().trim()
+            if (oId === cleanId || oName === cleanId || oId.includes(cleanId) || cleanId.includes(oId)) {
+              const val = item.postValue ?? item.post_value ?? item.preValue ?? item.pre_value ?? item.value
+              if (typeof val === 'number') {
+                taskOutcomeVal = val
+              }
+            }
+          })
+        }
+
+        // B. Check outcomes_tracked map
+        if (taskOutcomeVal === undefined) {
+          const tracked = rawDetails.outcomes_tracked || rawDetails.outcome_ratings || {}
+          for (const k of candidateKeys) {
+            if (tracked[k] !== undefined && typeof tracked[k] === 'number') {
+              taskOutcomeVal = tracked[k]
+              break
+            }
+          }
+        }
+
+        // C. Check direct keys on execution_details
+        if (taskOutcomeVal === undefined) {
+          for (const k of candidateKeys) {
+            if (typeof rawDetails[k] === 'number') {
+              taskOutcomeVal = rawDetails[k]
+              break
+            }
+          }
+        }
+
+        if (typeof taskOutcomeVal === 'number' && taskTime > candidateTimestamp) {
+          candidateVal = taskOutcomeVal
+          candidateTimestamp = taskTime
+          candidateDateStr = rawTime || new Date(taskTime).toISOString()
+          candidateSource = 'modality_observation'
+        }
+      }
+    })
+  }
+
+  // 3. Check daily wellbeing check-in (Morning baseline vs Anytime check-in logs)
+  if (wellbeingCheckin) {
     let customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
     if (typeof customJSON === 'string') {
       try { customJSON = JSON.parse(customJSON) } catch (e) {}
@@ -88,7 +150,14 @@ export function getRecentOutcomeSnapshot(
       }
     }
 
-    if (checkinTime > 0) {
+    // A. Morning Check-in reading
+    // Morning timestamp comes strictly from created_at or _morning_logged_at, NOT updated_at!
+    const rawCreated = (wellbeingCheckin as any).created_at
+    const morningTime = customJSON._morning_logged_at 
+      ? new Date(customJSON._morning_logged_at).getTime()
+      : (rawCreated ? new Date(rawCreated).getTime() : 0)
+
+    if (morningTime > 0) {
       let checkinVal: number | undefined = undefined
 
       if (cleanId === 'mood' || cleanId.includes('mood')) {
@@ -100,14 +169,7 @@ export function getRecentOutcomeSnapshot(
       } else if (cleanId === 'sleep' || cleanId.includes('sleep') || cleanId === 'subjective_sleep' || cleanId === 'sleep_quality') {
         checkinVal = wellbeingCheckin.subjective_sleep_0_10 ?? undefined
       } else {
-        const candidates = [
-          cleanId,
-          cleanId.replace(/\s+/g, '_'),
-          cleanId.replace(/_/g, ' '),
-          `${cleanId}_score`,
-          cleanId.replace(/_score$/, '')
-        ]
-        for (const k of candidates) {
+        for (const k of candidateKeys) {
           if (customJSON[k] !== undefined && typeof customJSON[k] === 'number') {
             checkinVal = customJSON[k]
             break
@@ -122,70 +184,104 @@ export function getRecentOutcomeSnapshot(
         }
       }
 
-      if (typeof checkinVal === 'number' && checkinTime >= candidateTimestamp) {
+      if (typeof checkinVal === 'number' && morningTime > candidateTimestamp) {
         candidateVal = checkinVal
-        candidateTimestamp = checkinTime
-        candidateDateStr = rawUpdated || rawCreated || new Date(checkinTime).toISOString()
-        candidateSource = rawUpdated ? 'anytime_checkin' : 'morning_checkin'
+        candidateTimestamp = morningTime
+        candidateDateStr = rawCreated || new Date(morningTime).toISOString()
+        candidateSource = 'morning_checkin'
       }
+    }
 
-      // Check anytime check-in snapshots array if present
-      if (Array.isArray(customJSON._anytime_checkins) && customJSON._anytime_checkins.length > 0) {
-        customJSON._anytime_checkins.forEach((snap: any) => {
-          const snapTime = snap.timestamp ? new Date(snap.timestamp).getTime() : 0
-          if (snapTime > 0 && snapTime >= candidateTimestamp) {
-            let snapVal: number | undefined = undefined
-            if (cleanId === 'mood' || cleanId.includes('mood')) {
-              snapVal = snap.mood
-            } else if (cleanId === 'energy' || cleanId.includes('energy') || cleanId.includes('readiness')) {
-              snapVal = snap.energy
-            } else if (cleanId === 'stress' || cleanId.includes('stress') || cleanId.includes('anxiety')) {
-              snapVal = snap.stress
-            } else if (cleanId === 'focus' || cleanId.includes('focus') || cleanId.includes('clarity')) {
-              snapVal = snap.focus ?? snap.focus_score
-            } else if (cleanId === 'skin' || cleanId.includes('skin')) {
-              snapVal = snap.skin ?? snap.skin_clarity
-            } else if (snap[cleanId] !== undefined && typeof snap[cleanId] === 'number') {
-              snapVal = snap[cleanId]
-            } else {
-              const snapCandidates = [
-                cleanId,
-                cleanId.replace(/\s+/g, '_'),
-                cleanId.replace(/_/g, ' '),
-                `${cleanId}_score`,
-                cleanId.replace(/_score$/, '')
-              ]
-              for (const k of snapCandidates) {
-                if (snap[k] !== undefined && typeof snap[k] === 'number') {
-                  snapVal = snap[k]
-                  break
-                }
+    // B. Anytime Check-in Snapshots array
+    if (Array.isArray(customJSON._anytime_checkins) && customJSON._anytime_checkins.length > 0) {
+      customJSON._anytime_checkins.forEach((snap: any) => {
+        if (!snap) return
+        const snapTime = snap.timestamp ? new Date(snap.timestamp).getTime() : 0
+        if (snapTime > 0 && snapTime > candidateTimestamp) {
+          let snapVal: number | undefined = undefined
+          if (cleanId === 'mood' || cleanId.includes('mood')) snapVal = snap.mood
+          else if (cleanId === 'energy' || cleanId.includes('energy') || cleanId.includes('readiness')) snapVal = snap.energy
+          else if (cleanId === 'stress' || cleanId.includes('stress') || cleanId.includes('anxiety')) snapVal = snap.stress
+          else if (cleanId === 'focus' || cleanId.includes('focus') || cleanId.includes('clarity')) snapVal = snap.focus ?? snap.focus_score
+          else if (cleanId === 'skin' || cleanId.includes('skin')) snapVal = snap.skin ?? snap.skin_clarity
+          else {
+            for (const k of candidateKeys) {
+              if (snap[k] !== undefined && typeof snap[k] === 'number') {
+                snapVal = snap[k]
+                break
               }
             }
+          }
 
-            if (typeof snapVal === 'number') {
-              candidateVal = snapVal
-              candidateTimestamp = snapTime
-              candidateDateStr = snap.timestamp
-              candidateSource = 'anytime_checkin'
+          if (typeof snapVal === 'number') {
+            candidateVal = snapVal
+            candidateTimestamp = snapTime
+            candidateDateStr = snap.timestamp
+            candidateSource = 'anytime_checkin'
+          }
+        }
+      })
+    }
+
+    // C. Latest Anytime Check-in explicit object or daytime_* keys
+    if (customJSON.latest_anytime_checkin) {
+      const snap = customJSON.latest_anytime_checkin
+      const snapTime = snap.timestamp ? new Date(snap.timestamp).getTime() : 0
+      if (snapTime > 0 && snapTime > candidateTimestamp) {
+        let snapVal: number | undefined = undefined
+        if (cleanId === 'mood' || cleanId.includes('mood')) snapVal = snap.mood
+        else if (cleanId === 'energy' || cleanId.includes('energy') || cleanId.includes('readiness')) snapVal = snap.energy
+        else if (cleanId === 'stress' || cleanId.includes('stress') || cleanId.includes('anxiety')) snapVal = snap.stress
+        else if (cleanId === 'focus' || cleanId.includes('focus') || cleanId.includes('clarity')) snapVal = snap.focus ?? snap.focus_score
+        else if (cleanId === 'skin' || cleanId.includes('skin')) snapVal = snap.skin ?? snap.skin_clarity
+        else {
+          for (const k of candidateKeys) {
+            if (snap[k] !== undefined && typeof snap[k] === 'number') {
+              snapVal = snap[k]
+              break
             }
           }
-        })
+        }
+
+        if (typeof snapVal === 'number') {
+          candidateVal = snapVal
+          candidateTimestamp = snapTime
+          candidateDateStr = snap.timestamp
+          candidateSource = 'anytime_checkin'
+        }
+      }
+    }
+
+    // D. Check daytime_* keys from recent daytime save
+    for (const k of candidateKeys) {
+      const daytimeKey = `daytime_${k}`
+      if (customJSON[daytimeKey] !== undefined && typeof customJSON[daytimeKey] === 'number') {
+        const rawUpdated = (wellbeingCheckin as any).updated_at
+        const daytimeTime = rawUpdated ? new Date(rawUpdated).getTime() : Date.now()
+        if (daytimeTime > candidateTimestamp) {
+          candidateVal = customJSON[daytimeKey]
+          candidateTimestamp = daytimeTime
+          candidateDateStr = rawUpdated || new Date(daytimeTime).toISOString()
+          candidateSource = 'anytime_checkin'
+        }
+        break
       }
     }
   }
 
-  // 3. Fallback to default neutral (5) if no logs exist
-  const isRecent = candidateTimestamp > 0 && (Date.now() - candidateTimestamp < 2 * 60 * 60 * 1000)
-  const timeAgoMinutes = candidateTimestamp > 0 ? Math.floor((Date.now() - candidateTimestamp) / (1000 * 60)) : undefined
+  // 4. Strict 2-Hour Recency Filter:
+  // If the last logged entry was within 2 hours, return the exact recorded quantity.
+  // If over 2 hours or no previous record, default to 5.
+  const isRecent = candidateTimestamp > 0 && (now - candidateTimestamp <= maxAgeMs)
+  const timeAgoMinutes = candidateTimestamp > 0 ? Math.max(1, Math.round((now - candidateTimestamp) / (60 * 1000))) : undefined
 
   return {
-    value: candidateVal ?? 5,
+    value: isRecent && candidateVal !== null ? candidateVal : 5,
     recordedAt: candidateDateStr,
     timestamp: candidateTimestamp,
     isRecent,
     timeAgoMinutes,
-    source: candidateSource
+    source: isRecent ? candidateSource : 'default'
   }
 }
 
@@ -218,16 +314,21 @@ export function getLatestOutcomeLiveState(
   const name = matchedOutcome?.name || outcomeId.charAt(0).toUpperCase() + outcomeId.slice(1).replace(/_/g, ' ')
   const directionality = (matchedOutcome?.directionality || (cleanId === 'stress' || cleanId.includes('pain') || cleanId.includes('fatigue') ? 'lower_is_better' : 'higher_is_better')) as 'higher_is_better' | 'lower_is_better'
 
+  const candidateKeys = [
+    cleanId,
+    cleanId.replace(/\s+/g, '_'),
+    cleanId.replace(/_/g, ' '),
+    `${cleanId}_score`,
+    cleanId.replace(/_score$/, '')
+  ]
+
   // 1. Get morning baseline reading
+  // Morning timestamp strictly uses _morning_logged_at or created_at, NOT updated_at!
   let morningBaseline: number | null = null
   let morningTimestamp = 0
   let morningRecordedAt: string | null = null
 
   if (wellbeingCheckin) {
-    const rawTime = (wellbeingCheckin as any).updated_at || (wellbeingCheckin as any).created_at
-    morningTimestamp = rawTime ? new Date(rawTime).getTime() : Date.now() - 3600 * 1000
-    morningRecordedAt = rawTime || new Date(morningTimestamp).toISOString()
-
     let customJSON = (wellbeingCheckin as any).custom_outcomes_jsonb || {}
     if (typeof customJSON === 'string') {
       try { customJSON = JSON.parse(customJSON) } catch (e) {}
@@ -241,6 +342,12 @@ export function getLatestOutcomeLiveState(
       }
     }
 
+    const rawCreated = (wellbeingCheckin as any).created_at
+    morningTimestamp = customJSON._morning_logged_at 
+      ? new Date(customJSON._morning_logged_at).getTime()
+      : (rawCreated ? new Date(rawCreated).getTime() : 0)
+    morningRecordedAt = customJSON._morning_logged_at || rawCreated || (morningTimestamp > 0 ? new Date(morningTimestamp).toISOString() : null)
+
     if (cleanId === 'mood' || cleanId.includes('mood')) {
       morningBaseline = wellbeingCheckin.mood_0_10 ?? null
     } else if (cleanId === 'energy' || cleanId.includes('energy') || cleanId.includes('readiness')) {
@@ -250,21 +357,14 @@ export function getLatestOutcomeLiveState(
     } else if (cleanId === 'sleep' || cleanId.includes('sleep') || cleanId === 'subjective_sleep' || cleanId === 'sleep_quality') {
       morningBaseline = wellbeingCheckin.subjective_sleep_0_10 ?? null
     } else {
-      const candidates = [
-        cleanId,
-        cleanId.replace(/\s+/g, '_'),
-        cleanId.replace(/_/g, ' '),
-        `${cleanId}_score`,
-        cleanId.replace(/_score$/, '')
-      ]
-      for (const k of candidates) {
+      for (const k of candidateKeys) {
         if (customJSON[k] !== undefined && typeof customJSON[k] === 'number') {
           morningBaseline = customJSON[k]
           break
         }
       }
       if (morningBaseline === null) {
-        if (cleanId === 'focus' || cleanId.includes('focus')) {
+        if (cleanId === 'focus' || cleanId.includes('focus') || cleanId.includes('clarity')) {
           morningBaseline = customJSON.focus_score ?? customJSON.focus ?? null
         } else if (cleanId === 'skin' || cleanId.includes('skin')) {
           morningBaseline = customJSON.skin_clarity ?? customJSON.skin ?? null
@@ -273,7 +373,7 @@ export function getLatestOutcomeLiveState(
     }
   }
 
-  // 2. Scan for the absolute latest reading across all sources
+  // 2. Scan for the absolute latest reading across all sources (Anytime checkins, Tasks, Observations)
   let latestVal = morningBaseline
   let latestTimestamp = morningTimestamp
   let latestDateStr = morningRecordedAt
@@ -294,26 +394,20 @@ export function getLatestOutcomeLiveState(
       }
     }
 
+    // A. Anytime checkins array
     if (Array.isArray(customJSON._anytime_checkins) && customJSON._anytime_checkins.length > 0) {
       customJSON._anytime_checkins.forEach((snap: any) => {
+        if (!snap) return
         const snapTime = snap.timestamp ? new Date(snap.timestamp).getTime() : 0
         if (snapTime > 0 && snapTime >= latestTimestamp) {
           let snapVal: number | undefined = undefined
           if (cleanId === 'mood' || cleanId.includes('mood')) snapVal = snap.mood
           else if (cleanId === 'energy' || cleanId.includes('energy') || cleanId.includes('readiness')) snapVal = snap.energy
           else if (cleanId === 'stress' || cleanId.includes('stress') || cleanId.includes('anxiety')) snapVal = snap.stress
-          else if (cleanId === 'focus' || cleanId.includes('focus')) snapVal = snap.focus ?? snap.focus_score
+          else if (cleanId === 'focus' || cleanId.includes('focus') || cleanId.includes('clarity')) snapVal = snap.focus ?? snap.focus_score
           else if (cleanId === 'skin' || cleanId.includes('skin')) snapVal = snap.skin ?? snap.skin_clarity
-          else if (snap[cleanId] !== undefined && typeof snap[cleanId] === 'number') snapVal = snap[cleanId]
           else {
-            const snapCandidates = [
-              cleanId,
-              cleanId.replace(/\s+/g, '_'),
-              cleanId.replace(/_/g, ' '),
-              `${cleanId}_score`,
-              cleanId.replace(/_score$/, '')
-            ]
-            for (const k of snapCandidates) {
+            for (const k of candidateKeys) {
               if (snap[k] !== undefined && typeof snap[k] === 'number') {
                 snapVal = snap[k]
                 break
@@ -330,6 +424,52 @@ export function getLatestOutcomeLiveState(
           }
         }
       })
+    }
+
+    // B. Latest anytime checkin object
+    if (customJSON.latest_anytime_checkin) {
+      const snap = customJSON.latest_anytime_checkin
+      const snapTime = snap.timestamp ? new Date(snap.timestamp).getTime() : 0
+      if (snapTime > 0 && snapTime >= latestTimestamp) {
+        let snapVal: number | undefined = undefined
+        if (cleanId === 'mood' || cleanId.includes('mood')) snapVal = snap.mood
+        else if (cleanId === 'energy' || cleanId.includes('energy') || cleanId.includes('readiness')) snapVal = snap.energy
+        else if (cleanId === 'stress' || cleanId.includes('stress') || cleanId.includes('anxiety')) snapVal = snap.stress
+        else if (cleanId === 'focus' || cleanId.includes('focus') || cleanId.includes('clarity')) snapVal = snap.focus ?? snap.focus_score
+        else if (cleanId === 'skin' || cleanId.includes('skin')) snapVal = snap.skin ?? snap.skin_clarity
+        else {
+          for (const k of candidateKeys) {
+            if (snap[k] !== undefined && typeof snap[k] === 'number') {
+              snapVal = snap[k]
+              break
+            }
+          }
+        }
+
+        if (typeof snapVal === 'number') {
+          latestVal = snapVal
+          latestTimestamp = snapTime
+          latestDateStr = snap.timestamp
+          const timeStr = snap.time_display || (snap.timestamp ? new Date(snap.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '')
+          latestSourceLabel = `Anytime Check-in${timeStr ? ` (${timeStr})` : ''}`
+        }
+      }
+    }
+
+    // C. Check daytime_* direct keys
+    for (const k of candidateKeys) {
+      const daytimeKey = `daytime_${k}`
+      if (customJSON[daytimeKey] !== undefined && typeof customJSON[daytimeKey] === 'number') {
+        const rawUpdated = (wellbeingCheckin as any).updated_at
+        const daytimeTime = rawUpdated ? new Date(rawUpdated).getTime() : Date.now()
+        if (daytimeTime >= latestTimestamp) {
+          latestVal = customJSON[daytimeKey]
+          latestTimestamp = daytimeTime
+          latestDateStr = rawUpdated || new Date(daytimeTime).toISOString()
+          latestSourceLabel = 'Anytime Check-in'
+        }
+        break
+      }
     }
   }
 

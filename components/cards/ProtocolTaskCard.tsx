@@ -15,7 +15,7 @@ import { ELIMINATION_REASON_OPTIONS } from '../views/ExpandedModalityDetailBanne
 import { ModalityExecutionGuide } from '../modals/ModalityExecutionGuide'
 import { getModalityVideoInfo } from '@/lib/data/modalityVideos'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
-import { UserBenchItem, OutcomeDimension, UserProfile } from '@/lib/types'
+import { UserBenchItem, OutcomeDimension, UserProfile, DailyWellbeingCheckin } from '@/lib/types'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getRecentOutcomeSnapshot } from '@/lib/utils/outcomeRecency'
 import OutcomePill from '@/components/outcomes/OutcomePill'
@@ -426,6 +426,7 @@ type ProtocolTaskCardProps = {
   isRecentlyCompleted?: boolean
   allOutcomes?: OutcomeDimension[]
   userProfile?: UserProfile | null
+  wellbeingCheckin?: DailyWellbeingCheckin | null
   onSaveCustomOutcomes?: (modalityId: string, outcomeIds: string[]) => void
   onOutcomesSaved?: (taskId: string) => void
   onOpenRescheduleModal?: (task: DailyProtocolTask) => void
@@ -444,6 +445,7 @@ export default function ProtocolTaskCard({
   isRecentlyCompleted,
   allOutcomes = [],
   userProfile,
+  wellbeingCheckin,
   onSaveCustomOutcomes,
   onOutcomesSaved,
   outcomesRefreshKey,
@@ -2480,7 +2482,7 @@ export default function ProtocolTaskCard({
               {/* Sliders List */}
               <div className="space-y-4">
                 {visibleOutcomes.map(outcome => {
-                  const recentSnap = getRecentOutcomeSnapshot(outcome.id, null, (taskObs as any) || [])
+                  const recentSnap = getRecentOutcomeSnapshot(outcome.id, wellbeingCheckin, (taskObs as any) || [], 2, recentTasks)
                   const recentDefault = recentSnap.isRecent ? recentSnap.value : 5
 
                   const preVal = inlinePreValues[outcome.id] ?? baselineOutcomesMap[outcome.id]
@@ -2508,6 +2510,11 @@ export default function ProtocolTaskCard({
                       <div className="flex justify-between items-center text-xs">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-white font-bold">{outcome.name}</span>
+                          {activeOutcomePhase === 'pre' && !isPreTouched && recentSnap.isRecent && (
+                            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border bg-amber-500/20 border-amber-500/40 text-amber-300 flex items-center gap-0.5" title={`Defaulted to your most recent rating (${recentSnap.source === 'anytime_checkin' ? 'Anytime Check-in' : recentSnap.source === 'morning_checkin' ? 'Morning Check-in' : 'Recent Modality'}) from ${recentSnap.timeAgoMinutes ?? 0}m ago`}>
+                              ⚡ Recent ({recentSnap.timeAgoMinutes ?? 0}m ago)
+                            </span>
+                          )}
                           
                           {activeOutcomePhase === 'post' && (
                             <div className="flex items-center gap-1">
