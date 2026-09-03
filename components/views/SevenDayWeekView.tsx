@@ -6,6 +6,7 @@ import { Calendar } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
+import { sortTasksChronologically } from '@/lib/data/resolveOptimalTiming'
 
 interface SevenDayWeekViewProps {
   tasksByDate: Record<string, DailyProtocolTask[]>
@@ -219,7 +220,7 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
 
             const rawTasks = tasksByDate[dateStr] || []
             const filteredTasks = rawTasks.filter(filterTask)
-            const dedupedTasks = dedupeTasksForColumn(filteredTasks)
+            const dedupedTasks = sortTasksChronologically(dedupeTasksForColumn(filteredTasks), userProfile)
             const completedCount = dedupedTasks.filter(t => t.status === 'completed').length
             const adherencePct = dedupedTasks.length > 0 ? Math.round((completedCount / dedupedTasks.length) * 100) : 0
 

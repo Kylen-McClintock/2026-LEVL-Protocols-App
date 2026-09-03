@@ -1,11 +1,12 @@
 'use client'
 
 import React, { useState } from 'react'
-import { DailyProtocolTask } from '@/lib/types'
+import { DailyProtocolTask, UserProfile } from '@/lib/types'
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns'
 import { Calendar } from 'lucide-react'
 import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
+import { sortTasksChronologically } from '@/lib/data/resolveOptimalTiming'
 
 interface MonthMatrixViewProps {
   tasksByDate: Record<string, DailyProtocolTask[]>
@@ -13,6 +14,7 @@ interface MonthMatrixViewProps {
   selectedProtocolFilter?: string
   selectedIsolatedOutcome?: string | null
   layoutOrientation?: LayoutOrientation
+  userProfile?: UserProfile | null
   onSelectDate: (dateStr: string) => void
   onMoveToBench?: (task: DailyProtocolTask) => void
   onEliminateEntirely?: (task: DailyProtocolTask, reason?: string, selectedReasons?: string[]) => void
@@ -118,6 +120,7 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
   selectedProtocolFilter,
   selectedIsolatedOutcome,
   layoutOrientation = 'columns',
+  userProfile,
   onSelectDate,
   onMoveToBench,
   onEliminateEntirely,
@@ -217,7 +220,7 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
 
               const rawTasks = tasksByDate[dStr] || []
               const filteredTasks = rawTasks.filter(filterTask)
-              const dedupedTasks = dedupeTasksForColumn(filteredTasks)
+              const dedupedTasks = sortTasksChronologically(dedupeTasksForColumn(filteredTasks), userProfile)
               const completedCount = dedupedTasks.filter(t => t.status === 'completed').length
               const adherencePct = dedupedTasks.length > 0 ? Math.round((completedCount / dedupedTasks.length) * 100) : 0
 
@@ -293,7 +296,7 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
 
             const rawTasks = tasksByDate[dStr] || []
             const filteredTasks = rawTasks.filter(filterTask)
-            const dedupedTasks = dedupeTasksForColumn(filteredTasks)
+            const dedupedTasks = sortTasksChronologically(dedupeTasksForColumn(filteredTasks), userProfile)
 
             if (dedupedTasks.length === 0) return null
 

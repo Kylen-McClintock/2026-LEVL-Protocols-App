@@ -1,4 +1,4 @@
-import { Modality, ProtocolStep, UserProfile } from '../types'
+import { Modality, ProtocolStep, UserProfile, DailyProtocolTask } from '../types'
 
 /**
  * Smart Modality Timing Resolver Engine
@@ -322,3 +322,103 @@ function normalizeSlot(slot: string): string {
   if (s.includes('afternoon') || s.includes('workout')) return 'afternoon'
   return s
 }
+
+/**
+ * Canonical mapping of timing slots to their circadian block sequence order (0 to 15, 99 for anytime).
+ * Mirrors the Today feed grouping sequence.
+ */
+export function getTimeBlockOrder(slot: string): number {
+  if (!slot) return 50
+  const s = slot.toLowerCase().trim()
+  if (s.includes('wake') || s.includes('sunrise') || s.includes('dawn')) return 0
+  if (s.includes('morning_routine')) return 1
+  if (s.includes('morning_supplement') || s.includes('fasted_am') || s.includes('am_stack') || s.includes('am stack')) return 3
+  if (s.includes('first_meal') || s.includes('breakfast') || s.includes('first meal') || s.includes('meal_1')) return 4
+  if (s.includes('morning') || s.includes('am')) return 2
+  if (s.includes('midday_stack') || s.includes('lunch_stack')) return 6
+  if (s.includes('midday') || s.includes('noon') || s.includes('lunch')) return 5
+  if (s.includes('afternoon') || s.includes('workout') || s.includes('training')) return 7
+  if (s.includes('late_afternoon')) return 8
+  if (s.includes('pre_meal') || s.includes('pre-meal') || s.includes('pre meal')) return 9
+  if (s.includes('post_meal') || s.includes('postprandial') || s.includes('post meal') || s.includes('post-meal')) return 10
+  if (s.includes('evening_supplement') || s.includes('dinner_stack') || s.includes('pm_stack') || s.includes('pm stack')) return 12
+  if (s.includes('evening') || s.includes('dinner') || s.includes('dusk')) return 11
+  if (s.includes('wind_down') || s.includes('winddown') || s.includes('wind down') || s.includes('wind-down') || s.includes('wind')) return 13
+  if (s.includes('pre_bed') || s.includes('pre-bed') || s.includes('pre bed')) return 14
+  if (s.includes('bed') || s.includes('night') || s.includes('sleep') || s.includes('overnight')) return 15
+  if (s.includes('anytime')) return 99
+  return 50
+}
+
+/**
+ * Calculates a task's chronological position (in minutes from midnight)
+ * using scheduled_time, resolved circadian timing slot, and user workout preferences.
+ */
+export function getTaskChronologicalWeight(
+  task: DailyProtocolTask,
+  userProfile?: UserProfile | null
+): number {
+  if (task.scheduled_time && task.scheduled_time.includes(':')) {
+    const [h, m] = task.scheduled_time.split(':').map(Number)
+    if (!isNaN(h)) {
+      return h * 60 + (isNaN(m) ? 0 : m)
+    }
+  }
+
+  const mod = task.protocol_step?.modality || task.loose_modality
+  const customTiming = task.custom_timing || task.execution_details?.custom_timing
+  const slot = resolveOptimalTimingSlot(mod, task.protocol_step, task.timing_slot, userProfile, customTiming)
+  const order = getTimeBlockOrder(slot)
+
+  switch (order) {
+    case 0: return 6 * 60       // 6:00 AM (Waking / Sunrise)
+    case 1: return 7 * 60       // 7:00 AM (Morning Routine)
+    case 2: return 7.5 * 60     // 7:30 AM (Morning / AM)
+    case 3: return 8 * 60       // 8:00 AM (Morning Supplements)
+    case 4: return 8.5 * 60     // 8:30 AM (First Meal)
+    case 5: return 12 * 60      // 12:00 PM (Midday)
+    case 6: return 12.5 * 60    // 12:30 PM (Midday Stack)
+    case 7: return 15 * 60      // 3:00 PM (Afternoon / Workout / Inversion)
+    case 8: return 17 * 60      // 5:00 PM (Late Afternoon)
+    case 9: return 17.5 * 60    // 5:30 PM (Pre-Meal)
+    case 10: return 18.5 * 60   // 6:30 PM (Post-Meal)
+    case 11: return 19 * 60     // 7:00 PM (Evening / Dinner)
+    case 12: return 20 * 60     // 8:00 PM (Evening Supplements)
+    case 13: return 21 * 60     // 9:00 PM (Wind Down)
+    case 14: return 21.5 * 60   // 9:30 PM (Pre-Bed)
+    case 15: return 22.5 * 60   // 10:30 PM (Bedtime / Sleep)
+    case 99: return 9.5 * 60    // 9:30 AM (Anytime - placed mid-morning after am routines)
+    default: return 10 * 60     // 10:00 AM (Default baseline)
+  }
+}
+
+/**
+ * Standardized chronological task sorter.
+ * Ensures modalities across 3-day split, 7-day week, and monthly calendar views
+ * appear in the EXACT same chronological circadian order as the user's Today feed.
+ */
+export function sortTasksChronologically(
+  tasks: DailyProtocolTask[],
+  userProfile?: UserProfile | null
+): DailyProtocolTask[] {
+  return [...tasks].sort((a, b) => {
+    const weightA = getTaskChronologicalWeight(a, userProfile)
+    const weightB = getTaskChronologicalWeight(b, userProfile)
+    if (weightA !== weightB) {
+      return weightA - weightB
+    }
+
+    const orderA = a.protocol_step?.display_order || 0
+    const orderB = b.protocol_step?.display_order || 0
+    if (orderA !== orderB) {
+      return orderA - orderB
+    }
+
+    const modA = a.protocol_step?.modality || a.loose_modality
+    const modB = b.protocol_step?.modality || b.loose_modality
+    const nameA = modA?.name || a.protocol_step?.protocol?.name || (a as any).title || ''
+    const nameB = modB?.name || b.protocol_step?.protocol?.name || (b as any).title || ''
+    return nameA.localeCompare(nameB)
+  })
+}
+

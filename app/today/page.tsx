@@ -2846,6 +2846,7 @@ function TodayPageContent() {
             selectedProtocolFilter={selectedProtocolFilter}
             selectedIsolatedOutcome={selectedIsolatedOutcome}
             layoutOrientation={layoutOrientation}
+            userProfile={profile}
             onSelectDate={(dStr: string) => {
               navigateToDate(parseLocalDate(dStr))
               setCalendarViewMode('today')

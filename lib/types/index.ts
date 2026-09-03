@@ -354,6 +354,8 @@ export type DailyProtocolTask = {
   scheduled_date: string
   scheduled_time?: string
   timing_slot?: string
+  custom_timing?: string
+  custom_dose?: string
   status: 'pending' | 'completed' | 'skipped' | 'snoozed' | 'missed' | 'partial' | 'not_today' | 'contraindicated'
   status_reason?: string
   adherence_value?: number

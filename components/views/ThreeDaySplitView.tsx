@@ -6,6 +6,7 @@ import { Calendar, Layers, Info } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
+import { sortTasksChronologically } from '@/lib/data/resolveOptimalTiming'
 
 interface ThreeDaySplitViewProps {
   tasksByDate: Record<string, DailyProtocolTask[]>
@@ -150,19 +151,20 @@ export const ThreeDaySplitView: React.FC<ThreeDaySplitViewProps> = ({
       )}
 
       {/* Grid or Stack Layout */}
-      <div className={isStacked ? 'flex flex-col space-y-3 w-full' : 'grid grid-cols-1 md:grid-cols-3 gap-2 w-full'}>
-        {threeDates.map((dateStr, idx) => {
-          const isSelectedDate = dateStr === currentDateStr
-          const dateObj = parseISO(dateStr + 'T00:00:00')
-          const dayName = format(dateObj, 'EEEE')
-          const dayDate = format(dateObj, 'MMM d')
-          const isPastDay = dateStr < todayStr
+      <div className="w-full overflow-x-auto pb-2 scrollbar-none">
+        <div className={isStacked ? 'flex flex-col space-y-3 w-full' : 'grid grid-cols-3 gap-2 min-w-[560px] sm:min-w-0 w-full'}>
+          {threeDates.map((dateStr, idx) => {
+            const isSelectedDate = dateStr === currentDateStr
+            const dateObj = parseISO(dateStr + 'T00:00:00')
+            const dayName = format(dateObj, 'EEEE')
+            const dayDate = format(dateObj, 'MMM d')
+            const isPastDay = dateStr < todayStr
 
-          const rawTasks = tasksByDate[dateStr] || []
-          const filteredTasks = rawTasks.filter(filterTask)
-          const dedupedTasks = dedupeTasksForColumn(filteredTasks)
-          const completedCount = dedupedTasks.filter(t => t.status === 'completed').length
-          const adherencePct = dedupedTasks.length > 0 ? Math.round((completedCount / dedupedTasks.length) * 100) : 0
+            const rawTasks = tasksByDate[dateStr] || []
+            const filteredTasks = rawTasks.filter(filterTask)
+            const dedupedTasks = sortTasksChronologically(dedupeTasksForColumn(filteredTasks), userProfile)
+            const completedCount = dedupedTasks.filter(t => t.status === 'completed').length
+            const adherencePct = dedupedTasks.length > 0 ? Math.round((completedCount / dedupedTasks.length) * 100) : 0
 
           return (
             <div
@@ -258,6 +260,7 @@ export const ThreeDaySplitView: React.FC<ThreeDaySplitViewProps> = ({
             </div>
           )
         })}
+      </div>
       </div>
     </div>
   )
