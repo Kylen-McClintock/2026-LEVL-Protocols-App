@@ -1469,6 +1469,7 @@ export default function ExplorePage() {
         exploringModality={compareModal.exploring}
         activeModality={compareModal.active}
         activeSource={compareModal.source}
+        userProfile={profile}
         onSuccess={loadData}
       />
 
