@@ -56,8 +56,9 @@ import { calculateDailyEfficacySummary } from '@/lib/data/historicalAnalysis'
 import { getScoredLongevityTips } from '@/lib/ranking/tipPersonalization'
 import { getMacroCategory } from '@/lib/utils/categories'
 import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
-import { getCircadianConfig, isCurrentCircadianSlot, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS } from '@/lib/utils/circadianConfig'
+import { getCircadianConfig, getAdaptiveCircadianConfig, isCurrentCircadianSlot, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS } from '@/lib/utils/circadianConfig'
 import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
+import AdaptiveSleepTriageCard from '@/components/today/AdaptiveSleepTriageCard'
 
 function formatSlotName(str: string): string {
   if (!str) return 'Anytime'
@@ -310,6 +311,21 @@ function TodayPageContent() {
   const [availableProtocols, setAvailableProtocols] = useState<{ id: string; name: string; colorHex?: string }[]>([])
   const [dismissedTipIds, setDismissedTipIds] = useState<string[]>([])
   const [wellbeingCheckin, setWellbeingCheckin] = useState<WellbeingType | null>(null)
+  const userActualWakeTime = wellbeingCheckin?.actual_wake_time || wellbeingCheckin?.custom_outcomes_jsonb?._actual_wake_time || undefined
+  const userActualSleepMinutes = wellbeingCheckin?.actual_sleep_minutes ?? wellbeingCheckin?.custom_outcomes_jsonb?._actual_sleep_minutes
+  const userSubjectiveSleep = wellbeingCheckin?.subjective_sleep_0_10
+
+  const [isSleepTriageDismissed, setIsSleepTriageDismissed] = useState(false)
+
+  const isTriageStoredDismissed = typeof window !== 'undefined' && (
+    localStorage.getItem(`levl_sleep_triage_${dateStr}`) === 'dismissed' ||
+    localStorage.getItem(`levl_sleep_triage_${dateStr}`) === 'applied'
+  )
+
+  const shouldShowSleepTriage = !isPastDate && !isSleepTriageDismissed && !isTriageStoredDismissed && (
+    (userActualSleepMinutes != null && userActualSleepMinutes < 390) ||
+    (userSubjectiveSleep != null && userSubjectiveSleep <= 4)
+  )
   const [show100Celebration, setShow100Celebration] = useState<boolean>(false)
 
   const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false)
@@ -762,8 +778,20 @@ function TodayPageContent() {
     sleep?: number, 
     sleepScore?: number, 
     customOutcomes?: Record<string, any>, 
-    lastFoodTime?: string
+    lastFoodTime?: string,
+    actualBedtime?: string,
+    actualWakeTime?: string,
+    actualSleepMinutes?: number,
+    sleepSource?: string
   ) => {
+    const enrichedOutcomes = {
+      ...(customOutcomes || {}),
+      ...(actualBedtime ? { _actual_bedtime: actualBedtime } : {}),
+      ...(actualWakeTime ? { _actual_wake_time: actualWakeTime } : {}),
+      ...(actualSleepMinutes != null ? { _actual_sleep_minutes: actualSleepMinutes } : {}),
+      ...(sleepSource ? { _sleep_source: sleepSource } : {})
+    }
+
     // Optimistic in-memory update so child cards and live viewers update instantly
     const optimistic: WellbeingType = {
       id: wellbeingCheckin?.id || `checkin_${dateStr}`,
@@ -774,15 +802,19 @@ function TodayPageContent() {
       stress_0_10: stress,
       subjective_sleep_0_10: sleep,
       sleep_score_0_100: sleepScore,
+      actual_bedtime: actualBedtime,
+      actual_wake_time: actualWakeTime,
+      actual_sleep_minutes: actualSleepMinutes,
+      sleep_source: sleepSource as any,
       last_food_time: lastFoodTime,
-      custom_outcomes_jsonb: customOutcomes || {},
+      custom_outcomes_jsonb: enrichedOutcomes,
       created_at: (wellbeingCheckin as any)?.created_at || (customOutcomes?._morning_logged_at) || `${dateStr}T08:00:00.000Z`,
       updated_at: new Date().toISOString()
     }
     setWellbeingCheckin(optimistic)
 
     const localUserId = getLocalUserId()
-    const saved = await saveDailyWellbeingCheckin(localUserId, dateStr, mood, energy, stress, sleep, sleepScore, lastFoodTime, customOutcomes)
+    const saved = await saveDailyWellbeingCheckin(localUserId, dateStr, mood, energy, stress, sleep, sleepScore, lastFoodTime, enrichedOutcomes)
     setWellbeingCheckin(saved)
   }
 
@@ -2159,7 +2191,7 @@ function TodayPageContent() {
       }
 
       // Default Chronological Time Blocks rendering with Circadian Sky Beacons
-      const circadian = getCircadianConfig(groupName)
+      const circadian = getAdaptiveCircadianConfig(groupName, userActualWakeTime, profile?.ideal_wake_time || '06:30')
       const CircadianIcon = circadian.icon
       const isNow = isCurrentDay && isCurrentCircadianSlot(groupName)
       const isIgnited = ignitedGroupKeys.has(groupName)
@@ -2760,6 +2792,23 @@ function TodayPageContent() {
                 section="morning_anytime"
               />
             </div>
+
+            {/* 4b. Adaptive Sleep Recovery Protocol Triage Card */}
+            {shouldShowSleepTriage && (
+              <AdaptiveSleepTriageCard
+                actualSleepMinutes={userActualSleepMinutes || 0}
+                subjectiveSleep={userSubjectiveSleep ?? 5}
+                dateStr={dateStr}
+                localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
+                todayTasks={tasks}
+                onApplied={() => {
+                  refreshTodayTasks()
+                }}
+                onDismiss={() => {
+                  setIsSleepTriageDismissed(true)
+                }}
+              />
+            )}
 
             {/* 5. Daily Longevity Tip Banner (Hidden once added to today, benched, or skipped) */}
             {!isTipActedUpon && (

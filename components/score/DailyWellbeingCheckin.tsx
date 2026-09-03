@@ -31,6 +31,47 @@ function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: string =
   return diffHours
 }
 
+function parseTimeToMinutes(t: string): number {
+  if (!t || !t.includes(':')) return 0
+  const [h, m] = t.split(':').map(Number)
+  return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m)
+}
+
+function formatMinutesToTime(totalMins: number): string {
+  let normalized = Math.round(totalMins) % (24 * 60)
+  if (normalized < 0) normalized += 24 * 60
+  const h = Math.floor(normalized / 60)
+  const m = normalized % 60
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+}
+
+function formatMinutesToDuration(totalMins: number): string {
+  const h = Math.floor(totalMins / 60)
+  const m = totalMins % 60
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}
+
+function formatTimeTo12h(timeStr: string): string {
+  if (!timeStr || !timeStr.includes(':')) return timeStr
+  const [hStr, mStr] = timeStr.split(':')
+  let h = parseInt(hStr, 10)
+  const m = parseInt(mStr, 10)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  h = h % 12
+  if (h === 0) h = 12
+  return `${h}:${m.toString().padStart(2, '0')} ${ampm}`
+}
+
+function computeSleepMinutes(bedStr: string, wakeStr: string): number {
+  const bM = parseTimeToMinutes(bedStr)
+  const wM = parseTimeToMinutes(wakeStr)
+  let diff = wM - bM
+  if (diff <= 0) diff += 24 * 60
+  return diff
+}
+
 function TimingExposureCard({
   title,
   icon,
@@ -257,7 +298,19 @@ export default function DailyWellbeingCheckin({
   recentTasks,
   section = 'all'
 }: { 
-  onSave: (mood: number, energy: number, stress: number, sleep?: number, sleepScore?: number, customOutcomes?: Record<string, any>, lastFoodTime?: string) => void
+  onSave: (
+    mood: number, 
+    energy: number, 
+    stress: number, 
+    sleep?: number, 
+    sleepScore?: number, 
+    customOutcomes?: Record<string, any>, 
+    lastFoodTime?: string,
+    actualBedtime?: string,
+    actualWakeTime?: string,
+    actualSleepMinutes?: number,
+    sleepSource?: string
+  ) => void
   initialData: WellbeingType | null
   profile: UserProfile | null
   allOutcomes: OutcomeDimension[]
@@ -272,6 +325,36 @@ export default function DailyWellbeingCheckin({
   const [stress, setStress] = useState(5)
   const [subjectiveSleep, setSubjectiveSleep] = useState(5)
   const [sleepScore, setSleepScore] = useState<string>('')
+
+  // Sleep Timing & Actual Duration (Initialized from profile ideal bedtime/waketime with 15m adjusters)
+  const defaultBedtime = (initialData as any)?.actual_bedtime || (initialData as any)?.custom_outcomes_jsonb?._actual_bedtime || profile?.ideal_bedtime || '22:30'
+  const defaultWaketime = (initialData as any)?.actual_wake_time || (initialData as any)?.custom_outcomes_jsonb?._actual_wake_time || profile?.ideal_wake_time || '06:30'
+
+  const [actualBedtime, setActualBedtime] = useState<string>(defaultBedtime)
+  const [actualWakeTime, setActualWakeTime] = useState<string>(defaultWaketime)
+  const [actualSleepMinutes, setActualSleepMinutes] = useState<number>(() => {
+    if ((initialData as any)?.actual_sleep_minutes != null) return (initialData as any).actual_sleep_minutes
+    if ((initialData as any)?.custom_outcomes_jsonb?._actual_sleep_minutes != null) return (initialData as any).custom_outcomes_jsonb._actual_sleep_minutes
+    return computeSleepMinutes(defaultBedtime, defaultWaketime)
+  })
+  const [sleepSource, setSleepSource] = useState<string>((initialData as any)?.sleep_source || (initialData as any)?.custom_outcomes_jsonb?._sleep_source || 'manual')
+
+  const handleAdjustBedtime = (deltaMins: number) => {
+    const newTime = formatMinutesToTime(parseTimeToMinutes(actualBedtime) + deltaMins)
+    setActualBedtime(newTime)
+    setActualSleepMinutes(computeSleepMinutes(newTime, actualWakeTime))
+  }
+
+  const handleAdjustWakeTime = (deltaMins: number) => {
+    const newTime = formatMinutesToTime(parseTimeToMinutes(actualWakeTime) + deltaMins)
+    setActualWakeTime(newTime)
+    setActualSleepMinutes(computeSleepMinutes(actualBedtime, newTime))
+  }
+
+  const handleAdjustSleepDuration = (deltaMins: number) => {
+    setActualSleepMinutes(prev => Math.max(0, prev + deltaMins))
+  }
+
   const [lastFoodTime, setLastFoodTime] = useState<string>('19:00')
   const [notes, setNotes] = useState<string>('')
   const [eveningNotes, setEveningNotes] = useState<string>('')
@@ -842,6 +925,13 @@ export default function DailyWellbeingCheckin({
       setLastFoodTime(initialData.last_food_time || '19:00')
       
       const customJSON = (initialData as any).custom_outcomes_jsonb || {}
+      const hydratedBedtime = (initialData as any).actual_bedtime || customJSON._actual_bedtime || profile?.ideal_bedtime || '22:30'
+      const hydratedWaketime = (initialData as any).actual_wake_time || customJSON._actual_wake_time || profile?.ideal_wake_time || '06:30'
+      setActualBedtime(hydratedBedtime)
+      setActualWakeTime(hydratedWaketime)
+      setActualSleepMinutes((initialData as any).actual_sleep_minutes ?? customJSON._actual_sleep_minutes ?? computeSleepMinutes(hydratedBedtime, hydratedWaketime))
+      setSleepSource((initialData as any).sleep_source || customJSON._sleep_source || 'manual')
+
       setSkinClarity(customJSON.skin_clarity ?? 5)
       setFocusScore(customJSON.focus_score ?? 5)
       setAlcoholDrinks(customJSON.alcohol_drinks !== undefined && customJSON.alcohol_drinks !== null ? customJSON.alcohol_drinks : 'skip')
@@ -970,7 +1060,24 @@ export default function DailyWellbeingCheckin({
     if (blueLight !== 'skip') combinedCustomOutcomes.blue_light = blueLight
     if (processedSugar !== 'skip') combinedCustomOutcomes.processed_sugar = processedSugar
 
-    onSave(mood, energy, stress, subjectiveSleep, sleepScore === '' ? undefined : Number(sleepScore), combinedCustomOutcomes, isNightlySaved ? lastFoodTime : undefined)
+    combinedCustomOutcomes._actual_bedtime = actualBedtime
+    combinedCustomOutcomes._actual_wake_time = actualWakeTime
+    combinedCustomOutcomes._actual_sleep_minutes = actualSleepMinutes
+    combinedCustomOutcomes._sleep_source = sleepSource
+
+    onSave(
+      mood, 
+      energy, 
+      stress, 
+      subjectiveSleep, 
+      sleepScore === '' ? undefined : Number(sleepScore), 
+      combinedCustomOutcomes, 
+      isNightlySaved ? lastFoodTime : undefined,
+      actualBedtime,
+      actualWakeTime,
+      actualSleepMinutes,
+      sleepSource
+    )
     setIsSaved(true)
     setIsEditing(false)
     if (typeof window !== 'undefined' && date) {
@@ -1024,7 +1131,19 @@ export default function DailyWellbeingCheckin({
     if (blueLight !== 'skip') combinedCustomOutcomes.blue_light = blueLight
     if (processedSugar !== 'skip') combinedCustomOutcomes.processed_sugar = processedSugar
 
-    onSave(mood, energy, stress, subjectiveSleep, sleepScore === '' ? undefined : Number(sleepScore), combinedCustomOutcomes, lastFoodTime)
+    onSave(
+      mood, 
+      energy, 
+      stress, 
+      subjectiveSleep, 
+      sleepScore === '' ? undefined : Number(sleepScore), 
+      combinedCustomOutcomes, 
+      lastFoodTime,
+      actualBedtime,
+      actualWakeTime,
+      actualSleepMinutes,
+      sleepSource
+    )
     setIsNightlySaved(true)
     if (typeof window !== 'undefined' && date) {
       const dStr = format(date, 'yyyy-MM-dd')
@@ -1097,7 +1216,11 @@ export default function DailyWellbeingCheckin({
       initialData?.subjective_sleep_0_10 ?? subjectiveSleep, 
       initialData?.sleep_score_0_100 ?? (sleepScore === '' ? undefined : Number(sleepScore)), 
       combinedCustomOutcomes, 
-      lastFoodTime
+      lastFoodTime,
+      actualBedtime,
+      actualWakeTime,
+      actualSleepMinutes,
+      sleepSource
     )
 
     setDaytimeSavedToast(true)
@@ -1145,7 +1268,11 @@ export default function DailyWellbeingCheckin({
       initialData?.subjective_sleep_0_10 ?? subjectiveSleep, 
       initialData?.sleep_score_0_100 ?? (sleepScore === '' ? undefined : Number(sleepScore)), 
       combinedCustomOutcomes, 
-      lastFoodTime
+      lastFoodTime,
+      actualBedtime,
+      actualWakeTime,
+      actualSleepMinutes,
+      sleepSource
     )
 
     setDaytimeSavedToast(true)
@@ -1276,11 +1403,23 @@ export default function DailyWellbeingCheckin({
             </div>
 
             {/* Optional secondary metrics & exposures if present */}
-            {(sleepScoreVal != null || lastFoodVal || customJSON.skin_clarity != null || customJSON.focus_score != null || customJSON.alcohol_drinks !== undefined || (customJSON.cannabis_exposure && customJSON.cannabis_exposure !== 'skip') || (customJSON.nicotine_exposure && customJSON.nicotine_exposure !== 'skip') || (customJSON.late_caffeine && customJSON.late_caffeine !== 'skip') || (customJSON.blue_light && customJSON.blue_light !== 'skip') || (customJSON.late_meal && customJSON.late_meal !== 'skip')) && (
+            {(actualSleepMinutes > 0 || sleepScoreVal != null || lastFoodVal || customJSON.skin_clarity != null || customJSON.focus_score != null || customJSON.alcohol_drinks !== undefined || (customJSON.cannabis_exposure && customJSON.cannabis_exposure !== 'skip') || (customJSON.nicotine_exposure && customJSON.nicotine_exposure !== 'skip') || (customJSON.late_caffeine && customJSON.late_caffeine !== 'skip') || (customJSON.blue_light && customJSON.blue_light !== 'skip') || (customJSON.late_meal && customJSON.late_meal !== 'skip')) && (
               <div className="flex items-center gap-2 flex-wrap pt-1 text-[11px]">
+                {actualSleepMinutes > 0 && (
+                  <span className={`px-2.5 py-1 rounded-lg border font-mono font-semibold flex items-center gap-1.5 ${
+                    actualSleepMinutes < 390 
+                      ? 'bg-rose-500/15 border-rose-500/30 text-rose-300' 
+                      : actualSleepMinutes < 450 
+                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-300' 
+                      : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                  }`}>
+                    🌙 Sleep: <strong className="text-white">{formatMinutesToDuration(actualSleepMinutes)}</strong>
+                    <span className="text-[9px] opacity-75">({formatTimeTo12h(actualBedtime)} – {formatTimeTo12h(actualWakeTime)})</span>
+                  </span>
+                )}
                 {sleepScoreVal != null && (
                   <span className="px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-mono font-semibold flex items-center gap-1.5">
-                    🌙 Wearable Sleep: <strong className="text-white">{sleepScoreVal}/100</strong>
+                    🌙 Wearable Score: <strong className="text-white">{sleepScoreVal}/100</strong>
                   </span>
                 )}
                 {lastFoodVal && (
@@ -1908,6 +2047,125 @@ export default function DailyWellbeingCheckin({
 
         {showSleepSection ? (
           <div className="space-y-4">
+            {/* Actual Bedtime, Wake Time & Auto-Calculated Duration with 15-min Adjusters */}
+            <div className="bg-slate-900/80 border border-indigo-500/30 rounded-xl p-3.5 space-y-3 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Moon size={14} className="text-indigo-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    Sleep Timing &amp; Duration
+                  </span>
+                </div>
+                {sleepSource && sleepSource !== 'manual' && (
+                  <span className="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    ⌚ Synced from {sleepSource === 'apple_health' ? 'Apple Health' : sleepSource.toUpperCase()}
+                  </span>
+                )}
+              </div>
+
+              {/* 3 Interactive Parameter Columns: Bedtime, Wake Time, Actual Sleep */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* Bedtime */}
+                <div className="bg-black/50 border border-white/10 rounded-lg p-2.5 flex flex-col justify-between space-y-1">
+                  <span className="text-[10px] text-slate-400 font-medium">Actual Bedtime</span>
+                  <div className="flex items-center justify-between my-1">
+                    <button 
+                      type="button" 
+                      onClick={() => handleAdjustBedtime(-15)} 
+                      className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-[10px] font-mono text-slate-300 transition-colors cursor-pointer active:scale-95"
+                      title="15 minutes earlier"
+                    >
+                      -15m
+                    </button>
+                    <span className="text-xs font-bold text-indigo-300 font-mono">{formatTimeTo12h(actualBedtime)}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => handleAdjustBedtime(15)} 
+                      className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-[10px] font-mono text-slate-300 transition-colors cursor-pointer active:scale-95"
+                      title="15 minutes later"
+                    >
+                      +15m
+                    </button>
+                  </div>
+                  <input 
+                    type="time" 
+                    value={actualBedtime} 
+                    onChange={(e) => {
+                      setActualBedtime(e.target.value)
+                      setActualSleepMinutes(computeSleepMinutes(e.target.value, actualWakeTime))
+                    }} 
+                    className="w-full bg-slate-950/60 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-slate-300 text-center font-mono focus:outline-none focus:border-indigo-400 cursor-pointer" 
+                  />
+                </div>
+
+                {/* Wake Time */}
+                <div className="bg-black/50 border border-white/10 rounded-lg p-2.5 flex flex-col justify-between space-y-1">
+                  <span className="text-[10px] text-slate-400 font-medium">Actual Wake Time</span>
+                  <div className="flex items-center justify-between my-1">
+                    <button 
+                      type="button" 
+                      onClick={() => handleAdjustWakeTime(-15)} 
+                      className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-[10px] font-mono text-slate-300 transition-colors cursor-pointer active:scale-95"
+                      title="15 minutes earlier"
+                    >
+                      -15m
+                    </button>
+                    <span className="text-xs font-bold text-amber-300 font-mono">{formatTimeTo12h(actualWakeTime)}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => handleAdjustWakeTime(15)} 
+                      className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-[10px] font-mono text-slate-300 transition-colors cursor-pointer active:scale-95"
+                      title="15 minutes later"
+                    >
+                      +15m
+                    </button>
+                  </div>
+                  <input 
+                    type="time" 
+                    value={actualWakeTime} 
+                    onChange={(e) => {
+                      setActualWakeTime(e.target.value)
+                      setActualSleepMinutes(computeSleepMinutes(actualBedtime, e.target.value))
+                    }} 
+                    className="w-full bg-slate-950/60 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-slate-300 text-center font-mono focus:outline-none focus:border-amber-400 cursor-pointer" 
+                  />
+                </div>
+
+                {/* Actual Sleep Duration */}
+                <div className="bg-black/50 border border-white/10 rounded-lg p-2.5 flex flex-col justify-between space-y-1">
+                  <span className="text-[10px] text-slate-400 font-medium">Actual Sleep Duration</span>
+                  <div className="flex items-center justify-between my-1">
+                    <button 
+                      type="button" 
+                      onClick={() => handleAdjustSleepDuration(-15)} 
+                      className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-[10px] font-mono text-slate-300 transition-colors cursor-pointer active:scale-95"
+                      title="Deduct 15m awakenings"
+                    >
+                      -15m
+                    </button>
+                    <span className={`text-xs font-extrabold font-mono ${
+                      actualSleepMinutes < 390 ? 'text-rose-400' : actualSleepMinutes < 450 ? 'text-amber-300' : 'text-emerald-400'
+                    }`}>
+                      {formatMinutesToDuration(actualSleepMinutes)}
+                    </span>
+                    <button 
+                      type="button" 
+                      onClick={() => handleAdjustSleepDuration(15)} 
+                      className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-[10px] font-mono text-slate-300 transition-colors cursor-pointer active:scale-95"
+                      title="Add 15m sleep"
+                    >
+                      +15m
+                    </button>
+                  </div>
+                  <div className={`text-[9px] text-center font-mono font-bold py-0.5 rounded ${
+                    actualSleepMinutes < 390 ? 'text-rose-400 bg-rose-950/40' : actualSleepMinutes < 450 ? 'text-amber-300 bg-amber-950/40' : 'text-emerald-400 bg-emerald-950/40'
+                  }`}>
+                    {actualSleepMinutes < 390 ? '⚠️ Sleep Deficit' : actualSleepMinutes < 450 ? '🟡 Moderate Sleep' : '🟢 Optimal Recovery'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Subjective Sleep Quality */}
             {(() => {
               const isTouched = touchedOutcomes['sleep']

@@ -417,6 +417,63 @@ export function getCircadianConfig(slotName: string): CircadianSlotConfig {
 }
 
 /**
+ * Adaptively calculates circadian slot configuration shifted by actual wake time
+ */
+export function getAdaptiveCircadianConfig(
+  slotName: string, 
+  actualWakeTimeStr?: string, 
+  idealWakeTimeStr: string = '06:30'
+): CircadianSlotConfig {
+  const baseConfig = getCircadianConfig(slotName)
+  if (!actualWakeTimeStr || !actualWakeTimeStr.includes(':')) {
+    return baseConfig
+  }
+
+  const [actH, actM] = actualWakeTimeStr.split(':').map(Number)
+  const [idH, idM] = idealWakeTimeStr.split(':').map(Number)
+  if (isNaN(actH) || isNaN(idH)) return baseConfig
+
+  const deltaMinutes = (actH * 60 + actM) - (idH * 60 + idM)
+  // If delta is less than 15 minutes, keep base config
+  if (Math.abs(deltaMinutes) < 15) return baseConfig
+
+  // Evening and night slots should remain anchored to bedtime to protect sleep architecture
+  const isMorningOrDaytime = [
+    'waking', 'morning_routine', 'morning', 'morning_supplement_stack', 
+    'first_meal', 'midday', 'midday_stack', 'afternoon', 'late_afternoon', 'post_meal'
+  ].includes(baseConfig.key)
+
+  if (!isMorningOrDaytime) {
+    return baseConfig
+  }
+
+  const shiftTimeStr = (hour: number, minute: number = 0) => {
+    let totalM = hour * 60 + minute + deltaMinutes
+    totalM = ((totalM % 1440) + 1440) % 1440
+    const h = Math.floor(totalM / 60)
+    const m = totalM % 60
+    const ampm = h >= 12 ? 'PM' : 'AM'
+    const displayH = h % 12 === 0 ? 12 : h % 12
+    return `${displayH}:${m.toString().padStart(2, '0')} ${ampm}`
+  }
+
+  const newStartStr = shiftTimeStr(baseConfig.startHour, 0)
+  const newEndStr = shiftTimeStr(baseConfig.endHour, 0)
+  const adaptedTimeRange = `${newStartStr} – ${newEndStr}`
+
+  const deltaHours = Math.round(deltaMinutes / 60 * 10) / 10
+  const deltaDisplay = deltaMinutes > 0 ? `+${deltaHours}h wake shift` : `${deltaHours}h wake shift`
+
+  return {
+    ...baseConfig,
+    timeRange: adaptedTimeRange,
+    circadianPhase: `${baseConfig.circadianPhase} • Adapted (${deltaDisplay})`,
+    startHour: Math.floor((((baseConfig.startHour * 60 + deltaMinutes) % 1440) + 1440) % 1440 / 60),
+    endHour: Math.floor((((baseConfig.endHour * 60 + deltaMinutes) % 1440) + 1440) % 1440 / 60),
+  }
+}
+
+/**
  * Calculates whether the current local time falls into a given slot
  */
 export function isCurrentCircadianSlot(slotName: string, currentHour?: number): boolean {

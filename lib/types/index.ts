@@ -433,6 +433,11 @@ export type DailyWellbeingCheckin = {
   stress_0_10?: number
   subjective_sleep_0_10?: number
   sleep_score_0_100?: number
+  actual_bedtime?: string
+  actual_wake_time?: string
+  actual_sleep_minutes?: number
+  sleep_source?: 'manual' | 'apple_health' | 'oura' | 'whoop' | 'garmin'
+  sleep_efficiency_pct?: number
   last_food_time?: string
   notes?: string
   confounders?: ExternalConfounderData
