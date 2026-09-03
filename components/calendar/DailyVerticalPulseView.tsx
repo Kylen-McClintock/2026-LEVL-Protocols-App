@@ -41,10 +41,18 @@ import {
   formatHourToTimeStr,
   TimelineTransitionMarker,
   CriticalModalityEvaluation,
-  ChronoGuardrailStatus
+  ChronoGuardrailStatus,
+  assessProtocolForDeepOptimizations,
+  resolveModalityMechanism,
+  resolveModeKickoffMechanism,
+  ModalityMechanismDetail,
+  ProtocolOptimizationFinding
 } from '@/lib/calendar/pulseOptimizationEngine'
 import { calculateDynamicFastedWindow } from '@/lib/calendar/waveformMapper'
+import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import PulsingPhilosophyGuide from './PulsingPhilosophyGuide'
+import ModalityMechanismModal from '@/components/modals/ModalityMechanismModal'
+import ProtocolOptimizationModal from '@/components/modals/ProtocolOptimizationModal'
 
 interface DailyVerticalPulseViewProps {
   tasks: DailyProtocolTask[]
@@ -70,6 +78,12 @@ export default function DailyVerticalPulseView({
   const [appliedSuccessId, setAppliedSuccessId] = useState<string | null>(null)
   const [activeOptimizationTab, setActiveOptimizationTab] = useState<'growth' | 'recovery' | 'guardrails'>('growth')
   const [expandedModalityId, setExpandedModalityId] = useState<string | null>(null)
+
+  // Interactive Modals State
+  const [selectedMechanismDetail, setSelectedMechanismDetail] = useState<ModalityMechanismDetail | null>(null)
+  const [isMechanismModalOpen, setIsMechanismModalOpen] = useState(false)
+  const [isOptimizationModalOpen, setIsOptimizationModalOpen] = useState(false)
+  const [verticalModeFilter, setVerticalModeFilter] = useState<'all' | 'growth' | 'recovery' | 'transitions'>('all')
 
   // 1. Calculate Daily Pulse Balance & Timing Optimizations
   const pulseBalance = useMemo(() => {
@@ -135,6 +149,56 @@ export default function DailyVerticalPulseView({
 
     return entries
   }, [dayTasks, dayPhasesAndTransitions])
+
+  // 6. Deep protocol optimization findings
+  const optimizationFindings = useMemo(() => {
+    return assessProtocolForDeepOptimizations(dayTasks, userProfile, dateStr)
+  }, [dayTasks, userProfile, dateStr])
+
+  // 7. Filtered Timeline Entries based on mode filter
+  const filteredTimelineEntries = useMemo(() => {
+    if (verticalModeFilter === 'all') return timelineEntries
+
+    return timelineEntries.filter(entry => {
+      if (verticalModeFilter === 'transitions') {
+        return entry.type === 'transition'
+      }
+
+      if (entry.type === 'transition') {
+        if (verticalModeFilter === 'growth') {
+          return entry.marker.type === 'growth_onset' || entry.marker.type === 'post_strain_window' || entry.marker.type === 'morning_activation'
+        }
+        if (verticalModeFilter === 'recovery') {
+          return entry.marker.type === 'recovery_onset' || entry.marker.type === 'sleep_onset'
+        }
+        return true
+      }
+
+      // It's a task
+      const name = (entry.task.protocol_step?.modality?.name || entry.task.loose_modality?.name || (entry.task as any).modality?.name || '').toLowerCase()
+      const isGrowth = name.includes('lift') || name.includes('resistance') || name.includes('strength') || name.includes('creatine') || name.includes('protein') || name.includes('hiit') || name.includes('push') || name.includes('pull') || name.includes('legs')
+      const isRecovery = name.includes('sauna') || name.includes('cold') || name.includes('plunge') || name.includes('breath') || name.includes('walk') || name.includes('sleep') || name.includes('magnesium') || name.includes('fast') || name.includes('berberine')
+
+      if (verticalModeFilter === 'growth') return isGrowth
+      if (verticalModeFilter === 'recovery') return isRecovery || (!isGrowth)
+      return true
+    })
+  }, [timelineEntries, verticalModeFilter])
+
+  const handleOpenTaskMechanism = (task: DailyProtocolTask) => {
+    const detail = resolveModalityMechanism(task)
+    setSelectedMechanismDetail(detail)
+    setIsMechanismModalOpen(true)
+  }
+
+  const handleOpenTransitionMechanism = (marker: TimelineTransitionMarker) => {
+    const isGrowth = marker.type === 'growth_onset'
+    const isRecovery = marker.type === 'recovery_onset'
+    const mode = isGrowth ? 'growth' : isRecovery ? 'recovery' : 'transition'
+    const detail = resolveModeKickoffMechanism(mode, marker.triggerText, marker.timeFormatted)
+    setSelectedMechanismDetail(detail)
+    setIsMechanismModalOpen(true)
+  }
 
   // Helper to check if a task satisfies one of the critical modalities
   const findCriticalModalityMatch = (task: DailyProtocolTask): { mode: 'growth' | 'recovery'; spec: CriticalModalityEvaluation } | null => {
@@ -231,15 +295,32 @@ export default function DailyVerticalPulseView({
             </p>
           </div>
 
-          {/* Quick jump to today action */}
-          <button
-            type="button"
-            onClick={() => router.push(`/today?date=${dateStr}`)}
-            className="px-3.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 self-start sm:self-auto"
-          >
-            <span>Open in Today</span>
-            <ArrowRight size={13} />
-          </button>
+          {/* Action Header Group */}
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setIsOptimizationModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-extrabold shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <Zap size={13} className="text-slate-950 fill-current" />
+              <span>Assess Protocol to Further Optimize</span>
+              {optimizationFindings.filter(f => f.status === 'recommended').length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-black/25 text-slate-950 font-black text-[10px]">
+                  {optimizationFindings.filter(f => f.status === 'recommended').length}
+                </span>
+              )}
+            </button>
+
+            {/* Quick jump to today action */}
+            <button
+              type="button"
+              onClick={() => router.push(`/today?date=${dateStr}`)}
+              className="px-3.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <span>Open in Today</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
         </div>
 
         {/* The Dual-Spectrum Biological Balance Dial */}
@@ -279,41 +360,73 @@ export default function DailyVerticalPulseView({
           </div>
         </div>
 
-        {/* CIRCADIAN MODE TRANSITION SUMMARY PILLS */}
+        {/* CIRCADIAN MODE TRANSITION SUMMARY PILLS (INTERACTIVE CLICK-TO-EXPLORE) */}
         <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/30 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const detail = resolveModeKickoffMechanism('growth', dayPhasesAndTransitions.growthTriggerText, dayPhasesAndTransitions.growthStartTimeFormatted)
+              setSelectedMechanismDetail(detail)
+              setIsMechanismModalOpen(true)
+            }}
+            className="p-3 rounded-xl bg-purple-950/20 hover:bg-purple-950/40 border border-purple-500/30 hover:border-purple-500/60 transition-all flex items-center justify-between gap-2 cursor-pointer text-left group shadow-sm"
+          >
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse shrink-0" />
               <div className="min-w-0">
-                <span className="text-[10px] font-mono uppercase font-bold text-purple-300 block">
-                  Growth Mode Begins
-                </span>
-                <span className="text-xs font-bold text-white truncate block">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono uppercase font-bold text-purple-300 block">
+                    Growth Mode Begins
+                  </span>
+                  <span className="text-[9px] font-mono text-purple-400/80 bg-purple-500/10 px-1 rounded border border-purple-500/20">
+                    Click to explore ➔
+                  </span>
+                </div>
+                <span className="text-xs font-bold text-white truncate block group-hover:text-purple-200 mt-0.5">
                   {dayPhasesAndTransitions.growthTriggerText}
                 </span>
               </div>
             </div>
-            <span className="text-xs font-mono font-black text-purple-300 shrink-0 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">
-              {dayPhasesAndTransitions.growthStartTimeFormatted}
-            </span>
-          </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-xs font-mono font-black text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">
+                {dayPhasesAndTransitions.growthStartTimeFormatted}
+              </span>
+              <ChevronRight size={14} className="text-purple-400 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </button>
 
-          <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const detail = resolveModeKickoffMechanism('recovery', dayPhasesAndTransitions.recoveryTriggerText, dayPhasesAndTransitions.recoveryStartTimeFormatted)
+              setSelectedMechanismDetail(detail)
+              setIsMechanismModalOpen(true)
+            }}
+            className="p-3 rounded-xl bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-500/60 transition-all flex items-center justify-between gap-2 cursor-pointer text-left group shadow-sm"
+          >
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
               <div className="min-w-0">
-                <span className="text-[10px] font-mono uppercase font-bold text-emerald-300 block">
-                  Recovery Mode Begins
-                </span>
-                <span className="text-xs font-bold text-white truncate block">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono uppercase font-bold text-emerald-300 block">
+                    Recovery Mode Begins
+                  </span>
+                  <span className="text-[9px] font-mono text-emerald-400/80 bg-emerald-500/10 px-1 rounded border border-emerald-500/20">
+                    Click to explore ➔
+                  </span>
+                </div>
+                <span className="text-xs font-bold text-white truncate block group-hover:text-emerald-200 mt-0.5">
                   {dayPhasesAndTransitions.recoveryTriggerText}
                 </span>
               </div>
             </div>
-            <span className="text-xs font-mono font-black text-emerald-300 shrink-0 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
-              {dayPhasesAndTransitions.recoveryStartTimeFormatted}
-            </span>
-          </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-xs font-mono font-black text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+                {dayPhasesAndTransitions.recoveryStartTimeFormatted}
+              </span>
+              <ChevronRight size={14} className="text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </button>
         </div>
       </div>
 
@@ -740,14 +853,68 @@ export default function DailyVerticalPulseView({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
-              ⚡ Growth Begins: {dayPhasesAndTransitions.growthStartTimeFormatted}
-            </span>
-            <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-              🌙 Recovery Begins: {dayPhasesAndTransitions.recoveryStartTimeFormatted}
-            </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                const growthOnset = dayPhasesAndTransitions.transitions.find(t => t.type === 'growth_onset')
+                if (growthOnset) {
+                  handleOpenTransitionMechanism(growthOnset)
+                } else {
+                  const detail = resolveModeKickoffMechanism('growth', 'Morning Circadian Activation & Feeding', dayPhasesAndTransitions.growthStartTimeFormatted)
+                  setSelectedMechanismDetail(detail)
+                  setIsMechanismModalOpen(true)
+                }
+              }}
+              className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02]"
+              title="Click to view Growth Kickoff Mechanism"
+            >
+              <span>⚡ Growth Begins: {dayPhasesAndTransitions.growthStartTimeFormatted}</span>
+              <Info size={11} className="text-purple-400" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const recoveryOnset = dayPhasesAndTransitions.transitions.find(t => t.type === 'recovery_onset')
+                if (recoveryOnset) {
+                  handleOpenTransitionMechanism(recoveryOnset)
+                } else {
+                  const detail = resolveModeKickoffMechanism('recovery', 'Evening Decompression & Fasting Window', dayPhasesAndTransitions.recoveryStartTimeFormatted)
+                  setSelectedMechanismDetail(detail)
+                  setIsMechanismModalOpen(true)
+                }
+              }}
+              className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02]"
+              title="Click to view Recovery Kickoff Mechanism"
+            >
+              <span>🌙 Recovery Begins: {dayPhasesAndTransitions.recoveryStartTimeFormatted}</span>
+              <Info size={11} className="text-emerald-400" />
+            </button>
           </div>
+        </div>
+
+        {/* Growth / Recovery Vertical Filter Bar */}
+        <div className="flex items-center gap-1.5 p-1.5 bg-white/5 border border-white/10 rounded-xl overflow-x-auto">
+          {[
+            { id: 'all', label: `All Modalities & Events (${timelineEntries.length})`, icon: '📋' },
+            { id: 'growth', label: '🟣 Growth Mode Modalities', icon: '⚡' },
+            { id: 'recovery', label: '🟢 Recovery Mode Modalities', icon: '🌙' },
+            { id: 'transitions', label: '🔄 Mode Kick-Offs & Transitions', icon: '⚡' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setVerticalModeFilter(tab.id as any)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                verticalModeFilter === tab.id
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold shadow-md shadow-purple-500/20 border border-purple-400/30'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
         </div>
 
         {/* Circadian Phase Rail Overview Ribbon */}
@@ -772,12 +939,12 @@ export default function DailyVerticalPulseView({
 
         {/* 24-Hour Continuous Vertical Rail */}
         <div className="relative border-l-2 border-white/15 ml-4 sm:ml-8 pl-4 sm:pl-7 space-y-7">
-          {timelineEntries.length === 0 ? (
+          {filteredTimelineEntries.length === 0 ? (
             <div className="py-12 text-center text-slate-500 text-xs">
-              No modalities or transitions scheduled for this date.
+              No modalities or transitions found matching this filter for {format(selectedDate, 'EEE, MMM d')}.
             </div>
           ) : (
-            timelineEntries.map((entry, idx) => {
+            filteredTimelineEntries.map((entry, idx) => {
               // -------------------------------------------------------------
               // CASE A: BIOLOGICAL TRANSITION MARKER ON THE VERTICAL TIMELINE
               // -------------------------------------------------------------
@@ -807,17 +974,19 @@ export default function DailyVerticalPulseView({
                       </span>
                     </div>
 
-                    {/* Transition Card */}
-                    <div className={`p-4 sm:p-5 rounded-2xl border transition-all space-y-3 relative overflow-hidden ${
+                    {/* Transition Card - Interactive click handler to explore kickoff mechanism */}
+                    <div 
+                      onClick={() => handleOpenTransitionMechanism(marker)}
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all space-y-3 relative overflow-hidden cursor-pointer hover:scale-[1.008] active:scale-[0.995] group/card ${
                       isGrowthOnset
-                        ? 'bg-gradient-to-br from-purple-950/60 via-slate-900 to-indigo-950/40 border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.2)]'
+                        ? 'bg-gradient-to-br from-purple-950/60 via-slate-900 to-indigo-950/40 border-purple-500/50 hover:border-purple-400 shadow-[0_0_25px_rgba(168,85,247,0.2)]'
                         : isRecoveryOnset
-                        ? 'bg-gradient-to-br from-emerald-950/60 via-slate-900 to-teal-950/40 border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.2)]'
+                        ? 'bg-gradient-to-br from-emerald-950/60 via-slate-900 to-teal-950/40 border-emerald-500/50 hover:border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.2)]'
                         : isPostLift
-                        ? 'bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border-indigo-500/40'
+                        ? 'bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border-indigo-500/40 hover:border-indigo-400'
                         : isMorning
-                        ? 'bg-gradient-to-br from-amber-950/35 via-slate-900 to-slate-900 border-amber-500/30'
-                        : 'bg-gradient-to-br from-teal-950/30 via-slate-900 to-slate-900 border-teal-500/30'
+                        ? 'bg-gradient-to-br from-amber-950/35 via-slate-900 to-slate-900 border-amber-500/30 hover:border-amber-400'
+                        : 'bg-gradient-to-br from-teal-950/30 via-slate-900 to-slate-900 border-teal-500/30 hover:border-teal-400'
                     }`}>
                       {/* Top Header */}
                       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -887,6 +1056,17 @@ export default function DailyVerticalPulseView({
                           </span>
                         ))}
                       </div>
+
+                      {/* Interactive Trigger Callout Footer */}
+                      <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+                        <span className="text-[11px] text-cyan-300 font-bold flex items-center gap-1.5 group-hover/card:text-cyan-200 transition-colors">
+                          <Sparkles size={12} className="text-cyan-400" />
+                          <span>Click to explore kickoff & mode-shift mechanism ➔</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                          {isGrowthOnset ? 'mTOR / Hypertrophy' : isRecoveryOnset ? 'AMPK / Autophagy' : 'Circadian Rhythm'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )
@@ -902,8 +1082,8 @@ export default function DailyVerticalPulseView({
               const timeStr = task.scheduled_time || formatHourToTimeStr(entry.hour)
 
               const lowerName = name.toLowerCase()
-              const isGrowth = lowerName.includes('lift') || lowerName.includes('resistance') || lowerName.includes('strength') || lowerName.includes('creatine') || lowerName.includes('protein') || lowerName.includes('hiit')
-              const isRecovery = lowerName.includes('sauna') || lowerName.includes('cold') || lowerName.includes('plunge') || lowerName.includes('breath') || lowerName.includes('walk') || lowerName.includes('sleep') || lowerName.includes('magnesium')
+              const isGrowth = lowerName.includes('lift') || lowerName.includes('resistance') || lowerName.includes('strength') || lowerName.includes('creatine') || lowerName.includes('protein') || lowerName.includes('hiit') || lowerName.includes('push') || lowerName.includes('pull') || lowerName.includes('legs')
+              const isRecovery = lowerName.includes('sauna') || lowerName.includes('cold') || lowerName.includes('plunge') || lowerName.includes('breath') || lowerName.includes('walk') || lowerName.includes('sleep') || lowerName.includes('magnesium') || lowerName.includes('fast') || lowerName.includes('berberine')
 
               const criticalMatch = findCriticalModalityMatch(task)
 
@@ -918,13 +1098,15 @@ export default function DailyVerticalPulseView({
                       : 'bg-cyan-400'
                   }`} />
 
-                  {/* Modality Card */}
-                  <div className={`p-4 rounded-xl border transition-all ${
+                  {/* Modality Card - Clickable to inspect mechanism */}
+                  <div 
+                    onClick={() => handleOpenTaskMechanism(task)}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer hover:scale-[1.008] active:scale-[0.995] group/taskcard ${
                     isGrowth 
-                      ? 'bg-purple-950/20 border-purple-500/30 hover:border-purple-500/50' 
+                      ? 'bg-purple-950/20 border-purple-500/30 hover:border-purple-400 hover:bg-purple-950/30 shadow-sm' 
                       : isRecovery 
-                      ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/50' 
-                      : 'bg-slate-900/60 border-white/10 hover:border-white/20'
+                      ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-950/30 shadow-sm' 
+                      : 'bg-slate-900/60 border-white/10 hover:border-white/25 hover:bg-slate-900/80'
                   }`}>
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -965,6 +1147,23 @@ export default function DailyVerticalPulseView({
                         </span>
                       )}
                     </div>
+
+                    {/* Interactive Click prompt */}
+                    <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+                      <span className={`text-[11px] font-bold flex items-center gap-1.5 transition-colors ${
+                        isGrowth 
+                          ? 'text-purple-300 group-hover/taskcard:text-purple-200' 
+                          : isRecovery 
+                          ? 'text-emerald-300 group-hover/taskcard:text-emerald-200' 
+                          : 'text-cyan-300 group-hover/taskcard:text-cyan-200'
+                      }`}>
+                        <Info size={12} />
+                        <span>Click to inspect {isGrowth ? 'Growth' : isRecovery ? 'Recovery' : 'Cellular'} mechanism & circadian timing ➔</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        Evidence & Molecular Rationale
+                      </span>
+                    </div>
                   </div>
                 </div>
               )
@@ -972,6 +1171,35 @@ export default function DailyVerticalPulseView({
           )}
         </div>
       </div>
+
+      {/* 7. MODALITY MECHANISM DEEP-DIVE MODAL */}
+      <ModalityMechanismModal
+        isOpen={isMechanismModalOpen && !!selectedMechanismDetail}
+        detail={selectedMechanismDetail}
+        onClose={() => {
+          setIsMechanismModalOpen(false)
+          setSelectedMechanismDetail(null)
+        }}
+      />
+
+      {/* 8. PROTOCOL OPTIMIZATION & CHRONO-ASSESSMENT MODAL */}
+      {isOptimizationModalOpen && (
+        <ProtocolOptimizationModal
+          isOpen={isOptimizationModalOpen}
+          onClose={() => setIsOptimizationModalOpen(false)}
+          findings={optimizationFindings}
+          localUserId={getLocalUserId()}
+          dateStr={dateStr}
+          growthPercentage={pulseBalance.growthPercentage}
+          recoveryPercentage={pulseBalance.recoveryPercentage}
+          onOptimizationApplied={() => {
+            if (onTaskUpdated) onTaskUpdated()
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('levl_protocol_updated'))
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

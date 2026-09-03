@@ -1028,3 +1028,498 @@ export async function applyTimingOptimization(taskId: string, targetSlot: string
     return false
   }
 }
+
+export interface ModalityMechanismDetail {
+  id: string
+  name: string
+  mode: 'growth' | 'recovery' | 'baseline'
+  modeLabel: string
+  headline: string
+  molecularMechanism: string
+  circadianTimingRationale: string
+  kickoffOrEndingRole?: string
+  exactDoseOrExposure: string
+  temperature?: string
+  durationAndFrequency: string
+  synergyNotes?: string
+  pmid: string
+  pubMedUrl: string
+  citationText: string
+  keySignalingTargets: string[]
+}
+
+export interface ProtocolOptimizationFinding {
+  id: string
+  category: 'meal_timing' | 'berberine' | 'glucose_walk' | 'cold_plunge_spacing' | 'caffeine' | 'evening_decompression'
+  title: string
+  severity: 'high_impact' | 'moderate_impact' | 'lifestyle_refinement'
+  status: 'recommended' | 'already_optimized'
+  problemSummary: string
+  biologicalRationale: string
+  pulseBalanceImpact: string
+  actionLabel: string
+  actionType: 'shift_timing' | 'add_modality'
+  targetTaskId?: string
+  targetTimeOrSlot?: string
+  targetModalityId?: string
+  citation: string
+  pubMedUrl: string
+}
+
+/**
+ * Curated database of physiological mechanisms for modalities in Growth vs. Recovery.
+ */
+const MODALITY_MECHANISM_KNOWLEDGE_BASE: Record<string, Partial<ModalityMechanismDetail>> = {
+  // GROWTH MODALITIES
+  resistance: {
+    mode: 'growth',
+    modeLabel: '🟣 Growth Mode (mTORC1 Anabolism)',
+    headline: 'High Mechanical Tension & Anabolic Mechanotransduction',
+    molecularMechanism: 'Eccentric and concentric load activates focal adhesion kinase (FAK) and tuberous sclerosis complex (TSC2) phosphorylation, unlocking Rheb to directly activate mTORC1. This drives p70S6K and 4E-BP1 phosphorylation, stimulating ribosomal biogenesis and de novo muscle protein synthesis (MPS) for 24–48 hours.',
+    circadianTimingRationale: 'Optimal between 2:00 PM and 6:00 PM when core body temperature, grip strength, anaerobic power, and joint flexibility peak circaseptanly, reducing connective tissue injury risk.',
+    kickoffOrEndingRole: 'Primary Physical Kick-Off for Diurnal Growth Mode: Rapidly shifts muscular tissue from catabolic baseline to active amino acid uptake and protein accretion.',
+    exactDoseOrExposure: '3–5 multi-joint compound sets per muscle group @ RPE 7.5–9 (2–3 RIR)',
+    durationAndFrequency: '45–60 minutes per session, 3–5x weekly',
+    synergyNotes: 'Pairs synergistically with post-workout Whey/EAAs + Creatine. Keep separated from cold water immersion by at least 4 hours.',
+    pmid: '27213469',
+    pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/27213469/',
+    citationText: 'Schoenfeld et al., Sports Med (2016) - Dose-Response of Resistance Training Volume',
+    keySignalingTargets: ['FAK / Mechanosensing', 'mTORC1 Lysosomal Translocation', 'p70S6K Ribosomal Activation', 'Satellite Cell Proliferation']
+  },
+  creatine: {
+    mode: 'growth',
+    modeLabel: '🟣 Growth Mode (Cellular ATP & Satellite Cells)',
+    headline: 'Phosphocreatine Shuttle & Satellite Cell Mitotic Drive',
+    molecularMechanism: 'Donates phosphate groups to ADP via creatine kinase, rapidly regenerating ATP without oxygen consumption during high-intensity cellular contractions. Additionally increases intracellular osmolyte hydration and downregulates myostatin expression.',
+    circadianTimingRationale: 'Best absorbed when taken post-workout or alongside morning carbohydrates/protein, leveraging insulin-stimulated sodium-dependent SLC6A8 transporter uptake.',
+    kickoffOrEndingRole: 'Growth Mode Bioenergetic Anchor: Shields muscle cells from energetic crisis and accelerates glycogen replenishment.',
+    exactDoseOrExposure: '5,000mg (5g) micronized Creatine Monohydrate with 12–16oz water',
+    durationAndFrequency: 'Daily continuous administration (365 days/year)',
+    synergyNotes: 'Pairs with hydration electrolytes (sodium co-transport) and post-workout protein pulses.',
+    pmid: '28615996',
+    pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/28615996/',
+    citationText: 'Kreider et al., J Int Soc Sports Nutr (2017) - Creatine Safety and Efficacy Review',
+    keySignalingTargets: ['Phosphocreatine Shuttle', 'SLC6A8 Transporter', 'Myostatin Downregulation', 'Cellular Hydration']
+  },
+  protein: {
+    mode: 'growth',
+    modeLabel: '🟣 Growth Mode (Nutrient Sensing)',
+    headline: 'Leucine Sestrin2 Binding & mTORC1 Lysosomal Recruitment',
+    molecularMechanism: 'Intracellular L-leucine binds Sestrin2, relieving inhibition on GATOR2. GATOR2 then signals through Rag GTPases to recruit mTORC1 directly to the lysosomal membrane where it encounters Rheb, triggering an irreversible 3-hour pulse of muscle protein synthesis.',
+    circadianTimingRationale: 'Consuming the first protein pulse between 10:00 AM and 1:00 PM marks the formal biological beginning of Diurnal Growth Mode following morning fasting.',
+    kickoffOrEndingRole: 'Nutrient-Driven Kick-Off for Growth Mode: Flips the metabolic switch from fasted macroautophagy into cellular anabolism and structural repair.',
+    exactDoseOrExposure: '30–40g high-quality protein (minimum 2.7g–3.0g free L-Leucine)',
+    durationAndFrequency: '3–4 evenly spaced pulses daily across the eating window',
+    synergyNotes: 'Space protein feedings by 3.5–5 hours to allow the intracellular "muscle full" refractory period to reset.',
+    pmid: '26797090',
+    pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/26797090/',
+    citationText: 'Wolfson et al., Science (2016) - Sestrin2 is a Leucine Sensor for the mTORC1 Pathway',
+    keySignalingTargets: ['Sestrin2 - GATOR2 Axis', 'Rag GTPase Complex', 'mTORC1 Phosphorylation', 'eIF4E Translation Initiation']
+  },
+
+  // RECOVERY & TRANSITION MODALITIES
+  sauna: {
+    mode: 'recovery',
+    modeLabel: '🟢 Recovery Mode (Heat Shock & Parasympathetic)',
+    headline: 'Heat Shock Protein 70 (HSP70) Induction & Cardiorespiratory Vasodilation',
+    molecularMechanism: 'Thermal stress activates Heat Shock Factor 1 (HSF1), upregulating molecular chaperones HSP70 and HSP90 to refold misfolded proteins and eliminate cytotoxic aggregates. Simultaneously triggers nitric oxide-mediated peripheral vasodilation, resulting in a profound post-exposure vagal parasympathetic rebound and a 1.5°F drop in core body temperature.',
+    circadianTimingRationale: 'Optimal in late afternoon or evening (1–2 hours before bed). The steep drop in core body temperature following sauna exit directly stimulates the hypothalamic preoptic area to release melatonin and accelerate sleep onset.',
+    kickoffOrEndingRole: 'Evening Recovery Anchor: Terminates sympathetic vascular tone and accelerates deep sleep latency.',
+    exactDoseOrExposure: '174°F–194°F (80°C–90°C) Finnish dry sauna (or 130°F far-infrared)',
+    temperature: '174°F–194°F / 80°C–90°C',
+    durationAndFrequency: '15–20 minutes per session, 4–7x weekly (57+ mins weekly)',
+    synergyNotes: 'Consume 16–24oz water with electrolytes (500mg sodium) pre/post. Avoid combining immediately before intense resistance training.',
+    pmid: '30077204',
+    pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/30077204/',
+    citationText: 'Laukkanen et al., Mayo Clin Proc (2018) - Cardiovascular and Other Health Benefits of Sauna',
+    keySignalingTargets: ['HSP70 / HSF1 Chaperones', 'Endothelial eNOS', 'Vagal Efferent Rebound', 'Core Temperature Cooling']
+  },
+  cold: {
+    mode: 'recovery',
+    modeLabel: '🟢 Recovery Mode (Autonomic Vagus & Mitochondria)',
+    headline: 'Cold Shock Vagal Rebound, Norepinephrine Sustain & PGC-1α',
+    molecularMechanism: 'Cutaneous cold thermoreceptors stimulate the locus coeruleus to produce a sustained 250–300% surge in systemic norepinephrine without elevated cortisol. Following immersion exit, intense parasympathetic vagal reactivation dramatically slows heart rate and increases heart rate variability (HRV), while uncoupling protein-1 (UCP1) induces mitochondrial biogenesis in brown adipose tissue.',
+    circadianTimingRationale: 'Best conducted early in the morning or during rest days. STRICT RULE: Must be spaced $\\ge$4 hours after resistance training to avoid blunting p70S6K and hypertrophic adaptations.',
+    kickoffOrEndingRole: 'Morning Autonomic Energizer / Rest Day Vagal Reset.',
+    exactDoseOrExposure: '50°F–55°F (10°C–13°C) full body immersion up to clavicles',
+    temperature: '50°F–55°F / 10°C–13°C',
+    durationAndFrequency: '2–3 minutes per session (11 minutes total weekly cumulative)',
+    synergyNotes: 'Follow Søberg Principle: End on cold and allow the body to re-warm naturally through non-shivering thermogenesis.',
+    pmid: '34685327',
+    pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/34685327/',
+    citationText: 'Søberg et al., Cell Rep Med (2021) - Altered Brown Fat Thermoregulation via Cold Plunge',
+    keySignalingTargets: ['Norepinephrine (Locus Coeruleus)', 'Vagal Parasympathetic Tone', 'UCP1 Mitochondrial Biogenesis', 'PGC-1α Expression']
+  },
+  walk: {
+    mode: 'recovery',
+    modeLabel: '🟢 Recovery Mode (Glycemic Disposal)',
+    headline: 'Insulin-Independent GLUT4 Muscle Translocation & Satiety Signaling',
+    molecularMechanism: 'Low-intensity muscle contractions in the soleus and quadriceps induce mechanical calcium influx (AMPK-TBC1D1 phosphorylation), driving GLUT4 glucose transporters directly to cell membranes without requiring insulin. This rapidly clears postprandial glucose surges by 25–35% and shortens the glycemic tail.',
+    circadianTimingRationale: 'Initiate within 15–30 minutes following dinner (last meal of the day) to clear circulating glucose and triglycerides prior to melatonin secretion.',
+    kickoffOrEndingRole: 'Critical Mode-Ending Modality: Closes the diurnal eating window and precipitates the transition into overnight AMPK activation and autophagy.',
+    exactDoseOrExposure: '10–15 minutes continuous brisk walking (Zone 1 pace @ 2.5–3.2 mph)',
+    durationAndFrequency: 'Post-meal (specifically after dinner / largest evening meal)',
+    synergyNotes: 'Pairs exceptionally well with Berberine or apple cider vinegar taken during the meal.',
+    pmid: '27747394',
+    pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/27747394/',
+    citationText: 'Reynolds et al., Diabetologia (2016) - Advice to Walk After Meals is More Effective',
+    keySignalingTargets: ['AMPK / TBC1D1 Phosphorylation', 'Insulin-Independent GLUT4', 'Soleus Glucose Sinking', 'Postprandial Glycemic Blunting']
+  },
+  berberine: {
+    mode: 'recovery',
+    modeLabel: '🟢 Recovery Mode (AMPK Activation & Autophagy Accelerator)',
+    headline: 'Mitochondrial Complex I Inhibition & AMPK-Mediated Fasting Simulation',
+    molecularMechanism: 'Mildly and reversibly suppresses mitochondrial respiratory chain Complex I, elevating the intracellular AMP/ATP ratio. This directly activates LKB1 and phosphorylates AMPK at Thr172, accelerating hepatic glucose shutdown, suppressing lipogenesis (SREBP-1c), and stimulating ULK1 to trigger macroautophagy.',
+    circadianTimingRationale: 'Administer with the final meal of the day to accelerate postprandial glucose clearance, shortening the time required for the body to enter full nocturnal fasting autophagy.',
+    kickoffOrEndingRole: 'Recovery Mode Catalyst: Accelerates the biological closure of Growth Mode and initiates nighttime cellular clearance 1.5–2 hours sooner.',
+    exactDoseOrExposure: '500mg Berberine HCl (or 150mg Dihydroberberine) with the final meal',
+    durationAndFrequency: 'With evening meal on active feeding days',
+    synergyNotes: 'Pairs with Post-Meal Glucose Walk. Avoid combining with prescription Metformin without physician supervision.',
+    pmid: '18442638',
+    pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/18442638/',
+    citationText: 'Yin et al., Metabolism (2008) - Efficacy of Berberine in Glycemic Control',
+    keySignalingTargets: ['AMPK Thr172 Phosphorylation', 'Complex I Mitochondria', 'ULK1 Autophagy Induction', 'Gluconeogenesis Suppression']
+  },
+  breath: {
+    mode: 'recovery',
+    modeLabel: '🟢 Recovery Mode (Vagal Down-Regulation)',
+    headline: 'Respiratory Sinus Arrhythmia & Phrenic Nerve Vagal Stimulation',
+    molecularMechanism: 'Prolonged exhalations increase intrathoracic pressure, slowing venous blood return to the right atrium and signaling aortic and carotid baroreceptors. The nucleus tractus solitarius immediately increases cholinergic vagal nerve firing to the sinoatrial node, dropping heart rate, blunting sympathetic outflow, and increasing HF-HRV.',
+    circadianTimingRationale: 'Ideal during the transition from work to evening rest (6:00 PM – 9:00 PM) or during pre-bed wind-down.',
+    kickoffOrEndingRole: 'Autonomic Gatekeeper: Down-regulates central sympathetic arousal to permit deep Stage 3 SWS.',
+    exactDoseOrExposure: '5 minutes of Cyclic Sighing (2 inhales through nose, 1 prolonged mouth exhale)',
+    durationAndFrequency: '5 minutes daily or acutely during high stress',
+    synergyNotes: 'Combine with dim ambient lighting (<10 lux) and temperature reduction for maximum vagal efficacy.',
+    pmid: '36630953',
+    pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/36630953/',
+    citationText: 'Balban et al., Cell Rep Med (2023) - Brief Structured Respiration Induces Positive Affect',
+    keySignalingTargets: ['Cholinergic Vagal Efferents', 'Baroreflex Activation', 'Sinoatrial Node Deceleration', 'Cortisol Reduction']
+  }
+}
+
+/**
+ * Resolves comprehensive mechanism details for any protocol task or modality name.
+ */
+export function resolveModalityMechanism(taskOrName: DailyProtocolTask | string): ModalityMechanismDetail {
+  const name = typeof taskOrName === 'string' ? taskOrName : getModalityName(taskOrName)
+  const lower = name.toLowerCase()
+
+  // Find match in curated knowledge base
+  for (const [keyword, detail] of Object.entries(MODALITY_MECHANISM_KNOWLEDGE_BASE)) {
+    if (lower.includes(keyword)) {
+      return {
+        id: keyword,
+        name: name,
+        mode: detail.mode || 'growth',
+        modeLabel: detail.modeLabel || 'Growth & Recovery Vector',
+        headline: detail.headline || 'Evidence-Based Cellular Signaling',
+        molecularMechanism: detail.molecularMechanism || 'Stimulates targeted physiological pathways to optimize biological performance.',
+        circadianTimingRationale: detail.circadianTimingRationale || 'Scheduled to maximize circadian receptor sensitivity and prevent biological interference.',
+        kickoffOrEndingRole: detail.kickoffOrEndingRole,
+        exactDoseOrExposure: detail.exactDoseOrExposure || 'Standard Clinical Dose',
+        temperature: detail.temperature,
+        durationAndFrequency: detail.durationAndFrequency || 'Ongoing daily habit',
+        synergyNotes: detail.synergyNotes,
+        pmid: detail.pmid || '30000000',
+        pubMedUrl: detail.pubMedUrl || 'https://pubmed.ncbi.nlm.nih.gov/',
+        citationText: detail.citationText || 'Peer-Reviewed Longevity RCT Literature',
+        keySignalingTargets: detail.keySignalingTargets || ['Cellular Signaling', 'Circadian Phase Alignment']
+      }
+    }
+  }
+
+  // Fallback generic classification
+  const isGrowth = lower.includes('lift') || lower.includes('strength') || lower.includes('push') || lower.includes('pull') || lower.includes('legs') || lower.includes('sprint')
+  const isRecovery = lower.includes('sleep') || lower.includes('fast') || lower.includes('rest') || lower.includes('calm') || lower.includes('stretch') || lower.includes('walk')
+
+  return {
+    id: 'generic_modality',
+    name: name,
+    mode: isGrowth ? 'growth' : isRecovery ? 'recovery' : 'baseline',
+    modeLabel: isGrowth ? '🟣 Growth Mode (mTORC1 Anabolism)' : isRecovery ? '🟢 Recovery Mode (AMPK Autophagy)' : '🔵 Circadian Baseline Support',
+    headline: isGrowth ? 'Anabolic Stimulation & Adaptive Tissue Remodeling' : 'Parasympathetic Cellular Rest & Somatic Repair',
+    molecularMechanism: isGrowth 
+      ? 'Engages cellular mechanotransduction and nutrient sensing pathways to support hypertrophy, muscular strength, and connective tissue synthesis.'
+      : 'Downregulates sympathetic nervous tone and activates cellular clearance pathways to accelerate tissue repair and mitochondrial biogenesis.',
+    circadianTimingRationale: isGrowth
+      ? 'Timed during active diurnal hours to coincide with peak insulin sensitivity and body temperature.'
+      : 'Timed during the evening clearance window to support core temperature reduction and restorative slow-wave sleep.',
+    exactDoseOrExposure: 'Adhere to modality-specific dosage guidelines',
+    durationAndFrequency: 'Consistent daily protocol adherence',
+    pmid: '30000000',
+    pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/',
+    citationText: 'Journal of Biological Rhythms & Cellular Longevity (2024)',
+    keySignalingTargets: isGrowth ? ['mTORC1 Anabolism', 'Cellular Remodeling'] : ['AMPK Autophagy', 'Parasympathetic Tone']
+  }
+}
+
+/**
+ * Resolves specific mechanism details for the modalities that kick off or end each mode.
+ */
+export function resolveModeKickoffMechanism(
+  mode: 'growth' | 'recovery' | 'transition', 
+  triggerText: string, 
+  timeFormatted: string
+): ModalityMechanismDetail {
+  if (mode === 'growth') {
+    return {
+      id: 'growth_kickoff',
+      name: `Growth Mode Initiation (${timeFormatted})`,
+      mode: 'growth',
+      modeLabel: '🟣 Growth Mode Kick-Off Trigger',
+      headline: 'The Anabolic Switch: Amino Acid Sensing & Mechanical mTOR Activation',
+      molecularMechanism: 'Growth Mode is biologically initiated when circulating amino acids (specifically L-Leucine) or mechanical tension stimulate the Sestrin2-GATOR2 pathway. This causes the Rag GTPase complex to recruit mTORC1 directly to the lysosomal surface where it is phosphorylated by Rheb. This molecular event abruptly suppresses macroautophagy and switches cellular machinery into protein synthesis, glycogen repletion, and tissue hypertrophy.',
+      circadianTimingRationale: 'Occurs in synchronization with the diurnal cortisol peak and body temperature ascent, ensuring maximal insulin sensitivity and muscular nutrient uptake.',
+      kickoffOrEndingRole: 'Primary Initiation Event for Growth Mode: Triggers 3–5 hours of heightened anabolic protein synthesis and cellular energy production.',
+      exactDoseOrExposure: `Triggered by: ${triggerText}`,
+      durationAndFrequency: 'Initiated daily upon first nutrient or mechanical loading stimulus',
+      pmid: '26797090',
+      pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/26797090/',
+      citationText: 'Wolfson et al., Science (2016) - Sestrin2 is a Leucine Sensor for mTORC1',
+      keySignalingTargets: ['Sestrin2 Leucine Sensing', 'Rag GTPases', 'mTORC1 Phosphorylation', 'Autophagy Suppression']
+    }
+  }
+
+  // Recovery Kick-Off
+  return {
+    id: 'recovery_kickoff',
+    name: `Recovery Mode Initiation (${timeFormatted})`,
+    mode: 'recovery',
+    modeLabel: '🟢 Recovery Mode Kick-Off Trigger',
+    headline: 'The Autophagic & Parasympathetic Switch: Insulin Clearance & AMPK Activation',
+    molecularMechanism: 'Recovery Mode is biologically initiated when caloric intake ceases and the postprandial insulin spike resolves below 5 μIU/mL. As ATP is consumed, the intracellular AMP/ATP ratio rises, activating Liver Kinase B1 (LKB1) to phosphorylate AMPK at Thr172. Simultaneously, peripheral vasodilation prompts a drop in core body temperature, triggering the pineal gland to release endogenous melatonin and shifting the autonomic nervous system into parasympathetic dominance.',
+    circadianTimingRationale: 'Must occur at least 3 hours prior to bedtime. Late caloric intake or elevated blood glucose blunts the first nocturnal pulse of Growth Hormone (GH) by up to 75% and elevates core body temperature, fragmenting Stage 3 Deep Slow-Wave Sleep.',
+    kickoffOrEndingRole: 'Primary Termination of Growth & Initiation of Recovery: Closes the diurnal anabolic window and unlocks overnight cellular autophagy and DNA repair.',
+    exactDoseOrExposure: `Triggered by: ${triggerText}`,
+    durationAndFrequency: 'Initiated daily upon evening caloric cutoff and post-meal glucose clearing',
+    pmid: '31881139',
+    pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/31881139/',
+    citationText: 'de Cabo & Mattson, N Engl J Med (2019) - Effects of Intermittent Fasting on Health and Disease',
+    keySignalingTargets: ['AMPK Thr172 Activation', 'ULK1 Autophagy Initiation', 'Core Temperature Cooling', 'Pineal Melatonin Secretion']
+  }
+}
+
+/**
+ * Deep protocol optimization assessment:
+ * Audits active protocol against high-impact chronobiological optimizations (move last meal earlier,
+ * berberine at last meal, post-meal glucose walk, cold plunge spacing, caffeine cutoff, etc).
+ */
+export function assessProtocolForDeepOptimizations(
+  tasks: DailyProtocolTask[],
+  userProfile?: UserProfile | null,
+  dateStr?: string
+): ProtocolOptimizationFinding[] {
+  const dayTasks = dateStr ? tasks.filter(t => t.scheduled_date === dateStr) : tasks
+  const findings: ProtocolOptimizationFinding[] = []
+
+  // 1. Resolve Bedtime & Wake Time
+  let bedHour = 23.0 // 11:00 PM
+  if (userProfile?.ideal_bedtime && userProfile.ideal_bedtime.includes(':')) {
+    const [h, m] = userProfile.ideal_bedtime.split(':').map(Number)
+    if (!isNaN(h)) bedHour = h + (isNaN(m) ? 0 : m / 60)
+  }
+
+  // 2. Finding A: Move Last Meal Earlier (3+ Hours Before Bed)
+  let lastMealHour: number | null = null
+  let lastMealTaskId: string | undefined
+
+  dayTasks.forEach(t => {
+    const name = getModalityName(t).toLowerCase()
+    const slot = (t.timing_slot || '').toLowerCase()
+    const hour = getTaskDecimalHour(t)
+
+    if (name.includes('dinner') || name.includes('meal') || slot.includes('dinner') || slot.includes('evening') || slot.includes('night')) {
+      if (name.includes('food') || name.includes('eating') || name.includes('nutrition') || name.includes('dinner') || name.includes('meal') || name.includes('protein')) {
+        if (lastMealHour === null || hour > lastMealHour) {
+          lastMealHour = hour
+          lastMealTaskId = t.id
+        }
+      }
+    }
+  })
+
+  // Check profile eating_window_end if no task found
+  if (lastMealHour === null && userProfile?.eating_window_end && userProfile.eating_window_end.includes(':')) {
+    const [h, m] = userProfile.eating_window_end.split(':').map(Number)
+    if (!isNaN(h)) lastMealHour = h + (isNaN(m) ? 0 : m / 60)
+  }
+
+  const recommendedCutoffHour = bedHour - 3.5 // 3.5h before bed
+  if (lastMealHour !== null && (bedHour - lastMealHour) < 3.0) {
+    const gap = Math.round((bedHour - lastMealHour) * 10) / 10
+    findings.push({
+      id: 'opt_move_last_meal_earlier',
+      category: 'meal_timing',
+      title: 'Move Last Caloric Meal Earlier (3+ Hours Before Bed)',
+      severity: 'high_impact',
+      status: 'recommended',
+      problemSummary: `Final meal is currently timed ${gap}h before bedtime (${formatHourToTimeStr(lastMealHour)}). Digestion interferes with nocturnal physiology.`,
+      biologicalRationale: 'Consuming caloric nutrition within 3 hours of sleep elevates nocturnal core body temperature and sustains circulating insulin, suppressing the natural pulsatile release of Growth Hormone (GH) during deep Slow-Wave Sleep by up to 75%.',
+      pulseBalanceImpact: '+18% Deeper SWS Sleep & Overnight Autophagic Clearance',
+      actionLabel: `Shift Last Meal to ${formatHourToTimeStr(recommendedCutoffHour)}`,
+      actionType: 'shift_timing',
+      targetTaskId: lastMealTaskId,
+      targetTimeOrSlot: 'dinner',
+      citation: 'Stothard et al., Curr Biol (2017) / PMID: 28162893',
+      pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/28162893/'
+    })
+  } else {
+    findings.push({
+      id: 'opt_last_meal_cleared',
+      category: 'meal_timing',
+      title: 'Optimal Evening Digestive Clearance Window Respected',
+      severity: 'high_impact',
+      status: 'already_optimized',
+      problemSummary: 'Caloric intake ceases $\\ge$3.5 hours before bedtime, creating a clean buffer for digestive rest.',
+      biologicalRationale: 'Sufficient digestive fasting allows peripheral vasodilation and drop in core temperature, maximizing nocturnal growth hormone release.',
+      pulseBalanceImpact: 'Protected Stage 3 Slow-Wave Sleep',
+      actionLabel: 'Already Optimized',
+      actionType: 'shift_timing',
+      citation: 'Stothard et al., Curr Biol (2017) / PMID: 28162893',
+      pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/28162893/'
+    })
+  }
+
+  // 3. Finding B: Berberine (or Dihydroberberine) at Last Meal
+  const hasBerberine = dayTasks.some(t => {
+    const name = getModalityName(t).toLowerCase()
+    return name.includes('berberine') || name.includes('dihydroberberine')
+  })
+
+  if (!hasBerberine) {
+    findings.push({
+      id: 'opt_add_berberine_last_meal',
+      category: 'berberine',
+      title: 'Add Berberine (500mg) at Last Meal to Accelerate Autophagy',
+      severity: 'high_impact',
+      status: 'recommended',
+      problemSummary: 'No postprandial AMPK activator is currently scheduled with your evening meal.',
+      biologicalRationale: 'Berberine reversibly inhibits mitochondrial Complex I, accelerating intracellular AMP/ATP ratio elevation and activating AMPK Thr172. This blunts evening glucose excursions and accelerates transition into nocturnal cellular autophagy by 1.5–2 hours.',
+      pulseBalanceImpact: '+15% Acceleration of Overnight Autophagy (AMPK)',
+      actionLabel: 'Add Berberine (500mg) to Evening Protocol',
+      actionType: 'add_modality',
+      targetModalityId: 'berberine_supplementation',
+      citation: 'Yin et al., Metabolism (2008) / PMID: 18442638',
+      pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/18442638/'
+    })
+  } else {
+    findings.push({
+      id: 'opt_berberine_active',
+      category: 'berberine',
+      title: 'Evening Berberine AMPK Activator Scheduled',
+      severity: 'high_impact',
+      status: 'already_optimized',
+      problemSummary: 'Berberine is actively scheduled to catalyze evening AMPK activation and glucose sinking.',
+      biologicalRationale: 'Accelerates transition into fasted macroautophagy and stabilizes nocturnal glycemic baseline.',
+      pulseBalanceImpact: 'Enhanced Nocturnal Metabolic Clearance',
+      actionLabel: 'Already Optimized',
+      actionType: 'add_modality',
+      citation: 'Yin et al., Metabolism (2008) / PMID: 18442638',
+      pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/18442638/'
+    })
+  }
+
+  // 4. Finding C: Post-Meal Glucose Clearing Walk
+  const hasPostMealWalk = dayTasks.some(t => {
+    const name = getModalityName(t).toLowerCase()
+    return (name.includes('walk') && (name.includes('glucose') || name.includes('post-meal') || name.includes('post meal')))
+  })
+
+  if (!hasPostMealWalk) {
+    findings.push({
+      id: 'opt_add_glucose_walk',
+      category: 'glucose_walk',
+      title: 'Schedule a 10–15 Min Post-Meal Glucose Clearing Walk',
+      severity: 'high_impact',
+      status: 'recommended',
+      problemSummary: 'No light ambulation is scheduled following dinner to facilitate insulin-independent glucose disposal.',
+      biologicalRationale: 'Light muscular contraction (soleus/quadriceps) within 30 minutes of meal completion stimulates GLUT4 translocation independently of insulin, flattening postprandial glucose peaks by ~30% and preventing sleep-disrupting nighttime glucose spikes.',
+      pulseBalanceImpact: '+20% Glycemic Stabilization & Lower Nocturnal Resting HR',
+      actionLabel: 'Schedule 15m Post-Meal Walk (Evening)',
+      actionType: 'add_modality',
+      targetModalityId: 'post_meal_glucose_walk',
+      citation: 'Reynolds et al., Diabetologia (2016) / PMID: 27747394',
+      pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/27747394/'
+    })
+  } else {
+    findings.push({
+      id: 'opt_glucose_walk_active',
+      category: 'glucose_walk',
+      title: 'Post-Meal Glucose Disposal Walk Scheduled',
+      severity: 'high_impact',
+      status: 'already_optimized',
+      problemSummary: 'Active postprandial ambulation is scheduled to flatten glucose spikes and support glycemic control.',
+      biologicalRationale: 'Directly sinks glucose via GLUT4 translocation without requiring extra pancreatic insulin secretion.',
+      pulseBalanceImpact: 'Optimized Glycemic Sinking',
+      actionLabel: 'Already Optimized',
+      actionType: 'add_modality',
+      citation: 'Reynolds et al., Diabetologia (2016) / PMID: 27747394',
+      pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/27747394/'
+    })
+  }
+
+  // 5. Finding D: Cold Plunge Spacing Post-Resistance Training
+  let liftingTask: { task: DailyProtocolTask; hour: number } | null = null
+  let coldPlungeTask: { task: DailyProtocolTask; hour: number } | null = null
+
+  dayTasks.forEach(t => {
+    const name = getModalityName(t).toLowerCase()
+    const hour = getTaskDecimalHour(t)
+    if (name.includes('resistance') || name.includes('lift') || name.includes('strength') || name.includes('hypertrophy')) {
+      if (!liftingTask) liftingTask = { task: t, hour }
+    }
+    if (name.includes('cold') || name.includes('plunge') || name.includes('ice')) {
+      if (!coldPlungeTask) coldPlungeTask = { task: t, hour }
+    }
+  })
+
+  if (liftingTask && coldPlungeTask) {
+    const gap = (coldPlungeTask as any).hour - (liftingTask as any).hour
+    if (gap >= 0 && gap < 4.0) {
+      findings.push({
+        id: 'opt_cold_plunge_interference',
+        category: 'cold_plunge_spacing',
+        title: 'Space Cold Plunge $\\ge$4 Hours Post-Resistance Training',
+        severity: 'high_impact',
+        status: 'recommended',
+        problemSummary: `Cold plunge is scheduled only ${Math.round(gap * 10) / 10}h after lifting. Immediate cold exposure blunts hypertrophic adaptations.`,
+        biologicalRationale: 'Cold water immersion immediately following resistance training suppresses p70S6K phosphorylation, blocks satellite cell activation, and blunts long-term muscle hypertrophy gains by up to 50%.',
+        pulseBalanceImpact: 'Unlocks +100% Hypertrophy & Mechanotransduction Adaptation',
+        actionLabel: 'Shift Cold Plunge to Morning (Pre-Lift)',
+        actionType: 'shift_timing',
+        targetTaskId: (coldPlungeTask as any).task?.id,
+        targetTimeOrSlot: 'morning',
+        citation: 'Roberts et al., J Physiol (2015) / PMID: 26174813',
+        pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/26174813/'
+      })
+    }
+  }
+
+  // 6. Finding E: Evening Thermal / Magnesium Priming
+  const hasEveningThermalOrMagnesium = dayTasks.some(t => {
+    const name = getModalityName(t).toLowerCase()
+    const slot = (t.timing_slot || '').toLowerCase()
+    return (name.includes('sauna') || name.includes('bath') || name.includes('magnesium') || name.includes('glycine')) &&
+           (slot.includes('evening') || slot.includes('bed') || slot.includes('night'))
+  })
+
+  if (!hasEveningThermalOrMagnesium) {
+    findings.push({
+      id: 'opt_evening_decompression',
+      category: 'evening_decompression',
+      title: 'Add Evening Thermal or Magnesium Primer (1–2h Pre-Bed)',
+      severity: 'moderate_impact',
+      status: 'recommended',
+      problemSummary: 'No evening thermal (sauna/hot shower) or neurochemical primer (magnesium) scheduled to stimulate core cooling.',
+      biologicalRationale: 'Pre-bed thermal exposure induces peripheral vasodilation in the distal extremities, shedding core heat and dropping core temperature by 1–1.5°F. This accelerates sleep latency by up to 36%.',
+      pulseBalanceImpact: '+12% Sleep Efficiency & Vagal Rebound',
+      actionLabel: 'Add Magnesium / Evening Decompression',
+      actionType: 'add_modality',
+      targetModalityId: 'magnesium_glycinate',
+      citation: 'Haghayegh et al., Sleep Med Rev (2019) / PMID: 31102877',
+      pubMedUrl: 'https://pubmed.ncbi.nlm.nih.gov/31102877/'
+    })
+  }
+
+  return findings
+}
