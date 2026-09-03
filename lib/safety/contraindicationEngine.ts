@@ -59,18 +59,32 @@ function normalizeTerm(str: string): string {
  */
 const CLASS_SYNONYMS: Record<string, string[]> = {
   anticoagulant: ['warfarin', 'coumadin', 'eliquis', 'xarelto', 'pradaxa', 'plavix', 'clopidogrel', 'aspirin', 'blood thinner', 'blood thinners', 'heparin', 'antiplatelet'],
-  statin: ['atorvastatin', 'lipitor', 'rosuvastatin', 'crestor', 'simvastatin', 'zocor', 'pravastatin', 'cholesterol med'],
+  statin: ['atorvastatin', 'lipitor', 'rosuvastatin', 'crestor', 'simvastatin', 'zocor', 'pravastatin', 'cholesterol med', 'pcsk9'],
   hypertension: ['high blood pressure', 'elevated bp', 'hypertensive', 'uncontrolled hypertension', 'essential hypertension'],
-  antihypertensive: ['lisinopril', 'losartan', 'amlodipine', 'metoprolol', 'atenolol', 'hydrochlorothiazide', 'hctz', 'blood pressure med', 'beta blocker', 'ace inhibitor', 'arb'],
-  ssri: ['sertraline', 'zoloft', 'escitalopram', 'lexapro', 'fluoxetine', 'prozac', 'citalopram', 'celexa', 'paroxetine', 'paxil', 'antidepressant', 'snri', 'duloxetine', 'cymbalta', 'venlafaxine'],
-  maoi: ['selegiline', 'emsam', 'phenelzine', 'nardil', 'tranylcypromine', 'parnate', 'rasagiline', 'azilect', 'mao inhibitor'],
-  thyroid: ['levothyroxine', 'synthroid', 'armour thyroid', 'liothyronine', 'cytomel', 'hypothyroid', 'hashimoto'],
-  hypoglycemic: ['metformin', 'glucophage', 'glipizide', 'semaglutide', 'ozempic', 'wegovy', 'tirzepatide', 'mounjaro', 'zepbound', 'insulin', 'glp 1', 'diabetes med'],
+  antihypertensive: ['lisinopril', 'losartan', 'amlodipine', 'metoprolol', 'atenolol', 'hydrochlorothiazide', 'hctz', 'blood pressure med', 'beta blocker', 'ace inhibitor', 'arb', 'calcium channel blocker'],
+  ssri: ['sertraline', 'zoloft', 'escitalopram', 'lexapro', 'fluoxetine', 'prozac', 'citalopram', 'celexa', 'paroxetine', 'paxil', 'antidepressant', 'snri', 'duloxetine', 'cymbalta', 'venlafaxine', 'wellbutrin', 'bupropion'],
+  maoi: ['selegiline', 'emsam', 'phenelzine', 'nardil', 'tranylcypromine', 'parnate', 'rasagiline', 'azilect', 'mao inhibitor', 'maoi'],
+  stimulant: ['stimulant', 'adderall', 'vyvanse', 'ritalin', 'methylphenidate', 'modafinil', 'armodafinil', 'amphetamine', 'dexedrine', 'adhd med'],
+  glp1: ['semaglutide', 'ozempic', 'wegovy', 'tirzepatide', 'mounjaro', 'zepbound', 'liraglutide', 'saxenda', 'glp 1', 'glp1', 'incretin'],
+  metformin: ['metformin', 'glucophage', 'ampk activator', 'sglt2', 'empagliflozin', 'jardiance', 'dapagliflozin', 'farxiga'],
+  thyroid: ['levothyroxine', 'synthroid', 'armour thyroid', 'liothyronine', 'cytomel', 'hypothyroid', 'hashimoto', 'thyroid hormone'],
+  hrt_trt: ['testosterone', 'trt', 'estrogen', 'estradiol', 'progesterone', 'hrt', 'hormone replacement', 'dhea', 'sex hormones'],
+  immunosuppressant: ['rapamycin', 'sirolimus', 'everolimus', 'cyclosporine', 'tacrolimus', 'methotrexate', 'biologic', 'prednisone', 'corticosteroid', 'dexamethasone', 'humira'],
+  sedative_sleep: ['ambien', 'zolpidem', 'xanax', 'alprazolam', 'ativan', 'lorazepam', 'klonopin', 'clonazepam', 'gabapentin', 'pregabalin', 'lyrica', 'benzodiazepine', 'z drug', 'sleep med', 'sedative'],
+  pde5: ['tadalafil', 'cialis', 'sildenafil', 'viagra', 'pde5 inhibitor', 'pde 5'],
+  ppi_antacid: ['omeprazole', 'prilosec', 'pantoprazole', 'esomeprazole', 'nexium', 'famotidine', 'pepcid', 'ppi', 'proton pump inhibitor', 'h2 blocker', 'acid blocker'],
+  antihistamine: ['cetirizine', 'zyrtec', 'loratadine', 'claritin', 'fexofenadine', 'allegra', 'diphenhydramine', 'benadryl', 'ketotifen', 'antihistamine', 'mast cell'],
+  hypoglycemic: ['metformin', 'glucophage', 'glipizide', 'semaglutide', 'ozempic', 'wegovy', 'tirzepatide', 'mounjaro', 'zepbound', 'insulin', 'glp 1', 'diabetes med', 'sglt2'],
   arrhythmia: ['atrial fibrillation', 'afib', 'tachycardia', 'bradycardia', 'long qt', 'heart flutter', 'irregular heartbeat'],
-  kidney_disease: ['chronic kidney disease', 'ckd', 'renal impairment', 'renal failure', 'low egfr', 'nephropathy'],
-  liver_disease: ['cirrhosis', 'fatty liver', 'elevated ast', 'elevated alt', 'hepatitis', 'liver failure', 'hepatic impairment'],
+  pots: ['pots', 'postural orthostatic tachycardia', 'orthostatic hypotension', 'low blood pressure', 'dysautonomia'],
+  kidney_disease: ['chronic kidney disease', 'ckd', 'renal impairment', 'renal failure', 'low egfr', 'nephropathy', 'kidney disease'],
+  liver_disease: ['cirrhosis', 'fatty liver', 'elevated ast', 'elevated alt', 'hepatitis', 'liver failure', 'hepatic impairment', 'nafld', 'masld', 'nash'],
   g6pd: ['g6pd deficiency', 'glucose 6 phosphate dehydrogenase', 'favism'],
-  bleeding_disorder: ['hemophilia', 'von willebrand', 'thrombocytopenia', 'bleeding disorder', 'platelet disorder'],
+  bleeding_disorder: ['hemophilia', 'von willebrand', 'thrombocytopenia', 'bleeding disorder', 'platelet disorder', 'easy bruising'],
+  epilepsy: ['epilepsy', 'seizure', 'convulsion', 'history of seizures', 'anticonvulsant'],
+  osteoporosis: ['osteopenia', 'osteoporosis', 'low bone density', 'bone loss'],
+  autoimmune: ['autoimmune', 'hashimoto', 'rheumatoid arthritis', 'crohn', 'colitis', 'lupus', 'psoriasis', 'ankylosing spondylitis', 'celiac', 'sjogren'],
+  histamine: ['histamine intolerance', 'mcas', 'mast cell activation', 'high histamine'],
   malignancy: ['cancer', 'tumor', 'active cancer', 'oncology', 'chemotherapy', 'lymphoma', 'leukemia', 'carcinoma', 'melanoma', 'neoplasm']
 }
 
@@ -303,6 +317,74 @@ export function detectContraindications(
         headline: 'Oncological Growth Signal Hazard',
         clinicalRationale: 'Growth hormone secretagogues increase systemic IGF-1 and somatotropic axis activity, which can drive accelerated mitotic proliferation and inhibit apoptosis in neoplastic tissues.',
         actionAdvice: 'GHRP and GHRH peptides are strictly contraindicated with active malignancy.'
+      })
+    }
+  }
+
+  // Rule G: Stimulant Prescriptions x High Adrenergic Agents (Yohimbine, Ephedrine)
+  const hasStimulant = medications.some(m => isTermMatch(m, CLASS_SYNONYMS.stimulant))
+  if (hasStimulant) {
+    if (modId.includes('yohimbine') || modName.toLowerCase().includes('yohimbine') || modId.includes('ephedrine')) {
+      warnings.push({
+        id: `rule_stimulant_yohimbine_${modId}`,
+        level: 'critical',
+        triggerTerm: 'Additive Adrenergic Surge',
+        userItem: 'Stimulant Prescription (Adderall / Vyvanse / Modafinil)',
+        modalityName: modName,
+        headline: 'Dangerous Sympathomimetic Hazard',
+        clinicalRationale: 'Combining central dopamine/norepinephrine stimulants with alpha-2 adrenergic antagonists (Yohimbine) produces compounded tachycardia, malignant hypertension, and cardiac strain.',
+        actionAdvice: 'Strictly avoid Yohimbine and sympathomimetic thermogenics while taking prescription stimulants.'
+      })
+    }
+  }
+
+  // Rule H: Epilepsy / Seizure History x Cyclic Hyperventilation (Wim Hof / Breath Holds)
+  const hasEpilepsy = conditions.some(c => isTermMatch(c, CLASS_SYNONYMS.epilepsy))
+  if (hasEpilepsy) {
+    if (modId.includes('hyperventilation') || modId.includes('wim_hof') || modName.toLowerCase().includes('wim hof') || modName.toLowerCase().includes('hyperventilation')) {
+      warnings.push({
+        id: `rule_epilepsy_breathwork_${modId}`,
+        level: 'critical',
+        triggerTerm: 'Hypocapnic Seizure Threshold Lowering',
+        userItem: 'History of Seizures / Epilepsy',
+        modalityName: modName,
+        headline: 'Seizure Induction Precaution',
+        clinicalRationale: 'Prolonged cyclic hyperventilation causes acute cerebral vasoconstriction and hypocapnia (drop in arterial pCO2), which directly triggers generalized spike-and-wave discharges and lowers the clinical seizure threshold.',
+        actionAdvice: 'Avoid vigorous hyperventilation breathwork. Stick to gentle parasympathetic patterns like Box Breathing or Cyclic Sighing.'
+      })
+    }
+  }
+
+  // Rule I: POTS / Orthostatic Hypotension x Extreme Sauna / Hot Plunge
+  const hasPOTS = conditions.some(c => isTermMatch(c, CLASS_SYNONYMS.pots))
+  if (hasPOTS) {
+    if (modId.includes('sauna') || modName.toLowerCase().includes('sauna') || modId.includes('hot_bath')) {
+      warnings.push({
+        id: `rule_pots_sauna_${modId}`,
+        level: 'caution',
+        triggerTerm: 'Peripheral Vasodilatory Syncope',
+        userItem: 'POTS / Orthostatic Hypotension',
+        modalityName: modName,
+        headline: 'Orthostatic Blood Pressure Drop Risk',
+        clinicalRationale: 'High ambient thermal exposure produces profound peripheral vasodilation, resulting in severe venous pooling and compensatory tachycardia that can trigger syncope (fainting) upon standing in POTS patients.',
+        actionAdvice: 'Limit sauna temperature to moderate levels, hydrate heavily with sodium/electrolytes pre/post, and exit slowly while seated.'
+      })
+    }
+  }
+
+  // Rule J: PDE5 Inhibitors x High-Dose Nitric Oxide Donors
+  const hasPDE5 = medications.some(m => isTermMatch(m, CLASS_SYNONYMS.pde5))
+  if (hasPDE5) {
+    if (modId.includes('nitroglycerin') || modName.toLowerCase().includes('nitroglycerin')) {
+      warnings.push({
+        id: `rule_pde5_nitrate_${modId}`,
+        level: 'critical',
+        triggerTerm: 'Synergistic cGMP Hypotension',
+        userItem: 'PDE5 Inhibitor (Tadalafil / Sildenafil)',
+        modalityName: modName,
+        headline: 'Severe Hypotensive Shock Hazard',
+        clinicalRationale: 'PDE5 inhibitors prevent cyclic GMP degradation, leading to massive, uncontrolled vasodilation and fatal hypotension when combined with organic nitrates.',
+        actionAdvice: 'Never combine PDE5 inhibitors with nitrates.'
       })
     }
   }

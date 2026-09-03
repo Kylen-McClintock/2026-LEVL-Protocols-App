@@ -312,6 +312,14 @@ export default function SettingsPage() {
         {profile && <ProfileEditor profile={profile} outcomes={outcomes} />}
 
         {profile && (
+          <MedicalHistoryPrescriptionsCard 
+            profile={profile} 
+            localUserId={authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()}
+            onProfileUpdated={(updated) => setProfile(updated)} 
+          />
+        )}
+
+        {profile && (
           <FunctionalOutcomesRankingCard 
             profile={profile} 
             outcomes={outcomes} 
@@ -355,14 +363,6 @@ export default function SettingsPage() {
         )}
 
         {profile && <BloodworkProfileCard profile={profile} />}
-
-        {profile && (
-          <MedicalHistoryPrescriptionsCard 
-            profile={profile} 
-            localUserId={authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()}
-            onProfileUpdated={(updated) => setProfile(updated)} 
-          />
-        )}
 
         {profile && (
           <NegativeLongevityFactorsCard 
