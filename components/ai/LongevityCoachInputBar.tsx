@@ -10,7 +10,8 @@ import {
   Plus,
   ArrowRight,
   Zap,
-  Check
+  Check,
+  Sliders
 } from 'lucide-react'
 import { UserProfile, DailyProtocolTask } from '@/lib/types'
 
@@ -41,6 +42,7 @@ interface LongevityCoachInputBarProps {
   userProfile?: UserProfile | null
   todayTasks?: DailyProtocolTask[]
   onAddToToday?: (modalityId: string) => Promise<void>
+  onOpenModalityStudio?: (name: string, aiSuggestions?: any) => void
   currentTipHeadline?: string
 }
 
@@ -48,6 +50,7 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
   userProfile,
   todayTasks = [],
   onAddToToday,
+  onOpenModalityStudio,
   currentTipHeadline
 }) => {
   const router = useRouter()
@@ -269,23 +272,44 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
                   {response.suggestedAdditions.map((modalityName, idx) => {
                     const isAdded = addedItems[modalityName]
                     return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={async () => {
-                          await onAddToToday(modalityName)
-                          setAddedItems(prev => ({ ...prev, [modalityName]: true }))
-                        }}
-                        disabled={isAdded}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
-                          isAdded
-                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                            : 'bg-purple-600/20 hover:bg-purple-600/30 border-purple-500/50 text-purple-200 hover:text-white'
-                        }`}
-                      >
-                        {isAdded ? <Check size={12} /> : <Plus size={12} />}
-                        <span>{isAdded ? 'Added to Today' : `Add ${modalityName} to Today`}</span>
-                      </button>
+                      <div key={idx} className="inline-flex items-center rounded-xl bg-slate-900 border border-purple-500/40 p-0.5 shadow-sm">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await onAddToToday(modalityName)
+                            setAddedItems(prev => ({ ...prev, [modalityName]: true }))
+                          }}
+                          disabled={isAdded}
+                          className={`text-xs font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                            isAdded
+                              ? 'bg-emerald-500/20 text-emerald-300'
+                              : 'hover:bg-purple-600/30 text-purple-200 hover:text-white'
+                          }`}
+                        >
+                          {isAdded ? <Check size={12} /> : <Plus size={12} />}
+                          <span>{isAdded ? 'Added to Today' : `Add ${modalityName} to Today`}</span>
+                        </button>
+
+                        {onOpenModalityStudio && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onOpenModalityStudio(modalityName, {
+                                suggestedDose: (response as any).suggestedDose,
+                                suggestedTiming: (response as any).suggestedTiming,
+                                suggestedDays: (response as any).suggestedDays,
+                                suggestedScheduleMode: (response as any).suggestedScheduleMode,
+                                suggestedRestIntervalDays: (response as any).suggestedRestIntervalDays
+                              })
+                            }}
+                            className="p-1.5 px-2 rounded-lg text-slate-400 hover:text-purple-300 hover:bg-slate-800 transition-colors border-l border-slate-800 flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                            title="Dial In Dosage & Cadence"
+                          >
+                            <Sliders size={12} className="text-purple-400" />
+                            <span className="hidden sm:inline">Dial In</span>
+                          </button>
+                        )}
+                      </div>
                     )
                   })}
                 </div>

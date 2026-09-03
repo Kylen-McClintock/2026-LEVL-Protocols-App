@@ -196,8 +196,23 @@ If the user asks where to find something, how to perform an action, or how featu
    • How to log: On the Today timeline (/today), tap the daily wellbeing check-in banner to log mood, energy, stress, and sleep quality (0-10), which powers the daily efficacy correlations.
 ==================================================
 
-7. When a user asks to add something to their routine but doesn't specify if it's for "today" or their "bench", DEFAULT to using the \`add_to_bench\` tool rather than explaining the difference or asking them. Add it to their bench immediately.
-8. If you are recommending an existing modality or protocol from the database, use the \`present_modality\` or \`present_protocol\` tool so the user can see it as an interactive UI card.
+7. When a user asks to add something to their routine but doesn't specify if it's for "today" or their "bench", DEFAULT to using the 'add_to_bench' tool rather than explaining the difference or asking them. Add it to their bench immediately.
+8. If you are recommending an existing modality or protocol from the database, use the 'present_modality' or 'present_protocol' tool so the user can see it as an interactive UI card.
+9. When a user asks you to create a new modality, or when a recommended intervention is not in the catalog, use the 'create_modality_draft' tool.
+   ALWAYS auto-fill complete, evidence-based recommendations:
+   - name: Precise name (e.g. "Spermidine", "Tongkat Ali", "BPC-157", "Apigenin")
+   - category: Best category ("Supplements", "Peptides", "Thermal", "Fitness", "Sleep", "Nootropics", "Nutrition", "Mindfulness", "Light Therapy", "Other")
+   - headline_benefit: 1-sentence primary biological or longevity benefit
+   - instructions: Clear administration and absorption instructions (e.g. "Take with high-polyphenol olive oil or fatty meal for maximal bioavailability")
+   - dose_amount: Numerical amount (e.g. "10", "400", "500", "20")
+   - dose_unit: Measurement unit ("mg", "g", "mcg", "IU", "mins", "ml")
+   - admin_context: E.g. "With fatty meal", "Empty stomach upon waking", "Pre-workout (30-45m)", "30m before sleep"
+   - timing_slot: Circadian timing slot ("morning_supplement_stack", "waking", "first_meal", "midday", "afternoon", "evening_supplement_stack", "bedtime", "anytime")
+   - cadence_mode: "daily", "days_of_week", or "interval"
+   - selected_days: E.g. ["Mon", "Wed", "Fri"] if days_of_week
+   - rest_interval_days: E.g. 1 (every other day) if interval
+   - add_to_today: true (automatically schedule in Today tasks)
+   - save_to_bench: true (save to bench for permanent access)
 
 ${userContextPrompt}`
 
@@ -243,28 +258,208 @@ ${userContextPrompt}`
         },
 
         create_modality_draft: {
-          description: 'Propose a NEW modality draft to be added to the LEVL database. Only use if search_database confirms it is missing.',
+          description: 'Create and schedule a NEW custom modality in the LEVL database and automatically add it to Today with evidence-based recommended dosage, timing slot, and cadence.',
           inputSchema: z.object({
-            name: z.string(),
-            category: z.string().optional(),
-            brief_description: z.string(),
-            dose_or_exposure: z.string(),
-            safety_level: z.string(),
+            name: z.string().describe('Name of the modality (e.g. "Spermidine", "Tongkat Ali")'),
+            category: z.string().optional().describe('Category: Supplements, Peptides, Thermal, Fitness, Sleep, Nootropics, Nutrition, Mindfulness, Light Therapy, Other'),
+            headline_benefit: z.string().optional().describe('1-sentence primary biological or longevity benefit'),
+            brief_description: z.string().optional().describe('Summary of the modality and mechanism'),
+            instructions: z.string().optional().describe('Actionable administration instructions (e.g. take with dietary fats)'),
+            source_url: z.string().optional().describe('PubMed or clinical trial URL if available'),
+            dose_amount: z.string().optional().describe('Numerical amount e.g. "500", "10", "1"'),
+            dose_unit: z.string().optional().describe('Dosing unit e.g. "mg", "g", "mcg", "IU", "ml", "mins"'),
+            admin_context: z.string().optional().describe('Context: "With fatty meal", "Empty stomach upon waking", "Pre-workout (30-45m)", etc.'),
+            timing_slot: z.string().optional().describe('Timing slot: "waking", "morning_routine", "morning_supplement_stack", "first_meal", "midday", "afternoon", "evening_supplement_stack", "bedtime", "anytime"'),
+            split_count: z.number().optional().describe('1 for single daily dose, 2 for AM/PM split'),
+            split_evening_slot: z.string().optional().describe('Evening slot if split (e.g. "evening_supplement_stack")'),
+            cadence_mode: z.enum(['daily', 'days_of_week', 'interval', 'pulse']).optional().describe('Cadence: "daily", "days_of_week", "interval", or "pulse"'),
+            selected_days: z.array(z.string()).optional().describe('Array of active days e.g. ["Mon", "Wed", "Fri"]'),
+            rest_interval_days: z.number().optional().describe('Rest days between sessions (e.g. 1 for every other day)'),
+            selected_outcomes: z.array(z.string()).optional().describe('Target outcomes e.g. ["energy", "sleep_quality", "overall_longevity"]'),
+            add_to_today: z.boolean().default(true).describe('Whether to automatically schedule this modality in Today tasks (default true)'),
+            save_to_bench: z.boolean().default(true).describe('Whether to add to protocol bench for permanent tracking (default true)')
           }),
           execute: async (draftData) => {
-            // In the future, this writes to a "Drafts" table or creates a Modality with status='draft'
-            const slug = draftData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const { data, error } = await supabase.from('modalities').insert({
-              id: slug,
+            if (!localUserId) return { success: false, error: 'User not authenticated or localUserId missing' };
+
+            const cleanName = draftData.name.trim();
+            const slug = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+            const id = `custom_${slug}_${Math.random().toString(36).substring(2, 7)}`;
+
+            const rawDose = draftData.dose_amount ? `${draftData.dose_amount} ${draftData.dose_unit || 'mg'}`.trim() : '';
+            let formattedDose = rawDose;
+            if (draftData.admin_context) {
+              formattedDose = formattedDose ? `${formattedDose} (${draftData.admin_context})` : draftData.admin_context;
+            }
+            if (draftData.split_count && draftData.split_count > 1) {
+              formattedDose = formattedDose ? `${formattedDose} • ${draftData.split_count}x daily split` : `${draftData.split_count}x daily split`;
+            }
+
+            const primaryTiming = draftData.split_count === 2 && draftData.split_evening_slot
+              ? `${draftData.timing_slot || 'morning_supplement_stack'},${draftData.split_evening_slot}`
+              : (draftData.timing_slot || 'morning_supplement_stack');
+
+            const newMod = {
+              id,
               slug,
-              ...draftData,
-              status: 'draft_ai_generated',
+              name: cleanName,
+              display_name: cleanName,
+              category: draftData.category || 'Supplements',
+              status: 'active',
+              visibility: 'private',
               local_user_id: localUserId,
-              visibility: 'private'
-            }).select().single();
-            
-            if (error) return { success: false, error: error.message };
-            return { success: true, message: 'Draft modality created. Awaiting human review.', modality: data };
+              headline_benefit: draftData.headline_benefit || 'Custom longevity optimization',
+              brief_description: draftData.brief_description || draftData.headline_benefit || 'Custom user modality created via AI Coach',
+              instructions: draftData.instructions || undefined,
+              source_url: draftData.source_url || undefined,
+              default_timing_slot: primaryTiming,
+              dose_or_exposure: formattedDose || undefined,
+              created_at: new Date().toISOString()
+            };
+
+            const { data: modData, error: modErr } = await supabase
+              .from('modalities')
+              .insert([newMod])
+              .select()
+              .single();
+
+            if (modErr) {
+              console.error('Error creating modality in DB:', modErr);
+              return { success: false, error: modErr.message };
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            // 1. Add to Today if requested
+            let taskCreated = false;
+            if (draftData.add_to_today !== false) {
+              const { error: taskErr } = await supabase
+                .from('daily_protocol_tasks')
+                .insert([{
+                  local_user_id: localUserId,
+                  date: todayStr,
+                  modality_id: id,
+                  status: 'pending',
+                  custom_dose: formattedDose || undefined,
+                  custom_timing: primaryTiming,
+                  timing_slot: primaryTiming,
+                  notes: draftData.instructions || undefined
+                }]);
+
+              if (!taskErr) taskCreated = true;
+            }
+
+            // 2. Add to Bench if requested
+            if (draftData.save_to_bench !== false) {
+              await supabase
+                .from('user_bench_items')
+                .insert([{
+                  local_user_id: localUserId,
+                  modality_id: id,
+                  custom_dose: formattedDose || undefined,
+                  custom_timing: primaryTiming,
+                  notes: draftData.instructions || undefined
+                }]);
+            }
+
+            // 3. Populate future scheduled dates across next 30 days
+            if (draftData.add_to_today !== false) {
+              const [y, m, d] = todayStr.split('-').map(Number);
+              const localStartDate = new Date(y, m - 1, d, 12, 0, 0);
+              const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+              const futureTasksToInsert: any[] = [];
+
+              if (draftData.cadence_mode === 'days_of_week' && draftData.selected_days?.length) {
+                for (let i = 1; i <= 30; i++) {
+                  const tDate = new Date(localStartDate);
+                  tDate.setDate(localStartDate.getDate() + i);
+                  const dayName = DAYS_SHORT[tDate.getDay()];
+                  if (draftData.selected_days.includes(dayName)) {
+                    const dStr = tDate.toISOString().split('T')[0];
+                    futureTasksToInsert.push({
+                      local_user_id: localUserId,
+                      date: dStr,
+                      modality_id: id,
+                      status: 'pending',
+                      custom_dose: formattedDose || undefined,
+                      custom_timing: primaryTiming,
+                      timing_slot: primaryTiming,
+                      notes: draftData.instructions || undefined
+                    });
+                  }
+                }
+              } else if (draftData.cadence_mode === 'interval' && typeof draftData.rest_interval_days === 'number') {
+                const step = draftData.rest_interval_days + 1;
+                for (let i = step; i <= 30; i += step) {
+                  const tDate = new Date(localStartDate);
+                  tDate.setDate(localStartDate.getDate() + i);
+                  const dStr = tDate.toISOString().split('T')[0];
+                  futureTasksToInsert.push({
+                    local_user_id: localUserId,
+                    date: dStr,
+                    modality_id: id,
+                    status: 'pending',
+                    custom_dose: formattedDose || undefined,
+                    custom_timing: primaryTiming,
+                    timing_slot: primaryTiming,
+                    notes: draftData.instructions || undefined
+                  });
+                }
+              } else if (draftData.cadence_mode === 'daily' || !draftData.cadence_mode) {
+                for (let i = 1; i <= 30; i++) {
+                  const tDate = new Date(localStartDate);
+                  tDate.setDate(localStartDate.getDate() + i);
+                  const dStr = tDate.toISOString().split('T')[0];
+                  futureTasksToInsert.push({
+                    local_user_id: localUserId,
+                    date: dStr,
+                    modality_id: id,
+                    status: 'pending',
+                    custom_dose: formattedDose || undefined,
+                    custom_timing: primaryTiming,
+                    timing_slot: primaryTiming,
+                    notes: draftData.instructions || undefined
+                  });
+                }
+              }
+
+              if (futureTasksToInsert.length > 0) {
+                try {
+                  await supabase.from('daily_protocol_tasks').insert(futureTasksToInsert);
+                } catch (schedErr) {
+                  console.warn('Could not batch insert future scheduled tasks:', schedErr);
+                }
+              }
+            }
+
+            const initialData = {
+              id: modData.id,
+              name: modData.name,
+              category: modData.category,
+              headlineBenefit: modData.headline_benefit,
+              instructions: modData.instructions || draftData.instructions,
+              sourceUrl: modData.source_url || draftData.source_url,
+              doseAmount: draftData.dose_amount || '',
+              doseUnit: draftData.dose_unit || 'mg',
+              adminContext: draftData.admin_context || '',
+              timingSlot: primaryTiming,
+              splitCount: (draftData.split_count as 1 | 2 | 3) || 1,
+              splitEveningSlot: draftData.split_evening_slot || 'evening_supplement_stack',
+              cadenceMode: draftData.cadence_mode || 'daily',
+              selectedDays: draftData.selected_days || ['Mon', 'Wed', 'Fri'],
+              restIntervalDays: draftData.rest_interval_days ?? 1,
+              selectedOutcomes: draftData.selected_outcomes || ['energy'],
+              scheduleToToday: true,
+              saveToBench: true
+            };
+
+            return {
+              success: true,
+              message: `Created and scheduled "${modData.name}" into Today's routine!`,
+              modality: modData,
+              initialData,
+              taskCreated
+            };
           },
         },
 

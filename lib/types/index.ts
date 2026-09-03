@@ -237,6 +237,7 @@ export type Modality = {
   relationships?: any
   media_assets?: any
   review_status?: string
+  source_url?: string
   version?: string
   nba_result?: {
     score: number

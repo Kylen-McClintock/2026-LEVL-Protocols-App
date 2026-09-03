@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   X, Sparkles, Plus, Clock, Pill, BookOpen, Bookmark, Calendar, 
   Check, ArrowRight, ArrowLeft, Layers, ShieldCheck, Flame, 
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { 
   createCustomModality, 
+  updateModalityDraft,
   addModalityOrProtocolToToday, 
   addToBench, 
   reconcileModalityScheduleAndFutureTasks, 
@@ -18,10 +19,35 @@ import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { useAuth } from '@/contexts/AuthContext'
 import { format } from 'date-fns'
 
+export interface CustomModalityInitialData {
+  id?: string
+  name?: string
+  category?: string
+  headlineBenefit?: string
+  instructions?: string
+  sourceUrl?: string
+  doseAmount?: string
+  doseUnit?: string
+  adminContext?: string
+  timingSlot?: string
+  splitCount?: 1 | 2 | 3
+  splitEveningSlot?: string
+  cadenceMode?: 'daily' | 'days_of_week' | 'interval' | 'pulse'
+  selectedDays?: string[]
+  restIntervalDays?: number
+  pulseWeeksOn?: number
+  pulseWeeksOff?: number
+  selectedOutcomes?: string[]
+  scheduleToToday?: boolean
+  saveToBench?: boolean
+  startTab?: 'basics' | 'dosing' | 'cadence'
+}
+
 interface CreateCustomModalityModalProps {
   isOpen: boolean
   onClose: () => void
   onCreated?: (modality: any) => void
+  initialData?: CustomModalityInitialData | null
 }
 
 const CATEGORIES = [
@@ -92,43 +118,70 @@ type StudioTab = 'basics' | 'dosing' | 'cadence'
 export default function CreateCustomModalityModal({
   isOpen,
   onClose,
-  onCreated
+  onCreated,
+  initialData
 }: CreateCustomModalityModalProps) {
   const { localUserId: authUserId } = useAuth()
   const localUserId = authUserId || getLocalUserId()
 
-  const [activeTab, setActiveTab] = useState<StudioTab>('basics')
+  const [activeTab, setActiveTab] = useState<StudioTab>(initialData?.startTab || 'basics')
 
   // Tab 1: Basics
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState('Supplements')
-  const [headlineBenefit, setHeadlineBenefit] = useState('')
-  const [instructions, setInstructions] = useState('')
-  const [sourceUrl, setSourceUrl] = useState('')
+  const [name, setName] = useState(initialData?.name || '')
+  const [category, setCategory] = useState(initialData?.category || 'Supplements')
+  const [headlineBenefit, setHeadlineBenefit] = useState(initialData?.headlineBenefit || '')
+  const [instructions, setInstructions] = useState(initialData?.instructions || '')
+  const [sourceUrl, setSourceUrl] = useState(initialData?.sourceUrl || '')
 
   // Tab 2: Dosing & Timing
-  const [doseAmount, setDoseAmount] = useState('')
-  const [doseUnit, setDoseUnit] = useState('mg')
-  const [adminContext, setAdminContext] = useState('')
-  const [timingSlot, setTimingSlot] = useState('morning_supplement_stack')
-  const [splitCount, setSplitCount] = useState<1 | 2 | 3>(1)
-  const [splitEveningSlot, setSplitEveningSlot] = useState('evening_supplement_stack')
+  const [doseAmount, setDoseAmount] = useState(initialData?.doseAmount || '')
+  const [doseUnit, setDoseUnit] = useState(initialData?.doseUnit || 'mg')
+  const [adminContext, setAdminContext] = useState(initialData?.adminContext || '')
+  const [timingSlot, setTimingSlot] = useState(initialData?.timingSlot || 'morning_supplement_stack')
+  const [splitCount, setSplitCount] = useState<1 | 2 | 3>(initialData?.splitCount || 1)
+  const [splitEveningSlot, setSplitEveningSlot] = useState(initialData?.splitEveningSlot || 'evening_supplement_stack')
 
   // Tab 3: Cadence & Outcomes
-  const [cadenceMode, setCadenceMode] = useState<'daily' | 'days_of_week' | 'interval' | 'pulse'>('daily')
-  const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Wed', 'Fri'])
-  const [restIntervalDays, setRestIntervalDays] = useState(1) // Every other day
-  const [pulseWeeksOn, setPulseWeeksOn] = useState(2)
-  const [pulseWeeksOff, setPulseWeeksOff] = useState(2)
-  const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>(['energy'])
+  const [cadenceMode, setCadenceMode] = useState<'daily' | 'days_of_week' | 'interval' | 'pulse'>(initialData?.cadenceMode || 'daily')
+  const [selectedDays, setSelectedDays] = useState<string[]>(initialData?.selectedDays || ['Mon', 'Wed', 'Fri'])
+  const [restIntervalDays, setRestIntervalDays] = useState(initialData?.restIntervalDays ?? 1) // Every other day
+  const [pulseWeeksOn, setPulseWeeksOn] = useState(initialData?.pulseWeeksOn ?? 2)
+  const [pulseWeeksOff, setPulseWeeksOff] = useState(initialData?.pulseWeeksOff ?? 2)
+  const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>(initialData?.selectedOutcomes || ['energy'])
 
   // Routing
-  const [scheduleToToday, setScheduleToToday] = useState(true)
-  const [saveToBench, setSaveToBench] = useState(true)
+  const [scheduleToToday, setScheduleToToday] = useState(initialData?.scheduleToToday ?? true)
+  const [saveToBench, setSaveToBench] = useState(initialData?.saveToBench ?? true)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+
+  // Hydrate fields whenever initialData changes and modal opens
+  useEffect(() => {
+    if (initialData && isOpen) {
+      if (initialData.name) setName(initialData.name)
+      if (initialData.category) setCategory(initialData.category)
+      if (initialData.headlineBenefit) setHeadlineBenefit(initialData.headlineBenefit)
+      if (initialData.instructions) setInstructions(initialData.instructions)
+      if (initialData.sourceUrl) setSourceUrl(initialData.sourceUrl)
+      if (initialData.doseAmount !== undefined) setDoseAmount(initialData.doseAmount)
+      if (initialData.doseUnit) setDoseUnit(initialData.doseUnit)
+      if (initialData.adminContext !== undefined) setAdminContext(initialData.adminContext)
+      if (initialData.timingSlot) setTimingSlot(initialData.timingSlot)
+      if (initialData.splitCount) setSplitCount(initialData.splitCount)
+      if (initialData.splitEveningSlot) setSplitEveningSlot(initialData.splitEveningSlot)
+      if (initialData.cadenceMode) setCadenceMode(initialData.cadenceMode)
+      if (initialData.selectedDays && initialData.selectedDays.length > 0) setSelectedDays(initialData.selectedDays)
+      if (initialData.restIntervalDays !== undefined) setRestIntervalDays(initialData.restIntervalDays)
+      if (initialData.pulseWeeksOn !== undefined) setPulseWeeksOn(initialData.pulseWeeksOn)
+      if (initialData.pulseWeeksOff !== undefined) setPulseWeeksOff(initialData.pulseWeeksOff)
+      if (initialData.selectedOutcomes) setSelectedOutcomes(initialData.selectedOutcomes)
+      if (initialData.scheduleToToday !== undefined) setScheduleToToday(initialData.scheduleToToday)
+      if (initialData.saveToBench !== undefined) setSaveToBench(initialData.saveToBench)
+      if (initialData.startTab) setActiveTab(initialData.startTab)
+    }
+  }, [initialData, isOpen])
 
   if (!isOpen) return null
 
@@ -190,13 +243,33 @@ export default function CreateCustomModalityModal({
       const finalDose = formattedDoseString()
       const primaryTiming = splitCount === 2 ? `${timingSlot},${splitEveningSlot}` : timingSlot
 
-      const createdMod = await createCustomModality(localUserId, {
-        name: name.trim(),
-        category,
-        dose_or_exposure: finalDose || undefined,
-        default_timing_slot: primaryTiming,
-        brief_description: headlineBenefit.trim() || instructions.trim() || 'Custom user-created protocol modality'
-      })
+      let createdMod: any = null
+
+      // If editing/fine-tuning an existing draft modality
+      if (initialData?.id) {
+        createdMod = await updateModalityDraft(initialData.id, {
+          name: name.trim(),
+          display_name: name.trim(),
+          category,
+          dose_or_exposure: finalDose || undefined,
+          default_timing_slot: primaryTiming,
+          brief_description: headlineBenefit.trim() || instructions.trim() || 'Custom user-created protocol modality',
+          headline_benefit: headlineBenefit.trim() || undefined,
+          instructions: instructions.trim() || undefined,
+          source_url: sourceUrl.trim() || undefined
+        })
+      }
+
+      // If new, create in database
+      if (!createdMod) {
+        createdMod = await createCustomModality(localUserId, {
+          name: name.trim(),
+          category,
+          dose_or_exposure: finalDose || undefined,
+          default_timing_slot: primaryTiming,
+          brief_description: headlineBenefit.trim() || instructions.trim() || 'Custom user-created protocol modality'
+        })
+      }
 
       if (!createdMod) {
         throw new Error('Failed to create modality in database')
@@ -277,8 +350,12 @@ export default function CreateCustomModalityModal({
                 <Sparkles size={17} />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-white">Create Custom Modality</h2>
-                <p className="text-xs text-slate-400">Configure dosing, circadian timing, and cadence recurrence</p>
+                <h2 className="text-base font-semibold text-white">
+                  {initialData?.id ? 'Dial In Modality Studio' : 'Create Custom Modality'}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  {initialData?.id ? 'Fine-tune dosing, circadian timing, and cadence recurrence' : 'Configure dosing, circadian timing, and cadence recurrence'}
+                </p>
               </div>
             </div>
             <button
@@ -790,7 +867,7 @@ export default function CreateCustomModalityModal({
                 ) : (
                   <>
                     <Check size={14} />
-                    Create Modality
+                    {initialData?.id ? 'Update & Schedule Modality' : 'Create Modality'}
                   </>
                 )}
               </button>

@@ -47,6 +47,7 @@ import AdHocLoggerModal from '@/components/modals/AdHocLoggerModal'
 import EnrollProtocolModal from '@/components/modals/EnrollProtocolModal'
 import { SmartRescheduleModal, RescheduleActionType } from '@/components/modals/SmartRescheduleModal'
 import CustomizeModalityOutcomesModal from '@/components/modals/CustomizeModalityOutcomesModal'
+import CreateCustomModalityModal, { CustomModalityInitialData } from '@/components/modals/CreateCustomModalityModal'
 import QuickHotkeyGrid from '@/components/quicklog/QuickHotkeyGrid'
 import { InfradianAdaptiveBanner } from '@/components/banners/InfradianAdaptiveBanner'
 import { calculateInfradianStatus } from '@/lib/tracking/infradianEngine'
@@ -278,6 +279,13 @@ function TodayPageContent() {
   const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false)
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false)
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false)
+  const [studioModalData, setStudioModalData] = useState<{
+    isOpen: boolean
+    initialData: CustomModalityInitialData | null
+  }>({
+    isOpen: false,
+    initialData: null
+  })
   const [rescheduleTask, setRescheduleTask] = useState<DailyProtocolTask | null>(null)
   const [rescheduleModality, setRescheduleModality] = useState<Modality | null>(null)
   const [isReschedulePastMissed, setIsReschedulePastMissed] = useState(false)
@@ -2738,6 +2746,33 @@ function TodayPageContent() {
                     await refreshTodayTasks()
                   }
                 }}
+                onOpenModalityStudio={(name: string, aiSuggestions?: any) => {
+                  let doseAmount = ''
+                  let doseUnit = 'mg'
+                  if (aiSuggestions?.suggestedDose) {
+                    const parts = aiSuggestions.suggestedDose.trim().split(/\s+/)
+                    if (parts.length >= 2) {
+                      doseAmount = parts[0]
+                      doseUnit = parts.slice(1).join(' ')
+                    } else {
+                      doseAmount = parts[0]
+                    }
+                  }
+
+                  setStudioModalData({
+                    isOpen: true,
+                    initialData: {
+                      name,
+                      doseAmount,
+                      doseUnit,
+                      timingSlot: aiSuggestions?.suggestedTiming || 'morning_supplement_stack',
+                      cadenceMode: aiSuggestions?.suggestedScheduleMode === 'rest_interval' ? 'interval' : (aiSuggestions?.suggestedDays?.length ? 'days_of_week' : 'daily'),
+                      selectedDays: aiSuggestions?.suggestedDays || ['Mon', 'Wed', 'Fri'],
+                      restIntervalDays: aiSuggestions?.suggestedRestIntervalDays ?? 1,
+                      startTab: 'dosing'
+                    }
+                  })
+                }}
               />
             </div>
 
@@ -3293,6 +3328,21 @@ function TodayPageContent() {
             const list = allOutcomes.filter(o => selectedOutcomeIds.includes(o.id))
             setRelevantOutcomes(list)
             setShowCustomizeOutcomesModal(false)
+          }}
+        />
+      )}
+
+      {studioModalData.isOpen && (
+        <CreateCustomModalityModal
+          isOpen={studioModalData.isOpen}
+          onClose={() => setStudioModalData(prev => ({ ...prev, isOpen: false }))}
+          initialData={studioModalData.initialData}
+          onCreated={async () => {
+            await refreshTodayTasks()
+            if (profile) {
+              const bItems = await getBenchItems(profile.local_user_id)
+              setBenchItems(bItems)
+            }
           }}
         />
       )}
