@@ -2686,7 +2686,7 @@ function TodayPageContent() {
               </div>
             )}
 
-            {/* 4. Daily Wellbeing Check-in */}
+            {/* 4. Daily Wellbeing Check-in: Morning & Daytime */}
             <div className="mb-6">
               <DailyWellbeingCheckin 
                 onSave={handleWellbeingSave} 
@@ -2697,6 +2697,7 @@ function TodayPageContent() {
                 isCurrentDay={isCurrentDay}
                 isCollapsedByDefault={isPastDate}
                 recentTasks={tasks}
+                section="morning_anytime"
               />
             </div>
 
@@ -3244,6 +3245,21 @@ function TodayPageContent() {
                 )}
               </div>
             )}
+
+            {/* 5. Dedicated Evening Check-in (~3 hours before bedtime) */}
+            <div className="mt-6 mb-4">
+              <DailyWellbeingCheckin 
+                onSave={handleWellbeingSave} 
+                initialData={wellbeingCheckin}
+                profile={profile}
+                allOutcomes={allOutcomes}
+                date={currentDate}
+                isCurrentDay={isCurrentDay}
+                isCollapsedByDefault={isPastDate}
+                recentTasks={tasks}
+                section="nightly"
+              />
+            </div>
 
             {/* Bottom 80/20 Stack Simplification & Adaptive Recommendation Banner (Deferred Lazy Mount) */}
             {tasks.length > 0 && !isPastDate && (

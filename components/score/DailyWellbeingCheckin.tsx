@@ -5,7 +5,7 @@ import { DailyWellbeingCheckin as WellbeingType, UserProfile, OutcomeDimension }
 import { isFuture, isPast, isSameDay, format } from 'date-fns'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getRecentOutcomeSnapshot, getLatestOutcomeLiveState, OutcomeLiveState } from '@/lib/utils/outcomeRecency'
-import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sunrise, Sparkles, ArrowUpRight, ArrowDownRight, Radio, Activity, FileText, CloudSun, RefreshCw, Briefcase, Users, Target, CheckCircle2, Zap } from 'lucide-react'
+import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sunrise, Sparkles, ArrowUpRight, ArrowDownRight, ArrowDown, Radio, Activity, FileText, CloudSun, RefreshCw, Briefcase, Users, Target, CheckCircle2, Zap } from 'lucide-react'
 import CustomizeCheckinOutcomesModal from '@/components/modals/CustomizeCheckinOutcomesModal'
 import QuickOutcomeUpdateModal from '@/components/modals/QuickOutcomeUpdateModal'
 import { safeLocalStorageSet } from '@/lib/utils/storage'
@@ -254,7 +254,8 @@ export default function DailyWellbeingCheckin({
   date,
   isCurrentDay,
   isCollapsedByDefault = false,
-  recentTasks
+  recentTasks,
+  section = 'all'
 }: { 
   onSave: (mood: number, energy: number, stress: number, sleep?: number, sleepScore?: number, customOutcomes?: Record<string, any>, lastFoodTime?: string) => void
   initialData: WellbeingType | null
@@ -264,6 +265,7 @@ export default function DailyWellbeingCheckin({
   isCurrentDay: boolean
   isCollapsedByDefault?: boolean
   recentTasks?: any[]
+  section?: 'all' | 'morning_anytime' | 'nightly'
 }) {
   const [mood, setMood] = useState(5)
   const [energy, setEnergy] = useState(5)
@@ -428,19 +430,48 @@ export default function DailyWellbeingCheckin({
     }
   }, [date, isCollapsedByDefault])
 
-  // Time-aware variables
-  const currentHour = new Date().getHours()
-  const isNightly = currentHour >= 18 // 6 PM or later
-  const phaseLabel = isCurrentDay ? (isNightly ? 'Nightly Check-in' : 'Morning Check-in') : `Check-in for ${date.toLocaleDateString()}`
-  
-  const isFutureDate = isFuture(date) && !isSameDay(date, new Date())
-  const isPastDate = isPast(date) && !isSameDay(date, new Date())
-  
   const [localProfile, setLocalProfile] = useState<UserProfile | null>(profile || null)
 
   useEffect(() => {
     if (profile) setLocalProfile(profile)
   }, [profile])
+
+  // Bedtime-Aware Evening Check-in Threshold (~3 hours before user's ideal bedtime)
+  const isNightly = useMemo(() => {
+    if (!isCurrentDay) return false
+    const now = new Date()
+    const curHour = now.getHours()
+    const curMinute = now.getMinutes()
+    const curTotalMins = curHour * 60 + curMinute
+
+    // Ideal bedtime from user profile (default to 22:00 / 10:00 PM)
+    let bedHour = 22
+    let bedMinute = 0
+    if (localProfile?.ideal_bedtime && localProfile.ideal_bedtime.includes(':')) {
+      const [h, m] = localProfile.ideal_bedtime.split(':').map(Number)
+      if (!isNaN(h)) bedHour = h
+      if (!isNaN(m)) bedMinute = m
+    }
+
+    const bedTotalMins = bedHour * 60 + bedMinute
+    // 3 hours before bedtime threshold
+    let thresholdMins = bedTotalMins - (3 * 60)
+    if (thresholdMins < 0) thresholdMins += 24 * 60
+
+    if (thresholdMins <= bedTotalMins) {
+      // Normal evening schedule (e.g. bed at 22:00 -> threshold is 19:00 / 7:00 PM)
+      // Active from 3h before bed until 4:00 AM next morning
+      return curTotalMins >= thresholdMins || curHour < 4
+    } else {
+      // Midnight crossing schedule (e.g. bed at 01:00 AM -> threshold is 22:00 / 10:00 PM)
+      return curTotalMins >= thresholdMins || curTotalMins <= (bedTotalMins + 120)
+    }
+  }, [isCurrentDay, localProfile?.ideal_bedtime])
+
+  const phaseLabel = isCurrentDay ? (isNightly ? 'Nightly Check-in' : 'Morning Check-in') : `Check-in for ${date.toLocaleDateString()}`
+  
+  const isFutureDate = isFuture(date) && !isSameDay(date, new Date())
+  const isPastDate = isPast(date) && !isSameDay(date, new Date())
 
   // Custom user-created outcomes
   const [customOutcomesList, setCustomOutcomesList] = useState<OutcomeDimension[]>([])
@@ -1314,50 +1345,75 @@ export default function DailyWellbeingCheckin({
   const currentStressCfg = getOutcomeColorConfig(stress, 'lower_is_better')
   const currentSleepCfg = getOutcomeColorConfig(subjectiveSleep, 'higher_is_better')
 
+  if (section === 'nightly' && (!isNightly || !isCurrentDay)) {
+    return null
+  }
+
   return (
     <>
       {/* ⚡ CONNECTED CONTAINER: Top Row (Morning Check-in Status / Edit) + Current State 4-Box Grid */}
-      {(isSaved && !isEditing) || isCollapsedAll ? (
-        <div className="glass-card mb-4 rounded-2xl border border-emerald-500/30 bg-slate-950/70 shadow-xl overflow-hidden animate-in fade-in">
-          {/* Voice Record Bar in Summary View */}
-          <div className="px-3 sm:px-4 pt-2.5 pb-1.5 bg-black/40 border-b border-white/5">
-            <UnifiedVoiceBar
-              mode="morning"
-              localUserId={effectiveUserId}
-              dateStr={dStr}
-              placeholder="🎙️ Speak check-in, waking energy, or last night..."
-              onApplyParsedData={(data) => handleApplyVoiceData(data, 'morning')}
-            />
-          </div>
-          {/* SMALL CONNECTED ROW DIRECTLY ABOVE: Morning Check-in Status & Edit */}
-          <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-black/40 border-b border-white/10 text-xs">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${isSaved ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-              <span className="font-bold text-white text-xs">
-                {isSaved ? '☀️ Morning Check-in: Complete' : '☀️ Morning Check-in: Pending'}
-              </span>
-              {isSaved && (
-                <span className="text-[10px] text-gray-400 font-mono hidden xs:inline">
-                  (Mood: {mood}, Energy: {energy}, Stress: {stress})
+      {(section === 'all' || section === 'morning_anytime') && (
+        (isSaved && !isEditing) || isCollapsedAll ? (
+          <div className="glass-card mb-4 rounded-2xl border border-emerald-500/30 bg-slate-950/70 shadow-xl overflow-hidden animate-in fade-in">
+            {/* SMALL CONNECTED ROW DIRECTLY ABOVE: Morning Check-in Status & Edit */}
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-black/40 border-b border-white/10 text-xs">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${isSaved ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                <span className="font-bold text-white text-xs">
+                  {isSaved ? '☀️ Morning Check-in: Complete' : '☀️ Morning Check-in: Pending'}
                 </span>
-              )}
+                {isSaved && (
+                  <span className="text-[10px] text-gray-400 font-mono hidden xs:inline">
+                    (Mood: {mood}, Energy: {energy}, Stress: {stress})
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCollapsedAll(false)
+                    setIsEditing(true)
+                  }}
+                  className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <span>{isSaved ? '✏ Edit Check-in' : 'Log Morning Check-in'}</span>
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
+            {/* Compact Evening Check-in Jump Cue when ~3h before bedtime & uncompleted */}
+            {isNightly && isCurrentDay && !isNightlySaved && (
+              <div 
                 onClick={() => {
-                  setIsCollapsedAll(false)
-                  setIsEditing(true)
+                  const el = document.getElementById('evening-checkin-section')
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }
                 }}
-                className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                className="flex items-center justify-between px-3 sm:px-4 py-2.5 bg-gradient-to-r from-rose-950/70 via-purple-950/40 to-slate-950 border-b border-rose-500/30 text-xs cursor-pointer hover:bg-rose-950/90 transition-all group shadow-sm select-none"
               >
-                <span>{isSaved ? '✏ Edit Check-in' : 'Log Morning Check-in'}</span>
-              </button>
-            </div>
-          </div>
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                  </span>
+                  <span className="font-bold text-white text-xs flex items-center gap-1.5">
+                    <Moon size={13} className="text-rose-400" /> Evening Check-in Available
+                  </span>
+                  <span className="text-[10px] text-rose-300/80 hidden sm:inline font-medium">
+                    (~3h before bedtime · Decompression &amp; day review)
+                  </span>
+                </div>
+                <span className="text-[11px] font-semibold text-rose-300 group-hover:text-white flex items-center gap-1 transition-colors">
+                  <span>Jump to Evening Check-in</span>
+                  <ArrowDown size={12} className="group-hover:translate-y-0.5 transition-transform text-rose-400 group-hover:text-white" />
+                </span>
+              </div>
+            )}
 
-          {/* CURRENT STATE SECTION */}
+            {/* CURRENT STATE SECTION */}
           <div className="p-3 sm:p-4 space-y-2.5">
             {/* Top Header */}
             <div className="flex items-center justify-between gap-2">
@@ -1513,8 +1569,8 @@ export default function DailyWellbeingCheckin({
             </div>
           )}
 
-          {/* ☀️ ANYTIME CHECK-IN (Between Morning & Nightly, 10 AM - 6 PM) */}
-          {isCurrentDay && currentHour < 18 && (() => {
+          {/* ☀️ ANYTIME CHECK-IN (Between Morning & Nightly) */}
+          {isCurrentDay && !isNightly && (() => {
             const customJSON = (initialData as any)?.custom_outcomes_jsonb || {}
             const anytimeLogs = Array.isArray(customJSON._anytime_checkins) ? customJSON._anytime_checkins : []
 
@@ -1561,16 +1617,18 @@ export default function DailyWellbeingCheckin({
                   </div>
                 </div>
 
-                {/* Anytime Voice Bar */}
-                <div className="pt-1 pb-1">
-                  <UnifiedVoiceBar
-                    mode="anytime"
-                    localUserId={effectiveUserId}
-                    dateStr={dStr}
-                    placeholder="🎙️ Speak daytime state snapshot, notes, or hotkeys..."
-                    onApplyParsedData={(data) => handleApplyVoiceData(data, 'anytime')}
-                  />
-                </div>
+                {/* Anytime Voice Bar (Only visible when Anytime check-in is opened) */}
+                {showDaytimeCard && (
+                  <div className="pt-1 pb-1">
+                    <UnifiedVoiceBar
+                      mode="anytime"
+                      localUserId={effectiveUserId}
+                      dateStr={dStr}
+                      placeholder="🎙️ Speak daytime state snapshot, notes, or hotkeys..."
+                      onApplyParsedData={(data) => handleApplyVoiceData(data, 'anytime')}
+                    />
+                  </div>
+                )}
 
                 {showDaytimeCard && anytimeLogs.length > 0 && (
                   <div className="flex items-center gap-1.5 flex-wrap pt-1 pb-1 border-b border-white/10">
@@ -1755,6 +1813,36 @@ export default function DailyWellbeingCheckin({
           </button>
         </div>
       </div>
+
+      {/* Compact Evening Check-in Jump Cue when ~3h before bedtime & uncompleted */}
+      {isNightly && isCurrentDay && !isNightlySaved && (
+        <div 
+          onClick={() => {
+            const el = document.getElementById('evening-checkin-section')
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
+          }}
+          className="mb-3 p-2.5 px-3 rounded-xl bg-gradient-to-r from-rose-950/70 via-purple-950/40 to-slate-950 border border-rose-500/30 text-xs cursor-pointer hover:bg-rose-950/90 transition-all flex items-center justify-between group shadow-sm select-none"
+        >
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+            </span>
+            <span className="font-bold text-white text-xs flex items-center gap-1.5">
+              <Moon size={13} className="text-rose-400" /> Evening Check-in Available
+            </span>
+            <span className="text-[10px] text-rose-300/80 hidden sm:inline font-medium">
+              (~3h before bedtime · Decompression &amp; day review)
+            </span>
+          </div>
+          <span className="text-[11px] font-semibold text-rose-300 group-hover:text-white flex items-center gap-1 transition-colors">
+            <span>Jump to Evening Check-in</span>
+            <ArrowDown size={12} className="group-hover:translate-y-0.5 transition-transform text-rose-400 group-hover:text-white" />
+          </span>
+        </div>
+      )}
 
       {/* Morning Mindful Reflection & Somatic Presence Prompt */}
       {morningMindfulnessPref !== 'hidden' && (
@@ -2617,11 +2705,11 @@ export default function DailyWellbeingCheckin({
         {isSaved ? `Edit Morning Check-in` : `Log Morning Check-in`}
       </button>
     </div>
-  )}
+  ))}
 
-    {/* Dedicated Nightly Check-in Card (ONLY VISIBLE AFTER 6:00 PM) */}
-    {isNightly && isCurrentDay && (
-      <div className="glass-card p-4 rounded-xl mb-6 space-y-4 border border-rose-500/30 bg-rose-950/20">
+    {/* Dedicated Nightly Check-in Card (~3 hours before bedtime) */}
+    {(section === 'all' || section === 'nightly') && isNightly && isCurrentDay && (
+      <div id="evening-checkin-section" className="glass-card p-4 rounded-xl mb-6 space-y-4 border border-rose-500/30 bg-rose-950/20 scroll-mt-24 shadow-xl">
         <div 
           onClick={() => setShowNightlyCard(!showNightlyCard)}
           className="flex items-center justify-between flex-wrap gap-2 cursor-pointer hover:opacity-90 transition-all select-none p-1"
