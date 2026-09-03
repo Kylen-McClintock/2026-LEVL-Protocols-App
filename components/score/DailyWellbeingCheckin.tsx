@@ -5,13 +5,15 @@ import { DailyWellbeingCheckin as WellbeingType, UserProfile, OutcomeDimension }
 import { isFuture, isPast, isSameDay, format } from 'date-fns'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getRecentOutcomeSnapshot, getLatestOutcomeLiveState, OutcomeLiveState } from '@/lib/utils/outcomeRecency'
-import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sunrise, Sparkles, ArrowUpRight, ArrowDownRight, Radio, Activity, FileText } from 'lucide-react'
+import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sunrise, Sparkles, ArrowUpRight, ArrowDownRight, Radio, Activity, FileText, CloudSun, RefreshCw, Briefcase, Users, Target, CheckCircle2, Zap } from 'lucide-react'
 import CustomizeCheckinOutcomesModal from '@/components/modals/CustomizeCheckinOutcomesModal'
 import QuickOutcomeUpdateModal from '@/components/modals/QuickOutcomeUpdateModal'
 import { safeLocalStorageSet } from '@/lib/utils/storage'
 import UnifiedVoiceBar, { ParsedVoiceCheckinData } from '@/components/voice/UnifiedVoiceBar'
 import MindfulReflectionPrompt from '@/components/mindfulness/MindfulReflectionPrompt'
 import { getStoredCustomOutcomes } from '@/lib/data'
+import { fetchCurrentWeather, getCachedWeather, LocalWeatherData } from '@/lib/services/weatherService'
+import { ExternalConfounderData } from '@/lib/types'
 
 function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: string = '22:30'): number {
   const [h, m] = timeStr.split(':').map(Number)
@@ -386,6 +388,22 @@ export default function DailyWellbeingCheckin({
       }
     }
 
+    // 2.7 Confounders from voice in nightly mode
+    if (target === 'nightly' && parsed.confounders) {
+      const c = parsed.confounders
+      if (c.day_busyness_score !== undefined) setDayBusyness(c.day_busyness_score)
+      if (c.busyness_tags && Array.isArray(c.busyness_tags)) setBusynessTags(c.busyness_tags)
+      if (c.external_stress_score !== undefined) setExternalStress(c.external_stress_score)
+      if (c.stressor_domain) setStressorDomain(c.stressor_domain)
+      if (c.stressor_notes) setStressorNotes(c.stressor_notes)
+      if (c.social_cohort) setSocialCohort(c.social_cohort)
+      if (c.social_energy_delta !== undefined) setSocialEnergyDelta(c.social_energy_delta)
+      if (c.productivity_score !== undefined) setProductivityScore(c.productivity_score)
+      if (c.productivity_depth) setProductivityDepth(c.productivity_depth)
+      if (c.goals_completed !== undefined) setGoalsCompleted(c.goals_completed)
+      setIsConfoundersExpanded(true)
+    }
+
     // 3. Open the target section so user sees the populated values
     if (target === 'morning') {
       setIsEditing(true)
@@ -504,6 +522,82 @@ export default function DailyWellbeingCheckin({
   useEffect(() => {
     setIsEveningMindfulnessExpanded(eveningMindfulnessPref === 'open')
   }, [eveningMindfulnessPref])
+
+  // User Preferences for External Confounders & Causation Suite
+  const autoWeatherEnabled = localProfile?.outcome_preference_scores?.['setting:confounder_auto_weather'] !== 0
+  const busynessDisplay = (localProfile?.outcome_preference_scores?.['setting:confounder_busyness_display'] as 'open' | 'collapsed' | 'hidden') || 'collapsed'
+  const stressorsDisplay = (localProfile?.outcome_preference_scores?.['setting:confounder_stressors_display'] as 'open' | 'collapsed' | 'hidden') || 'collapsed'
+  const socialDisplay = (localProfile?.outcome_preference_scores?.['setting:confounder_social_display'] as 'open' | 'collapsed' | 'hidden') || 'hidden'
+  const productivityDisplay = (localProfile?.outcome_preference_scores?.['setting:confounder_productivity_display'] as 'open' | 'collapsed' | 'hidden') || 'hidden'
+
+  const anyConfounderActive = autoWeatherEnabled || busynessDisplay !== 'hidden' || stressorsDisplay !== 'hidden' || socialDisplay !== 'hidden' || productivityDisplay !== 'hidden'
+
+  // Confounders State
+  const initialConfounders = initialData?.confounders || ((initialData as any)?.custom_outcomes_jsonb?.confounders as ExternalConfounderData) || null
+  const [localWeather, setLocalWeather] = useState<LocalWeatherData | null>(() => {
+    if (initialConfounders?.weather) {
+      return {
+        temp_f: initialConfounders.weather.temp_f,
+        temp_c: initialConfounders.weather.temp_c ?? Math.round(((initialConfounders.weather.temp_f - 32) * 5) / 9),
+        humidity: initialConfounders.weather.humidity,
+        pressure_hpa: initialConfounders.weather.pressure_hpa,
+        pressure_trend: initialConfounders.weather.pressure_trend,
+        uv_index: 0,
+        weather_code: 0,
+        condition: initialConfounders.weather.condition,
+        icon: initialConfounders.weather.icon,
+        city: initialConfounders.weather.city,
+        fetched_at: new Date().toISOString()
+      }
+    }
+    return getCachedWeather()
+  })
+  const [isFetchingWeather, setIsFetchingWeather] = useState(false)
+
+  const [dayBusyness, setDayBusyness] = useState<number>(() => initialConfounders?.day_busyness_score ?? 5)
+  const [busynessTags, setBusynessTags] = useState<string[]>(() => initialConfounders?.busyness_tags ?? [])
+  const [externalStress, setExternalStress] = useState<number>(() => initialConfounders?.external_stress_score ?? 0)
+  const [stressorDomain, setStressorDomain] = useState<string>(() => initialConfounders?.stressor_domain ?? '')
+  const [stressorNotes, setStressorNotes] = useState<string>(() => initialConfounders?.stressor_notes ?? '')
+  const [socialCohort, setSocialCohort] = useState<string>(() => initialConfounders?.social_cohort ?? '')
+  const [socialEnergyDelta, setSocialEnergyDelta] = useState<number>(() => initialConfounders?.social_energy_delta ?? 0)
+  const [productivityScore, setProductivityScore] = useState<number>(() => initialConfounders?.productivity_score ?? 5)
+  const [productivityDepth, setProductivityDepth] = useState<string>(() => initialConfounders?.productivity_depth ?? '')
+  const [goalsCompleted, setGoalsCompleted] = useState<number>(() => initialConfounders?.goals_completed ?? 0)
+  const [goalsTotal, setGoalsTotal] = useState<number>(() => initialConfounders?.goals_total ?? 3)
+  const [goalNotes, setGoalNotes] = useState<string>(() => initialConfounders?.goal_notes ?? '')
+
+  const shouldStartConfoundersOpen = busynessDisplay === 'open' || stressorsDisplay === 'open' || socialDisplay === 'open' || productivityDisplay === 'open'
+  const [isConfoundersExpanded, setIsConfoundersExpanded] = useState(shouldStartConfoundersOpen)
+
+  useEffect(() => {
+    setIsConfoundersExpanded(shouldStartConfoundersOpen)
+  }, [shouldStartConfoundersOpen])
+
+  useEffect(() => {
+    if (autoWeatherEnabled && !localWeather) {
+      const loadWeather = async () => {
+        setIsFetchingWeather(true)
+        try {
+          const data = await fetchCurrentWeather()
+          if (data) setLocalWeather(data)
+        } finally {
+          setIsFetchingWeather(false)
+        }
+      }
+      loadWeather()
+    }
+  }, [autoWeatherEnabled])
+
+  const handleManualWeatherRefresh = async () => {
+    setIsFetchingWeather(true)
+    try {
+      const data = await fetchCurrentWeather(true)
+      if (data) setLocalWeather(data)
+    } finally {
+      setIsFetchingWeather(false)
+    }
+  }
 
   // Helper to determine if an outcome is tracked in morning vs nightly mode
   const isOutcomeTracked = (id: string, mode: 'morning' | 'nightly') => {
@@ -855,10 +949,38 @@ export default function DailyWellbeingCheckin({
   }
 
   const handleNightlySave = () => {
+    const confoundersPayload: ExternalConfounderData = {
+      ...(localWeather ? {
+        weather: {
+          temp_f: localWeather.temp_f,
+          temp_c: localWeather.temp_c,
+          humidity: localWeather.humidity,
+          pressure_hpa: localWeather.pressure_hpa,
+          pressure_trend: localWeather.pressure_trend,
+          condition: localWeather.condition,
+          icon: localWeather.icon,
+          city: localWeather.city
+        }
+      } : {}),
+      day_busyness_score: dayBusyness,
+      busyness_tags: busynessTags,
+      external_stress_score: externalStress,
+      stressor_domain: stressorDomain || undefined,
+      stressor_notes: stressorNotes || undefined,
+      social_cohort: socialCohort || undefined,
+      social_energy_delta: socialEnergyDelta,
+      productivity_score: productivityScore,
+      productivity_depth: productivityDepth || undefined,
+      goals_completed: goalsCompleted,
+      goals_total: goalsTotal,
+      goal_notes: goalNotes || undefined
+    }
+
     const combinedCustomOutcomes: Record<string, any> = {
       ...customOutcomeValues,
       skin_clarity: skinClarity,
       focus_score: focusScore,
+      confounders: confoundersPayload,
       _nightly_logged_at: new Date().toISOString()
     }
 
@@ -2562,6 +2684,384 @@ export default function DailyWellbeingCheckin({
                   </div>
                   <span className="text-[11px] font-bold text-rose-400 flex items-center gap-1">
                     Reflect <ChevronDown size={14} />
+                  </span>
+                </div>
+              )
+            )}
+
+            {/* 🌍 DAY CONTEXT & EXTERNAL CONFOUNDERS (CAUSATION ACCURACY SUITE) */}
+            {anyConfounderActive && (
+              isConfoundersExpanded ? (
+                <div className="bg-gradient-to-br from-sky-950/40 via-slate-900 to-slate-950 p-4 rounded-2xl border border-sky-500/30 space-y-4 shadow-xl relative animate-in fade-in">
+                  <div className="flex items-center justify-between border-b border-sky-500/20 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-300">
+                        <CloudSun size={13} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                          Day Context &amp; External Confounders
+                        </h4>
+                        <span className="text-[9px] text-sky-300/70 block">
+                          Isolates external life variables to calculate true protocol causation
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOutcomesModalTitle("Customize Tracked Confounders & Outcomes")
+                          setOutcomesModalMode("nightly")
+                          setIsOutcomesModalOpen(true)
+                        }}
+                        className="text-[10px] font-bold text-sky-300/80 hover:text-sky-200 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        <Sliders size={11} /> Settings
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsConfoundersExpanded(false)}
+                        className="text-[10px] font-bold text-white/80 hover:text-white bg-black/40 hover:bg-black/60 border border-white/20 px-2 py-0.5 rounded-lg cursor-pointer transition-all shadow-sm"
+                      >
+                        Collapse ⌃
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 1. Ambient Weather & Atmospheric Card */}
+                  {autoWeatherEnabled && (
+                    <div className="bg-black/40 p-3 rounded-xl border border-white/10 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl p-1 bg-white/5 rounded-xl border border-white/10 shrink-0">
+                          {localWeather?.icon || '⛅'}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-white">
+                              {localWeather ? `${localWeather.temp_f}°F • ${localWeather.condition}` : 'Detecting Local Weather...'}
+                            </span>
+                            {localWeather?.city && (
+                              <span className="text-[10px] text-sky-300/80 font-medium">({localWeather.city})</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
+                            <span>Barometer: <strong className="text-white font-mono">{localWeather?.pressure_hpa ?? 1013} hPa</strong></span>
+                            <span>•</span>
+                            <span>Humidity: <strong className="text-white font-mono">{localWeather?.humidity ?? 50}%</strong></span>
+                            {localWeather?.pressure_trend && (
+                              <>
+                                <span>•</span>
+                                <span className={localWeather.pressure_trend === 'falling' ? 'text-amber-400' : 'text-emerald-400'}>
+                                  {localWeather.pressure_trend === 'falling' ? '📉 Pressure Falling' : localWeather.pressure_trend === 'rising' ? '📈 Pressure Rising' : '⚖️ Pressure Stable'}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleManualWeatherRefresh}
+                        disabled={isFetchingWeather}
+                        title="Refresh local weather"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                      >
+                        <RefreshCw size={13} className={isFetchingWeather ? 'animate-spin text-sky-400' : ''} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 2. Day Busyness & Tempo Slider */}
+                  {busynessDisplay !== 'hidden' && (
+                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white font-bold flex items-center gap-1.5">
+                          <span>⚡</span> Day Tempo / Busyness
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-500/20 text-amber-300 border-amber-500/30">
+                            {dayBusyness <= 2 ? 'Spacious / Open' : dayBusyness <= 5 ? 'Steady / Balanced' : dayBusyness <= 8 ? 'High-Paced / Packed' : 'Redline / Firefighting'}
+                          </span>
+                          <span className="font-mono font-bold text-xs text-amber-300">{dayBusyness}/10</span>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        value={dayBusyness}
+                        onChange={(e) => setDayBusyness(parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                      />
+                      {/* Friction Tags */}
+                      <div className="pt-1 flex items-center gap-1.5 flex-wrap text-[10px]">
+                        <span className="text-gray-400 text-[9px] font-semibold uppercase">Drivers:</span>
+                        {['Back-to-Back Meetings', 'Traffic / Commute', 'Deadlines / Crunch', 'Admin & Chores', 'Caregiving / Family'].map(tag => {
+                          const active = busynessTags.includes(tag)
+                          return (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => {
+                                setBusynessTags(prev => active ? prev.filter(t => t !== tag) : [...prev, tag])
+                              }}
+                              className={`px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                                active
+                                  ? 'bg-amber-500/20 text-amber-200 border-amber-400 font-bold'
+                                  : 'bg-white/5 text-gray-400 hover:text-white border-white/10'
+                              }`}
+                            >
+                              {tag}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. External Stressors & Root Cause */}
+                  {stressorsDisplay !== 'hidden' && (
+                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white font-bold flex items-center gap-1.5">
+                          <span>💼</span> External Stressors &amp; Triggers
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            externalStress === 0 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : externalStress <= 4 ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                          }`}>
+                            {externalStress === 0 ? 'Serene / None' : externalStress <= 4 ? 'Mild Friction' : externalStress <= 7 ? 'Notable Stress' : 'Acute Crisis'}
+                          </span>
+                          <span className="font-mono font-bold text-xs text-rose-300">{externalStress}/10</span>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        value={externalStress}
+                        onChange={(e) => setExternalStress(parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-rose-400"
+                      />
+                      {externalStress > 0 && (
+                        <div className="space-y-2 pt-1">
+                          <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                            <span className="text-gray-400 text-[9px] font-semibold uppercase">Domain:</span>
+                            {[
+                              { id: 'work', label: '💼 Work' },
+                              { id: 'relationship', label: '👥 Relationship' },
+                              { id: 'financial', label: '💸 Financial' },
+                              { id: 'health', label: '🏥 Health' },
+                              { id: 'family_logistics', label: '🏡 Logistics' }
+                            ].map(domain => {
+                              const active = stressorDomain === domain.id
+                              return (
+                                <button
+                                  key={domain.id}
+                                  type="button"
+                                  onClick={() => setStressorDomain(active ? '' : domain.id)}
+                                  className={`px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                                    active
+                                      ? 'bg-rose-500/20 text-rose-200 border-rose-400 font-bold'
+                                      : 'bg-white/5 text-gray-400 hover:text-white border-white/10'
+                                  }`}
+                                >
+                                  {domain.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Brief cause (e.g. surprise client audit, flat tire, argument with partner)..."
+                            value={stressorNotes}
+                            onChange={(e) => setStressorNotes(e.target.value)}
+                            className="w-full bg-black/60 border border-white/10 rounded-xl p-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-rose-400"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 4. Social Connection & Dynamics */}
+                  {socialDisplay !== 'hidden' && (
+                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white font-bold flex items-center gap-1.5">
+                          <span>👥</span> Social Connection &amp; Relational Tone
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            socialEnergyDelta > 0 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : socialEnergyDelta < 0 ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' : 'bg-white/10 text-gray-300 border-white/20'
+                          }`}>
+                            {socialEnergyDelta > 0 ? `+${socialEnergyDelta} Rejuvenating` : socialEnergyDelta < 0 ? `${socialEnergyDelta} Draining` : 'Neutral'}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Cohort Selector */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        {[
+                          { id: 'solo', label: '🧘 Solo / Solitary' },
+                          { id: 'loved_ones', label: '❤️ Loved Ones / Friends' },
+                          { id: 'professional', label: '💼 Colleagues / Clients' },
+                          { id: 'draining', label: '⚡ Draining / Obligatory' }
+                        ].map(c => {
+                          const active = socialCohort === c.id
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => setSocialCohort(active ? '' : c.id)}
+                              className={`p-2 rounded-xl text-center text-[10px] font-bold border transition cursor-pointer ${
+                                active
+                                  ? 'bg-purple-500/20 border-purple-400 text-purple-200'
+                                  : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              {c.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {/* Net Energy Slider */}
+                      <div className="space-y-1 pt-1">
+                        <div className="flex justify-between text-[10px] text-gray-400 font-medium">
+                          <span>Draining (-5)</span>
+                          <span>Neutral (0)</span>
+                          <span>Recharging (+5)</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-5"
+                          max="5"
+                          value={socialEnergyDelta}
+                          onChange={(e) => setSocialEnergyDelta(parseInt(e.target.value))}
+                          className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-purple-400"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 5. Productivity & Goal Execution */}
+                  {productivityDisplay !== 'hidden' && (
+                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white font-bold flex items-center gap-1.5">
+                          <span>🎯</span> Productivity &amp; Goal Execution
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-xs text-indigo-300">{productivityScore}/10</span>
+                        </div>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        value={productivityScore}
+                        onChange={(e) => setProductivityScore(parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-400"
+                      />
+                      {/* Focus Depth Selector */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
+                        {[
+                          { id: 'deep_flow', label: '🎯 Deep Flow' },
+                          { id: 'shallow_admin', label: '📋 Shallow Admin' },
+                          { id: 'distracted', label: '🌀 Distracted' },
+                          { id: 'rest_day', label: '🛑 Rest Day' }
+                        ].map(depth => {
+                          const active = productivityDepth === depth.id
+                          return (
+                            <button
+                              key={depth.id}
+                              type="button"
+                              onClick={() => setProductivityDepth(active ? '' : depth.id)}
+                              className={`p-1.5 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
+                                active
+                                  ? 'bg-indigo-500/20 border-indigo-400 text-indigo-200'
+                                  : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              {depth.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {/* Rule of 3 Goal Counter */}
+                      <div className="flex items-center justify-between pt-1 text-[11px]">
+                        <span className="text-gray-300 font-medium">Daily Non-Negotiable Goals Accomplished:</span>
+                        <div className="flex items-center gap-1.5">
+                          {[0, 1, 2, 3].map(count => (
+                            <button
+                              key={count}
+                              type="button"
+                              onClick={() => setGoalsCompleted(count)}
+                              className={`w-7 h-7 rounded-lg font-mono font-bold text-xs border transition cursor-pointer ${
+                                goalsCompleted === count
+                                  ? 'bg-indigo-600 text-white border-indigo-400'
+                                  : 'bg-white/5 text-gray-400 hover:text-white border-white/10'
+                              }`}
+                            >
+                              {count}
+                            </button>
+                          ))}
+                          <span className="text-gray-500 font-mono text-xs">/ 3</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Collapsed Ambient Confounders Bar */
+                <div 
+                  onClick={() => setIsConfoundersExpanded(true)}
+                  className="mb-3 p-3.5 rounded-2xl border border-sky-500/30 bg-gradient-to-r from-sky-950/40 via-indigo-950/20 to-slate-950/60 cursor-pointer hover:border-sky-400/50 transition-all shadow-md flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-7 h-7 rounded-xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-300 shrink-0 shadow-inner">
+                      <CloudSun size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-white block">Day Context &amp; External Confounders</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 shrink-0">
+                          Causation Shield
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-300 mt-1 flex-wrap">
+                        {localWeather && autoWeatherEnabled && (
+                          <span className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-lg border border-white/10">
+                            <span>{localWeather.icon}</span>
+                            <span>{localWeather.temp_f}°F {localWeather.condition}</span>
+                            <span className="text-gray-400 font-mono text-[9px]">({localWeather.pressure_hpa} hPa)</span>
+                          </span>
+                        )}
+                        {busynessDisplay !== 'hidden' && (
+                          <span className="bg-white/5 px-2 py-0.5 rounded-lg border border-white/10">
+                            ⚡ Busyness: <strong className="text-amber-300 font-mono">{dayBusyness}/10</strong>
+                          </span>
+                        )}
+                        {stressorsDisplay !== 'hidden' && externalStress > 0 && (
+                          <span className="bg-white/5 px-2 py-0.5 rounded-lg border border-white/10">
+                            💼 Stress: <strong className="text-rose-300 font-mono">{externalStress}/10</strong>
+                            {stressorDomain && ` (${stressorDomain})`}
+                          </span>
+                        )}
+                        {socialDisplay !== 'hidden' && socialCohort && (
+                          <span className="bg-white/5 px-2 py-0.5 rounded-lg border border-white/10">
+                            👥 Social: <strong className={socialEnergyDelta >= 0 ? 'text-emerald-300 font-mono' : 'text-rose-300 font-mono'}>{socialEnergyDelta >= 0 ? `+${socialEnergyDelta}` : socialEnergyDelta}</strong>
+                          </span>
+                        )}
+                        {productivityDisplay !== 'hidden' && (
+                          <span className="bg-white/5 px-2 py-0.5 rounded-lg border border-white/10">
+                            🎯 Goals: <strong className="text-purple-300 font-mono">{goalsCompleted}/{goalsTotal}</strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-sky-400 flex items-center gap-1 shrink-0 ml-2">
+                    Log Factors <ChevronDown size={14} />
                   </span>
                 </div>
               )

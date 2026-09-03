@@ -398,6 +398,31 @@ export type UserBenchItem = {
   added_at: string
 }
 
+export interface ExternalConfounderData {
+  weather?: {
+    temp_f: number
+    temp_c?: number
+    humidity: number
+    pressure_hpa: number
+    pressure_trend?: 'rising' | 'falling' | 'stable'
+    condition: string
+    icon: string
+    city?: string
+  }
+  day_busyness_score?: number // 0 - 10
+  busyness_tags?: string[] // e.g. ['meetings', 'commute', 'deadlines', 'admin']
+  external_stress_score?: number // 0 - 10
+  stressor_domain?: string // 'work' | 'relationship' | 'financial' | 'health' | 'family_logistics' | 'other'
+  stressor_notes?: string
+  social_cohort?: string // 'solo' | 'loved_ones' | 'professional' | 'draining'
+  social_energy_delta?: number // -5 to +5 (net recharge vs drainage)
+  productivity_score?: number // 0 - 10
+  productivity_depth?: string // 'deep_flow' | 'shallow_admin' | 'distracted' | 'rest_day'
+  goals_completed?: number
+  goals_total?: number
+  goal_notes?: string
+}
+
 export type DailyWellbeingCheckin = {
   id: string
   local_user_id: string
@@ -409,6 +434,7 @@ export type DailyWellbeingCheckin = {
   sleep_score_0_100?: number
   last_food_time?: string
   notes?: string
+  confounders?: ExternalConfounderData
   custom_outcomes_jsonb?: Record<string, any>
   created_at?: string
   updated_at?: string

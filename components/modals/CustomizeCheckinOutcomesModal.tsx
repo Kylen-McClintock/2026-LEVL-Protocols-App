@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { OutcomeDimension, UserProfile } from '@/lib/types'
-import { X, Check, Sliders, Sparkles, Sun, Moon, Search, Star, Plus, Trash2 } from 'lucide-react'
+import { X, Check, Sliders, Sparkles, Sun, Moon, Search, Star, Plus, Trash2, CloudSun, ChevronDown, ChevronUp } from 'lucide-react'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { updateUserProfile, getStoredCustomOutcomes, saveStoredCustomOutcomes } from '@/lib/data'
 
@@ -55,6 +55,9 @@ export default function CustomizeCheckinOutcomesModal({
   const [trackInMorning, setTrackInMorning] = useState(true)
   const [trackInAnytime, setTrackInAnytime] = useState(false)
   const [trackInNightly, setTrackInNightly] = useState(false)
+
+  // Confounder progressive disclosure state
+  const [showConfounderDetails, setShowConfounderDetails] = useState(false)
 
   useEffect(() => {
     if (mode) setActiveTab(mode)
@@ -869,6 +872,275 @@ export default function CustomizeCheckinOutcomesModal({
                     )
                   })}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* 🌍 EXTERNAL CONFOUNDERS & CAUSATION SUITE (NIGHTLY TAB) */}
+          {activeTab === 'nightly' && (
+            <div className="bg-gradient-to-r from-sky-950/40 via-indigo-950/30 to-slate-900/70 p-4 rounded-2xl border border-sky-500/30 space-y-3.5 shadow-inner">
+              <div className="flex items-center justify-between border-b border-sky-500/20 pb-2">
+                <div className="flex items-center gap-2 text-sky-300 font-bold text-xs uppercase tracking-wider">
+                  <CloudSun size={15} className="text-sky-400" />
+                  <span>External Confounders &amp; Day Dynamics</span>
+                </div>
+                <span className="text-[10px] text-sky-400/80 font-semibold">Causation Control</span>
+              </div>
+
+              <p className="text-[11px] text-gray-300 leading-relaxed">
+                Track external environmental and cognitive factors outside your protocol to filter false signals, calculate true causation, and discover what shields your biology best.
+              </p>
+
+              {/* 1-Tap Experience Level Presets */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-xs font-bold text-white block">1-Tap Experience Preset</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'minimal', label: '🧘 Protocol Only', desc: 'Confounders hidden; purely log protocols' },
+                    { id: 'balanced', label: '⚡ Balanced', desc: 'Auto-Weather + Stressors & Busyness' },
+                    { id: 'clinical', label: '🔬 Clinical Suite', desc: 'All 5 factors active for max causation' }
+                  ].map(preset => {
+                    const isSelected = (preferences['setting:confounder_preset'] || 'balanced') === preset.id
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          if (preset.id === 'minimal') {
+                            setPreferences(prev => ({
+                              ...prev,
+                              'setting:confounder_preset': 'minimal',
+                              'setting:confounder_auto_weather': 0,
+                              'setting:confounder_busyness_display': 'hidden',
+                              'setting:confounder_stressors_display': 'hidden',
+                              'setting:confounder_social_display': 'hidden',
+                              'setting:confounder_productivity_display': 'hidden'
+                            }))
+                          } else if (preset.id === 'balanced') {
+                            setPreferences(prev => ({
+                              ...prev,
+                              'setting:confounder_preset': 'balanced',
+                              'setting:confounder_auto_weather': 1,
+                              'setting:confounder_busyness_display': 'collapsed',
+                              'setting:confounder_stressors_display': 'collapsed',
+                              'setting:confounder_social_display': 'hidden',
+                              'setting:confounder_productivity_display': 'hidden'
+                            }))
+                          } else if (preset.id === 'clinical') {
+                            setPreferences(prev => ({
+                              ...prev,
+                              'setting:confounder_preset': 'clinical',
+                              'setting:confounder_auto_weather': 1,
+                              'setting:confounder_busyness_display': 'open',
+                              'setting:confounder_stressors_display': 'open',
+                              'setting:confounder_social_display': 'open',
+                              'setting:confounder_productivity_display': 'open'
+                            }))
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-sm'
+                            : 'bg-black/40 border-white/10 hover:border-white/20 text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        <div className="font-bold text-[11px] text-white flex items-center justify-between">
+                          <span>{preset.label}</span>
+                          {isSelected && <Check size={12} className="text-sky-400" />}
+                        </div>
+                        <p className="text-[9px] text-gray-400 mt-0.5 leading-tight">{preset.desc}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Granular Factor Tuning Accordion */}
+              <div className="pt-2 border-t border-sky-500/15 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfounderDetails(!showConfounderDetails)}
+                  className="w-full flex items-center justify-between text-xs font-bold text-sky-300 hover:text-sky-200 transition cursor-pointer py-1"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Sliders size={13} /> Customize Individual Confounder Factors
+                  </span>
+                  <span className="text-[11px] flex items-center gap-0.5">
+                    {showConfounderDetails ? 'Hide Details' : 'Tune Display Settings'}
+                    {showConfounderDetails ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </span>
+                </button>
+
+                {showConfounderDetails && (
+                  <div className="space-y-2.5 pt-2 animate-in fade-in">
+                    {/* 1. Weather Auto-Ingestion */}
+                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 flex items-center justify-between">
+                      <div className="space-y-0.5 pr-2">
+                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>⛅</span> Auto-Ingest Local Weather &amp; Pressure
+                        </span>
+                        <span className="text-[10px] text-gray-400 block">
+                          Automatically logs temperature, humidity, and barometric pressure drops with zero manual effort.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPreferences(prev => ({
+                          ...prev,
+                          'setting:confounder_preset': 'custom',
+                          'setting:confounder_auto_weather': prev['setting:confounder_auto_weather'] === 0 ? 1 : 0
+                        }))}
+                        className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                          preferences['setting:confounder_auto_weather'] !== 0 ? 'bg-sky-500' : 'bg-white/20'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                          preferences['setting:confounder_auto_weather'] !== 0 ? 'left-6' : 'left-1'
+                        }`} />
+                      </button>
+                    </div>
+
+                    {/* 2. Day Busyness & Pace */}
+                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>⚡</span> Day Busyness &amp; Tempo
+                        </span>
+                        <span className="text-[10px] text-gray-400">0–10 scale: Spacious to Redline</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { id: 'open', label: 'Open by Default' },
+                          { id: 'collapsed', label: 'Collapsed by Default' },
+                          { id: 'hidden', label: 'Don\'t Show' }
+                        ].map(opt => {
+                          const isSel = (preferences['setting:confounder_busyness_display'] || 'collapsed') === opt.id
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setPreferences(prev => ({
+                                ...prev,
+                                'setting:confounder_preset': 'custom',
+                                'setting:confounder_busyness_display': opt.id
+                              }))}
+                              className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
+                                isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 3. External Stressors */}
+                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>💼</span> External Stressors &amp; Root Cause
+                        </span>
+                        <span className="text-[10px] text-gray-400">Work, relational, financial triggers</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { id: 'open', label: 'Open by Default' },
+                          { id: 'collapsed', label: 'Collapsed by Default' },
+                          { id: 'hidden', label: 'Don\'t Show' }
+                        ].map(opt => {
+                          const isSel = (preferences['setting:confounder_stressors_display'] || 'collapsed') === opt.id
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setPreferences(prev => ({
+                                ...prev,
+                                'setting:confounder_preset': 'custom',
+                                'setting:confounder_stressors_display': opt.id
+                              }))}
+                              className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
+                                isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 4. Social Connection */}
+                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>👥</span> Social Connection &amp; Dynamics
+                        </span>
+                        <span className="text-[10px] text-gray-400">Loved ones vs draining obligations</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { id: 'open', label: 'Open by Default' },
+                          { id: 'collapsed', label: 'Collapsed by Default' },
+                          { id: 'hidden', label: 'Don\'t Show' }
+                        ].map(opt => {
+                          const isSel = (preferences['setting:confounder_social_display'] || 'hidden') === opt.id
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setPreferences(prev => ({
+                                ...prev,
+                                'setting:confounder_preset': 'custom',
+                                'setting:confounder_social_display': opt.id
+                              }))}
+                              className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
+                                isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 5. Productivity & Goals */}
+                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>🎯</span> Productivity &amp; Goal Execution
+                        </span>
+                        <span className="text-[10px] text-gray-400">Deep flow vs busywork</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[
+                          { id: 'open', label: 'Open by Default' },
+                          { id: 'collapsed', label: 'Collapsed by Default' },
+                          { id: 'hidden', label: 'Don\'t Show' }
+                        ].map(opt => {
+                          const isSel = (preferences['setting:confounder_productivity_display'] || 'hidden') === opt.id
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => setPreferences(prev => ({
+                                ...prev,
+                                'setting:confounder_preset': 'custom',
+                                'setting:confounder_productivity_display': opt.id
+                              }))}
+                              className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
+                                isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

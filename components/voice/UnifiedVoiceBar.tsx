@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { triggerHaptic } from '@/lib/utils/haptics'
 import { saveQuickLogEntry } from '@/lib/storage/quickLogsStorage'
-import { DailyQuickLogEntry } from '@/lib/types'
+import { DailyQuickLogEntry, ExternalConfounderData } from '@/lib/types'
 
 export interface ParsedVoiceCheckinData {
   transcript: string
@@ -26,6 +26,7 @@ export interface ParsedVoiceCheckinData {
     coffee_cups?: number
     meal_calories?: number
   }
+  confounders?: ExternalConfounderData
   notes?: string
   completedTaskIds?: string[]
   completedModalityNames?: string[]
@@ -283,6 +284,7 @@ export default function UnifiedVoiceBar({
           timings: parsed.checkin_timings,
           hotkeys: parsed.hotkey_actions,
           notes: parsed.checkin_notes || parsed.deviations_and_symptoms || '',
+          confounders: parsed.confounders,
           completedTaskIds: parsed.completed_task_ids,
           completedModalityNames: parsed.completed_modality_names
         }

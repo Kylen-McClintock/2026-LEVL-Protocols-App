@@ -46,6 +46,18 @@ const voiceLogSchema = z.object({
     meal_calories: z.number().optional().describe('Calories from meal/food to log if mentioned (e.g. 450, 600)')
   }).optional().describe('Quick-log hotkey increments to add directly to daily totals.'),
   checkin_notes: z.string().optional().describe('General check-in or qualitative wellbeing notes extracted from speech.'),
+  confounders: z.object({
+    day_busyness_score: z.number().min(0).max(10).optional().describe('0 to 10 busyness/tempo score (0=spacious, 10=redline non-stop) if mentioned'),
+    busyness_tags: z.array(z.string()).optional().describe('Reasons for busyness (e.g. "meetings", "commute", "deadlines", "chores")'),
+    external_stress_score: z.number().min(0).max(10).optional().describe('0 to 10 external life stress score if acute stressors mentioned'),
+    stressor_domain: z.enum(['work', 'relationship', 'financial', 'health', 'family_logistics', 'other']).optional().describe('Primary domain of external stress'),
+    stressor_notes: z.string().optional().describe('Specific cause or trigger of the stress mentioned'),
+    social_cohort: z.enum(['solo', 'loved_ones', 'professional', 'draining']).optional().describe('Who the user spent social time with today'),
+    social_energy_delta: z.number().min(-5).max(5).optional().describe('Net social impact score: -5 (severely draining) to +5 (rejuvenating/uplifting)'),
+    productivity_score: z.number().min(0).max(10).optional().describe('0 to 10 subjective productivity or goal accomplishment score'),
+    productivity_depth: z.enum(['deep_flow', 'shallow_admin', 'distracted', 'rest_day']).optional().describe('Depth of focus today'),
+    goals_completed: z.number().optional().describe('Number of goals or intentions completed today if mentioned')
+  }).optional().describe('External life confounders and context (busyness, external stress triggers, social energy, productivity) extracted from speech.'),
   deviations_and_symptoms: z.string().optional().describe('Protocol deviations (e.g. stopped early, took with meal) or adverse symptoms (e.g. lightheadedness, nausea, cramps).'),
   ai_response_text: z.string().describe('A 1-3 sentence natural conversational response matching the selected Persona tone. If a conversation history was provided, maintain context and reply directly to the user\'s response.')
 })
