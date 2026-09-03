@@ -10,6 +10,7 @@ import CustomizeCheckinOutcomesModal from '@/components/modals/CustomizeCheckinO
 import QuickOutcomeUpdateModal from '@/components/modals/QuickOutcomeUpdateModal'
 import { safeLocalStorageSet } from '@/lib/utils/storage'
 import UnifiedVoiceBar, { ParsedVoiceCheckinData } from '@/components/voice/UnifiedVoiceBar'
+import MindfulReflectionPrompt from '@/components/mindfulness/MindfulReflectionPrompt'
 
 function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: string = '22:30'): number {
   const [h, m] = timeStr.split(':').map(Number)
@@ -1532,6 +1533,9 @@ export default function DailyWellbeingCheckin({
         </div>
       </div>
 
+      {/* Morning Mindful Reflection & Somatic Presence Prompt */}
+      <MindfulReflectionPrompt mode="morning" date={date} className="mb-3" />
+
       {/* Unified Voice Bar for Open Morning Form */}
       <UnifiedVoiceBar
         mode="morning"
@@ -2396,6 +2400,9 @@ export default function DailyWellbeingCheckin({
 
         {showNightlyCard ? (
           <div className="space-y-4 pt-2 border-t border-rose-500/20 animate-in fade-in">
+            {/* Evening Mindful Reflection & Decompression Prompt */}
+            <MindfulReflectionPrompt mode="evening" date={date} />
+
             {/* Nightly Voice Bar */}
             <UnifiedVoiceBar
               mode="nightly"
