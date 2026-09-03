@@ -10,6 +10,7 @@ import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import { evaluateStackFit, StackFitResult } from '@/lib/synergy/stackFitEngine'
 import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
 import OutcomePill from '@/components/outcomes/OutcomePill'
+import { detectContraindications } from '@/lib/safety/contraindicationEngine'
 
 type ExploreCardProps = {
   modality: Modality
@@ -77,6 +78,10 @@ export default function ExploreCard({
   )
   const hasConflict = conflictWarnings.length > 0
 
+  // Clinical Contraindication & Interaction Screening
+  const contraindications = detectContraindications(modality, userProfile)
+  const hasContraindication = contraindications.length > 0
+
   const handleScheduleSuccess = (destination: 'today' | 'tomorrow' | 'bench') => {
     if (destination === 'bench') {
       setAddedToBench(true)
@@ -87,11 +92,13 @@ export default function ExploreCard({
     }
   }
 
-  // Border and glow styling depending on active status or conflict
+  // Border and glow styling depending on active status, contraindication, or conflict
   const cardContainerStyle = isCurrentlyActiveInToday
     ? 'border-emerald-500/40 bg-emerald-950/10 shadow-[0_0_15px_rgba(16,185,129,0.12)]'
     : isCurrentlyOnBench
     ? 'border-cyan-500/40 bg-cyan-950/10 shadow-[0_0_15px_rgba(6,182,212,0.12)]'
+    : hasContraindication
+    ? 'border-rose-500/50 bg-rose-950/15 shadow-[0_0_15px_rgba(244,63,94,0.15)]'
     : hasConflict
     ? 'border-red-500/30 bg-red-950/10'
     : 'glass-card'
@@ -134,7 +141,12 @@ export default function ExploreCard({
                 <History size={11} className="text-purple-400" /> Previously Benched
               </span>
             )}
-            {hasConflict && !isCurrentlyActiveInToday && !isCurrentlyOnBench && !benchHistoryItem && (
+            {hasContraindication && (
+              <span className="flex items-center gap-1 bg-rose-500/20 text-rose-300 border border-rose-500/50 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(244,63,94,0.3)] shrink-0 animate-pulse">
+                <AlertTriangle size={11} className="text-rose-400" /> Health Precaution
+              </span>
+            )}
+            {hasConflict && !hasContraindication && !isCurrentlyActiveInToday && !isCurrentlyOnBench && !benchHistoryItem && (
               <span className="flex items-center gap-1 bg-red-500/20 text-red-300 border border-red-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(239,68,68,0.3)] shrink-0">
                 <AlertTriangle size={11} className="text-red-400" /> Profile Conflict
               </span>
@@ -180,6 +192,17 @@ export default function ExploreCard({
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <DosageBadgeButton modality={modality} userProfile={userProfile} />
           </div>
+
+          {/* Contraindication Warning Banner */}
+          {hasContraindication && (
+            <div className="mt-2 p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-[11px] text-rose-200 flex items-start gap-2 animate-in fade-in">
+              <AlertTriangle size={13} className="text-rose-400 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1 leading-snug">
+                <span className="font-extrabold text-white">{contraindications[0].headline}: </span>
+                <span className="text-slate-300">{contraindications[0].clinicalRationale}</span>
+              </div>
+            </div>
+          )}
 
           {/* Interactive Stack Synergy & Conflict Fit Badge */}
           {stackFit && !isCurrentlyActiveInToday && (

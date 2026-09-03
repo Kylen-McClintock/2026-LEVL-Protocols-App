@@ -3859,12 +3859,26 @@ export async function getBenchItem(localUserId: string, modalityId: string): Pro
   return data as UserBenchItem | null
 }
 
-export async function assessSafetyWithAI(modalityName: string, customDose: string, originalDose: string) {
+export async function assessSafetyWithAI(
+  modalityName: string, 
+  customDose: string, 
+  originalDose: string,
+  userMedications?: string[],
+  userConditions?: string[],
+  knownContraindications?: string[]
+) {
   try {
     const response = await fetch('/api/assess-safety', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modalityName, customDose, originalDose })
+      body: JSON.stringify({ 
+        modalityName, 
+        customDose, 
+        originalDose,
+        userMedications,
+        userConditions,
+        knownContraindications
+      })
     })
     
     if (!response.ok) {

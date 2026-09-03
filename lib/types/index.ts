@@ -41,6 +41,25 @@ export type UserProfile = {
   updated_at: string
 }
 
+export interface MedicalProfileData {
+  medications: string[]
+  conditions: string[]
+  allergies?: string[]
+  notes?: string
+}
+
+export interface ContraindicationWarning {
+  id: string
+  level: 'critical' | 'caution' | 'advisory'
+  triggerTerm: string
+  userItem: string
+  category?: 'medication' | 'condition'
+  modalityName: string
+  headline: string
+  clinicalRationale: string
+  actionAdvice: string
+}
+
 export type PeriodFlowLevel = 'none' | 'spotting' | 'light' | 'medium' | 'heavy'
 export type PeriodPainLevel = 0 | 1 | 2 | 3 // 0: None, 1: Mild, 2: Moderate, 3: Severe
 export type InfradianPhase = 'menstrual' | 'follicular' | 'ovulatory' | 'early_luteal' | 'late_luteal'

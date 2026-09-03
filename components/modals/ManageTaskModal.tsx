@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   Calendar as CalendarIcon,
   AlertTriangle,
+  ShieldAlert,
   Lock,
   RefreshCw,
   ChevronDown,
@@ -49,7 +50,8 @@ import {
   deleteTask,
   updateTaskExecutionDetails,
   upsertBenchItemOverride,
-  reconcileModalityScheduleAndFutureTasks
+  reconcileModalityScheduleAndFutureTasks,
+  assessSafetyWithAI
 } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getCircadianTipForModality } from '@/lib/utils/circadianTimingTips'
@@ -59,6 +61,7 @@ import { UserProfile } from '@/lib/types'
 import { isPeptideModality } from '@/lib/peptides/peptideCycleEngine'
 import PeptideTitrationPlanner from '@/components/peptides/PeptideTitrationPlanner'
 import { ModalityAICoachBar } from '@/components/ai/ModalityAICoachBar'
+import { detectContraindications, parseMedicalProfile } from '@/lib/safety/contraindicationEngine'
 
 // Helper to format timing_slot strings "morning_supplement_stack" -> "Morning Supplement Stack"
 const formatSlotName = (str: string) => {
@@ -394,6 +397,36 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
     }
   }
 
+  // Safety & Contraindication Screening
+  const contraindicationWarnings = useMemo(() => {
+    return detectContraindications(modality, userProfile)
+  }, [modality, userProfile])
+
+  const [aiSafetyAssessment, setAiSafetyAssessment] = useState<string | null>(null)
+  const [isAssessingSafety, setIsAssessingSafety] = useState(false)
+  const [isContraindicationsOpen, setIsContraindicationsOpen] = useState(false)
+
+  const handleRunAISafetyAssessment = async () => {
+    if (!modality) return
+    setIsAssessingSafety(true)
+    try {
+      const { medications, conditions } = parseMedicalProfile(userProfile)
+      const assessment = await assessSafetyWithAI(
+        modality.name,
+        getEffectiveFormattedDose() || 'Standard dose',
+        prescribedDoseText || modality.dose_or_exposure || 'Standard dose',
+        medications,
+        conditions,
+        modality.contraindications || []
+      )
+      setAiSafetyAssessment(assessment)
+    } catch (e) {
+      console.error('Error running AI safety assessment:', e)
+    } finally {
+      setIsAssessingSafety(false)
+    }
+  }
+
   const handleSave = async () => {
     setIsProcessing(true)
     const localUserId = getLocalUserId()
@@ -570,6 +603,94 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
               setPersonalNotes(prev => prev ? `${prev}\n\n${note}` : note)
             }}
           />
+
+          {/* CLINICAL CONTRAINDICATION & INTERACTION ALERT */}
+          {contraindicationWarnings.length > 0 && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-rose-950/80 via-slate-900 to-rose-950/50 border border-rose-500/60 shadow-[0_0_30px_rgba(244,63,94,0.15)] space-y-3.5 animate-in fade-in">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 text-rose-400">
+                  <ShieldAlert size={18} className="animate-pulse" />
+                  <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-rose-200">
+                    Potential Clinical Interaction Detected ({contraindicationWarnings.length})
+                  </h4>
+                </div>
+                <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                  Safety Screening Alert
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                {contraindicationWarnings.map(w => (
+                  <div key={w.id} className="p-3 rounded-xl bg-black/50 border border-rose-500/20 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-white">{w.headline}</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                        Trigger: {w.userItem}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      {w.clinicalRationale}
+                    </p>
+                    <p className="text-[11px] text-rose-300 font-medium">
+                      💡 {w.actionAdvice}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* AI Safety Assessment Breakdown Button */}
+              <div className="pt-1 flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={isAssessingSafety}
+                  onClick={handleRunAISafetyAssessment}
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-600/30 via-purple-600/30 to-indigo-600/30 hover:from-rose-600/40 hover:to-indigo-600/40 border border-rose-400/40 text-rose-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  <Sparkles size={14} className={isAssessingSafety ? 'animate-spin text-rose-300' : 'text-rose-300'} />
+                  <span>{isAssessingSafety ? 'Analyzing Pharmacokinetics...' : 'Analyze Interaction Mechanism with AI Co-Pilot'}</span>
+                </button>
+
+                {aiSafetyAssessment && (
+                  <div className="p-3.5 rounded-xl bg-black/60 border border-purple-500/30 text-[11px] text-purple-200 leading-relaxed animate-in fade-in space-y-1">
+                    <span className="font-bold text-xs text-white flex items-center gap-1.5">
+                      <Sparkles size={12} className="text-purple-400" />
+                      AI Clinical Assessment:
+                    </span>
+                    <p className="text-slate-200">{aiSafetyAssessment}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* OFFICIAL MODALITY CONTRAINDICATIONS ACCORDION */}
+          {modality.contraindications && modality.contraindications.length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-slate-950/40 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setIsContraindicationsOpen(!isContraindicationsOpen)}
+                className="w-full p-3 flex items-center justify-between text-left hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2 text-slate-300">
+                  <AlertTriangle size={13} className="text-amber-400" />
+                  <span className="text-[11px] font-bold">
+                    Modality Documented Contraindications &amp; Precautions ({modality.contraindications.length})
+                  </span>
+                </div>
+                {isContraindicationsOpen ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+              </button>
+              {isContraindicationsOpen && (
+                <div className="p-3 pt-0 border-t border-white/5 space-y-1.5 animate-in fade-in">
+                  {modality.contraindications.map((contra: string, idx: number) => (
+                    <div key={idx} className="text-[11px] text-slate-400 flex items-start gap-2">
+                      <span className="text-amber-400 font-bold shrink-0">•</span>
+                      <span>{contra}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 2-Column Responsive Desktop Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
