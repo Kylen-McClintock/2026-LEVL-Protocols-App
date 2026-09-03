@@ -165,7 +165,43 @@ function TodayPageContent() {
 
   const [allModalities, setAllModalities] = useState<Modality[]>([])
   const [allOutcomes, setAllOutcomes] = useState<OutcomeDimension[]>([])
-  const [loading, setLoading] = useState(false)
+
+  const userFirstName = useMemo(() => {
+    if ((profile as any)?.first_name) return (profile as any).first_name
+    if (profile?.display_name) {
+      const parts = profile.display_name.trim().split(/\s+/)
+      if (parts[0]) return parts[0]
+    }
+    if ((profile as any)?.name) {
+      const parts = (profile as any).name.trim().split(/\s+/)
+      if (parts[0]) return parts[0]
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('levl_cached_user_profile')
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          if (parsed.first_name) return parsed.first_name
+          if (parsed.display_name) return parsed.display_name.trim().split(/\s+/)[0]
+          if (parsed.name) return parsed.name.trim().split(/\s+/)[0]
+        }
+      } catch (e) {}
+    }
+    return 'Your'
+  }, [profile])
+
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const cachedTasks = localStorage.getItem(`levl_cached_tasks_${initialDateStr}`)
+      if (cachedTasks) {
+        try {
+          const parsed = JSON.parse(cachedTasks)
+          if (Array.isArray(parsed) && parsed.length > 0) return false
+        } catch (e) {}
+      }
+    }
+    return true
+  })
   const [isDateSwitching, setIsDateSwitching] = useState(false)
 
   // Next Best Action deferred lazy mount state & sentinel
@@ -208,7 +244,7 @@ function TodayPageContent() {
 
   // Lazy mount Next Best Action only when user scrolls near the bottom of their day
   useEffect(() => {
-    if (shouldMountNBA || isPastDate || tasks.length === 0) return
+    if (shouldMountNBA || isPastDate || tasks.length === 0 || loading || isDateSwitching) return
     const sentinel = nbaSentinelRef.current
     if (!sentinel) return
 
@@ -227,7 +263,7 @@ function TodayPageContent() {
     } else {
       setShouldMountNBA(true)
     }
-  }, [shouldMountNBA, isPastDate, tasks.length])
+  }, [shouldMountNBA, isPastDate, tasks.length, loading, isDateSwitching])
 
   // Asynchronously fetch catalog for deferred widgets (NBA, Explore) without blocking page load
   useEffect(() => {
@@ -524,13 +560,21 @@ function TodayPageContent() {
           // Fast in-place transition without unmounting DOM tree
           setIsDateSwitching(true)
           // Immediate SWR hydration from localStorage for target date
+          let hasCached = false
           if (typeof window !== 'undefined') {
             try {
               const cached = localStorage.getItem(`levl_cached_tasks_${dateStr}`)
               if (cached) {
-                setTasks(JSON.parse(cached))
+                const parsed = JSON.parse(cached)
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  setTasks(parsed)
+                  hasCached = true
+                }
               }
             } catch (e) {}
+          }
+          if (!hasCached) {
+            setLoading(true)
           }
           const [currentTasks, todayCheckin] = await Promise.all([
             getDailyProtocolTasks(localUserId, dateStr),
@@ -2372,33 +2416,8 @@ function TodayPageContent() {
     })
   }
 
-  if (!isMounted || (!profile && (loading || authLoading))) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 max-w-4xl mx-auto space-y-5 animate-pulse">
-        {/* Shimmer Header */}
-        <div className="flex items-center justify-between pt-2">
-          <div className="space-y-2">
-            <div className="h-6 w-40 bg-white/10 rounded-lg" />
-            <div className="h-3 w-56 bg-white/5 rounded" />
-          </div>
-          <div className="h-9 w-32 bg-white/10 rounded-xl" />
-        </div>
-
-        {/* Shimmer Date Nav */}
-        <div className="h-14 w-full bg-white/5 border border-white/5 rounded-2xl" />
-
-        {/* Shimmer Morning Check-in / Metrics Bar */}
-        <div className="h-24 w-full bg-white/5 border border-white/5 rounded-2xl" />
-
-        {/* Shimmer Task Cards */}
-        <div className="space-y-3 pt-2">
-          <div className="h-4 w-36 bg-white/10 rounded" />
-          <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
-          <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
-          <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
-        </div>
-      </div>
-    )
+  if (!isMounted) {
+    return <div className="min-h-screen bg-slate-950" />
   }
 
   return (
@@ -2553,6 +2572,47 @@ function TodayPageContent() {
           </div>
         )}
 
+        {/* If Today view is loading / calibrating, display the dedicated Calibration screen with rotating Circadian Ring */}
+        {calendarViewMode === 'today' && (loading || (!tasks.length && isDateSwitching)) ? (
+          <div className="py-20 sm:py-28 flex flex-col items-center justify-center text-center space-y-6 animate-in fade-in duration-300">
+            {/* Circadian Rotating Ring */}
+            <div className="relative flex items-center justify-center">
+              {/* Outer Ambient Circadian Aura */}
+              <div 
+                className="absolute w-44 h-44 rounded-full blur-2xl opacity-40 animate-pulse pointer-events-none"
+                style={{
+                  background: 'radial-gradient(circle, #F59E0B 0%, #38BDF8 40%, #A52D6A 80%, transparent 100%)'
+                }}
+              />
+              
+              {/* Rotating Conic Ring (Matches ending color with beginning morning color #D97706) */}
+              <div 
+                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full p-[5px] animate-[spin_4s_linear_infinite] shadow-[0_0_35px_rgba(245,158,11,0.25)]"
+                style={{
+                  background: 'conic-gradient(from 0deg, #D97706 0%, #F59E0B 10%, #FBBF24 20%, #38BDF8 32%, #0284C7 45%, #5B9BD5 55%, #F87E38 68%, #DF5558 78%, #A52D6A 85%, #50236B 90%, #231A45 94%, #0B132B 97%, #D97706 100%)'
+                }}
+              >
+                {/* Inner Cutout Disc */}
+                <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center p-3 border border-white/10 shadow-inner">
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-slate-900 via-slate-950 to-black flex items-center justify-center shadow-inner">
+                    <Sparkles className="text-amber-400 animate-pulse" size={24} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Calibration Copy */}
+            <div className="space-y-2 max-w-md px-4">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                {userFirstName === 'Your' ? 'Calibrating Your Protocol' : `Calibrating ${userFirstName}'s Protocol`}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 font-medium">
+                Aligning circadian biological vectors, scheduled modalities &amp; outcomes
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* 100% Protocol Completion Micro-Celebration Banner */}
         {show100Celebration && (
           <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-teal-950/70 to-slate-950/80 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.25)] flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -3175,13 +3235,7 @@ function TodayPageContent() {
               )
             ) : (
               <div className="space-y-8">
-                {loading ? (
-                  <div className="space-y-3 animate-pulse">
-                    <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
-                    <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
-                    <div className="h-28 w-full bg-white/5 border border-white/5 rounded-2xl" />
-                  </div>
-                ) : activeGroups.length === 0 ? (
+                {activeGroups.length === 0 ? (
                   <div className="text-center p-8 bg-slate-950/60 border border-white/10 rounded-2xl text-gray-400 text-sm space-y-4 shadow-xl backdrop-blur-md">
                     <div className="space-y-1">
                       <p className="font-bold text-white text-base">You don&apos;t have any protocols scheduled for today.</p>
@@ -3262,7 +3316,7 @@ function TodayPageContent() {
             </div>
 
             {/* Bottom 80/20 Stack Simplification & Adaptive Recommendation Banner (Deferred Lazy Mount) */}
-            {tasks.length > 0 && !isPastDate && (
+            {tasks.length > 0 && !isPastDate && !loading && !isDateSwitching && (
               <div ref={nbaSentinelRef} className="mt-8 pt-6 border-t border-white/10">
                 {shouldMountNBA && allModalities.length > 0 ? (
                   <AdaptiveRecommendationBanner
@@ -3293,6 +3347,8 @@ function TodayPageContent() {
             )}
           </>
         )}
+      </>
+    )}
 
       </div>
 
