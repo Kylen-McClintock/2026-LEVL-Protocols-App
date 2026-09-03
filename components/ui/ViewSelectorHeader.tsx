@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { CalendarDays, ChevronDown, Check, Filter, LayoutGrid, Calendar, Columns, Rows, AlignJustify, Zap, Activity, HelpCircle, Bookmark } from 'lucide-react'
 
-export type CalendarViewMode = 'today' | '3day' | 'week' | 'month'
+export type CalendarViewMode = 'today' | 'pulse' | '3day' | 'week' | 'month'
 export type LayoutOrientation = 'columns' | 'stack'
 export type CompletionTrackingMode = 'outcome' | 'fast'
 
@@ -49,24 +49,41 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
   const [isProtocolDropdownOpen, setIsProtocolDropdownOpen] = useState(false)
   const [isMobileCategoryOpen, setIsMobileCategoryOpen] = useState(false)
   
-  const viewDropdownRef = useRef<HTMLDivElement>(null)
-  const protocolDropdownRef = useRef<HTMLDivElement>(null)
-  const mobileCategoryDropdownRef = useRef<HTMLDivElement>(null)
+  const mobileViewDropdownRef = useRef<HTMLDivElement>(null)
+  const desktopViewDropdownRef = useRef<HTMLDivElement>(null)
+  const desktopProtocolDropdownRef = useRef<HTMLDivElement>(null)
+  const mobileCategoryButtonRef = useRef<HTMLDivElement>(null)
+  const mobileCategoryPanelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (viewDropdownRef.current && !viewDropdownRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node
+      if (!target) return
+
+      const isInsideMobileView = mobileViewDropdownRef.current && mobileViewDropdownRef.current.contains(target)
+      const isInsideDesktopView = desktopViewDropdownRef.current && desktopViewDropdownRef.current.contains(target)
+      if (!isInsideMobileView && !isInsideDesktopView) {
         setIsViewDropdownOpen(false)
       }
-      if (protocolDropdownRef.current && !protocolDropdownRef.current.contains(e.target as Node)) {
+
+      const isInsideProtocol = desktopProtocolDropdownRef.current && desktopProtocolDropdownRef.current.contains(target)
+      if (!isInsideProtocol) {
         setIsProtocolDropdownOpen(false)
       }
-      if (mobileCategoryDropdownRef.current && !mobileCategoryDropdownRef.current.contains(e.target as Node)) {
+
+      const isInsideMobileCategoryBtn = mobileCategoryButtonRef.current && mobileCategoryButtonRef.current.contains(target)
+      const isInsideMobileCategoryPanel = mobileCategoryPanelRef.current && mobileCategoryPanelRef.current.contains(target)
+      if (!isInsideMobileCategoryBtn && !isInsideMobileCategoryPanel) {
         setIsMobileCategoryOpen(false)
       }
     }
+
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
   }, [])
 
   const currentProtocolLabel = selectedProtocolFilter === 'all' 
@@ -105,7 +122,7 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
         {/* MOBILE VIEW (< md): Two equal-size half-width buttons side-by-side */}
         <div className="flex md:hidden items-center gap-2 w-full">
           {/* Half-width 1: Timeline Mode */}
-          <div className={`relative flex-1 min-w-0 ${isViewDropdownOpen ? 'z-[100]' : 'z-20'}`} ref={viewDropdownRef}>
+          <div className={`relative flex-1 min-w-0 ${isViewDropdownOpen ? 'z-[100]' : 'z-20'}`} ref={mobileViewDropdownRef}>
             <button
               type="button"
               onClick={() => {
@@ -115,56 +132,105 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
               className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white font-bold text-xs transition-all cursor-pointer shadow-sm truncate"
             >
               <div className="flex items-center gap-1.5 min-w-0 truncate">
-                <CalendarDays className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                {viewMode === 'today' && <CalendarDays className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                {viewMode === 'pulse' && <Activity className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
+                {viewMode === '3day' && <Columns className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
+                {viewMode === 'week' && <Calendar className="w-3.5 h-3.5 text-teal-400 shrink-0" />}
+                {viewMode === 'month' && <LayoutGrid className="w-3.5 h-3.5 text-cyan-400 shrink-0" />}
                 <span className="truncate">
-                  {viewMode === 'today' ? 'Today Timeline' : viewMode === '3day' ? '3-Day View' : viewMode === 'week' ? '7-Day Week' : 'Month Matrix'}
+                  {viewMode === 'today' ? 'Today Timeline' : viewMode === 'pulse' ? 'Daily Pulse' : viewMode === '3day' ? '3-Day View' : viewMode === 'week' ? '7-Day Week' : 'Month Matrix'}
                 </span>
               </div>
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 ml-1 transition-transform ${isViewDropdownOpen ? 'rotate-180 text-emerald-400' : ''}`} />
             </button>
 
             {isViewDropdownOpen && (
-              <div className="absolute top-full left-0 mt-2 w-52 bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-1.5 z-[999] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2">
+              <div 
+                onMouseDown={(e) => e.stopPropagation()} 
+                onTouchStart={(e) => e.stopPropagation()}
+                className="absolute top-full left-0 mt-2 w-60 bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-1.5 z-[999] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 space-y-0.5"
+              >
                 <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-1.5 tracking-wider">
                   Timeline Views
                 </div>
                 <button
+                  type="button"
                   onClick={() => { onViewModeChange('today'); setIsViewDropdownOpen(false) }}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'today' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
                 >
-                  <span>Today Timeline</span>
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Today Timeline</span>
+                  </div>
                   {viewMode === 'today' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
                 </button>
                 <button
+                  type="button"
+                  onClick={() => { onViewModeChange('pulse'); setIsViewDropdownOpen(false) }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'pulse' ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span>Daily Pulse (Growth vs Recovery)</span>
+                  </div>
+                  {viewMode === 'pulse' && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+                </button>
+                <button
+                  type="button"
                   onClick={() => { onViewModeChange('3day'); setIsViewDropdownOpen(false) }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === '3day' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === '3day' ? 'bg-teal-950/80 text-teal-300 border border-teal-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
                 >
-                  <span>3-Day View</span>
-                  {viewMode === '3day' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  <div className="flex items-center gap-2">
+                    <Columns className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span>3-Day View</span>
+                  </div>
+                  {viewMode === '3day' && <Check className="w-3.5 h-3.5 text-teal-400" />}
                 </button>
                 <button
+                  type="button"
                   onClick={() => { onViewModeChange('week'); setIsViewDropdownOpen(false) }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'week' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'week' ? 'bg-teal-950/80 text-teal-300 border border-teal-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
                 >
-                  <span>7-Day Week</span>
-                  {viewMode === 'week' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span>7-Day Week</span>
+                  </div>
+                  {viewMode === 'week' && <Check className="w-3.5 h-3.5 text-teal-400" />}
                 </button>
                 <button
+                  type="button"
                   onClick={() => { onViewModeChange('month'); setIsViewDropdownOpen(false) }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'month' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'month' ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
                 >
-                  <span>Month Matrix</span>
-                  {viewMode === 'month' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>Month Matrix</span>
+                  </div>
+                  {viewMode === 'month' && <Check className="w-3.5 h-3.5 text-cyan-400" />}
                 </button>
 
-                <div className="pt-1 mt-1 border-t border-slate-800/80">
+                <div className="pt-1 mt-1 border-t border-slate-800/80 space-y-0.5">
+                  <Link
+                    href="/schedule"
+                    onClick={() => setIsViewDropdownOpen(false)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-amber-300 hover:bg-amber-950/60 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Master Schedule Matrix</span>
+                    </div>
+                    <span className="text-[9px] uppercase font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
+                      Rhythms
+                    </span>
+                  </Link>
+
                   <Link
                     href="/bench"
                     onClick={() => setIsViewDropdownOpen(false)}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-purple-300 hover:bg-purple-950/60 hover:text-white transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
-                      <Bookmark className="w-3.5 h-3.5 text-purple-400" />
+                      <Bookmark className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                       <span>Protocol Bench</span>
                     </div>
                     <span className="text-[9px] uppercase font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30">
@@ -177,7 +243,7 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
           </div>
 
           {/* Half-width 2: Filter by Category */}
-          <div className="relative flex-1 min-w-0" ref={mobileCategoryDropdownRef}>
+          <div className="relative flex-1 min-w-0" ref={mobileCategoryButtonRef}>
             <button
               type="button"
               onClick={() => {
@@ -210,61 +276,120 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
           </Link>
         </div>
 
+        {/* Mobile Date Range Title when in non-today view */}
+        {viewMode !== 'today' && (
+          <div className="flex md:hidden items-center justify-between pt-2.5 mt-2 border-t border-slate-800/80 px-1">
+            <span className="text-xs font-extrabold text-white tracking-tight flex items-center gap-1.5 truncate">
+              <Calendar className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <span className="truncate">{dateTitle}</span>
+            </span>
+          </div>
+        )}
+
         {/* DESKTOP VIEW (>= md): Full Desktop Header Row */}
         <div className="hidden md:flex items-center justify-between gap-3 w-full">
           {/* Left: View Mode Dropdown */}
-          <div className={`relative ${isViewDropdownOpen ? 'z-[100]' : 'z-20'}`} ref={viewDropdownRef}>
+          <div className={`relative ${isViewDropdownOpen ? 'z-[100]' : 'z-20'}`} ref={desktopViewDropdownRef}>
             <button
               onClick={() => setIsViewDropdownOpen(!isViewDropdownOpen)}
               className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white font-bold text-xs transition-all cursor-pointer shadow-sm"
             >
-              <CalendarDays className="w-4 h-4 text-emerald-400" />
-              <span className="capitalize">{viewMode === 'today' ? 'Today Timeline' : viewMode === '3day' ? '3-Day View' : viewMode === 'week' ? '7-Day Week' : 'Month Matrix'}</span>
+              {viewMode === 'today' && <CalendarDays className="w-4 h-4 text-emerald-400 shrink-0" />}
+              {viewMode === 'pulse' && <Activity className="w-4 h-4 text-indigo-400 shrink-0" />}
+              {viewMode === '3day' && <Columns className="w-4 h-4 text-teal-400 shrink-0" />}
+              {viewMode === 'week' && <Calendar className="w-4 h-4 text-teal-400 shrink-0" />}
+              {viewMode === 'month' && <LayoutGrid className="w-4 h-4 text-cyan-400 shrink-0" />}
+              <span className="capitalize">{viewMode === 'today' ? 'Today Timeline' : viewMode === 'pulse' ? 'Daily Pulse' : viewMode === '3day' ? '3-Day View' : viewMode === 'week' ? '7-Day Week' : 'Month Matrix'}</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
             </button>
 
             {isViewDropdownOpen && (
-              <div className="absolute top-full left-0 mt-2 w-48 bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-1.5 z-[999] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2">
+              <div 
+                onMouseDown={(e) => e.stopPropagation()} 
+                onTouchStart={(e) => e.stopPropagation()}
+                className="absolute top-full left-0 mt-2 w-60 bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-1.5 z-[999] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 space-y-0.5"
+              >
                 <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-1.5 tracking-wider">
                   Calendar Views
                 </div>
                 <button
+                  type="button"
                   onClick={() => { onViewModeChange('today'); setIsViewDropdownOpen(false) }}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'today' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
                 >
-                  <span>Today Timeline</span>
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Today Timeline</span>
+                  </div>
                   {viewMode === 'today' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
                 </button>
                 <button
+                  type="button"
+                  onClick={() => { onViewModeChange('pulse'); setIsViewDropdownOpen(false) }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'pulse' ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span>Daily Pulse (Growth vs Recovery)</span>
+                  </div>
+                  {viewMode === 'pulse' && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+                </button>
+                <button
+                  type="button"
                   onClick={() => { onViewModeChange('3day'); setIsViewDropdownOpen(false) }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === '3day' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === '3day' ? 'bg-teal-950/80 text-teal-300 border border-teal-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
                 >
-                  <span>3-Day View</span>
-                  {viewMode === '3day' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  <div className="flex items-center gap-2">
+                    <Columns className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span>3-Day View</span>
+                  </div>
+                  {viewMode === '3day' && <Check className="w-3.5 h-3.5 text-teal-400" />}
                 </button>
                 <button
+                  type="button"
                   onClick={() => { onViewModeChange('week'); setIsViewDropdownOpen(false) }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'week' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'week' ? 'bg-teal-950/80 text-teal-300 border border-teal-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
                 >
-                  <span>7-Day Week</span>
-                  {viewMode === 'week' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span>7-Day Week</span>
+                  </div>
+                  {viewMode === 'week' && <Check className="w-3.5 h-3.5 text-teal-400" />}
                 </button>
                 <button
+                  type="button"
                   onClick={() => { onViewModeChange('month'); setIsViewDropdownOpen(false) }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'month' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${viewMode === 'month' ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 font-semibold' : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'}`}
                 >
-                  <span>Month Matrix</span>
-                  {viewMode === 'month' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>Month Matrix</span>
+                  </div>
+                  {viewMode === 'month' && <Check className="w-3.5 h-3.5 text-cyan-400" />}
                 </button>
 
-                <div className="pt-1 mt-1 border-t border-slate-800/80">
+                <div className="pt-1 mt-1 border-t border-slate-800/80 space-y-0.5">
+                  <Link
+                    href="/schedule"
+                    onClick={() => setIsViewDropdownOpen(false)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-amber-300 hover:bg-amber-950/60 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Master Schedule Matrix</span>
+                    </div>
+                    <span className="text-[9px] uppercase font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
+                      Rhythms
+                    </span>
+                  </Link>
+
                   <Link
                     href="/bench"
                     onClick={() => setIsViewDropdownOpen(false)}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-purple-300 hover:bg-purple-950/60 hover:text-white transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
-                      <Bookmark className="w-3.5 h-3.5 text-purple-400" />
+                      <Bookmark className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                       <span>Protocol Bench</span>
                     </div>
                     <span className="text-[9px] uppercase font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30">
@@ -285,7 +410,7 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
 
           {/* Right: Protocol Filter Dropdown & Guide */}
           <div className="flex items-center gap-2">
-            <div className={`relative ${isProtocolDropdownOpen ? 'z-[100]' : 'z-20'}`} ref={protocolDropdownRef}>
+            <div className={`relative ${isProtocolDropdownOpen ? 'z-[100]' : 'z-20'}`} ref={desktopProtocolDropdownRef}>
               <button
                 onClick={() => setIsProtocolDropdownOpen(!isProtocolDropdownOpen)}
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-950/40 border border-purple-800/40 hover:border-purple-700/60 text-purple-200 font-bold text-xs transition-all cursor-pointer shadow-sm max-w-[200px] truncate"
@@ -296,11 +421,16 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
               </button>
 
               {isProtocolDropdownOpen && (
-                <div className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-purple-500/40 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-2 z-[999] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2">
+                <div 
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-purple-500/40 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-2 z-[999] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2"
+                >
                   <div className="text-[10px] uppercase font-bold text-purple-400/90 px-3 py-1.5 tracking-wider">
                     Filter by Protocol
                   </div>
                   <button
+                    type="button"
                     onClick={() => {
                       onProtocolFilterChange('all')
                       setIsProtocolDropdownOpen(false)
@@ -318,6 +448,7 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
                   {availableProtocols.map(proto => (
                     <button
                       key={proto.id}
+                      type="button"
                       onClick={() => {
                         onProtocolFilterChange(proto.id)
                         setIsProtocolDropdownOpen(false)
@@ -336,6 +467,7 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
                   {onEnrollClick && (
                     <div className="pt-1.5 mt-1.5 border-t border-white/10">
                       <button
+                        type="button"
                         onClick={() => {
                           setIsProtocolDropdownOpen(false)
                           onEnrollClick()
@@ -365,7 +497,12 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
 
       {/* MOBILE FULL-WIDTH CATEGORY FILTERS DROPDOWN PANEL */}
       {isMobileCategoryOpen && onToggleMainCategory && (
-        <div className="md:hidden w-full bg-slate-950/95 p-3.5 rounded-2xl border border-slate-800 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 space-y-3 z-30" ref={mobileCategoryDropdownRef}>
+        <div 
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="md:hidden w-full bg-slate-950/95 p-3.5 rounded-2xl border border-slate-800 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 space-y-3 z-30" 
+          ref={mobileCategoryPanelRef}
+        >
           <div className="flex items-center justify-between px-1">
             <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5 text-emerald-400" /> Filter by Category

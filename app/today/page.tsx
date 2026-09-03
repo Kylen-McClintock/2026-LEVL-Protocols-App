@@ -41,6 +41,7 @@ import { ViewSelectorHeader, CalendarViewMode, LayoutOrientation, MainCategory, 
 import { ThreeDaySplitView } from '@/components/views/ThreeDaySplitView'
 import { SevenDayWeekView } from '@/components/views/SevenDayWeekView'
 import { MonthMatrixView } from '@/components/views/MonthMatrixView'
+import DailyVerticalPulseView from '@/components/calendar/DailyVerticalPulseView'
 import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolOverviewHeaderCard from '@/components/cards/ProtocolOverviewHeaderCard'
 import AdHocLoggerModal from '@/components/modals/AdHocLoggerModal'
@@ -690,7 +691,7 @@ function TodayPageContent() {
         const d2 = currentDate
         const d3 = addDays(currentDate, 1)
         datesToLoad = [format(d1, 'yyyy-MM-dd'), format(d2, 'yyyy-MM-dd'), format(d3, 'yyyy-MM-dd')]
-      } else if (calendarViewMode === 'week') {
+      } else if (calendarViewMode === 'week' || calendarViewMode === 'pulse') {
         const start = startOfWeek(currentDate, { weekStartsOn: 1 })
         const end = endOfWeek(currentDate, { weekStartsOn: 1 })
         datesToLoad = eachDayOfInterval({ start, end }).map(d => format(d, 'yyyy-MM-dd'))
@@ -1434,6 +1435,20 @@ function TodayPageContent() {
     return result
   }, [multiDayTasks, benchedOrEliminatedModalityIds, selectedProtocolFilter, selectedMainCategories, selectedSubCategories])
 
+  const allAvailableTasks = useMemo(() => {
+    const list = [...tasks]
+    const seen = new Set(tasks.map(t => t.id))
+    Object.values(multiDayTasks).forEach(arr => {
+      arr.forEach(t => {
+        if (!seen.has(t.id)) {
+          seen.add(t.id)
+          list.push(t)
+        }
+      })
+    })
+    return list
+  }, [tasks, multiDayTasks])
+
   const { routineTasks, allCompletedTasks, allSnoozedTasks, allSkippedTasks, infrequentTasks } = useMemo(() => {
     const routine: DedupedTask[] = []
     const completedTop: DedupedTask[] = []
@@ -1915,6 +1930,9 @@ function TodayPageContent() {
   const dateTitle = useMemo(() => {
     if (calendarViewMode === 'today') {
       return format(currentDate, 'EEEE, MMMM d')
+    }
+    if (calendarViewMode === 'pulse') {
+      return `Daily Pulse · ${format(currentDate, 'EEEE, MMMM d')}`
     }
     if (calendarViewMode === '3day') {
       return `${format(parseLocalDate(threeDates[0]), 'MMM d')} – ${format(parseLocalDate(threeDates[2]), 'MMM d, yyyy')}`
@@ -2593,7 +2611,7 @@ function TodayPageContent() {
           onEnrollClick={() => setIsEnrollModalOpen(true)}
           completionMode={completionMode}
           onCompletionModeChange={handleCompletionModeChange}
-          showCategoryFilters={calendarViewMode !== 'today'}
+          showCategoryFilters={calendarViewMode !== 'today' && calendarViewMode !== 'pulse'}
         />
 
         {/* 2. PRIMARY DATE NAVIGATION TOOLBAR (Always at Top directly below ViewSelector) */}
@@ -2750,6 +2768,30 @@ function TodayPageContent() {
               onStatusUpdated={() => {
                 refreshTodayTasks()
               }}
+            />
+          </div>
+        )}
+
+        {/* Loading spinner when switching to multi-day views while data fetches */}
+        {calendarViewMode !== 'today' && calendarViewMode !== 'pulse' && Object.keys(multiDayTasks).length === 0 && (
+          <div className="py-16 flex flex-col items-center justify-center space-y-3 animate-in fade-in duration-200">
+            <div className="w-8 h-8 rounded-full border-2 border-emerald-500/20 border-t-emerald-400 animate-spin" />
+            <span className="text-xs font-bold text-slate-400">
+              Loading {calendarViewMode === '3day' ? '3-day split' : calendarViewMode === 'week' ? '7-day week matrix' : 'month matrix'}...
+            </span>
+          </div>
+        )}
+
+        {/* Daily Pulse View (Growth vs Recovery Barometer & Auto-Harmonize) */}
+        {calendarViewMode === 'pulse' && (
+          <div className="animate-in fade-in duration-200 mb-8">
+            <DailyVerticalPulseView
+              tasks={allAvailableTasks}
+              selectedDate={currentDate}
+              weekDays={weekDates.map(d => parseLocalDate(d))}
+              userProfile={profile}
+              onSelectDate={(d: Date) => navigateToDate(d)}
+              onTaskUpdated={() => refreshTodayTasks()}
             />
           </div>
         )}
