@@ -13,7 +13,7 @@ type CustomizeCheckinOutcomesModalProps = {
   mode?: 'morning' | 'anytime' | 'nightly'
   allOutcomes: OutcomeDimension[]
   userProfile?: UserProfile | null
-  onOutcomesUpdated?: (updatedPreferences?: Record<string, number>, updatedProfile?: UserProfile | null) => void
+  onOutcomesUpdated?: (updatedPreferences?: Record<string, any>, updatedProfile?: UserProfile | null) => void
 }
 
 const RECOMMENDED_IDS = ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep', 'waking_restedness', 'sleep_latency', 'alertness', 'calmness', 'soreness', 'pain']
@@ -40,7 +40,7 @@ export default function CustomizeCheckinOutcomesModal({
   onOutcomesUpdated
 }: CustomizeCheckinOutcomesModalProps) {
   const [activeTab, setActiveTab] = useState<'morning' | 'anytime' | 'nightly'>(mode)
-  const [preferences, setPreferences] = useState<Record<string, number>>({})
+  const [preferences, setPreferences] = useState<Record<string, any>>({})
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [isSaving, setIsSaving] = useState(false)
@@ -373,13 +373,87 @@ export default function CustomizeCheckinOutcomesModal({
             </div>
           )}
 
-          {/* 🚫 LIFESTYLE & NEGATIVE EXPOSURES TO TRACK (ONLY FOR NIGHTLY CHECK-IN) */}
-          {activeTab === 'nightly' && (
+          {/* 🌅 MORNING EXPERIENCE & DISPLAY PREFERENCES (ONLY FOR MORNING TAB) */}
+          {activeTab === 'morning' && (
+            <div className="bg-gradient-to-r from-amber-950/40 via-slate-900/60 to-slate-900/60 p-3.5 rounded-2xl border border-amber-500/30 space-y-3 shadow-inner">
+              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider border-b border-amber-500/20 pb-2">
+                <Sun size={14} className="text-amber-400" /> Morning Experience &amp; Display Preferences
+              </div>
+
+              {/* Morning Mindfulness Display Mode */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <span>🌅</span> Morning Mindfulness &amp; Presence
+                </label>
+                <p className="text-[10px] text-gray-400">
+                  Choose how the morning reflection &amp; somatic presence prompt appears:
+                </p>
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  {[
+                    { id: 'open', label: 'Open by Default', desc: 'Full reflection card visible' },
+                    { id: 'collapsed', label: 'Collapsed by Default', desc: 'Expandable sunrise bar' },
+                    { id: 'hidden', label: 'Don\'t Show', desc: 'Hidden from check-in' }
+                  ].map(opt => {
+                    const isSelected = (preferences['setting:morning_mindfulness_display'] || 'open') === opt.id
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setPreferences(prev => ({ ...prev, 'setting:morning_mindfulness_display': opt.id }))}
+                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-sm'
+                            : 'bg-black/40 border-white/10 hover:border-white/20 text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        <div className="font-bold text-[11px] text-white flex items-center justify-between">
+                          <span>{opt.label}</span>
+                          {isSelected && <Check size={12} className="text-amber-400" />}
+                        </div>
+                        <p className="text-[9px] text-gray-400 mt-0.5 leading-tight">{opt.desc}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Keep Last Night's Exposures Expanded Toggle */}
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
+                <div>
+                  <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span>🚫</span> Keep Last Night's Exposures Expanded
+                  </label>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    Keep the exposures section (THC, caffeine timing, etc.) expanded under sleep tracking at all times.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreferences(prev => ({
+                    ...prev,
+                    'setting:morning_always_expand_exposures': prev['setting:morning_always_expand_exposures'] === 1 ? 0 : 1
+                  }))}
+                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                    preferences['setting:morning_always_expand_exposures'] === 1 ? 'bg-amber-500' : 'bg-white/20'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                    preferences['setting:morning_always_expand_exposures'] === 1 ? 'left-6' : 'left-1'
+                  }`} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 🚫 LIFESTYLE & NEGATIVE EXPOSURES TO TRACK (NIGHTLY & MORNING CHECK-INS) */}
+          {(activeTab === 'nightly' || activeTab === 'morning') && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-rose-300 border-b border-rose-500/20 pb-1">
+              <div className={`flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider border-b pb-1 ${
+                activeTab === 'morning' ? 'text-amber-300 border-amber-500/20' : 'text-rose-300 border-rose-500/20'
+              }`}>
                 <span className="flex items-center gap-1.5">
                   <span>🚫</span>
-                  <span>Check-in Exposures &amp; Lifestyle Factors</span>
+                  <span>{activeTab === 'morning' ? "Last Night's Exposures to Track" : "Check-in Exposures & Lifestyle Factors"}</span>
                 </span>
                 <span className="text-[10px] text-slate-400 font-normal">
                   ({CHECKIN_EXPOSURES_METADATA.filter(e => isExposureTracked(e.id)).length} Active)
@@ -396,14 +470,16 @@ export default function CustomizeCheckinOutcomesModal({
                       onClick={() => toggleExposureTracked(exp.id)}
                       className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                         active
-                          ? 'bg-rose-950/30 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]'
+                          ? activeTab === 'morning'
+                            ? 'bg-amber-950/30 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.15)]'
+                            : 'bg-rose-950/30 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]'
                           : 'bg-black/40 border-white/10 hover:border-white/20'
                       }`}
                     >
                       <div className="flex items-center space-x-2.5 min-w-0">
                         <div className={`p-1.5 rounded-xl border shrink-0 ${
                           active
-                            ? 'bg-rose-500 text-white border-rose-400'
+                            ? activeTab === 'morning' ? 'bg-amber-500 text-black border-amber-400' : 'bg-rose-500 text-white border-rose-400'
                             : 'bg-black/50 text-gray-500 border-white/10'
                         }`}>
                           {active ? <Check size={12} strokeWidth={3} /> : <div className="w-3 h-3" />}
@@ -420,7 +496,9 @@ export default function CustomizeCheckinOutcomesModal({
 
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ml-1 ${
                         active
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                          ? activeTab === 'morning'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                            : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
                           : 'bg-white/5 text-gray-500 border-white/10'
                       }`}>
                         {active ? 'Tracked' : 'Hidden'}

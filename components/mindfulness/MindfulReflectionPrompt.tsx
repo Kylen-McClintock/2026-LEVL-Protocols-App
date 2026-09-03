@@ -121,9 +121,6 @@ export default function MindfulReflectionPrompt({
               <span className="text-[11px] font-black uppercase tracking-wider text-white drop-shadow-sm">
                 {isMorning ? 'Morning Mindfulness & Presence' : 'Evening Decompression & Reflection'}
               </span>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-white/15 text-white/90">
-                {index}/{total}
-              </span>
             </div>
           </div>
         </div>

@@ -5,7 +5,7 @@ import { DailyWellbeingCheckin as WellbeingType, UserProfile, OutcomeDimension }
 import { isFuture, isPast, isSameDay, format } from 'date-fns'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getRecentOutcomeSnapshot, getLatestOutcomeLiveState, OutcomeLiveState } from '@/lib/utils/outcomeRecency'
-import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sparkles, ArrowUpRight, ArrowDownRight, Radio, Activity, FileText } from 'lucide-react'
+import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sunrise, Sparkles, ArrowUpRight, ArrowDownRight, Radio, Activity, FileText } from 'lucide-react'
 import CustomizeCheckinOutcomesModal from '@/components/modals/CustomizeCheckinOutcomesModal'
 import QuickOutcomeUpdateModal from '@/components/modals/QuickOutcomeUpdateModal'
 import { safeLocalStorageSet } from '@/lib/utils/storage'
@@ -319,8 +319,7 @@ export default function DailyWellbeingCheckin({
   const [outcomesModalTitle, setOutcomesModalTitle] = useState("Customize Tracked Outcomes")
   const [outcomesModalMode, setOutcomesModalMode] = useState<'morning' | 'anytime' | 'nightly'>('morning')
 
-  // Collapsible for retroactive last night's checkin in morning mode
-  const [showLastNightRetro, setShowLastNightRetro] = useState(false)
+
   
   // Custom outcomes state
   const [customOutcomeValues, setCustomOutcomeValues] = useState<Record<string, number>>({})
@@ -444,6 +443,23 @@ export default function DailyWellbeingCheckin({
     window.addEventListener('levl_profile_updated', handleProfileUpdate)
     return () => window.removeEventListener('levl_profile_updated', handleProfileUpdate)
   }, [])
+  
+  // User Preferences for Morning Exposures & Mindfulness Display
+  const alwaysExpandExposures = localProfile?.outcome_preference_scores?.['setting:morning_always_expand_exposures'] === 1
+  const [showLastNightExposures, setShowLastNightExposures] = useState(false)
+
+  const morningMindfulnessPref = (localProfile?.outcome_preference_scores?.['setting:morning_mindfulness_display'] as 'open' | 'collapsed' | 'hidden') || 'open'
+  const [isMindfulnessExpanded, setIsMindfulnessExpanded] = useState(morningMindfulnessPref === 'open')
+
+  useEffect(() => {
+    if (alwaysExpandExposures) {
+      setShowLastNightExposures(true)
+    }
+  }, [alwaysExpandExposures])
+
+  useEffect(() => {
+    setIsMindfulnessExpanded(morningMindfulnessPref === 'open')
+  }, [morningMindfulnessPref])
 
   // Helper to determine if an outcome is tracked in morning vs nightly mode
   const isOutcomeTracked = (id: string, mode: 'morning' | 'nightly') => {
@@ -1554,10 +1570,13 @@ export default function DailyWellbeingCheckin({
           {isCurrentDay && (
             <button
               type="button"
-              onClick={() => setShowLastNightRetro(!showLastNightRetro)}
+              onClick={() => {
+                setShowSleepSection(true)
+                setShowLastNightExposures(prev => !prev)
+              }}
               className="text-xs font-bold text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 px-3.5 py-1.5 rounded-lg hover:bg-indigo-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
             >
-              <Moon size={14} /> {showLastNightRetro ? 'Hide Last Night Log' : (isNightlySaved ? "Edit Last Night's Exposures & Sleep" : "Log Last Night's Exposures & Sleep")}
+              <Moon size={14} /> {showLastNightExposures ? "Hide Last Night's Exposures" : (isNightlySaved ? "Edit Last Night's Exposures" : "Log Last Night's Exposures")}
             </button>
           )}
 
@@ -1572,7 +1591,40 @@ export default function DailyWellbeingCheckin({
       </div>
 
       {/* Morning Mindful Reflection & Somatic Presence Prompt */}
-      <MindfulReflectionPrompt mode="morning" date={date} className="mb-3" />
+      {morningMindfulnessPref !== 'hidden' && (
+        isMindfulnessExpanded ? (
+          <div className="relative mb-3">
+            {morningMindfulnessPref === 'collapsed' && (
+              <button
+                type="button"
+                onClick={() => setIsMindfulnessExpanded(false)}
+                className="absolute top-3.5 right-3.5 z-10 text-[10px] font-bold text-white/80 hover:text-white bg-black/40 hover:bg-black/60 border border-white/20 px-2.5 py-0.5 rounded-lg cursor-pointer transition-all shadow-sm"
+              >
+                Collapse ⌃
+              </button>
+            )}
+            <MindfulReflectionPrompt mode="morning" date={date} />
+          </div>
+        ) : (
+          <div 
+            onClick={() => setIsMindfulnessExpanded(true)}
+            className="mb-3 p-3.5 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-slate-950/60 cursor-pointer hover:border-amber-400/50 transition-all flex items-center justify-between shadow-md"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shadow-inner">
+                <Sunrise size={14} />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-white block">Morning Mindfulness &amp; Presence</span>
+                <span className="text-[10px] text-amber-300/80">Tap to expand morning somatic reflection prompt</span>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+              Reflect <ChevronDown size={14} />
+            </span>
+          </div>
+        )
+      )}
 
       {/* Unified Voice Bar for Open Morning Form */}
       <UnifiedVoiceBar
@@ -1583,206 +1635,7 @@ export default function DailyWellbeingCheckin({
         onApplyParsedData={(data) => handleApplyVoiceData(data, 'morning')}
       />
 
-      {/* Retroactive Last Night's Exposures & Sleep Box (Morning Mode Expandable) */}
-      {(!isNightly && showLastNightRetro) && (
-        <div className="bg-indigo-950/40 border border-indigo-500/40 rounded-xl p-4 space-y-4 animate-in fade-in">
-          <div className="text-xs font-bold text-indigo-300 uppercase tracking-wider border-b border-indigo-500/30 pb-2 flex items-center justify-between">
-            <span className="flex items-center gap-1.5"><Moon size={14} /> Retroactive Last Night's Exposures & Sleep Log</span>
-            <button 
-              type="button" 
-              onClick={() => setShowLastNightRetro(false)} 
-              className="text-[10px] text-gray-400 hover:text-white underline cursor-pointer"
-            >
-              Collapse
-            </button>
-          </div>
 
-          {/* Retroactive Sleep Inputs */}
-          <div className="bg-black/30 p-3 rounded-lg border border-white/10 space-y-3">
-            <h5 className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider">Last Night's Sleep Quality</h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div>
-                <label className="text-gray-300 block mb-1">Subjective Sleep Rating (0-10)</label>
-                <input 
-                  type="range" min="0" max="10" 
-                  value={subjectiveSleep} 
-                  onChange={(e) => setSubjectiveSleep(parseInt(e.target.value))} 
-                  className="w-full accent-indigo-400 cursor-pointer" 
-                />
-                <div className="flex justify-between text-[9px] text-gray-400 mt-0.5">
-                  <span>Poor</span><span>{subjectiveSleep}/10</span><span>Restorative</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-gray-300 block mb-1">Objective Sleep Score (0-100)</label>
-                <input 
-                  type="number" min="0" max="100" 
-                  value={sleepScore} 
-                  onChange={(e) => setSleepScore(e.target.value)} 
-                  placeholder="e.g. 85 (Oura/Apple/Whoop)" 
-                  className="w-full bg-black/60 border border-white/20 rounded p-1.5 text-white font-mono text-xs" 
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Retroactive Negative Exposures Grid */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between">
-              <h5 className="text-[11px] font-bold text-rose-300 uppercase tracking-wider flex items-center gap-1">
-                <span>🚫</span> Last Night's Negative Exposures &amp; Lifestyle Factors
-              </h5>
-              <button
-                type="button"
-                onClick={() => {
-                  setOutcomesModalTitle("Customize Tracked Exposures & Outcomes")
-                  setOutcomesModalMode("morning")
-                  setIsOutcomesModalOpen(true)
-                }}
-                className="text-[10px] font-bold text-indigo-300 hover:text-white flex items-center gap-1 cursor-pointer"
-              >
-                <Sliders size={11} /> Edit Tracked Items
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-              {/* Alcohol */}
-              {isExposureTracked('alcohol_drinks') && (
-                <div className="bg-black/40 p-2.5 rounded-lg border border-white/10 space-y-1">
-                  <label className="font-bold text-white block">🍷 Alcohol Intake</label>
-                  <select
-                    value={alcoholDrinks}
-                    onChange={(e) => setAlcoholDrinks(e.target.value === 'skip' ? 'skip' : Number(e.target.value))}
-                    className="w-full bg-black/80 border border-white/20 rounded-lg p-2 pr-7 text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
-                  >
-                    <option value="skip">-- Skip / Not Tracked --</option>
-                    <option value={0}>0 Drinks (Zero)</option>
-                    <option value={1}>1 Drink</option>
-                    <option value={2}>2-3 Drinks</option>
-                    <option value={4}>4+ Drinks (Heavy)</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Nicotine */}
-              {isExposureTracked('nicotine_exposure') && (
-                <div className="bg-black/40 p-2.5 rounded-lg border border-white/10 space-y-1">
-                  <label className="font-bold text-white block">🚬 Nicotine & Smoking</label>
-                  <select
-                    value={nicotineExposure}
-                    onChange={(e) => setNicotineExposure(e.target.value)}
-                    className="w-full bg-black/80 border border-white/20 rounded-lg p-2 pr-7 text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
-                  >
-                    <option value="skip">-- Skip / Not Tracked --</option>
-                    <option value="none">None</option>
-                    <option value="cigarettes">Cigarettes / Tobacco</option>
-                    <option value="vaping">Vaping / E-Cigarettes</option>
-                    <option value="pouches">Pouches / Gum</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Cannabis & THC */}
-              {isExposureTracked('cannabis_exposure') && (
-                <div className="bg-black/40 p-2.5 rounded-lg border border-white/10 space-y-1">
-                  <label className="font-bold text-white block flex items-center gap-1.5">
-                    <span>🌿</span>
-                    <span>Cannabis &amp; THC</span>
-                  </label>
-                  <select
-                    value={cannabisExposure}
-                    onChange={(e) => setCannabisExposure(e.target.value)}
-                    className="w-full bg-black/80 border border-white/20 rounded-lg p-2 pr-7 text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
-                  >
-                    <option value="skip">-- Skip / Not Tracked --</option>
-                    <option value="none">None (Zero)</option>
-                    <option value="inhaled">Inhaled / Smoked / Vaped</option>
-                    <option value="edible_low">Micro-dose Edible / Tincture (&lt;5mg)</option>
-                    <option value="edible_std">Standard Edible (5–10mg)</option>
-                    <option value="edible_high">High Dose Edible (10mg+)</option>
-                    <option value="cbd_only">CBD / Non-THC Only</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Prolonged Sitting */}
-              {isExposureTracked('sitting_duration') && (
-                <div className="bg-black/40 p-2.5 rounded-lg border border-white/10 space-y-1">
-                  <label className="font-bold text-white block">🪑 Prolonged Sitting</label>
-                  <select
-                    value={sittingDuration}
-                    onChange={(e) => setSittingDuration(e.target.value)}
-                    className="w-full bg-black/80 border border-white/20 rounded-lg p-2 pr-7 text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
-                  >
-                    <option value="skip">-- Skip / Not Tracked --</option>
-                    <option value="under_4h">&lt;4 Hours (Active)</option>
-                    <option value="4_7h">4-7 Hours (Desk)</option>
-                    <option value="8_10h">8-10 Hours (Heavy)</option>
-                    <option value="over_10h">10+ Hours (Sedentary)</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Ultra-processed Foods */}
-              {isExposureTracked('processed_sugar') && (
-                <div className="bg-black/40 p-2.5 rounded-lg border border-white/10 space-y-1">
-                  <label className="font-bold text-white block">🍕 Ultra-Processed Foods</label>
-                  <select
-                    value={processedSugar}
-                    onChange={(e) => setProcessedSugar(e.target.value)}
-                    className="w-full bg-black/80 border border-white/20 rounded-lg p-2 pr-7 text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
-                  >
-                    <option value="skip">-- Skip / Not Tracked --</option>
-                    <option value="low">Low (Clean whole foods)</option>
-                    <option value="moderate">Moderate (Occasional treats)</option>
-                    <option value="high">High (Frequent sugars)</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Late Caffeine Timing */}
-              {isExposureTracked('late_caffeine') && (
-                <TimingExposureCard
-                  title="Last Caffeine Timing"
-                  icon="☕"
-                  value={lateCaffeine}
-                  onChange={setLateCaffeine}
-                  type="caffeine"
-                  idealBedtime={localProfile?.ideal_bedtime || '22:30'}
-                  theme="indigo"
-                />
-              )}
-
-              {/* Late Blue Light Timing */}
-              {isExposureTracked('blue_light') && (
-                <TimingExposureCard
-                  title="Last Screen / Blue Light"
-                  icon="📱"
-                  value={blueLight}
-                  onChange={setBlueLight}
-                  type="screen"
-                  idealBedtime={localProfile?.ideal_bedtime || '22:30'}
-                  theme="indigo"
-                />
-              )}
-
-              {/* Late Meal Timing */}
-              {isExposureTracked('late_meal') && (
-                <TimingExposureCard
-                  title="Last Meal Timing"
-                  icon="🍟"
-                  value={lateMeal}
-                  onChange={setLateMeal}
-                  type="meal"
-                  idealBedtime={localProfile?.ideal_bedtime || '22:30'}
-                  theme="indigo"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
 
       
@@ -1916,6 +1769,181 @@ export default function DailyWellbeingCheckin({
                 className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-levl-accent font-mono" 
               />
             </div>
+
+            {/* 🚫 Expandable Last Night's Exposures & Lifestyle Factors (Morning Check-in) */}
+            {!isNightly && (
+              <div className="pt-3 border-t border-indigo-500/20 space-y-3">
+                <div 
+                  onClick={() => setShowLastNightExposures(!showLastNightExposures)}
+                  className="flex items-center justify-between cursor-pointer p-3 rounded-xl bg-black/40 hover:bg-black/60 border border-white/10 hover:border-indigo-500/40 transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">🚫</span>
+                    <div>
+                      <h5 className="text-xs font-bold text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
+                        Last Night's Exposures &amp; Lifestyle Factors
+                      </h5>
+                      <p className="text-[10px] text-gray-400">Track alcohol, THC, late caffeine, screen time, and meals</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOutcomesModalTitle("Customize Tracked Exposures & Outcomes")
+                        setOutcomesModalMode("morning")
+                        setIsOutcomesModalOpen(true)
+                      }}
+                      className="text-[10px] font-bold text-indigo-300 hover:text-white flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg border border-white/10 transition-colors"
+                    >
+                      <Sliders size={11} /> Edit Tracked Items
+                    </button>
+                    <span className="text-xs text-indigo-300 font-bold flex items-center gap-1 p-1 bg-white/5 rounded-lg border border-white/10">
+                      {showLastNightExposures ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                    </span>
+                  </div>
+                </div>
+
+                {showLastNightExposures && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs pt-1 animate-in fade-in">
+                    {/* Alcohol */}
+                    {isExposureTracked('alcohol_drinks') && (
+                      <div className="bg-black/40 p-2.5 rounded-lg border border-white/10 space-y-1">
+                        <label className="font-bold text-white block">🍷 Alcohol Intake</label>
+                        <select
+                          value={alcoholDrinks}
+                          onChange={(e) => setAlcoholDrinks(e.target.value === 'skip' ? 'skip' : Number(e.target.value))}
+                          className="w-full bg-black/80 border border-white/20 rounded-lg p-2 pr-7 text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
+                        >
+                          <option value="skip">-- Skip / Not Tracked --</option>
+                          <option value={0}>0 Drinks (Zero)</option>
+                          <option value={1}>1 Drink</option>
+                          <option value={2}>2-3 Drinks</option>
+                          <option value={4}>4+ Drinks (Heavy)</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Nicotine */}
+                    {isExposureTracked('nicotine_exposure') && (
+                      <div className="bg-black/40 p-2.5 rounded-lg border border-white/10 space-y-1">
+                        <label className="font-bold text-white block">🚬 Nicotine &amp; Smoking</label>
+                        <select
+                          value={nicotineExposure}
+                          onChange={(e) => setNicotineExposure(e.target.value)}
+                          className="w-full bg-black/80 border border-white/20 rounded-lg p-2 pr-7 text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
+                        >
+                          <option value="skip">-- Skip / Not Tracked --</option>
+                          <option value="none">None</option>
+                          <option value="cigarettes">Cigarettes / Tobacco</option>
+                          <option value="vaping">Vaping / E-Cigarettes</option>
+                          <option value="pouches">Pouches / Gum</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Cannabis & THC */}
+                    {isExposureTracked('cannabis_exposure') && (
+                      <div className="bg-black/40 p-2.5 rounded-lg border border-white/10 space-y-1">
+                        <label className="font-bold text-white block flex items-center gap-1.5">
+                          <span>🌿</span>
+                          <span>Cannabis &amp; THC</span>
+                        </label>
+                        <select
+                          value={cannabisExposure}
+                          onChange={(e) => setCannabisExposure(e.target.value)}
+                          className="w-full bg-black/80 border border-white/20 rounded-lg p-2 pr-7 text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
+                        >
+                          <option value="skip">-- Skip / Not Tracked --</option>
+                          <option value="none">None (Zero)</option>
+                          <option value="inhaled">Inhaled / Smoked / Vaped</option>
+                          <option value="edible_low">Micro-dose Edible / Tincture (&lt;5mg)</option>
+                          <option value="edible_std">Standard Edible (5–10mg)</option>
+                          <option value="edible_high">High Dose Edible (10mg+)</option>
+                          <option value="cbd_only">CBD / Non-THC Only</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Prolonged Sitting */}
+                    {isExposureTracked('sitting_duration') && (
+                      <div className="bg-black/40 p-2.5 rounded-lg border border-white/10 space-y-1">
+                        <label className="font-bold text-white block">🪑 Prolonged Sitting</label>
+                        <select
+                          value={sittingDuration}
+                          onChange={(e) => setSittingDuration(e.target.value)}
+                          className="w-full bg-black/80 border border-white/20 rounded-lg p-2 pr-7 text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
+                        >
+                          <option value="skip">-- Skip / Not Tracked --</option>
+                          <option value="under_4h">&lt;4 Hours (Active)</option>
+                          <option value="4_7h">4-7 Hours (Desk)</option>
+                          <option value="8_10h">8-10 Hours (Heavy)</option>
+                          <option value="over_10h">10+ Hours (Sedentary)</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Ultra-processed Foods */}
+                    {isExposureTracked('processed_sugar') && (
+                      <div className="bg-black/40 p-2.5 rounded-lg border border-white/10 space-y-1">
+                        <label className="font-bold text-white block">🍕 Ultra-Processed Foods</label>
+                        <select
+                          value={processedSugar}
+                          onChange={(e) => setProcessedSugar(e.target.value)}
+                          className="w-full bg-black/80 border border-white/20 rounded-lg p-2 pr-7 text-white text-xs focus:outline-none focus:border-indigo-400 cursor-pointer font-medium"
+                        >
+                          <option value="skip">-- Skip / Not Tracked --</option>
+                          <option value="low">Low (Clean whole foods)</option>
+                          <option value="moderate">Moderate (Occasional treats)</option>
+                          <option value="high">High (Frequent sugars)</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Late Caffeine Timing */}
+                    {isExposureTracked('late_caffeine') && (
+                      <TimingExposureCard
+                        title="Last Caffeine Timing"
+                        icon="☕"
+                        value={lateCaffeine}
+                        onChange={setLateCaffeine}
+                        type="caffeine"
+                        idealBedtime={localProfile?.ideal_bedtime || '22:30'}
+                        theme="indigo"
+                      />
+                    )}
+
+                    {/* Late Blue Light Timing */}
+                    {isExposureTracked('blue_light') && (
+                      <TimingExposureCard
+                        title="Last Screen / Blue Light"
+                        icon="📱"
+                        value={blueLight}
+                        onChange={setBlueLight}
+                        type="screen"
+                        idealBedtime={localProfile?.ideal_bedtime || '22:30'}
+                        theme="indigo"
+                      />
+                    )}
+
+                    {/* Late Meal Timing */}
+                    {isExposureTracked('late_meal') && (
+                      <TimingExposureCard
+                        title="Last Meal Timing"
+                        icon="🍟"
+                        value={lateMeal}
+                        onChange={setLateMeal}
+                        type="meal"
+                        idealBedtime={localProfile?.ideal_bedtime || '22:30'}
+                        theme="indigo"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-[11px] text-indigo-300/60 italic">Section collapsed / skipped. Tap 'Expand Section' to record last night's sleep ratings.</p>
