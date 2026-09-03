@@ -9,6 +9,7 @@ import MonthHeatmapView from './MonthHeatmapView'
 import ExerciseSplitView from './ExerciseSplitView'
 import FastingSplitView from './FastingSplitView'
 import PeptideSplitView from './PeptideSplitView'
+import DailyVerticalPulseView from './DailyVerticalPulseView'
 
 type DomainLens = 'all' | 'exercise' | 'fasting' | 'peptides'
 
@@ -28,7 +29,8 @@ const getPixelOffset = (hour: number) => {
 
 export default function BiologicalRhythmDashboard({ tasks, currentDate, userProfile, wellbeingLogs = [], onNextMonth, onPrevMonth }: Props) {
   const router = useRouter()
-  const [viewMode, setViewMode] = useState<'weekly' | 'monthly'>('weekly')
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('weekly')
+  const [selectedDate, setSelectedDate] = useState<Date>(currentDate)
   
   // Initialize activeLens from URL query param (?tab=exercise) or localStorage
   const [activeLens, setActiveLens] = useState<DomainLens>(() => {
@@ -288,14 +290,20 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
           {activeLens === 'all' && (
             <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
               <button 
+                onClick={() => setViewMode('daily')}
+                className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer ${viewMode === 'daily' ? 'bg-levl-surface-highlight text-white shadow font-bold' : 'text-gray-400 hover:text-white'}`}
+              >
+                Daily Pulse
+              </button>
+              <button 
                 onClick={() => setViewMode('weekly')}
-                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${viewMode === 'weekly' ? 'bg-levl-surface-highlight text-white shadow' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer ${viewMode === 'weekly' ? 'bg-levl-surface-highlight text-white shadow font-bold' : 'text-gray-400 hover:text-white'}`}
               >
                 Weekly Rhythm
               </button>
               <button 
                 onClick={() => setViewMode('monthly')}
-                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${viewMode === 'monthly' ? 'bg-levl-surface-highlight text-white shadow' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer ${viewMode === 'monthly' ? 'bg-levl-surface-highlight text-white shadow font-bold' : 'text-gray-400 hover:text-white'}`}
               >
                 Monthly Heatmap
               </button>
@@ -325,6 +333,14 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
           userProfile={userProfile}
           wellbeingLogs={wellbeingLogs}
         />
+      ) : viewMode === 'daily' ? (
+        <DailyVerticalPulseView
+          tasks={tasks}
+          selectedDate={selectedDate}
+          weekDays={weekDays}
+          userProfile={userProfile}
+          onSelectDate={(d) => setSelectedDate(d)}
+        />
       ) : viewMode === 'weekly' ? (
         <div className="glass-card rounded-xl border border-white/10 overflow-hidden bg-black/20">
           {/* Main Grid: Days of Week */}
@@ -337,7 +353,10 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
             {weekDays.map(day => (
               <div 
                 key={day.toISOString()} 
-                onClick={() => router.push(`/today?date=${format(day, 'yyyy-MM-dd')}`)}
+                onClick={() => {
+                  setSelectedDate(day)
+                  setViewMode('daily')
+                }}
                 className={`p-4 text-center border-r border-white/10 cursor-pointer hover:bg-white/5 transition-colors ${isToday(day) ? 'bg-levl-accent/10' : ''}`}
               >
                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{format(day, 'EEE')}</div>
