@@ -11,6 +11,7 @@ import QuickOutcomeUpdateModal from '@/components/modals/QuickOutcomeUpdateModal
 import { safeLocalStorageSet } from '@/lib/utils/storage'
 import UnifiedVoiceBar, { ParsedVoiceCheckinData } from '@/components/voice/UnifiedVoiceBar'
 import MindfulReflectionPrompt from '@/components/mindfulness/MindfulReflectionPrompt'
+import { getStoredCustomOutcomes } from '@/lib/data'
 
 function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: string = '22:30'): number {
   const [h, m] = timeStr.split(':').map(Number)
@@ -417,21 +418,56 @@ export default function DailyWellbeingCheckin({
   const isFutureDate = isFuture(date) && !isSameDay(date, new Date())
   const isPastDate = isPast(date) && !isSameDay(date, new Date())
   
-  // Identify sleep-related outcomes from library
-  const sleepOutcomes = useMemo(() => {
-    return allOutcomes.filter(o => {
-      const idLower = o.id.toLowerCase()
-      const nameLower = o.name.toLowerCase()
-      const catLower = (o.category || '').toLowerCase()
-      return idLower.includes('sleep') || nameLower.includes('sleep') || catLower.includes('sleep')
-    })
-  }, [allOutcomes])
-
   const [localProfile, setLocalProfile] = useState<UserProfile | null>(profile || null)
 
   useEffect(() => {
     if (profile) setLocalProfile(profile)
   }, [profile])
+
+  // Custom user-created outcomes
+  const [customOutcomesList, setCustomOutcomesList] = useState<OutcomeDimension[]>([])
+
+  useEffect(() => {
+    const loadCustom = () => {
+      let custom: OutcomeDimension[] = []
+      if (localProfile?.outcome_preference_scores?.custom_user_outcomes && Array.isArray(localProfile.outcome_preference_scores.custom_user_outcomes)) {
+        custom = localProfile.outcome_preference_scores.custom_user_outcomes
+      } else {
+        custom = getStoredCustomOutcomes()
+      }
+      setCustomOutcomesList(custom)
+    }
+
+    loadCustom()
+
+    const handleCustomUpdate = (e: any) => {
+      if (e?.detail && Array.isArray(e.detail)) {
+        setCustomOutcomesList(e.detail)
+      } else {
+        loadCustom()
+      }
+    }
+
+    window.addEventListener('levl_custom_outcomes_updated', handleCustomUpdate)
+    return () => window.removeEventListener('levl_custom_outcomes_updated', handleCustomUpdate)
+  }, [localProfile])
+
+  const combinedAllOutcomes = useMemo(() => {
+    const map = new Map<string, OutcomeDimension>()
+    allOutcomes.forEach(o => map.set(o.id, o))
+    customOutcomesList.forEach(co => map.set(co.id, co))
+    return Array.from(map.values())
+  }, [allOutcomes, customOutcomesList])
+
+  // Identify sleep-related outcomes from library
+  const sleepOutcomes = useMemo(() => {
+    return combinedAllOutcomes.filter(o => {
+      const idLower = o.id.toLowerCase()
+      const nameLower = o.name.toLowerCase()
+      const catLower = (o.category || '').toLowerCase()
+      return idLower.includes('sleep') || nameLower.includes('sleep') || catLower.includes('sleep')
+    })
+  }, [combinedAllOutcomes])
 
   // Listen for realtime profile updates dispatched across app (e.g. from CustomizeCheckinOutcomesModal)
   useEffect(() => {
@@ -461,6 +497,14 @@ export default function DailyWellbeingCheckin({
     setIsMindfulnessExpanded(morningMindfulnessPref === 'open')
   }, [morningMindfulnessPref])
 
+  // User Preferences for Evening Mindfulness Display
+  const eveningMindfulnessPref = (localProfile?.outcome_preference_scores?.['setting:evening_mindfulness_display'] as 'open' | 'collapsed' | 'hidden') || 'open'
+  const [isEveningMindfulnessExpanded, setIsEveningMindfulnessExpanded] = useState(eveningMindfulnessPref === 'open')
+
+  useEffect(() => {
+    setIsEveningMindfulnessExpanded(eveningMindfulnessPref === 'open')
+  }, [eveningMindfulnessPref])
+
   // Helper to determine if an outcome is tracked in morning vs nightly mode
   const isOutcomeTracked = (id: string, mode: 'morning' | 'nightly') => {
     if (mode === 'morning' && localProfile?.morning_checkin_dimensions && localProfile.morning_checkin_dimensions.length > 0) {
@@ -486,7 +530,7 @@ export default function DailyWellbeingCheckin({
 
   // Calculate dynamic non-sleep custom outcomes to track for Morning Check-in
   const morningOutcomesToTrack = useMemo(() => {
-    return allOutcomes.filter(o => {
+    return combinedAllOutcomes.filter(o => {
       const idLower = o.id.toLowerCase()
       const nameLower = o.name.toLowerCase()
       const catLower = (o.category || '').toLowerCase()
@@ -499,11 +543,11 @@ export default function DailyWellbeingCheckin({
 
       return isOutcomeTracked(o.id, 'morning')
     })
-  }, [localProfile, allOutcomes])
+  }, [localProfile, combinedAllOutcomes])
 
   // Calculate dynamic non-sleep custom outcomes to track for Nightly Check-in
   const nightlyOutcomesToTrack = useMemo(() => {
-    return allOutcomes.filter(o => {
+    return combinedAllOutcomes.filter(o => {
       const idLower = o.id.toLowerCase()
       const nameLower = o.name.toLowerCase()
       const catLower = (o.category || '').toLowerCase()
@@ -516,14 +560,14 @@ export default function DailyWellbeingCheckin({
 
       return isOutcomeTracked(o.id, 'nightly')
     })
-  }, [localProfile, allOutcomes])
+  }, [localProfile, combinedAllOutcomes])
 
   // Active Anytime Tracked Outcomes (matches CustomizeCheckinOutcomesModal selection)
   const activeAnytimeDimensions = useMemo(() => {
     // 1. Check explicit anytime_checkin_dimensions array from user profile
     if (localProfile?.anytime_checkin_dimensions && Array.isArray(localProfile.anytime_checkin_dimensions) && localProfile.anytime_checkin_dimensions.length > 0) {
       const fromDims = localProfile.anytime_checkin_dimensions
-        .map(id => allOutcomes.find(o => o.id === id || o.id === `${id}_score`))
+        .map(id => combinedAllOutcomes.find(o => o.id === id || o.id === `${id}_score`))
         .filter(Boolean) as OutcomeDimension[]
       if (fromDims.length > 0) return fromDims
     }
@@ -531,7 +575,7 @@ export default function DailyWellbeingCheckin({
     const prefs = localProfile?.outcome_preference_scores || {}
     
     // 2. Check for explicit anytime: outcome preferences in outcome_preference_scores
-    const fromPrefs = allOutcomes.filter(o => {
+    const fromPrefs = combinedAllOutcomes.filter(o => {
       const key = `anytime:${o.id}`
       const val = prefs[key]
       if (val !== undefined) return val >= 7
@@ -542,7 +586,7 @@ export default function DailyWellbeingCheckin({
 
     // 3. Default 4: Mood, Energy, Stress, Focus
     const defaultIds = ['mood', 'energy', 'stress', 'focus']
-    const matched = defaultIds.map(id => allOutcomes.find(o => o.id === id || o.id === `${id}_score`)).filter(Boolean) as OutcomeDimension[]
+    const matched = defaultIds.map(id => combinedAllOutcomes.find(o => o.id === id || o.id === `${id}_score`)).filter(Boolean) as OutcomeDimension[]
     
     const finalOutcomes: OutcomeDimension[] = [...matched]
     defaultIds.forEach(id => {
@@ -558,7 +602,7 @@ export default function DailyWellbeingCheckin({
       }
     })
     return finalOutcomes
-  }, [localProfile, allOutcomes])
+  }, [localProfile, combinedAllOutcomes])
 
   // Effective check-in data combining initialData with active in-memory user inputs
   const effectiveCheckinData = useMemo(() => {
@@ -2488,7 +2532,40 @@ export default function DailyWellbeingCheckin({
         {showNightlyCard ? (
           <div className="space-y-4 pt-2 border-t border-rose-500/20 animate-in fade-in">
             {/* Evening Mindful Reflection & Decompression Prompt */}
-            <MindfulReflectionPrompt mode="evening" date={date} />
+            {eveningMindfulnessPref !== 'hidden' && (
+              isEveningMindfulnessExpanded ? (
+                <div className="relative mb-3">
+                  {eveningMindfulnessPref === 'collapsed' && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEveningMindfulnessExpanded(false)}
+                      className="absolute top-3.5 right-3.5 z-10 text-[10px] font-bold text-white/80 hover:text-white bg-black/40 hover:bg-black/60 border border-white/20 px-2.5 py-0.5 rounded-lg cursor-pointer transition-all shadow-sm"
+                    >
+                      Collapse ⌃
+                    </button>
+                  )}
+                  <MindfulReflectionPrompt mode="evening" date={date} />
+                </div>
+              ) : (
+                <div 
+                  onClick={() => setIsEveningMindfulnessExpanded(true)}
+                  className="mb-3 p-3.5 rounded-2xl border border-rose-500/30 bg-gradient-to-r from-rose-950/40 via-purple-950/20 to-slate-950/60 cursor-pointer hover:border-rose-400/50 transition-all flex items-center justify-between shadow-md"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-300 shadow-inner">
+                      <Moon size={14} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">Evening Mindfulness &amp; Decompression</span>
+                      <span className="text-[10px] text-rose-300/80">Tap to expand evening reflection and mental wind-down</span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-rose-400 flex items-center gap-1">
+                    Reflect <ChevronDown size={14} />
+                  </span>
+                </div>
+              )
+            )}
 
             {/* Nightly Voice Bar */}
             <UnifiedVoiceBar
@@ -2919,7 +2996,7 @@ export default function DailyWellbeingCheckin({
         onClose={() => setIsOutcomesModalOpen(false)}
         title={outcomesModalTitle}
         mode={outcomesModalMode}
-        allOutcomes={allOutcomes}
+        allOutcomes={combinedAllOutcomes}
         userProfile={localProfile}
         onOutcomesUpdated={(updatedPreferences, updatedProfile) => {
           if (updatedProfile) {
@@ -2929,6 +3006,9 @@ export default function DailyWellbeingCheckin({
               ...prev,
               outcome_preference_scores: updatedPreferences
             } : null)
+          }
+          if (updatedPreferences?.custom_user_outcomes && Array.isArray(updatedPreferences.custom_user_outcomes)) {
+            setCustomOutcomesList(updatedPreferences.custom_user_outcomes)
           }
         }}
       />

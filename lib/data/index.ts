@@ -274,27 +274,59 @@ export async function getProtocolByIdWithSteps(protocolId: string): Promise<any 
   return all.find(p => p.id === protocolId || (p.name && p.name.toLowerCase() === protocolId.toLowerCase()) || (p.slug && p.slug.toLowerCase() === protocolId.toLowerCase())) || null
 }
 
+export function getStoredCustomOutcomes(): OutcomeDimension[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem('levl_custom_user_outcomes')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed
+    }
+  } catch (e) {}
+  return []
+}
+
+export function saveStoredCustomOutcomes(customOutcomes: OutcomeDimension[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem('levl_custom_user_outcomes', JSON.stringify(customOutcomes))
+    window.dispatchEvent(new CustomEvent('levl_custom_outcomes_updated', { detail: customOutcomes }))
+  } catch (e) {}
+}
+
 export async function getOutcomeDimensions(forceRefresh = false): Promise<OutcomeDimension[]> {
-  if (!supabase) return []
+  const mergeWithCustom = (baseOutcomes: OutcomeDimension[]): OutcomeDimension[] => {
+    const custom = getStoredCustomOutcomes()
+    if (!custom || custom.length === 0) return baseOutcomes
+    const merged = [...baseOutcomes]
+    custom.forEach(c => {
+      if (!merged.some(m => m.id === c.id)) {
+        merged.push(c)
+      }
+    })
+    return merged
+  }
+
+  if (!supabase) return mergeWithCustom([])
   const now = Date.now()
 
   if (!forceRefresh && outcomeDimensionsCache && (now - outcomeDimensionsCache.timestamp < 1000 * 60 * 5)) {
-    return outcomeDimensionsCache.data
+    return mergeWithCustom(outcomeDimensionsCache.data)
   }
 
   if (!forceRefresh) {
     const persistent = getPersistentCache<OutcomeDimension[]>('outcome_dimensions')
     if (persistent && persistent.length > 0) {
       outcomeDimensionsCache = { data: persistent, timestamp: now }
-      return persistent
+      return mergeWithCustom(persistent)
     }
   }
 
   const { data, error } = await supabase.from('outcome_dimensions').select('*')
-  if (error) return outcomeDimensionsCache?.data || []
+  if (error) return mergeWithCustom(outcomeDimensionsCache?.data || [])
   outcomeDimensionsCache = { data: data as OutcomeDimension[], timestamp: now }
   setPersistentCache('outcome_dimensions', data)
-  return data as OutcomeDimension[]
+  return mergeWithCustom(data as OutcomeDimension[])
 }
 
 export async function getCatalogMaps() {
@@ -395,6 +427,18 @@ export async function getOrCreateUserProfile(localUserId: string): Promise<UserP
           ...(normalizedRemote?.outcome_preference_scores || {})
         }
       } as UserProfile
+
+      if (normalizedRemote?.outcome_preference_scores?.custom_user_outcomes && Array.isArray(normalizedRemote.outcome_preference_scores.custom_user_outcomes)) {
+        if (typeof window !== 'undefined') {
+          try {
+            const existingLocal = getStoredCustomOutcomes()
+            const map = new Map<string, OutcomeDimension>()
+            existingLocal.forEach(item => map.set(item.id, item))
+            normalizedRemote.outcome_preference_scores.custom_user_outcomes.forEach((item: OutcomeDimension) => map.set(item.id, item))
+            localStorage.setItem('levl_custom_user_outcomes', JSON.stringify(Array.from(map.values())))
+          } catch (e) {}
+        }
+      }
 
       if (typeof window !== 'undefined') {
         try {
@@ -499,6 +543,9 @@ export async function updateUserProfile(localUserId: string, updates: Partial<Us
     try {
       const cacheKey = `levl_user_profile_${localUserId}`
       localStorage.setItem(cacheKey, JSON.stringify(normalizedMerged))
+      if (mergedPrefs.custom_user_outcomes && Array.isArray(mergedPrefs.custom_user_outcomes)) {
+        saveStoredCustomOutcomes(mergedPrefs.custom_user_outcomes)
+      }
       window.dispatchEvent(new CustomEvent('levl_profile_updated', { detail: normalizedMerged }))
     } catch (e) {}
   }

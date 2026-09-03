@@ -142,6 +142,8 @@ export type OutcomeDimension = {
   category?: string
   relevant_modality_types?: string[]
   goal_keys?: string[]
+  is_custom?: boolean
+  created_at?: string
 }
 
 export type EfficacyStat = {
