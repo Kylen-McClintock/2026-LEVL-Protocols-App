@@ -5822,12 +5822,29 @@ export async function addSingleModalityToToday(localUserId: string, dateStr: str
   const modality = await getModalityById(modalityId)
   if (!modality) return null
 
+  // Ensure modality exists in remote DB to satisfy foreign key constraint if applicable
+  const { data: dbMod } = await supabase.from('modalities').select('id').eq('id', modality.id).maybeSingle()
+  if (!dbMod) {
+    try {
+      await supabase.from('modalities').insert([{
+        id: modality.id,
+        name: modality.name,
+        display_name: modality.display_name || modality.name,
+        category: modality.category || 'general',
+        modality_type: modality.modality_type || 'lifestyle',
+        status: 'active'
+      }])
+    } catch (e) {
+      console.warn('[addSingleModalityToToday] Note inserting modality row:', e)
+    }
+  }
+
   const { data: existing } = await supabase
     .from('daily_protocol_tasks')
     .select('id')
     .eq('local_user_id', localUserId)
     .eq('scheduled_date', dateStr)
-    .eq('modality_id', modalityId)
+    .eq('modality_id', modality.id)
     .maybeSingle()
 
   if (existing) return existing.id
@@ -5836,7 +5853,7 @@ export async function addSingleModalityToToday(localUserId: string, dateStr: str
     .from('daily_protocol_tasks')
     .insert([{
       local_user_id: localUserId,
-      modality_id: modalityId,
+      modality_id: modality.id,
       scheduled_date: dateStr,
       status: 'pending',
       timing_slot: modality.timing_summary || 'morning'

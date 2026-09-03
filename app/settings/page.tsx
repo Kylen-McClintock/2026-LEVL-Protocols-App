@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { User, RefreshCw, Activity, Target, Bookmark, ChevronRight, Cloud, LogOut, Sparkles, Camera, BookOpen, RotateCcw, Dna } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
-import { getOrCreateUserProfile, getOutcomeDimensions, getModalities } from '@/lib/data'
-import { UserProfile, OutcomeDimension, Modality } from '@/lib/types'
+import { getOrCreateUserProfile, getOutcomeDimensions, getModalities, getDailyProtocolTasks } from '@/lib/data'
+import { UserProfile, OutcomeDimension, Modality, DailyProtocolTask } from '@/lib/types'
+import { format } from 'date-fns'
 import ProfileEditor from '@/components/profile/ProfileEditor'
 import FunctionalOutcomesRankingCard from '@/components/profile/FunctionalOutcomesRankingCard'
 import QuickHotkeysProfileCard from '@/components/profile/QuickHotkeysProfileCard'
@@ -32,6 +33,7 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [outcomes, setOutcomes] = useState<OutcomeDimension[]>([])
   const [catalogModalities, setCatalogModalities] = useState<Modality[]>([])
+  const [tasks, setTasks] = useState<DailyProtocolTask[]>([])
   const [showSupplementScanner, setShowSupplementScanner] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -39,14 +41,17 @@ export default function SettingsPage() {
 
   const load = async () => {
     const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
-    const [data, outcomeData, modsData] = await Promise.all([
+    const todayStr = format(new Date(), 'yyyy-MM-dd')
+    const [data, outcomeData, modsData, taskData] = await Promise.all([
       getOrCreateUserProfile(localUserId),
       getOutcomeDimensions(),
-      getModalities()
+      getModalities(),
+      getDailyProtocolTasks(localUserId, todayStr)
     ])
     setProfile(data)
     setOutcomes(outcomeData)
     setCatalogModalities(modsData || [])
+    setTasks(taskData || [])
     setLoading(false)
   }
 
@@ -62,11 +67,20 @@ export default function SettingsPage() {
         setProfile(prev => prev ? { ...prev, ...e.detail } : e.detail)
       }
     }
+    const handleProtocolUpdate = () => {
+      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+      const todayStr = format(new Date(), 'yyyy-MM-dd')
+      getDailyProtocolTasks(localUserId, todayStr).then(t => {
+        if (t) setTasks(t)
+      })
+    }
     window.addEventListener('levl_auth_user_changed', handleAuthChange)
     window.addEventListener('levl_profile_updated', handleProfileUpdate)
+    window.addEventListener('levl_protocol_updated', handleProtocolUpdate)
     return () => {
       window.removeEventListener('levl_auth_user_changed', handleAuthChange)
       window.removeEventListener('levl_profile_updated', handleProfileUpdate)
+      window.removeEventListener('levl_protocol_updated', handleProtocolUpdate)
     }
   }, [authLoading, authUserId])
 
@@ -315,6 +329,7 @@ export default function SettingsPage() {
           <MedicalHistoryPrescriptionsCard 
             profile={profile} 
             localUserId={authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()}
+            tasks={tasks}
             onProfileUpdated={(updated) => setProfile(updated)} 
           />
         )}

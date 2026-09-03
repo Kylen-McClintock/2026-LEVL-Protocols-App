@@ -1,4 +1,4 @@
-import { Modality, UserProfile, DailyProtocolTask, MedicalProfileData, ContraindicationWarning } from '@/lib/types'
+import { Modality, UserProfile, DailyProtocolTask, MedicalProfileData, ContraindicationWarning, SafeModalityAlternative } from '@/lib/types'
 
 /**
  * Standardizes user health and medication entries from either structured JSON or comma/newline delimited text.
@@ -110,6 +110,81 @@ function isTermMatch(userEntry: string, targetKeyOrSynonyms: string | string[]):
 }
 
 /**
+ * Resolves an evidence-based safe alternative modality tailored to the user's condition.
+ */
+function resolveGenericSafeAlternative(modality: Modality, userItem: string): SafeModalityAlternative {
+  const cat = (modality.category || '').toLowerCase()
+  const modType = (modality.modality_type || '').toLowerCase()
+  const name = (modality.name || '').toLowerCase()
+
+  if (cat.includes('fitness') || cat.includes('physical') || modType.includes('exercise')) {
+    return {
+      id: 'zone_2_cardio',
+      name: 'Zone 2 Steady-State Incline Walking',
+      category: 'fitness',
+      outcome: 'Cardiovascular Longevity & Mitochondrial Biogenesis',
+      rationale: 'Maintains low cardiac shear strain and stable hemodynamic pressures while preserving zone 2 aerobic adaptations.'
+    }
+  }
+
+  if (name.includes('cold') || name.includes('plunge') || name.includes('ice') || name.includes('cryo')) {
+    return {
+      id: 'contrast_shower',
+      name: 'Mild Contrast Hydrotherapy (Warm to Cool)',
+      category: 'recovery',
+      outcome: 'Vascular Tone & Autonomic Balance',
+      rationale: 'Gentle temperature cycling enhances peripheral circulation without the pressor reflex or arrhythmia risks of extreme freezing immersion.'
+    }
+  }
+
+  if (name.includes('breath') || name.includes('sigh') || name.includes('hyperventilation')) {
+    return {
+      id: 'cyclic_sighing',
+      name: 'Physiological Cyclic Sighing (Double Inhale, Long Exhale)',
+      category: 'breathwork',
+      outcome: 'Autonomic Down-Regulation & Stress Relief',
+      rationale: 'Directly stimulates vagal efferents to lower heart rate and calm the sympathetic nervous system without hypocapnic risk.'
+    }
+  }
+
+  if (cat.includes('nutrition') || modType.includes('supplement')) {
+    if (name.includes('curcumin') || name.includes('turmeric') || name.includes('anti-inflamm')) {
+      return {
+        id: 'pea_palmitoylethanolamide',
+        name: 'Palmitoylethanolamide (PEA 400mg)',
+        category: 'nutrition',
+        outcome: 'Systemic & Joint Tissue Comfort',
+        rationale: 'Endogenous lipid mediator that reduces neuroinflammation and tissue sensitivity without anticoagulant effects.'
+      }
+    }
+    if (name.includes('sleep') || name.includes('bed') || name.includes('relax') || name.includes('night')) {
+      return {
+        id: 'magnesium_glycinate',
+        name: 'Magnesium L-Threonate or Glycinate (200mg)',
+        category: 'nutrition',
+        outcome: 'Restorative Sleep Architecture & Brain Relaxation',
+        rationale: 'Elevates CSF magnesium to support GABA-A allosteric relaxation safely without sedating drug-drug interactions.'
+      }
+    }
+    return {
+      id: 'l_theanine',
+      name: 'L-Theanine (100–200mg)',
+      category: 'nutrition',
+      outcome: 'Neurotransmitter Balance & Calm Clarity',
+      rationale: 'Increases occipital alpha brain waves and calm executive focus without interacting with hepatic CYP pathways.'
+    }
+  }
+
+  return {
+    id: 'coherent_breathing',
+    name: 'Coherent Resonant Breathing (5.5 Breaths/Min)',
+    category: 'breathwork',
+    outcome: 'Systemic Homeostasis & Vagal Tone',
+    rationale: 'Universal, risk-free modality clinically demonstrated to optimize autonomic balance, HRV, and emotional resilience.'
+  }
+}
+
+/**
  * Evaluates whether a given modality has clinical contraindications for the user's health profile.
  */
 export function detectContraindications(
@@ -141,10 +216,12 @@ export function detectContraindications(
           triggerTerm: contraString,
           userItem: med,
           category: 'medication',
+          modalityId: modality.id || modality.slug || modId,
           modalityName: modName,
           headline: `Prescription Interaction with ${med}`,
           clinicalRationale: `This modality has an established clinical contraindication with ${contraString}. Concurrent administration may lead to adverse pharmacological interactions or compromised efficacy.`,
-          actionAdvice: `Consult your prescribing physician prior to taking ${modName} with ${med}.`
+          actionAdvice: `Consult your prescribing physician prior to taking ${modName} with ${med}.`,
+          safeAlternative: resolveGenericSafeAlternative(modality, med)
         })
       }
     })
@@ -158,10 +235,12 @@ export function detectContraindications(
           triggerTerm: contraString,
           userItem: cond,
           category: 'condition',
+          modalityId: modality.id || modality.slug || modId,
           modalityName: modName,
           headline: `Medical Precaution for ${cond}`,
           clinicalRationale: `This modality lists "${contraString}" as an explicit physiological contraindication.`,
-          actionAdvice: `Do not initiate ${modName} without prior clinical clearance from your specialist.`
+          actionAdvice: `Do not initiate ${modName} without prior clinical clearance from your specialist.`,
+          safeAlternative: resolveGenericSafeAlternative(modality, cond)
         })
       }
     })
@@ -180,10 +259,18 @@ export function detectContraindications(
         level: 'critical',
         triggerTerm: 'Anticoagulant Antagonism',
         userItem: 'Blood Thinners / Anticoagulants',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Critical Anticoagulant Antagonism',
         clinicalRationale: 'Vitamin K directly drives hepatic gamma-glutamyl carboxylase to synthesize clotting factors II, VII, IX, and X, directly negating vitamin K antagonists like Warfarin and dramatically increasing thrombotic risk.',
-        actionAdvice: 'Strictly avoid supplemental Vitamin K unless specifically instructed and monitored via regular INR testing by your physician.'
+        actionAdvice: 'Strictly avoid supplemental Vitamin K unless specifically instructed and monitored via regular INR testing by your physician.',
+        safeAlternative: {
+          id: 'magnesium_glycinate',
+          name: 'Magnesium Glycinate (200–400mg)',
+          category: 'nutrition',
+          outcome: 'Cardiovascular & Endothelial Vascular Support',
+          rationale: 'Supports arterial relaxation and vascular tone without interfering with hepatic clotting factors or vitamin K epoxide reductase.'
+        }
       })
     }
     if (modId.includes('ginkgo') || modName.toLowerCase().includes('ginkgo')) {
@@ -192,10 +279,18 @@ export function detectContraindications(
         level: 'caution',
         triggerTerm: 'Additive Antiplatelet Action',
         userItem: 'Blood Thinners',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Synergistic Bleeding Risk',
         clinicalRationale: 'Ginkgolide B is a potent platelet-activating factor (PAF) antagonist that magnifies bleeding risk and spontaneous hemorrhage when combined with systemic anticoagulants.',
-        actionAdvice: 'Exercise caution and monitor for easy bruising or prolonged bleeding times.'
+        actionAdvice: 'Exercise caution and monitor for easy bruising or prolonged bleeding times.',
+        safeAlternative: {
+          id: 'citicoline',
+          name: 'Citicoline (CDP-Choline 250mg)',
+          category: 'nutrition',
+          outcome: 'Cerebral Perfusion & Cognitive Acuity',
+          rationale: 'Nourishes neuronal membrane phospholipids and enhances brain acetylcholine without platelet-activating factor antagonism.'
+        }
       })
     }
     if (modId.includes('nattokinase') || modName.toLowerCase().includes('nattokinase')) {
@@ -204,10 +299,18 @@ export function detectContraindications(
         level: 'critical',
         triggerTerm: 'Direct Fibrinolytic Synergy',
         userItem: 'Blood Thinners',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Compounded Fibrinolytic Bleeding Hazard',
         clinicalRationale: 'Nattokinase possesses direct fibrinolytic and profibrinolytic properties, synergistically destabilizing hemostasis when combined with pharmaceutical anticoagulants.',
-        actionAdvice: 'Avoid combining Nattokinase with blood thinners.'
+        actionAdvice: 'Avoid combining Nattokinase with blood thinners.',
+        safeAlternative: {
+          id: 'pea_palmitoylethanolamide',
+          name: 'Palmitoylethanolamide (PEA 400mg)',
+          category: 'nutrition',
+          outcome: 'Microvascular Comfort & Anti-Inflammation',
+          rationale: 'Safe lipid mediator for tissue and vascular inflammation that has zero anticoagulant or fibrinolytic activity.'
+        }
       })
     }
   }
@@ -221,10 +324,18 @@ export function detectContraindications(
         level: 'critical',
         triggerTerm: 'Severe Serotonin Syndrome Warning',
         userItem: 'Serotonergic Medication (SSRI / SNRI)',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Life-Threatening Serotonin Toxicity Hazard',
         clinicalRationale: 'Methylene Blue is a potent monoamine oxidase A (MAO-A) inhibitor. Combining it with SSRIs/SNRIs completely blocks central serotonin degradation, which can rapidly induce life-threatening Serotonin Syndrome.',
-        actionAdvice: 'Methylene Blue is strictly contraindicated for anyone taking serotonergic medications (FDA Black Box Alert).'
+        actionAdvice: 'Methylene Blue is strictly contraindicated for anyone taking serotonergic medications (FDA Black Box Alert).',
+        safeAlternative: {
+          id: 'red_light_therapy',
+          name: 'Red & Near-Infrared Light (660nm/850nm)',
+          category: 'light',
+          outcome: 'Mitochondrial Complex IV ATP Production',
+          rationale: 'Direct photon stimulation of Cytochrome c Oxidase bypasses monoamine oxidase entirely, delivering clean cellular energy with zero Serotonin Syndrome risk.'
+        }
       })
     }
     if (modId.includes('5_htp') || modId.includes('5-htp') || modName.toLowerCase().includes('5-htp') || modName.toLowerCase().includes('tryptophan')) {
@@ -233,10 +344,18 @@ export function detectContraindications(
         level: 'caution',
         triggerTerm: 'Serotonin Synthesis Surge',
         userItem: 'SSRI / SNRI',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Elevated Serotonin Toxicity Risk',
         clinicalRationale: 'Directly providing 5-HTP alongside reuptake inhibition causes uncontrolled synaptic serotonin accumulation.',
-        actionAdvice: 'Avoid combining 5-HTP with prescription antidepressants.'
+        actionAdvice: 'Avoid combining 5-HTP with prescription antidepressants.',
+        safeAlternative: {
+          id: 'l_theanine',
+          name: 'L-Theanine (200mg)',
+          category: 'nutrition',
+          outcome: 'Calm Focus & Alpha-Wave Relaxation',
+          rationale: 'Increases inhibitory GABA neurotransmission and alpha wave amplitude without synthesizing serotonin.'
+        }
       })
     }
   }
@@ -250,10 +369,18 @@ export function detectContraindications(
         level: 'caution',
         triggerTerm: 'Acute Cold Shock Pressor Reflex',
         userItem: 'Cardiovascular Condition / Hypertension',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Acute Cardiovascular Stress Precaution',
         clinicalRationale: 'Sudden cold immersion triggers an intense peripheral vasoconstriction that spikes mean arterial pressure and simultaneously elicits divergent adrenergic/parasympathetic inputs (autonomic conflict), increasing arrhythmia risk.',
-        actionAdvice: 'Never dive or submerge abruptly. Begin with gentle cool showers and avoid sub-50°F immersion without cardiologist approval.'
+        actionAdvice: 'Never dive or submerge abruptly. Begin with gentle cool showers and avoid sub-50°F immersion without cardiologist approval.',
+        safeAlternative: {
+          id: 'contrast_shower',
+          name: 'Mild Contrast Hydrotherapy (Warm to Cool)',
+          category: 'recovery',
+          outcome: 'Vascular Flushing & Vagal Rebound',
+          rationale: 'Gradual thermal shifts stimulate peripheral circulation without the sharp hypertensive cold-shock pressor surge.'
+        }
       })
     }
     if (modId.includes('yohimbine') || modName.toLowerCase().includes('yohimbine')) {
@@ -262,10 +389,18 @@ export function detectContraindications(
         level: 'critical',
         triggerTerm: 'Alpha-2 Adrenergic Spike',
         userItem: 'Hypertension / Cardiovascular Condition',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Hypertensive Pressor Hazard',
         clinicalRationale: 'Yohimbine blocks presynaptic alpha-2 adrenoceptors, triggering uninhibited systemic norepinephrine release and dangerous spikes in heart rate and systolic blood pressure.',
-        actionAdvice: 'Strictly avoid Yohimbine with a history of cardiovascular disease or hypertension.'
+        actionAdvice: 'Strictly avoid Yohimbine with a history of cardiovascular disease or hypertension.',
+        safeAlternative: {
+          id: 'coherent_breathing',
+          name: 'Coherent Breathing (5.5s Inhale / 5.5s Exhale)',
+          category: 'breathwork',
+          outcome: 'Autonomic Balance & Executive Focus',
+          rationale: 'Maximizes heart rate variability (HRV) and cerebral oxygenation while lowering systolic blood pressure.'
+        }
       })
     }
   }
@@ -279,10 +414,18 @@ export function detectContraindications(
         level: 'critical',
         triggerTerm: 'G6PD Hemolytic Crisis',
         userItem: 'G6PD Deficiency',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Acute Hemolytic Anemia Hazard',
         clinicalRationale: 'G6PD-deficient erythrocytes cannot generate adequate NADPH to reduce methylene blue metabolites, leading to rapid, catastrophic oxidative hemolysis of red blood cells.',
-        actionAdvice: 'Methylene Blue is strictly contraindicated for G6PD deficiency.'
+        actionAdvice: 'Methylene Blue is strictly contraindicated for G6PD deficiency.',
+        safeAlternative: {
+          id: 'red_light_therapy',
+          name: 'Photobiomodulation / Near-IR Light',
+          category: 'light',
+          outcome: 'Mitochondrial Respiration & Energy',
+          rationale: 'Safe non-oxidative mitochondrial photoreception that does not deplete erythrocyte NADPH.'
+        }
       })
     }
   }
@@ -296,10 +439,18 @@ export function detectContraindications(
         level: 'caution',
         triggerTerm: 'Compound Glucose Reduction',
         userItem: 'Hypoglycemic Prescription (Metformin / Insulin / GLP-1)',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Additive Hypoglycemia Precaution',
         clinicalRationale: 'Berberine powerfully stimulates AMPK and enhances peripheral insulin sensitivity. Combining it with pharmaceutical glucose-lowering agents can cause sudden hypoglycemia.',
-        actionAdvice: 'Routinely check capillary blood glucose and coordinate dosage with your clinician.'
+        actionAdvice: 'Routinely check capillary blood glucose and coordinate dosage with your clinician.',
+        safeAlternative: {
+          id: 'post_meal_glucose_walk',
+          name: 'Post-Meal Glucose Disposal Walk (10–15 min)',
+          category: 'fitness',
+          outcome: 'Postprandial Glycemic Control',
+          rationale: 'Non-pharmacological GLUT-4 glucose clearance that avoids compounding medication-induced hypoglycemia.'
+        }
       })
     }
   }
@@ -313,10 +464,18 @@ export function detectContraindications(
         level: 'critical',
         triggerTerm: 'Mitogenic & IGF-1 Acceleration',
         userItem: 'Active Cancer / Neoplasia History',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Oncological Growth Signal Hazard',
         clinicalRationale: 'Growth hormone secretagogues increase systemic IGF-1 and somatotropic axis activity, which can drive accelerated mitotic proliferation and inhibit apoptosis in neoplastic tissues.',
-        actionAdvice: 'GHRP and GHRH peptides are strictly contraindicated with active malignancy.'
+        actionAdvice: 'GHRP and GHRH peptides are strictly contraindicated with active malignancy.',
+        safeAlternative: {
+          id: 'deep_sleep_hygiene',
+          name: 'Circadian Sleep Optimization & Evening Wind-Down',
+          category: 'sleep',
+          outcome: 'Endogenous Cellular Repair',
+          rationale: 'Supports physiological tissue repair through natural slow-wave sleep cycles without exogenous somatotropic IGF-1 promotion.'
+        }
       })
     }
   }
@@ -330,10 +489,18 @@ export function detectContraindications(
         level: 'critical',
         triggerTerm: 'Additive Adrenergic Surge',
         userItem: 'Stimulant Prescription (Adderall / Vyvanse / Modafinil)',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Dangerous Sympathomimetic Hazard',
         clinicalRationale: 'Combining central dopamine/norepinephrine stimulants with alpha-2 adrenergic antagonists (Yohimbine) produces compounded tachycardia, malignant hypertension, and cardiac strain.',
-        actionAdvice: 'Strictly avoid Yohimbine and sympathomimetic thermogenics while taking prescription stimulants.'
+        actionAdvice: 'Strictly avoid Yohimbine and sympathomimetic thermogenics while taking prescription stimulants.',
+        safeAlternative: {
+          id: 'coherent_breathing',
+          name: 'Coherent Breathing (5.5 Breaths/Min)',
+          category: 'breathwork',
+          outcome: 'Prefrontal Cortex Focus & Calm Stamina',
+          rationale: 'Enhances executive cognitive control via parasympathetic-sympathetic balance without compounding tachycardia.'
+        }
       })
     }
   }
@@ -347,10 +514,18 @@ export function detectContraindications(
         level: 'critical',
         triggerTerm: 'Hypocapnic Seizure Threshold Lowering',
         userItem: 'History of Seizures / Epilepsy',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Seizure Induction Precaution',
         clinicalRationale: 'Prolonged cyclic hyperventilation causes acute cerebral vasoconstriction and hypocapnia (drop in arterial pCO2), which directly triggers generalized spike-and-wave discharges and lowers the clinical seizure threshold.',
-        actionAdvice: 'Avoid vigorous hyperventilation breathwork. Stick to gentle parasympathetic patterns like Box Breathing or Cyclic Sighing.'
+        actionAdvice: 'Avoid vigorous hyperventilation breathwork. Stick to gentle parasympathetic patterns like Box Breathing or Cyclic Sighing.',
+        safeAlternative: {
+          id: 'cyclic_sighing',
+          name: 'Physiological Cyclic Sighing (Double Inhale, Long Exhale)',
+          category: 'breathwork',
+          outcome: 'Autonomic Down-Regulation & Stress Relief',
+          rationale: 'Soothes the nervous system without hyperventilatory hypocapnia or cerebral vasoconstriction.'
+        }
       })
     }
   }
@@ -364,10 +539,18 @@ export function detectContraindications(
         level: 'caution',
         triggerTerm: 'Peripheral Vasodilatory Syncope',
         userItem: 'POTS / Orthostatic Hypotension',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Orthostatic Blood Pressure Drop Risk',
         clinicalRationale: 'High ambient thermal exposure produces profound peripheral vasodilation, resulting in severe venous pooling and compensatory tachycardia that can trigger syncope (fainting) upon standing in POTS patients.',
-        actionAdvice: 'Limit sauna temperature to moderate levels, hydrate heavily with sodium/electrolytes pre/post, and exit slowly while seated.'
+        actionAdvice: 'Limit sauna temperature to moderate levels, hydrate heavily with sodium/electrolytes pre/post, and exit slowly while seated.',
+        safeAlternative: {
+          id: 'infrared_sauna_mild',
+          name: 'Mild Infrared Session with Electrolytes (120°F–130°F)',
+          category: 'recovery',
+          outcome: 'Gentle Tissue Diaphoresis & Circulation',
+          rationale: 'Gentle radiant heat paired with sodium/electrolyte hydration prevents orthostatic venous pooling and tachycardia.'
+        }
       })
     }
   }
@@ -381,10 +564,18 @@ export function detectContraindications(
         level: 'critical',
         triggerTerm: 'Synergistic cGMP Hypotension',
         userItem: 'PDE5 Inhibitor (Tadalafil / Sildenafil)',
+        modalityId: modality.id || modality.slug || modId,
         modalityName: modName,
         headline: 'Severe Hypotensive Shock Hazard',
         clinicalRationale: 'PDE5 inhibitors prevent cyclic GMP degradation, leading to massive, uncontrolled vasodilation and fatal hypotension when combined with organic nitrates.',
-        actionAdvice: 'Never combine PDE5 inhibitors with nitrates.'
+        actionAdvice: 'Never combine PDE5 inhibitors with nitrates.',
+        safeAlternative: {
+          id: 'l_citrulline_low',
+          name: 'Dietary Beetroot / Arginine Whole Foods',
+          category: 'nutrition',
+          outcome: 'Physiological Endothelial Tone',
+          rationale: 'Provides mild dietary substrate for basal endothelial nitric oxide synthase without dangerous precipitous blood pressure drops.'
+        }
       })
     }
   }

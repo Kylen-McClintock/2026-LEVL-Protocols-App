@@ -48,16 +48,26 @@ export interface MedicalProfileData {
   notes?: string
 }
 
+export interface SafeModalityAlternative {
+  id: string
+  name: string
+  category?: string
+  outcome: string
+  rationale: string
+}
+
 export interface ContraindicationWarning {
   id: string
   level: 'critical' | 'caution' | 'advisory'
   triggerTerm: string
   userItem: string
   category?: 'medication' | 'condition'
+  modalityId?: string
   modalityName: string
   headline: string
   clinicalRationale: string
   actionAdvice: string
+  safeAlternative?: SafeModalityAlternative
 }
 
 export type PeriodFlowLevel = 'none' | 'spotting' | 'light' | 'medium' | 'heavy'
