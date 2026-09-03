@@ -203,7 +203,10 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
           userProfile={userProfile}
           onSaveSuccess={() => {
             setShowPersonalizeModal(false)
-            window.location.reload()
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+              window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+            }
           }}
         />
       )}

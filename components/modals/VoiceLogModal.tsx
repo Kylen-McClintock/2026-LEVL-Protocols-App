@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { 
   X, Mic, Square, Sparkles, CheckCircle2, Volume2, 
   VolumeX, AlertCircle, RotateCcw, ArrowRight, ShieldCheck, Flame, 
-  Activity, Star, Plus, Check, HelpCircle, FileText 
+  Activity, Star, Plus, Minus, Check, HelpCircle, FileText, Sliders, Clock, Utensils, Coffee, Smartphone, Droplets, Sun 
 } from 'lucide-react'
 import { 
   updateDailyTaskStatus, 
@@ -14,6 +14,8 @@ import {
   saveOutcomeObservation,
   updateTaskExecutionDetails
 } from '@/lib/data'
+import { saveQuickLogEntry } from '@/lib/storage/quickLogsStorage'
+import { triggerHaptic } from '@/lib/utils/haptics'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { useAuth } from '@/contexts/AuthContext'
 import { format } from 'date-fns'
@@ -79,6 +81,15 @@ export default function VoiceLogModal({
   
   const [todayTasks, setTodayTasks] = useState<any[]>([])
   const [catalogModalities, setCatalogModalities] = useState<any[]>([])
+
+  // Pre-Submission Review & Calibration State
+  const [pendingReview, setPendingReview] = useState<any | null>(null)
+  const [reviewOutcomes, setReviewOutcomes] = useState<Record<string, number>>({})
+  const [reviewTimings, setReviewTimings] = useState<any>({})
+  const [reviewHotkeys, setReviewHotkeys] = useState<any>({})
+  const [reviewTaskIds, setReviewTaskIds] = useState<Set<string>>(new Set())
+  const [reviewNotes, setReviewNotes] = useState<string>('')
+  const [isCommitting, setIsCommitting] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
@@ -242,107 +253,22 @@ export default function VoiceLogModal({
           text: data.transcript,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
+        setMessages(prev => [...prev, userMsg])
 
-        // 2. Perform High-Confidence Database Task Completions
-        if (data.completed_task_ids && data.completed_task_ids.length > 0) {
-          for (const taskId of data.completed_task_ids) {
-            // Find modality specific note if present
-            const matchedNoteObj = data.task_notes?.find((tn: any) => tn.task_id === taskId)
-            const specificNote = matchedNoteObj?.note || data.deviations_and_symptoms || undefined
-            
-            await updateDailyTaskStatus(
-              taskId,
-              'completed',
-              undefined,
-              undefined,
-              new Date().toISOString(),
-              undefined,
-              { notes: specificNote }
-            )
-          }
+        // 2. Set up Pre-Submission Review & Calibration
+        const initialOutcomes: Record<string, number> = {}
+        if (data.outcomes_observed && Array.isArray(data.outcomes_observed)) {
+          data.outcomes_observed.forEach((o: any) => {
+            initialOutcomes[o.outcome_id] = o.rating_0_10
+          })
         }
-
-        // 3. Log Ad-Hoc Sessions if user completed un-scheduled items
-        const loggedAdHocNames: string[] = []
-        if (data.ad_hoc_items && data.ad_hoc_items.length > 0) {
-          for (const adHoc of data.ad_hoc_items) {
-            const matchedMod = catalogModalities.find(m => 
-              m.name.toLowerCase().includes(adHoc.name.toLowerCase()) || 
-              adHoc.name.toLowerCase().includes(m.name.toLowerCase())
-            )
-            if (matchedMod) {
-              const noteText = adHoc.note || data.deviations_and_symptoms
-              await logAdHocSession(
-                localUserId, 
-                matchedMod.id, 
-                new Date().toISOString(), 
-                { custom_dose: adHoc.dose, user_notes: noteText }
-              )
-              loggedAdHocNames.push(`${matchedMod.name} ${adHoc.dose ? `(${adHoc.dose})` : ''}`)
-            }
-          }
-        }
-
-        // 4. Save Outcome Observations (Energy, Soreness, Sleep, Mood, Recovery)
-        if (data.outcomes_observed && data.outcomes_observed.length > 0) {
-          for (const outcome of data.outcomes_observed) {
-            await saveOutcomeObservation(
-              localUserId,
-              outcome.outcome_id,
-              'post',
-              outcome.rating_0_10,
-              todayStr,
-              undefined,
-              undefined,
-              outcome.notes || data.deviations_and_symptoms
-            )
-          }
-        }
-
-        // 5. Trigger Real-Time App-Wide Stats Updates
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('levl_bench_updated'))
-          window.dispatchEvent(new CustomEvent('levl_protocol_schedule_updated', { detail: { updated: true } }))
-        }
-        if (onLoggedSuccess) onLoggedSuccess()
-
-        // 6. Format Pending Confirmations if fuzzy matches exist
-        const pendingItems: PendingConfirmation[] = (data.pending_confirmations || []).map((p: any, idx: number) => ({
-          id: `pend-${Date.now()}-${idx}`,
-          recognized_term: p.recognized_term,
-          suggested_modality_id: p.suggested_modality_id,
-          suggested_modality_name: p.suggested_modality_name,
-          suggested_dose: p.suggested_dose,
-          confirmed: false
-        }))
-
-        // 7. Add Assistant Response message
-        const assistantMsg: ChatMessage = {
-          id: `ai-${Date.now()}`,
-          role: 'assistant',
-          text: data.ai_response_text,
-          completedNames: data.completed_modality_names,
-          adHocNames: loggedAdHocNames.length > 0 ? loggedAdHocNames : undefined,
-          pendingConfirmations: pendingItems.length > 0 ? pendingItems : undefined,
-          outcomes: data.outcomes_observed,
-          taskNotes: data.task_notes,
-          deviations: data.deviations_and_symptoms,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-
-        setMessages(prev => [...prev, userMsg, assistantMsg])
-
-        // 8. Spoken voice synthesis if enabled
-        if (enableSpokenResponse && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          const textToSpeak = data.ai_response_text
-          if (textToSpeak) {
-            window.speechSynthesis.cancel()
-            const utterance = new SpeechSynthesisUtterance(textToSpeak)
-            utterance.rate = selectedPersona === 'trainer' ? 1.15 : (selectedPersona === 'minimalist' ? 1.1 : 1.05)
-            utterance.pitch = selectedPersona === 'friend' ? 1.05 : 1.0
-            window.speechSynthesis.speak(utterance)
-          }
-        }
+        setReviewOutcomes(initialOutcomes)
+        setReviewTimings(data.checkin_timings || {})
+        setReviewHotkeys(data.hotkey_actions || {})
+        setReviewTaskIds(new Set(data.completed_task_ids || []))
+        setReviewNotes(data.checkin_notes || data.deviations_and_symptoms || '')
+        setPendingReview(data)
+        triggerHaptic('success')
       }
     } catch (err: any) {
       console.error('Error processing voice log:', err)
@@ -353,6 +279,161 @@ export default function VoiceLogModal({
   }
 
   // Handle 1-Tap Confirmation of Fuzzy Matched Modality
+  const handleConfirmAndLogAll = async () => {
+    if (!pendingReview) return
+    setIsCommitting(true)
+    triggerHaptic('medium')
+
+    try {
+      const todayStr = format(new Date(), 'yyyy-MM-dd')
+
+      // 1. Complete selected tasks
+      for (const taskId of Array.from(reviewTaskIds)) {
+        const matchedNoteObj = pendingReview.task_notes?.find((tn: any) => tn.task_id === taskId)
+        const specificNote = matchedNoteObj?.note || reviewNotes || undefined
+        await updateDailyTaskStatus(
+          taskId,
+          'completed',
+          undefined,
+          undefined,
+          new Date().toISOString(),
+          undefined,
+          { notes: specificNote }
+        )
+      }
+
+      // 2. Log ad-hoc sessions if any
+      const loggedAdHocNames: string[] = []
+      if (pendingReview.ad_hoc_items && pendingReview.ad_hoc_items.length > 0) {
+        for (const adHoc of pendingReview.ad_hoc_items) {
+          const matchedMod = catalogModalities.find(m => 
+            m.name.toLowerCase().includes(adHoc.name.toLowerCase()) || 
+            adHoc.name.toLowerCase().includes(m.name.toLowerCase())
+          )
+          if (matchedMod) {
+            const noteText = adHoc.note || reviewNotes || undefined
+            await logAdHocSession(
+              localUserId, 
+              matchedMod.id, 
+              new Date().toISOString(), 
+              { custom_dose: adHoc.dose, user_notes: noteText }
+            )
+            loggedAdHocNames.push(`${matchedMod.name} ${adHoc.dose ? `(${adHoc.dose})` : ''}`)
+          }
+        }
+      }
+
+      // 3. Save calibrated outcomes
+      for (const [outcomeId, val] of Object.entries(reviewOutcomes)) {
+        await saveOutcomeObservation(
+          localUserId,
+          outcomeId,
+          'post',
+          val,
+          todayStr,
+          undefined,
+          undefined,
+          reviewNotes || undefined
+        )
+      }
+
+      // 4. Save Hotkeys to QuickLogs
+      if (reviewHotkeys.water_oz) {
+        await saveQuickLogEntry({
+          id: `quicklog_${Date.now()}_water`,
+          local_user_id: localUserId,
+          hotkey_id: 'water',
+          hotkey_name: 'Water Intake',
+          date: todayStr,
+          logged_at: new Date().toISOString(),
+          value: reviewHotkeys.water_oz,
+          unit: 'oz',
+          notes: 'Voice logged'
+        })
+      }
+      if (reviewHotkeys.sunlight_minutes) {
+        await saveQuickLogEntry({
+          id: `quicklog_${Date.now()}_sun`,
+          local_user_id: localUserId,
+          hotkey_id: 'sunlight',
+          hotkey_name: 'Morning Sunlight',
+          date: todayStr,
+          logged_at: new Date().toISOString(),
+          value: reviewHotkeys.sunlight_minutes,
+          unit: 'min',
+          notes: 'Voice logged'
+        })
+      }
+      if (reviewHotkeys.coffee_cups) {
+        await saveQuickLogEntry({
+          id: `quicklog_${Date.now()}_coffee`,
+          local_user_id: localUserId,
+          hotkey_id: 'coffee',
+          hotkey_name: 'Coffee',
+          date: todayStr,
+          logged_at: new Date().toISOString(),
+          value: reviewHotkeys.coffee_cups,
+          unit: 'cups',
+          notes: 'Voice logged'
+        })
+      }
+
+      // 5. Trigger Real-Time App-Wide Stats Updates
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+        window.dispatchEvent(new CustomEvent('levl_protocol_schedule_updated', { detail: { updated: true } }))
+        window.dispatchEvent(new CustomEvent('levl_quicklog_updated'))
+      }
+      if (onLoggedSuccess) onLoggedSuccess()
+
+      // 6. Format Pending Confirmations if fuzzy matches exist
+      const pendingItems: PendingConfirmation[] = (pendingReview.pending_confirmations || []).map((p: any, idx: number) => ({
+        id: `pend-${Date.now()}-${idx}`,
+        recognized_term: p.recognized_term,
+        suggested_modality_id: p.suggested_modality_id,
+        suggested_modality_name: p.suggested_modality_name,
+        suggested_dose: p.suggested_dose,
+        confirmed: false
+      }))
+
+      // 7. Add Assistant Response message to chat
+      const assistantMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        text: pendingReview.ai_response_text,
+        completedNames: pendingReview.completed_modality_names,
+        adHocNames: loggedAdHocNames.length > 0 ? loggedAdHocNames : undefined,
+        pendingConfirmations: pendingItems.length > 0 ? pendingItems : undefined,
+        outcomes: Object.entries(reviewOutcomes).map(([outcome_id, rating_0_10]) => ({ outcome_id, rating_0_10 })),
+        taskNotes: pendingReview.task_notes,
+        deviations: reviewNotes || pendingReview.deviations_and_symptoms,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+
+      setMessages(prev => [...prev, assistantMsg])
+
+      // 8. Spoken response synthesis if enabled
+      if (enableSpokenResponse && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        const textToSpeak = pendingReview.ai_response_text
+        if (textToSpeak) {
+          window.speechSynthesis.cancel()
+          const utterance = new SpeechSynthesisUtterance(textToSpeak)
+          utterance.rate = selectedPersona === 'trainer' ? 1.15 : (selectedPersona === 'minimalist' ? 1.1 : 1.05)
+          utterance.pitch = selectedPersona === 'friend' ? 1.05 : 1.0
+          window.speechSynthesis.speak(utterance)
+        }
+      }
+
+      setPendingReview(null)
+      triggerHaptic('success')
+    } catch (err: any) {
+      console.error('Error committing voice log:', err)
+      setErrorMsg(err.message || 'Failed to commit log.')
+    } finally {
+      setIsCommitting(false)
+    }
+  }
+
   const handleConfirmPending = async (msgId: string, pendingId: string, item: PendingConfirmation) => {
     try {
       // Find matching modality ID or scheduled task ID
@@ -659,7 +740,183 @@ export default function VoiceLogModal({
             <div className="flex items-start">
               <div className="p-3.5 rounded-2xl bg-slate-950 border border-purple-500/30 text-xs text-sky-400 flex items-center gap-2 shadow-md">
                 <Sparkles size={15} className="animate-spin text-purple-400" />
-                <span>Gemini analyzing voice & updating protocols...</span>
+                <span>Gemini analyzing voice & translating metrics...</span>
+              </div>
+            </div>
+          )}
+
+          {/* PRE-SUBMISSION INTERACTIVE REVIEW CARD */}
+          {pendingReview && (
+            <div className="p-4 rounded-2xl bg-slate-950/95 border border-purple-500/40 shadow-2xl space-y-3.5 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between border-b border-purple-500/30 pb-2">
+                <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5 uppercase tracking-wider">
+                  <Sparkles size={13} className="text-purple-400" /> Review &amp; Calibrate Spoken Intake
+                </span>
+                <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                  Editable Before Save
+                </span>
+              </div>
+
+              {/* 1. Outcomes on Sliders */}
+              {Object.keys(reviewOutcomes).length > 0 && (
+                <div className="space-y-2.5">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                    <Sliders size={12} className="text-emerald-400" /> Calibrate Outcome Ratings:
+                  </label>
+                  <div className="space-y-2">
+                    {Object.entries(reviewOutcomes).map(([outcomeId, score]) => (
+                      <div key={outcomeId} className="bg-slate-900/90 border border-slate-800 p-2 rounded-xl space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-slate-200 capitalize">
+                            {outcomeId.replace('_', ' ')}
+                          </span>
+                          <span className="font-mono font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30 text-[11px]">
+                            {score} / 10
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="10"
+                          step="1"
+                          value={score}
+                          onChange={(e) => {
+                            const val = Number(e.target.value)
+                            setReviewOutcomes(prev => ({ ...prev, [outcomeId]: val }))
+                          }}
+                          className="w-full accent-emerald-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Circadian Timings */}
+              {(reviewTimings.last_meal_time || reviewTimings.last_caffeine_time || reviewTimings.last_screen_time || reviewTimings.alcohol_drinks !== undefined) && (
+                <div className="space-y-2 pt-1 border-t border-slate-800">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                    <Clock size={12} className="text-rose-400" /> Timings &amp; Exposures:
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {reviewTimings.last_meal_time && (
+                      <div className="bg-slate-900/90 border border-slate-800 p-2 rounded-xl flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-300 flex items-center gap-1">
+                          <Utensils size={12} className="text-amber-400" /> Last Meal:
+                        </span>
+                        <input
+                          type="time"
+                          value={reviewTimings.last_meal_time}
+                          onChange={(e) => setReviewTimings((prev: any) => ({ ...prev, last_meal_time: e.target.value }))}
+                          className="bg-black/80 border border-white/20 rounded px-2 py-1 text-white font-mono text-xs w-24 text-center"
+                        />
+                      </div>
+                    )}
+                    {reviewTimings.last_caffeine_time && (
+                      <div className="bg-slate-900/90 border border-slate-800 p-2 rounded-xl flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-300 flex items-center gap-1">
+                          <Coffee size={12} className="text-amber-400" /> Last Caffeine:
+                        </span>
+                        <input
+                          type="time"
+                          value={reviewTimings.last_caffeine_time}
+                          onChange={(e) => setReviewTimings((prev: any) => ({ ...prev, last_caffeine_time: e.target.value }))}
+                          className="bg-black/80 border border-white/20 rounded px-2 py-1 text-white font-mono text-xs w-24 text-center"
+                        />
+                      </div>
+                    )}
+                    {reviewTimings.last_screen_time && (
+                      <div className="bg-slate-900/90 border border-slate-800 p-2 rounded-xl flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-300 flex items-center gap-1">
+                          <Smartphone size={12} className="text-indigo-400" /> Last Screen:
+                        </span>
+                        <input
+                          type="time"
+                          value={reviewTimings.last_screen_time}
+                          onChange={(e) => setReviewTimings((prev: any) => ({ ...prev, last_screen_time: e.target.value }))}
+                          className="bg-black/80 border border-white/20 rounded px-2 py-1 text-white font-mono text-xs w-24 text-center"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Hotkeys Increments */}
+              {(reviewHotkeys.water_oz || reviewHotkeys.sunlight_minutes || reviewHotkeys.coffee_cups || reviewHotkeys.meal_calories) && (
+                <div className="space-y-1.5 pt-1 border-t border-slate-800">
+                  <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                    <Flame size={12} className="text-sky-400" /> Hotkey Additions:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {reviewHotkeys.water_oz !== undefined && (
+                      <div className="bg-sky-950/30 border border-sky-500/30 p-2 rounded-xl flex flex-col items-center">
+                        <span className="text-[10px] text-sky-300 font-bold">💧 Water</span>
+                        <span className="text-xs font-mono font-bold text-white my-0.5">+{reviewHotkeys.water_oz} oz</span>
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => setReviewHotkeys((p: any) => ({ ...p, water_oz: Math.max(0, (p.water_oz || 0) - 8) }))} className="text-[9px] px-1 bg-white/10 rounded">-8</button>
+                          <button type="button" onClick={() => setReviewHotkeys((p: any) => ({ ...p, water_oz: (p.water_oz || 0) + 8 }))} className="text-[9px] px-1 bg-white/10 rounded">+8</button>
+                        </div>
+                      </div>
+                    )}
+                    {reviewHotkeys.sunlight_minutes !== undefined && (
+                      <div className="bg-amber-950/30 border border-amber-500/30 p-2 rounded-xl flex flex-col items-center">
+                        <span className="text-[10px] text-amber-300 font-bold">☀️ Sun</span>
+                        <span className="text-xs font-mono font-bold text-white my-0.5">+{reviewHotkeys.sunlight_minutes}m</span>
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => setReviewHotkeys((p: any) => ({ ...p, sunlight_minutes: Math.max(0, (p.sunlight_minutes || 0) - 5) }))} className="text-[9px] px-1 bg-white/10 rounded">-5</button>
+                          <button type="button" onClick={() => setReviewHotkeys((p: any) => ({ ...p, sunlight_minutes: (p.sunlight_minutes || 0) + 5 }))} className="text-[9px] px-1 bg-white/10 rounded">+5</button>
+                        </div>
+                      </div>
+                    )}
+                    {reviewHotkeys.coffee_cups !== undefined && (
+                      <div className="bg-amber-950/30 border border-amber-600/30 p-2 rounded-xl flex flex-col items-center">
+                        <span className="text-[10px] text-amber-400 font-bold">☕ Coffee</span>
+                        <span className="text-xs font-mono font-bold text-white my-0.5">+{reviewHotkeys.coffee_cups} cups</span>
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => setReviewHotkeys((p: any) => ({ ...p, coffee_cups: Math.max(0, (p.coffee_cups || 0) - 1) }))} className="text-[9px] px-1 bg-white/10 rounded">-1</button>
+                          <button type="button" onClick={() => setReviewHotkeys((p: any) => ({ ...p, coffee_cups: (p.coffee_cups || 0) + 1 }))} className="text-[9px] px-1 bg-white/10 rounded">+1</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. Scheduled Tasks Recognized */}
+              {pendingReview.completed_modality_names && pendingReview.completed_modality_names.length > 0 && (
+                <div className="bg-slate-900/90 border border-emerald-500/30 p-2.5 rounded-xl space-y-1">
+                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
+                    ✓ Tasks to Check Off:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {pendingReview.completed_modality_names.map((name: string, idx: number) => (
+                      <span key={idx} className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                        <Check size={11} /> {name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  disabled={isCommitting}
+                  onClick={() => setPendingReview(null)}
+                  className="px-3 py-1.5 rounded-xl text-xs text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  disabled={isCommitting}
+                  onClick={handleConfirmAndLogAll}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-sky-400 text-white flex items-center gap-1.5 shadow-lg shadow-purple-500/20 cursor-pointer active:scale-95 transition-all"
+                >
+                  <Check size={14} /> {isCommitting ? 'Logging...' : 'Confirm & Log All'}
+                </button>
               </div>
             </div>
           )}

@@ -108,12 +108,14 @@ export default function BenchPage() {
     if (authLoading) return
     load()
 
-    const handleAuthChange = () => {
+    const handleRefresh = () => {
       load()
     }
-    window.addEventListener('levl_auth_user_changed', handleAuthChange)
+    window.addEventListener('levl_auth_user_changed', handleRefresh)
+    window.addEventListener('levl_bench_updated', handleRefresh)
     return () => {
-      window.removeEventListener('levl_auth_user_changed', handleAuthChange)
+      window.removeEventListener('levl_auth_user_changed', handleRefresh)
+      window.removeEventListener('levl_bench_updated', handleRefresh)
     }
   }, [authLoading, authUserId])
 

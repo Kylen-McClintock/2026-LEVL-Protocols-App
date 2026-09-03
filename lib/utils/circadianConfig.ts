@@ -433,11 +433,30 @@ export function isCurrentCircadianSlot(slotName: string, currentHour?: number): 
   }
 }
 
+export const CHRONOLOGICAL_CIRCADIAN_SLOTS: string[] = [
+  'waking',
+  'morning_routine',
+  'morning',
+  'morning_supplement_stack',
+  'first_meal',
+  'midday',
+  'midday_stack',
+  'afternoon',
+  'late_afternoon',
+  'post_meal',
+  'evening',
+  'evening_supplement_stack',
+  'wind_down',
+  'pre_bed',
+  'bedtime'
+]
+
 /**
  * Mathematically builds a seamless continuous linear gradient spanning from top to bottom
  * based on whichever ordered sequence of time blocks are actively rendered on the user's page.
- * Guarantees that each time block holds its signature primary color across ~98% of its zone,
- * and only smoothly blends at the narrow tail ends between adjacent blocks.
+ * If any intermediate time blocks are skipped (e.g. Midday to Evening), the missing portion
+ * of the circadian spectrum (deep daylight blue -> lavender -> vibrant sunset orange -> red)
+ * is smoothly expressed in a compressed vertical transition window across the seam.
  */
 export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   if (!slotKeys || slotKeys.length === 0) {
@@ -451,24 +470,6 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   const step = 100 / N
   const colorStops: { color: string; pct: number }[] = []
 
-  // Helper to check if color is in the daylight blue/cyan family
-  const isBlueFamily = (hex: string) => {
-    const h = hex.toLowerCase()
-    return h === '#38bdf8' || h === '#0ea5e9' || h === '#0284c7' || h === '#0369a1' || h === '#2563eb' || h === '#3b82f6' || h === '#5b9bd5'
-  }
-
-  // Helper to check if color is in the orange/amber sunset family
-  const isOrangeFamily = (hex: string) => {
-    const h = hex.toLowerCase()
-    return h === '#f97316' || h === '#ea580c' || h === '#f87e38' || h === '#f88a20' || h === '#f7c275' || h === '#f59e0b' || h === '#d97706' || h === '#fbbf24'
-  }
-
-  // Helper to check if color is dark blue/violet
-  const isDarkBlueFamily = (hex: string) => {
-    const h = hex.toLowerCase()
-    return h === '#172554' || h === '#1e3a8a' || h === '#0f172a' || h === '#0b132b' || h === '#1d4ed8' || h === '#1e40af' || h === '#2563eb' || h === '#1e1b4b' || h === '#231a45' || h === '#1b1536'
-  }
-
   slotKeys.forEach((key, i) => {
     const cfg = getCircadianConfig(key)
     const startPct = i * step
@@ -477,26 +478,21 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
 
     const nextKey = i < N - 1 ? slotKeys[i + 1] : null
     const nextCfg = nextKey ? getCircadianConfig(nextKey) : null
-    const nextPrimary = nextCfg ? nextCfg.skyColorHex : null
-
-    // Multi-stop sunset bridge between daytime blue and sunset/evening
-    const isTransitioningToSunset = nextPrimary && (
-      (isBlueFamily(primary) && isOrangeFamily(nextPrimary)) ||
-      (isBlueFamily(primary) && (nextKey === 'post_meal' || nextKey === 'evening' || nextKey === 'late_afternoon'))
-    )
 
     if (i === 0) {
-      // First slot: if waking, morning, or morning stack, guarantee warm golden sunrise dawn (#D97706 -> #F59E0B -> #FBBF24) into sky blue
-      if (['waking', 'morning_routine', 'morning', 'morning_supplement_stack', 'first_meal'].includes(cfg.key)) {
+      const firstIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
+      if (firstIdx > 2) {
+        colorStops.push({ color: '#D97706', pct: 0 })
+        colorStops.push({ color: '#F59E0B', pct: Math.min(Number((endPct * 0.25).toFixed(1)), 4) })
+        colorStops.push({ color: '#38BDF8', pct: Math.min(Number((endPct * 0.5).toFixed(1)), 8) })
+      } else if (['waking', 'morning_routine', 'morning', 'morning_supplement_stack', 'first_meal'].includes(cfg.key)) {
         colorStops.push({ color: '#D97706', pct: 0 })
         colorStops.push({ color: '#F59E0B', pct: Math.min(Number((endPct * 0.35).toFixed(1)), 8) })
         colorStops.push({ color: '#FBBF24', pct: Math.min(Number((endPct * 0.7).toFixed(1)), 16) })
-        colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
       } else {
-        const startCol = cfg.startColorHex || primary
-        colorStops.push({ color: startCol, pct: 0 })
-        colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
+        colorStops.push({ color: cfg.startColorHex || primary, pct: 0 })
       }
+      colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
     } else if (cfg.key === 'post_meal') {
       colorStops.push({ color: '#F87E38', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
       colorStops.push({ color: '#F87E38', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
@@ -513,33 +509,55 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
       colorStops.push({ color: '#231A45', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
       colorStops.push({ color: '#231A45', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
     } else if (i === N - 1) {
-      // Last slot (e.g. Bedtime): begins at startPct, holds rich visible dark midnight violet through to 100%
-      colorStops.push({ color: cfg.startColorHex || primary, pct: Math.min(100, Number((startPct + 1.0).toFixed(1))) })
-      colorStops.push({ color: primary, pct: Number(((startPct + 100) / 2).toFixed(1)) })
-      colorStops.push({ color: cfg.endColorHex || '#0B132B', pct: 100 })
+      colorStops.push({ color: primary, pct: Math.min(100, Number((startPct + 1.0).toFixed(1))) })
+      const lastIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
+      if (lastIdx !== -1 && lastIdx < CHRONOLOGICAL_CIRCADIAN_SLOTS.length - 2) {
+        const remainingKeys = CHRONOLOGICAL_CIRCADIAN_SLOTS.slice(lastIdx + 1)
+        const remCount = remainingKeys.length
+        remainingKeys.forEach((remKey, rIdx) => {
+          const remCfg = getCircadianConfig(remKey)
+          const pct = endPct - 6 + ((rIdx + 1) / (remCount + 1)) * 6
+          colorStops.push({ color: remCfg.skyColorHex, pct: Number(pct.toFixed(1)) })
+        })
+        colorStops.push({ color: '#0B132B', pct: 100 })
+      } else {
+        colorStops.push({ color: primary, pct: Number(((startPct + 100) / 2).toFixed(1)) })
+        colorStops.push({ color: cfg.endColorHex || '#0B132B', pct: 100 })
+      }
     } else {
       colorStops.push({ color: primary, pct: Math.min(100, Number((startPct + 1.0).toFixed(1))) })
       colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.0).toFixed(1))) })
     }
 
-    // Bridge seamless transitions
-    if (isTransitioningToSunset) {
-      colorStops.push({ color: '#9D9EC9', pct: Number((endPct - 0.5).toFixed(1)) })
-    } else if (nextPrimary && isOrangeFamily(primary) && (nextPrimary.toLowerCase() === '#df5558' || nextPrimary.toLowerCase() === '#a52d6a')) {
-      colorStops.push({ color: '#DF5558', pct: Number(endPct.toFixed(1)) })
-    } else if (nextPrimary && (primary.toLowerCase() === '#df5558') && (nextPrimary.toLowerCase() === '#a52d6a' || nextPrimary.toLowerCase() === '#50236b')) {
-      colorStops.push({ color: '#A52D6A', pct: Number(endPct.toFixed(1)) })
-    } else if (nextPrimary && (primary.toLowerCase() === '#a52d6a') && (nextPrimary.toLowerCase() === '#50236b' || nextPrimary.toLowerCase() === '#231a45')) {
-      colorStops.push({ color: '#50236B', pct: Number(endPct.toFixed(1)) })
-    } else if (nextPrimary && (primary.toLowerCase() === '#50236b') && isDarkBlueFamily(nextPrimary)) {
-      colorStops.push({ color: '#231A45', pct: Number(endPct.toFixed(1)) })
+    if (nextCfg) {
+      const currIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
+      const nextIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(nextCfg.key)
+
+      if (currIdx !== -1 && nextIdx !== -1 && nextIdx > currIdx + 1) {
+        const skippedKeys = CHRONOLOGICAL_CIRCADIAN_SLOTS.slice(currIdx + 1, nextIdx)
+        const distinctSkippedColors: string[] = []
+        skippedKeys.forEach(k => {
+          const col = getCircadianConfig(k).skyColorHex
+          if (!distinctSkippedColors.includes(col) && col.toLowerCase() !== primary.toLowerCase() && col.toLowerCase() !== nextCfg.skyColorHex.toLowerCase()) {
+            distinctSkippedColors.push(col)
+          }
+        })
+
+        if (distinctSkippedColors.length > 0) {
+          const windowStart = Math.max(startPct + 1, endPct - 5)
+          const windowEnd = endPct
+          const count = distinctSkippedColors.length
+          distinctSkippedColors.forEach((color, sIdx) => {
+            const pct = windowStart + ((sIdx + 1) / (count + 1)) * (windowEnd - windowStart)
+            colorStops.push({ color, pct: Number(pct.toFixed(1)) })
+          })
+        }
+      }
     }
   })
 
-  // Sort stops by percentage
   colorStops.sort((a, b) => a.pct - b.pct)
 
-  // Deduplicate adjacent stops with identical pct & color to keep CSS clean
   const uniqueStops: { color: string; pct: number }[] = []
   colorStops.forEach((s) => {
     if (

@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
-import { updateUserProfile, createDailyTask, getOrCreateUserProfile } from '@/lib/data'
+import { updateUserProfile, createDailyTask, getOrCreateUserProfile, reconcileModalityScheduleAndFutureTasks } from '@/lib/data'
 import { saveUserHotkeys } from '@/lib/storage/quickLogsStorage'
 import { POPULAR_HOTKEY_LIBRARY, DEFAULT_STARTER_HOTKEYS } from '@/lib/quicklog/quickHotkeyLibrary'
 import { format } from 'date-fns'
@@ -52,11 +52,11 @@ export const STARTER_CATALOG: ModalityOption[] = [
     isFoundational80_20: true,
     explainRationale: 'Direct photons onto retinal ganglion cells (ipRGCs) reset the central hypothalamic suprachiasmatic nucleus (SCN), triggering a healthy cortisol awakening spike and locking in the 14-hour melatonin synthesis timer for deep restorative sleep.',
     targetPathways: ['SCN Circadian Entrainment', 'Cortisol Awakening Response (CAR)', 'Pineal Melatonin Priming'],
-    synergies: ['Pairs synergistically with Hydration & Electrolytes to clear morning grogginess.', 'Reinforces 90m Coffee Delay by letting natural cortisol rise first.'],
+    synergies: ['Pairs synergistically with Baseline Hydration & Electrolytes to clear morning grogginess.', 'Reinforces 90m Coffee Delay by letting natural cortisol rise first.'],
     pubmedEvidence: 'PMID: 31105940 (Huberman et al. / SCN Photobiology)'
   },
   { 
-    id: 'water_electrolytes', 
+    id: 'baseline_hydration_electrolytes', 
     name: 'Baseline Hydration + Electrolytes', 
     dose: '16–20 oz pure water + trace minerals', 
     timing: 'morning', 
@@ -71,6 +71,23 @@ export const STARTER_CATALOG: ModalityOption[] = [
     targetPathways: ['Cellular Osmoregulation', 'Blood Plasma Volume', 'Renal Sodium-Potassium ATPase'],
     synergies: ['Hydrates muscle cells before morning movement.', 'Optimizes cellular uptake of morning micronutrients.'],
     pubmedEvidence: 'PMID: 30999554 (Hydration and Cognitive Performance)'
+  },
+  { 
+    id: 'delay_caffeine', 
+    name: '90–120m Adenosine Delay (Coffee)', 
+    dose: 'Delay first caffeine 90–120m post-wake', 
+    timing: 'morning', 
+    goalKey: 'energy',
+    timeMins: 2,
+    effortLevel: 1,
+    costTier: 1,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    isFoundational80_20: true,
+    explainRationale: 'Allows residual circulating adenosine to be cleared naturally by endogenous enzymatic processes and morning light before caffeine receptor blockade, preventing afternoon crash.',
+    targetPathways: ['Adenosine A1/A2A Receptor Dynamics', 'Cortisol Curve Optimization', 'Afternoon Crash Prevention'],
+    synergies: ['Pairs with morning hydration and sunlight for natural alertness.'],
+    pubmedEvidence: 'PMID: 29559958 (Circadian Adenosine and Cortisol Dynamics)'
   },
   { 
     id: 'breathing_4_7_8', 
@@ -90,8 +107,24 @@ export const STARTER_CATALOG: ModalityOption[] = [
     pubmedEvidence: 'PMID: 29559958 (Slow deep breathing and autonomic balance)'
   },
   { 
-    id: 'melatonin_onset_dimming', 
-    name: '2-Hour Blue-Light Shielding', 
+    id: 'box_breathing', 
+    name: 'Box Breathing (Navy SEAL Resets)', 
+    dose: '4x4x4x4 cadence for 5 minutes', 
+    timing: 'afternoon', 
+    goalKey: 'focus',
+    timeMins: 5,
+    effortLevel: 1,
+    costTier: 1,
+    evidenceTier: 1,
+    sideEffectRisk: 1,
+    explainRationale: 'Equalized 4-second inhalation, retention, exhalation, and empty hold restores autonomic equilibrium, decreases prefrontal hyperactivity, and stabilizes CO2 tolerance.',
+    targetPathways: ['Autonomic Equilibrium', 'Carbon Dioxide Tolerance', 'Prefrontal Emotional Regulation'],
+    synergies: ['Use prior to high-focus deep work blocks or stressful meetings.'],
+    pubmedEvidence: 'PMID: 36630953 (Breathwork and stress reduction)'
+  },
+  { 
+    id: 'walker_melatonin_dimming', 
+    name: '2-Hour Melatonin Onset Blue-Light Dimming', 
     dose: 'Circadian dimming & amber glasses 120m pre-bed', 
     timing: 'evening', 
     goalKey: 'sleep',
@@ -157,7 +190,7 @@ export const STARTER_CATALOG: ModalityOption[] = [
     pubmedEvidence: 'PMID: 23853635 (Magnesium supplementation and subjective sleep)'
   },
   { 
-    id: 'omega3_epa_dha', 
+    id: 'epa_dha_omega3', 
     name: 'High-Concentration Omega-3 EPA/DHA', 
     dose: '2,000mg with breakfast/EVOO', 
     timing: 'morning', 
@@ -174,7 +207,7 @@ export const STARTER_CATALOG: ModalityOption[] = [
     pubmedEvidence: 'PMID: 31089851 (Omega-3 fatty acids in health and aging)'
   },
   { 
-    id: 'zone2_cardio_30m', 
+    id: 'zone_2_cardio', 
     name: 'Zone 2 Mitochondrial Endurance', 
     dose: '30–45 mins (Nasally breathing, HR 60-70% max)', 
     timing: 'afternoon', 
@@ -190,7 +223,7 @@ export const STARTER_CATALOG: ModalityOption[] = [
     pubmedEvidence: 'PMID: 32300067 (Zone 2 training and mitochondrial function)'
   },
   { 
-    id: 'ppl_push_day', 
+    id: 'resistance_training', 
     name: 'Resistance Hypertrophy Session', 
     dose: '45–60 mins (RPE 7-9, 2-3 RIR)', 
     timing: 'afternoon', 
@@ -207,7 +240,7 @@ export const STARTER_CATALOG: ModalityOption[] = [
     pubmedEvidence: 'PMID: 28834797 (Resistance training for health and longevity)'
   },
   { 
-    id: 'sauna_session', 
+    id: 'sauna_exposure', 
     name: 'Heat Shock Sauna Session', 
     dose: '20 mins at 174°F+ (80°C+)', 
     timing: 'afternoon', 
@@ -224,7 +257,7 @@ export const STARTER_CATALOG: ModalityOption[] = [
     pubmedEvidence: 'PMID: 25705824 (Sauna bathing and cardiovascular mortality reduction)'
   },
   { 
-    id: 'cold_shower_or_plunge', 
+    id: 'cold_water_immersion', 
     name: 'Deliberate Cold Exposure', 
     dose: '2–3 mins (50°F–55°F / 10°C–13°C)', 
     timing: 'morning', 
@@ -247,21 +280,34 @@ const MORNING_CORE_OUTCOMES = [
   { id: 'sleep_quality', name: 'Sleep Quality', description: 'Restorative deep sleep architecture and subjective restfulness', icon: <Moon size={16} className="text-indigo-400" /> },
   { id: 'sleep_latency', name: 'Sleep Latency', description: 'Time it took to fall asleep after lights out', icon: <Clock size={16} className="text-cyan-400" /> },
   { id: 'waking_restedness', name: 'Waking Restedness', description: 'Feeling refreshed and alert upon waking with natural cortisol timing', icon: <Sunrise size={16} className="text-emerald-400" /> },
-  { id: 'mood', name: 'Morning Mood', description: 'Baseline emotional state and optimism upon waking (moment-in-time check)', icon: <Sparkles size={16} className="text-yellow-400" /> },
-  { id: 'energy', name: 'Morning Readiness & Energy', description: 'Starting physical and mental energy upon waking (moment-in-time check)', icon: <Zap size={16} className="text-amber-400" /> }
+  { id: 'alertness', name: 'Morning Alertness', description: 'Sharpness, wakefulness, and freedom from grogginess upon waking', icon: <Sun size={16} className="text-amber-400" /> },
+  { id: 'calmness', name: 'Parasympathetic Calmness', description: 'Low waking autonomic tension and grounded nervous system ease', icon: <Heart size={16} className="text-teal-400" /> },
+  { id: 'soreness', name: 'Muscular Ease / Low Soreness', description: 'Absence of joint stiffness or muscle aches upon waking', icon: <Shield size={16} className="text-purple-400" /> },
+  { id: 'pain', name: 'Bodily Comfort (Zero Pain)', description: 'Freedom from chronic pain, joint tenderness, or localized inflammation', icon: <Activity size={16} className="text-rose-400" /> }
 ]
 
-const EVENING_CORE_OUTCOMES = [
-  { id: 'energy', name: 'Overall Daily Energy', description: 'Cumulative physical stamina and freedom from afternoon crashes across the whole day', icon: <Zap size={16} className="text-amber-400" /> },
-  { id: 'focus', name: 'Full-Day Focus & Mental Clarity', description: 'Deep attention span, productivity, clear thinking, and flow state throughout the day', icon: <Brain size={16} className="text-sky-400" /> },
-  { id: 'stress', name: 'Daily Stress & Autonomic Tone', description: 'Stress resilience, parasympathetic calm, and evening nervous system recovery', icon: <Heart size={16} className="text-emerald-400" /> },
-  { id: 'mood', name: 'Overall Daily Well-Being', description: 'Cumulative feeling of satisfaction, mood stability, and motivation across the day', icon: <Sparkles size={16} className="text-yellow-400" /> },
-  { id: 'digestive_comfort', name: 'Digestive & Metabolic Comfort', description: 'Gut comfort, lack of post-meal bloating, and clean energy uptake across meals', icon: <Flame size={16} className="text-orange-400" /> }
+const COGNITIVE_CORE_OUTCOMES = [
+  { id: 'focus', name: 'Deep Focus & Flow State', description: 'Sustained attention span, executive flow, and distraction resistance', icon: <Brain size={16} className="text-sky-400" /> },
+  { id: 'mental_clarity', name: 'Mental Clarity', description: 'Clear, sharp thinking without mental fatigue or cognitive haze', icon: <Sparkles size={16} className="text-cyan-400" /> },
+  { id: 'brain_fog', name: 'Zero Brain Fog', description: 'Freedom from cloudy, sluggish, or spaced-out afternoon cognitive crashes', icon: <Zap size={16} className="text-yellow-400" /> },
+  { id: 'motivation', name: 'Drive & Motivation', description: 'Dopaminergic baseline, goal initiation, and sustained discipline', icon: <Flame size={16} className="text-amber-400" /> },
+  { id: 'productivity', name: 'Daily Output & Velocity', description: 'Cumulative task completion and high cognitive work capacity', icon: <Award size={16} className="text-emerald-400" /> },
+  { id: 'memory', name: 'Working Memory & Recall', description: 'Fluid information retention, memory retrieval, and verbal sharpness', icon: <Brain size={16} className="text-indigo-400" /> }
 ]
 
-const PROTOCOL_TRIGGERED_OUTCOMES = [
-  { id: 'soreness', name: 'Muscular Soreness & Recovery', description: 'Muscular or joint recovery and low inflammation (prompted post-training)', icon: <Shield size={16} className="text-purple-400" /> },
-  { id: 'strength', name: 'Strength & Power Output', description: 'Physical work capacity and strength output (prompted post-training)', icon: <Dumbbell size={16} className="text-rose-400" /> }
+const SOMATIC_CORE_OUTCOMES = [
+  { id: 'energy', name: 'Sustained Physical Energy', description: 'All-day somatic stamina without dips or afternoon crashes', icon: <Zap size={16} className="text-amber-400" /> },
+  { id: 'stress', name: 'Stress Resilience & Recovery', description: 'Autonomic nervous system recovery and emotional poise under pressure', icon: <Heart size={16} className="text-rose-400" /> },
+  { id: 'mood', name: 'Overall Daily Well-Being', description: 'Cumulative feeling of satisfaction, optimism, and emotional contentment', icon: <Sparkles size={16} className="text-yellow-400" /> },
+  { id: 'digestive_comfort', name: 'Digestive & Gut Comfort', description: 'Gastrointestinal ease, lack of post-meal bloating, and clean nutrient absorption', icon: <Flame size={16} className="text-orange-400" /> },
+  { id: 'satiety', name: 'Appetite Control & Satiety', description: 'Clean metabolic hunger regulation and freedom from sugar cravings', icon: <Utensils size={16} className="text-emerald-400" /> },
+  { id: 'strength', name: 'Physical Power & Output', description: 'Muscular strength capacity, force production, and training resilience', icon: <Dumbbell size={16} className="text-purple-400" /> },
+  { id: 'endurance', name: 'Cardiorespiratory Stamina', description: 'Aerobic capacity, cellular oxygenation, and sustained movement endurance', icon: <Activity size={16} className="text-cyan-400" /> },
+  { id: 'joint_comfort', name: 'Joint Mobility & Comfort', description: 'Smooth, pain-free articulation in knees, hips, shoulders, and spine', icon: <Shield size={16} className="text-indigo-400" /> },
+  { id: 'emotional_resilience', name: 'Emotional Resilience', description: 'Equanimity, patience, and composure under acute psychological stressors', icon: <Heart size={16} className="text-teal-400" /> },
+  { id: 'immune_resilience', name: 'Immune Vitality', description: 'Robust mucosal and systemic immune defenses with zero sluggishness', icon: <Shield size={16} className="text-green-400" /> },
+  { id: 'skin_clarity', name: 'Skin Radiance & Clarity', description: 'Dermal hydration, even tone, elasticity, and low oxidative redness', icon: <Sun size={16} className="text-pink-400" /> },
+  { id: 'libido', name: 'Vital Energy & Libido', description: 'Hormonal vitality, youthfulness, and baseline reproductive vigor', icon: <Flame size={16} className="text-rose-400" /> }
 ]
 
 // Positive Daily Micro-Habits (Defaults pre-selected)
@@ -372,6 +418,9 @@ function OnboardingContent() {
   const [displayName, setDisplayName] = useState('')
   const [age, setAge] = useState<string>('')
   const [biologicalSex, setBiologicalSex] = useState<'Male' | 'Female' | 'Other'>('Male')
+  const [enableInfradian, setEnableInfradian] = useState<boolean>(false)
+  const [lastPeriodStartDate, setLastPeriodStartDate] = useState<string>('')
+  const [cycleLengthDays, setCycleLengthDays] = useState<number>(28)
   const [heightFeet, setHeightFeet] = useState<string>('')
   const [heightInches, setHeightInches] = useState<string>('')
   const [weightLbs, setWeightLbs] = useState<string>('')
@@ -424,6 +473,9 @@ function OnboardingContent() {
           if (profile.display_name && profile.display_name !== 'Protocol Optimizer') setDisplayName(profile.display_name)
           if (profile.age) setAge(String(profile.age))
           if (profile.biological_sex) setBiologicalSex(profile.biological_sex as any)
+          if (profile.infradian_cycle_enabled !== undefined) setEnableInfradian(Boolean(profile.infradian_cycle_enabled))
+          if (profile.last_period_start_date) setLastPeriodStartDate(profile.last_period_start_date)
+          if (profile.average_cycle_length_days) setCycleLengthDays(profile.average_cycle_length_days)
           if (profile.height_inches) {
             setHeightFeet(String(Math.floor(profile.height_inches / 12)))
             setHeightInches(String(profile.height_inches % 12))
@@ -510,6 +562,9 @@ function OnboardingContent() {
           display_name: displayName.trim() || undefined,
           age: age ? parseInt(age, 10) : undefined,
           biological_sex: biologicalSex,
+          infradian_cycle_enabled: biologicalSex === 'Female' && (!age || parseInt(age, 10) < 52) ? enableInfradian : false,
+          last_period_start_date: (enableInfradian && lastPeriodStartDate) ? lastPeriodStartDate : undefined,
+          average_cycle_length_days: enableInfradian ? cycleLengthDays : undefined,
           height_inches: totalHeightInches > 0 ? totalHeightInches : undefined,
           weight_lbs: weightLbs ? parseFloat(weightLbs) : undefined,
           dietary_pattern: dietaryPattern,
@@ -531,7 +586,7 @@ function OnboardingContent() {
     const timer = setTimeout(saveProgress, 400)
     return () => clearTimeout(timer)
   }, [
-    displayName, age, biologicalSex, heightFeet, heightInches, weightLbs, dietaryPattern,
+    displayName, age, biologicalSex, enableInfradian, lastPeriodStartDate, cycleLengthDays, heightFeet, heightInches, weightLbs, dietaryPattern,
     idealWakeTime, idealBedtime, chronotype, customMilestones,
     fitnessLevel, trainingDays, workoutWindow, selectedEquipment,
     selectedGoals, selectedOutcomes, selectedPositiveHabits, selectedNegativeExposures,
@@ -691,10 +746,14 @@ function OnboardingContent() {
       // Effort alignment
       const effortDiff = Math.abs(mod.effortLevel - complexityEffort)
       score += Math.max(0, 6 - effortDiff * 2)
-      // Openness to emerging science
-      if (opennessToEmergingScience >= mod.evidenceTier) score += 3
-      // Side effect tolerance
-      if (sideEffectTolerance >= mod.sideEffectRisk) score += 3
+      // Openness to emerging science (1 to 5 scale)
+      if (opennessToEmergingScience >= (mod.evidenceTier || 1)) {
+        score += (opennessToEmergingScience - (mod.evidenceTier || 1) + 1) * 2
+      }
+      // Side effect tolerance (1 to 5 scale)
+      if (sideEffectTolerance >= (mod.sideEffectRisk || 1)) {
+        score += (sideEffectTolerance - (mod.sideEffectRisk || 1) + 1) * 2
+      }
 
       return { mod, score }
     })
@@ -834,6 +893,9 @@ function OnboardingContent() {
         display_name: nameToSave,
         age: age ? parseInt(age, 10) : undefined,
         biological_sex: biologicalSex,
+        infradian_cycle_enabled: biologicalSex === 'Female' && (!age || parseInt(age, 10) < 52) ? enableInfradian : false,
+        last_period_start_date: (enableInfradian && lastPeriodStartDate) ? lastPeriodStartDate : undefined,
+        average_cycle_length_days: enableInfradian ? cycleLengthDays : undefined,
         height_inches: totalHeightInches > 0 ? totalHeightInches : undefined,
         weight_lbs: weightLbs ? parseFloat(weightLbs) : undefined,
         dietary_pattern: dietaryPattern,
@@ -872,11 +934,22 @@ function OnboardingContent() {
         console.warn('Notice initializing user starter hotkeys:', hotkeyErr)
       }
 
-      // 3. Schedule checked starter tasks for today
+      // 3. Schedule checked starter tasks for today and synchronize active 30-day schedule
       const activeMods = displayedModalities.filter(m => isModalityChecked(m.id))
       for (const mod of activeMods) {
         try {
           await createDailyTask(localUserId, todayStr, mod.id)
+          await reconcileModalityScheduleAndFutureTasks(localUserId, mod.id, {
+            customDose: mod.dose,
+            customTiming: mod.timing,
+            scheduleConfig: {
+              schedule_mode: 'days_of_week',
+              days_of_week: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+              timing_slot: mod.timing,
+              skip_policy: 'fixed'
+            },
+            fromDate: todayStr
+          })
         } catch (taskErr) {
           console.warn('Error scheduling task for:', mod.id, taskErr)
         }
@@ -1182,6 +1255,81 @@ function OnboardingContent() {
                     ))}
                   </div>
                 </div>
+
+                {/* Conditional Infradian & Menstrual Cycle Tracking Card (Only for Female < 52) */}
+                {biologicalSex === 'Female' && (!age || parseInt(age, 10) < 52) && (
+                  <div className="space-y-3 p-4 rounded-2xl bg-rose-950/20 border border-rose-500/30 animate-in fade-in">
+                    <div className="flex justify-between items-center gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-xl shrink-0">🌸</span>
+                        <div>
+                          <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <span>Infradian &amp; Menstrual Cycle Protocol Sync</span>
+                            <span className="text-[9px] font-mono text-rose-300 bg-rose-500/15 border border-rose-500/30 px-1.5 py-0.2 rounded uppercase font-bold">
+                              Opt-In
+                            </span>
+                          </h4>
+                          <p className="text-[10px] text-slate-300 leading-relaxed">
+                            Adapts cold exposure, sauna heat, fasting, and HRV baselines across follicular, ovulatory, and luteal phases.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEnableInfradian(!enableInfradian)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 border ${
+                          enableInfradian
+                            ? 'bg-rose-600 border-rose-500 text-white shadow-md'
+                            : 'bg-slate-900/80 border-slate-700 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {enableInfradian ? 'Enabled' : 'Opt In'}
+                      </button>
+                    </div>
+
+                    {enableInfradian && (
+                      <div className="space-y-3 pt-3 border-t border-rose-500/20 text-xs animate-in fade-in">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-mono uppercase text-rose-300 font-bold mb-1">
+                              Last Period Start Date (Day 1)
+                            </label>
+                            <input
+                              type="date"
+                              value={lastPeriodStartDate}
+                              onChange={e => setLastPeriodStartDate(e.target.value)}
+                              className="w-full bg-slate-900 border border-rose-500/40 rounded-xl p-2 text-xs text-white focus:border-rose-400 outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between text-[10px] font-mono text-rose-300 font-bold mb-1">
+                              <span>Average Cycle Length</span>
+                              <span className="font-bold text-white">{cycleLengthDays} Days</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="21"
+                              max="38"
+                              value={cycleLengthDays}
+                              onChange={e => setCycleLengthDays(parseInt(e.target.value, 10))}
+                              className="w-full accent-rose-500 h-2 bg-slate-900 rounded-lg appearance-none cursor-pointer"
+                            />
+                            <div className="flex justify-between text-[9px] text-slate-400 font-mono mt-1">
+                              <span>21d (Short)</span>
+                              <span>28d (Standard)</span>
+                              <span>38d (Long)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-rose-200/80 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20">
+                          💡 <strong>Smart Contextual Hotkey:</strong> When your period window approaches (~Day 26–28), LEVL will automatically surface a quick 1-tap period logger on your Today dashboard.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Height & Weight Grid */}
@@ -1802,7 +1950,7 @@ function OnboardingContent() {
                   </p>
                 </div>
 
-                {/* 1. MORNING CORE CHECK-IN */}
+                {/* 1. MORNING READINESS & SLEEP ARCHITECTURE */}
                 <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-indigo-500/20">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -1841,21 +1989,60 @@ function OnboardingContent() {
                   </div>
                 </div>
 
-                {/* 2. EVENING CORE CHECK-IN (Full-Day Reflection) */}
+                {/* 2. COGNITIVE PERFORMANCE & FLOW STATE */}
+                <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-sky-500/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Brain size={14} className="text-sky-400" />
+                      <span>🧠 Daytime &amp; Cognitive Flow (Focus &amp; Mental Energy)</span>
+                    </span>
+                    <span className="text-[9px] font-mono text-slate-400">Peak Hours</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {COGNITIVE_CORE_OUTCOMES.map(o => {
+                      const isSelected = selectedOutcomes.includes(o.id)
+                      return (
+                        <button
+                          key={`cognitive_${o.id}`}
+                          type="button"
+                          onClick={() => toggleOutcome(o.id)}
+                          className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-sky-500/15 border-sky-400/80 text-white shadow-sm'
+                              : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-300'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">{o.icon}</div>
+                          <div className="min-w-0 flex-1">
+                            <span className="text-xs font-bold block text-white">{o.name}</span>
+                            <span className="text-[10px] text-slate-400 block truncate">{o.description}</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
+                            isSelected ? 'bg-sky-500 border-sky-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                          }`}>
+                            {isSelected && <Check size={10} className="stroke-[3]" />}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. SOMATIC VITALITY & FULL-DAY RESILIENCE */}
                 <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-amber-500/20">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Sunset size={14} className="text-amber-400" />
-                      <span>🌙 Evening Check-in (Full-Day Cumulative Reflection)</span>
+                      <span>🌙 Evening Reflection (Full-Day Somatic &amp; Vital Health)</span>
                     </span>
                     <span className="text-[9px] font-mono text-slate-400">Nightly Review</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {EVENING_CORE_OUTCOMES.map(o => {
+                    {SOMATIC_CORE_OUTCOMES.map(o => {
                       const isSelected = selectedOutcomes.includes(o.id)
                       return (
                         <button
-                          key={`evening_${o.id}`}
+                          key={`somatic_${o.id}`}
                           type="button"
                           onClick={() => toggleOutcome(o.id)}
                           className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
@@ -1871,45 +2058,6 @@ function OnboardingContent() {
                           </div>
                           <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
                             isSelected ? 'bg-amber-500 border-amber-400 text-slate-950' : 'border-slate-700 bg-slate-900'
-                          }`}>
-                            {isSelected && <Check size={10} className="stroke-[3]" />}
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* 3. PROTOCOL-TRIGGERED (Inline / Post-Execution) */}
-                <div className="space-y-2 bg-slate-950/60 p-3.5 rounded-2xl border border-purple-500/20">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <Zap size={14} className="text-purple-400" />
-                      <span>⚡ Protocol-Triggered (Logged Post-Activity)</span>
-                    </span>
-                    <span className="text-[9px] font-mono text-slate-400">Contextual Logs</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {PROTOCOL_TRIGGERED_OUTCOMES.map(o => {
-                      const isSelected = selectedOutcomes.includes(o.id)
-                      return (
-                        <button
-                          key={`triggered_${o.id}`}
-                          type="button"
-                          onClick={() => toggleOutcome(o.id)}
-                          className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-purple-500/15 border-purple-400/80 text-white shadow-sm'
-                              : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-300'
-                          }`}
-                        >
-                          <div className="mt-0.5 shrink-0">{o.icon}</div>
-                          <div className="min-w-0 flex-1">
-                            <span className="text-xs font-bold block text-white">{o.name}</span>
-                            <span className="text-[10px] text-slate-400 block truncate">{o.description}</span>
-                          </div>
-                          <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border ${
-                            isSelected ? 'bg-purple-500 border-purple-400 text-slate-950' : 'border-slate-700 bg-slate-900'
                           }`}>
                             {isSelected && <Check size={10} className="stroke-[3]" />}
                           </div>
@@ -2037,7 +2185,7 @@ function OnboardingContent() {
                   </p>
                 </div>
 
-                <div className="space-y-4 bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-emerald-500/20 shadow-inner">
+                <div className="space-y-5 bg-slate-950/70 p-4 sm:p-5 rounded-2xl border border-emerald-500/20 shadow-inner">
                   {/* 1. Daily Time Budget */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
@@ -2046,7 +2194,7 @@ function OnboardingContent() {
                         <span>Daily Available Time Commitment</span>
                       </label>
                       <span className="font-mono font-bold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 text-xs">
-                        {dailyTimeBudget} mins/day {dailyTimeBudget <= 30 ? '• 3–4 modalities' : dailyTimeBudget <= 60 ? '• 5–7 modalities' : '• 8–10 modalities'}
+                        {dailyTimeBudget} mins/day
                       </span>
                     </div>
                     <input
@@ -2058,10 +2206,13 @@ function OnboardingContent() {
                       onChange={(e) => setDailyTimeBudget(Number(e.target.value))}
                       className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
                     />
-                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                      <span>15m (Express / Minimalist)</span>
-                      <span>45m (Standard)</span>
-                      <span>90m+ (Deep Protocol)</span>
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-[11px] text-slate-300 leading-relaxed">
+                      {dailyTimeBudget === 15 && '⚡ Minimalist / Express (15m): 2–3 high-impact foundational 80/20 habits (sunlight, baseline hydration, quick breath reset).'}
+                      {dailyTimeBudget === 30 && '⏱️ Express Routine (30m): 3–4 core modalities with zero unnecessary time-friction (morning light, hydration, basic movement).'}
+                      {dailyTimeBudget === 45 && '⚖️ Balanced Longevity (45m): 5–6 targeted modalities combining foundational light/hydration with dedicated Zone 2 or resistance sessions.'}
+                      {dailyTimeBudget === 60 && '🏋️ Comprehensive Protocol (60m): 6–8 modalities including structured 45–60m training sessions and restorative sleep dimming.'}
+                      {dailyTimeBudget === 90 && '🔬 Deep Optimization (90m): 8–10 modalities incorporating structured resistance, Zone 2 base, and thermal contrast (sauna/cold).'}
+                      {dailyTimeBudget >= 105 && '🧬 Elite Immersion (120m+): Full multi-tier longevity stack with comprehensive training, dual thermal conditioning, and mindful protocols.'}
                     </div>
                   </div>
 
@@ -2070,14 +2221,10 @@ function OnboardingContent() {
                     <div className="flex items-center justify-between text-xs">
                       <label className="font-bold text-slate-200 flex items-center gap-1.5">
                         <Zap size={13} className="text-purple-400" />
-                        <span>Complexity &amp; Effort Tolerance</span>
+                        <span>Complexity &amp; Discipline Tolerance</span>
                       </label>
                       <span className="font-mono font-bold text-purple-300 bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-purple-500/20 text-xs">
-                        {complexityEffort === 1 ? 'Level 1 (Zero-Friction 80/20)' :
-                         complexityEffort === 2 ? 'Level 2 (Low Friction Micro-Habits)' :
-                         complexityEffort === 3 ? 'Level 3 (Balanced Active Routine)' :
-                         complexityEffort === 4 ? 'Level 4 (High Discipline Protocol)' :
-                         'Level 5 (Maximum Comprehensive Stack)'}
+                        Level {complexityEffort} of 5
                       </span>
                     </div>
                     <input
@@ -2089,10 +2236,12 @@ function OnboardingContent() {
                       onChange={(e) => setComplexityEffort(Number(e.target.value))}
                       className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-400"
                     />
-                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                      <span>Passive / Effortless</span>
-                      <span>Moderate Balance</span>
-                      <span>Intensive Daily Stacks</span>
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-[11px] text-slate-300 leading-relaxed">
+                      {complexityEffort === 1 && 'Level 1 — Passive & Zero Friction: Low-effort environmental tweaks (morning photons, hydration salt, natural wind-down). No complex tracking.'}
+                      {complexityEffort === 2 && 'Level 2 — Light Habit Architecture: Simple 2-minute additions with negligible cognitive load (basic creatine, gentle post-meal walking).'}
+                      {complexityEffort === 3 && 'Level 3 — Balanced Active Routine: Consistent daily rhythm requiring moderate discipline (consistent training days, meal timing windows).'}
+                      {complexityEffort === 4 && 'Level 4 — High-Discipline Protocol: Multi-phase protocols requiring planning (progressive overload gym sessions, timed cold & heat exposure).'}
+                      {complexityEffort === 5 && 'Level 5 — Rigorous Precision Mastery: Demanding, zero-compromise precision stacks (strict meal cutoffs, complex supplementation, peak strain).'}
                     </div>
                   </div>
 
@@ -2104,25 +2253,24 @@ function OnboardingContent() {
                         <span>Monthly Protocol Budget</span>
                       </label>
                       <span className="font-mono font-bold text-emerald-300 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20 text-xs">
-                        {monthlyBudget === 1 ? '$0 (Free / Zero-Equipment)' :
-                         monthlyBudget === 2 ? 'Modest ($50–$150/mo)' :
-                         monthlyBudget === 3 ? 'High ($200–$500/mo)' :
-                         'Unconstrained / Premium'}
+                        Tier {monthlyBudget} of 5
                       </span>
                     </div>
                     <input
                       type="range"
                       min="1"
-                      max="4"
+                      max="5"
                       step="1"
                       value={monthlyBudget}
                       onChange={(e) => setMonthlyBudget(Number(e.target.value))}
                       className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                     />
-                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                      <span>$0 Free Habits</span>
-                      <span>Targeted Supplements</span>
-                      <span>Full Biohacker Stack</span>
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-[11px] text-slate-300 leading-relaxed">
+                      {monthlyBudget === 1 && 'Tier 1 — $0 / Zero Cost: Lifestyle-only modalities (sunlight photobiology, breathwork, hydration, sleep timing, bodyweight training).'}
+                      {monthlyBudget === 2 && 'Tier 2 — Modest Budget (~$30–$75/mo): High-yield foundational supplements (Creatine Monohydrate, Magnesium Glycinate, basic electrolytes).'}
+                      {monthlyBudget === 3 && 'Tier 3 — Targeted Longevity (~$100–$250/mo): Premium high-EPA/DHA Omega-3, targeted senolytics, and basic wearable biometric tracking.'}
+                      {monthlyBudget === 4 && 'Tier 4 — Advanced Optimization (~$300–$600/mo): NAD+ precursors, comprehensive biomarker blood panels, and gym or commercial sauna access.'}
+                      {monthlyBudget === 5 && 'Tier 5 — Unconstrained Vanguard ($750+/mo): Continuous biometric sensors (CGM), private cold plunge & infrared sauna, and clinical peptide therapy.'}
                     </div>
                   </div>
 
@@ -2134,24 +2282,24 @@ function OnboardingContent() {
                         <span>Openness to Emerging Science</span>
                       </label>
                       <span className="font-mono font-bold text-sky-300 bg-sky-500/10 px-2.5 py-0.5 rounded-lg border border-sky-500/20 text-xs">
-                        {opennessToEmergingScience === 1 ? 'Conservative (Peer-Reviewed RCTs Only)' :
-                         opennessToEmergingScience === 2 ? 'Balanced (Strong Human & Mechanistic Data)' :
-                         'Cutting-Edge (Emerging Epigenetics & Trials)'}
+                        Tier {opennessToEmergingScience} of 5
                       </span>
                     </div>
                     <input
                       type="range"
                       min="1"
-                      max="3"
+                      max="5"
                       step="1"
                       value={opennessToEmergingScience}
                       onChange={(e) => setOpennessToEmergingScience(Number(e.target.value))}
                       className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-400"
                     />
-                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                      <span>Gold Standard RCTs</span>
-                      <span>Balanced</span>
-                      <span>Cutting-Edge Frontier</span>
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-[11px] text-slate-300 leading-relaxed">
+                      {opennessToEmergingScience === 1 && 'Tier 1 — Strict Gold-Standard Clinical Trials: Exclusively large-scale, double-blind, placebo-controlled human RCTs and Cochrane Systematic Reviews. Zero exploratory or rodent-only findings.'}
+                      {opennessToEmergingScience === 2 && 'Tier 2 — Established Human Translational Data: Validated human clinical trials, large longitudinal cohorts (Framingham, UK Biobank), and verified clinical biomarker improvements.'}
+                      {opennessToEmergingScience === 3 && 'Tier 3 — Balanced Human & Robust Mechanistic Science: Established human data paired with well-characterized biological pathways and replicated mammalian longevity models.'}
+                      {opennessToEmergingScience === 4 && 'Tier 4 — Innovative Frontier Science: Promising early-stage human pilot trials, well-researched mammalian life-extension data, and advanced interventions (senolytic pulses, NAD+ replenishment).'}
+                      {opennessToEmergingScience === 5 && 'Tier 5 — Experimental Biohacking Vanguard: Fast-moving exploratory longevity protocols, off-label geroprotective therapeutics, and cutting-edge cellular reprogramming interventions.'}
                     </div>
                   </div>
 
@@ -2160,27 +2308,27 @@ function OnboardingContent() {
                     <div className="flex items-center justify-between text-xs">
                       <label className="font-bold text-slate-200 flex items-center gap-1.5">
                         <ShieldAlert size={13} className="text-rose-400" />
-                        <span>Side Effect &amp; Intensity Tolerance</span>
+                        <span>Hormetic Stress &amp; Intensity Tolerance</span>
                       </label>
                       <span className="font-mono font-bold text-rose-300 bg-rose-500/10 px-2.5 py-0.5 rounded-lg border border-rose-500/20 text-xs">
-                        {sideEffectTolerance === 1 ? 'Zero Risk / Non-Invasive' :
-                         sideEffectTolerance === 2 ? 'Moderate (Hormetic Cold/Heat Stress)' :
-                         'High (Intensive Metabolic & Physical Stressors)'}
+                        Level {sideEffectTolerance} of 5
                       </span>
                     </div>
                     <input
                       type="range"
                       min="1"
-                      max="3"
+                      max="5"
                       step="1"
                       value={sideEffectTolerance}
                       onChange={(e) => setSideEffectTolerance(Number(e.target.value))}
                       className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-400"
                     />
-                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                      <span>Gentle / Safe</span>
-                      <span>Moderate Hormesis</span>
-                      <span>Aggressive Interventions</span>
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 text-[11px] text-slate-300 leading-relaxed">
+                      {sideEffectTolerance === 1 && 'Level 1 — Ultra-Gentle & Non-Invasive: Zero physiological stress or discomfort (optimal hydration, gentle ambient light, nasal breathing). Absolute zero risk of adverse response.'}
+                      {sideEffectTolerance === 2 && 'Level 2 — Low-Impact Adaptive Micro-Stress: Mild, fleeting physiological stimulus with negligible adverse risk (brief cool shower rinse, Zone 2 conversational cardio, magnesium glycinate).'}
+                      {sideEffectTolerance === 3 && 'Level 3 — Moderate Hormetic Conditioning: Deliberate thermal or physical stress demanding dedicated somatic effort and adaptation (174°F+ Finnish dry sauna, 50°F cold plunge, structured progressive resistance).'}
+                      {sideEffectTolerance === 4 && 'Level 4 — Intense Physical & Metabolic Strain: High physiological demands (prolonged intermittent fasting, near-failure hypertrophy, intensive hot/cold contrast, high-dose senolytic pulses).'}
+                      {sideEffectTolerance === 5 && 'Level 5 — Peak Tolerable Hormetic Load: Extreme cardiovascular, thermal, or metabolic load; requires dedicated recovery monitoring and high athletic/metabolic resilience.'}
                     </div>
                   </div>
                 </div>

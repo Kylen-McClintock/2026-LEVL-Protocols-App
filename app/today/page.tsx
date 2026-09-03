@@ -28,6 +28,8 @@ import {
 } from 'lucide-react'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
+import { triggerHaptic } from '@/lib/utils/haptics'
+import { safeLocalStorageSet } from '@/lib/utils/storage'
 import { PulsedModalityCard } from '@/components/cards/PulsedModalityCard'
 import ProactiveDiagnosticCard from '@/components/cards/ProactiveDiagnosticCard'
 import DailyWellbeingCheckin from '@/components/score/DailyWellbeingCheckin'
@@ -53,7 +55,7 @@ import { calculateDailyEfficacySummary } from '@/lib/data/historicalAnalysis'
 import { getScoredLongevityTips } from '@/lib/ranking/tipPersonalization'
 import { getMacroCategory } from '@/lib/utils/categories'
 import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
-import { getCircadianConfig, isCurrentCircadianSlot, buildDynamicCircadianGradientCSS } from '@/lib/utils/circadianConfig'
+import { getCircadianConfig, isCurrentCircadianSlot, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS } from '@/lib/utils/circadianConfig'
 import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
 
 function formatSlotName(str: string): string {
@@ -124,6 +126,11 @@ function TodayPageContent() {
   const dateParam = searchParams.get('date')
 
   const { user: authUser, localUserId: authUserId, loading: authLoading } = useAuth()
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // SWR Instant Local Hydration (0ms initial render)
   const initialDateStr = dateParam || format(new Date(), 'yyyy-MM-dd')
@@ -266,6 +273,7 @@ function TodayPageContent() {
   const [availableProtocols, setAvailableProtocols] = useState<{ id: string; name: string; colorHex?: string }[]>([])
   const [dismissedTipIds, setDismissedTipIds] = useState<string[]>([])
   const [wellbeingCheckin, setWellbeingCheckin] = useState<WellbeingType | null>(null)
+  const [show100Celebration, setShow100Celebration] = useState<boolean>(false)
 
   const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false)
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false)
@@ -356,7 +364,7 @@ function TodayPageContent() {
   const handleCompletionModeChange = (mode: 'outcome' | 'fast') => {
     setCompletionMode(mode)
     if (typeof window !== 'undefined') {
-      localStorage.setItem('levl_completion_mode', mode)
+      safeLocalStorageSet('levl_completion_mode', mode)
     }
   }
 
@@ -400,9 +408,7 @@ function TodayPageContent() {
     if (pullTouchStartRef.current === null) return
     if (pullDistance >= 45 && !isRefreshing) {
       setIsRefreshing(true)
-      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-        try { navigator.vibrate(15) } catch (e) {}
-      }
+      triggerHaptic('light')
       await refreshTodayTasks()
       setTimeout(() => {
         setIsRefreshing(false)
@@ -425,8 +431,8 @@ function TodayPageContent() {
       setTasks(currentTasks)
       if (bench) setBenchItems(bench)
       if (typeof window !== 'undefined') {
-        localStorage.setItem('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
-        if (bench) localStorage.setItem('levl_cached_bench_items', JSON.stringify(bench))
+        safeLocalStorageSet('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
+        if (bench) safeLocalStorageSet('levl_cached_bench_items', JSON.stringify(bench))
       }
     } finally {
       window.dispatchEvent(new CustomEvent('levl_sync_end'))
@@ -447,12 +453,14 @@ function TodayPageContent() {
     window.addEventListener('levl_task_status_changed', handleTaskOrModalityUpdate)
     window.addEventListener('levl_bench_updated', handleTaskOrModalityUpdate)
     window.addEventListener('levl_schedule_updated', handleTaskOrModalityUpdate)
+    window.addEventListener('levl_tasks_updated', handleTaskOrModalityUpdate)
     return () => {
       window.removeEventListener('levl_profile_updated', handleProfileUpdate)
       window.removeEventListener('levl_modality_created', handleTaskOrModalityUpdate)
       window.removeEventListener('levl_task_status_changed', handleTaskOrModalityUpdate)
       window.removeEventListener('levl_bench_updated', handleTaskOrModalityUpdate)
       window.removeEventListener('levl_schedule_updated', handleTaskOrModalityUpdate)
+      window.removeEventListener('levl_tasks_updated', handleTaskOrModalityUpdate)
     }
   }, [dateStr, authUserId])
 
@@ -499,9 +507,9 @@ function TodayPageContent() {
           setBenchItems(bench)
           setWellbeingCheckin(todayCheckin || null)
           if (typeof window !== 'undefined') {
-            localStorage.setItem('levl_cached_user_profile', JSON.stringify(userProfile))
-            localStorage.setItem('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
-            if (bench) localStorage.setItem('levl_cached_bench_items', JSON.stringify(bench))
+            safeLocalStorageSet('levl_cached_user_profile', JSON.stringify(userProfile))
+            safeLocalStorageSet('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
+            if (bench) safeLocalStorageSet('levl_cached_bench_items', JSON.stringify(bench))
           }
           hasLoadedInitialCatalogRef.current = true
         } else {
@@ -526,7 +534,7 @@ function TodayPageContent() {
           setTasks(currentTasks)
           setWellbeingCheckin(todayCheckin || null)
           if (typeof window !== 'undefined') {
-            localStorage.setItem('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
+            safeLocalStorageSet('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
           }
         }
       } catch (err) {
@@ -645,9 +653,18 @@ function TodayPageContent() {
       return t
     }))
 
-    // Tactile feedback on mobile devices
-    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-      try { navigator.vibrate(12) } catch (e) {}
+    // Check if this completion achieves 100% adherence for the day
+    const willBeCompleted = status === 'completed'
+    const pendingOtherTasks = tasks.filter(t => t.id !== id && !uuidSet.has(t.id) && t.status === 'pending')
+    const achieves100Percent = willBeCompleted && pendingOtherTasks.length === 0 && tasks.length > 0
+
+    // Tactile feedback on mobile devices (transfers to native iOS & Android apps via triggerHaptic)
+    if (achieves100Percent) {
+      triggerHaptic('success')
+      setShow100Celebration(true)
+      setTimeout(() => setShow100Celebration(false), 5000)
+    } else {
+      triggerHaptic(willBeCompleted ? 'light' : 'selection')
     }
 
     if (status === 'completed') {
@@ -823,9 +840,7 @@ function TodayPageContent() {
     }))
 
     // Tactile haptic feedback
-    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-      try { navigator.vibrate(15) } catch (e) {}
-    }
+    triggerHaptic('medium')
 
     // Instantly close modal so user experiences instant 0ms latency
     setIsRescheduleModalOpen(false)
@@ -1390,10 +1405,11 @@ function TodayPageContent() {
       const totalCount = dedupedTasks.length
       const completedCount = allCompletedTasks.length
       const statsPayload = { completed: completedCount, total: totalCount }
-      
-      try {
-        localStorage.setItem('levl_today_stats', JSON.stringify(statsPayload))
-      } catch (e) {}
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('levl_today_stats', JSON.stringify(statsPayload))
+        } catch (e) {}
+      }
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('levl_today_tasks_stats', { detail: statsPayload }))
@@ -1579,17 +1595,20 @@ function TodayPageContent() {
       )
 
       if (i === 0) {
-        // First slot: if waking, morning, or morning stack, guarantee warm golden sunrise dawn (#D97706 -> #F59E0B -> #FBBF24) into sky blue
-        if (['waking', 'morning_routine', 'morning', 'morning_supplement_stack', 'first_meal'].includes(cfg.key)) {
+        const firstIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
+        if (firstIdx > 2) {
+          colorStops.push({ color: '#D97706', pct: 0 })
+          colorStops.push({ color: '#F59E0B', pct: Math.min(Number((bottomPct * 0.25).toFixed(1)), 4) })
+          colorStops.push({ color: '#38BDF8', pct: Math.min(Number((bottomPct * 0.5).toFixed(1)), 8) })
+        } else if (['waking', 'morning_routine', 'morning', 'morning_supplement_stack', 'first_meal'].includes(cfg.key)) {
           colorStops.push({ color: '#D97706', pct: 0 })
           colorStops.push({ color: '#F59E0B', pct: Math.min(Number((bottomPct * 0.35).toFixed(1)), 8) })
           colorStops.push({ color: '#FBBF24', pct: Math.min(Number((bottomPct * 0.7).toFixed(1)), 16) })
-          colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
         } else {
           const startCol = cfg.startColorHex || primary
           colorStops.push({ color: startCol, pct: 0 })
-          colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
         }
+        colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
       } else if (cfg.key === 'post_meal') {
         colorStops.push({ color: '#F87E38', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
         colorStops.push({ color: '#F87E38', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
@@ -1606,26 +1625,52 @@ function TodayPageContent() {
         colorStops.push({ color: '#231A45', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
         colorStops.push({ color: '#231A45', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
       } else if (i === activeGroups.length - 1) {
-        // Last slot (e.g. Bedtime): begins at top seam, holds solid to 100%
         colorStops.push({ color: cfg.startColorHex || primary, pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: primary, pct: Number(((topPct + 100) / 2).toFixed(1)) })
-        colorStops.push({ color: cfg.endColorHex || '#0B132B', pct: 100 })
+        const lastIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
+        if (lastIdx !== -1 && lastIdx < CHRONOLOGICAL_CIRCADIAN_SLOTS.length - 2) {
+          const remainingKeys = CHRONOLOGICAL_CIRCADIAN_SLOTS.slice(lastIdx + 1)
+          const remCount = remainingKeys.length
+          remainingKeys.forEach((remKey, rIdx) => {
+            const remCfg = getCircadianConfig(remKey)
+            const pct = bottomPct + ((rIdx + 1) / (remCount + 1)) * (100 - bottomPct)
+            colorStops.push({ color: remCfg.skyColorHex, pct: Number(pct.toFixed(1)) })
+          })
+          colorStops.push({ color: '#0B132B', pct: 100 })
+        } else {
+          colorStops.push({ color: primary, pct: Number(((topPct + 100) / 2).toFixed(1)) })
+          colorStops.push({ color: cfg.endColorHex || '#0B132B', pct: 100 })
+        }
       } else {
         colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 1.0).toFixed(1))) })
         colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
       }
 
-      // Bridge seamless transitions
-      if (isTransitioningToSunset) {
-        colorStops.push({ color: '#9D9EC9', pct: Number((bottomPct - 0.5).toFixed(1)) })
-      } else if (nextPrimary && isOrangeFamily(primary) && (nextPrimary.toLowerCase() === '#df5558' || nextPrimary.toLowerCase() === '#a52d6a')) {
-        colorStops.push({ color: '#DF5558', pct: Number(bottomPct.toFixed(1)) })
-      } else if (nextPrimary && (primary.toLowerCase() === '#df5558') && (nextPrimary.toLowerCase() === '#a52d6a' || nextPrimary.toLowerCase() === '#50236b')) {
-        colorStops.push({ color: '#A52D6A', pct: Number(bottomPct.toFixed(1)) })
-      } else if (nextPrimary && (primary.toLowerCase() === '#a52d6a') && (nextPrimary.toLowerCase() === '#50236b' || nextPrimary.toLowerCase() === '#231a45')) {
-        colorStops.push({ color: '#50236B', pct: Number(bottomPct.toFixed(1)) })
-      } else if (nextPrimary && (primary.toLowerCase() === '#50236b') && isDarkBlueFamily(nextPrimary)) {
-        colorStops.push({ color: '#231A45', pct: Number(bottomPct.toFixed(1)) })
+      // Gap-bridging for skipped intermediate time blocks
+      if (nextCfg) {
+        const currIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
+        const nextIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(nextCfg.key)
+
+        if (currIdx !== -1 && nextIdx !== -1 && nextIdx > currIdx + 1) {
+          const skippedKeys = CHRONOLOGICAL_CIRCADIAN_SLOTS.slice(currIdx + 1, nextIdx)
+          const distinctSkippedColors: string[] = []
+          skippedKeys.forEach(k => {
+            const col = getCircadianConfig(k).skyColorHex
+            if (!distinctSkippedColors.includes(col) && col.toLowerCase() !== primary.toLowerCase() && col.toLowerCase() !== nextCfg.skyColorHex.toLowerCase()) {
+              distinctSkippedColors.push(col)
+            }
+          })
+
+          if (distinctSkippedColors.length > 0) {
+            const seamCenter = bottomPct
+            const windowStart = Math.max(topPct + 1, seamCenter - 3.5)
+            const windowEnd = Math.min(100, seamCenter + 3.5)
+            const count = distinctSkippedColors.length
+            distinctSkippedColors.forEach((color, sIdx) => {
+              const pct = windowStart + ((sIdx + 1) / (count + 1)) * (windowEnd - windowStart)
+              colorStops.push({ color, pct: Number(pct.toFixed(1)) })
+            })
+          }
+        }
       }
     })
 
@@ -2319,7 +2364,7 @@ function TodayPageContent() {
     })
   }
 
-  if (!profile && (loading || authLoading)) {
+  if (!isMounted || (!profile && (loading || authLoading))) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 max-w-4xl mx-auto space-y-5 animate-pulse">
         {/* Shimmer Header */}
@@ -2471,8 +2516,19 @@ function TodayPageContent() {
               </span>
 
               {dedupedTasks.length > 0 && (
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold shadow-[0_0_12px_rgba(16,185,129,0.2)]">
-                  {progressPercent}% Complete
+                <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold transition-all duration-500 flex items-center gap-1.5 ${
+                  progressPercent === 100
+                    ? 'bg-gradient-to-r from-emerald-500/25 via-teal-500/20 to-emerald-500/25 border border-emerald-400/80 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.5)] ring-2 ring-emerald-400/40 animate-pulse'
+                    : 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                }`}>
+                  {progressPercent === 100 ? (
+                    <>
+                      <Sparkles size={12} className="text-amber-300 animate-spin" style={{ animationDuration: '3s' }} />
+                      <span>100% Complete</span>
+                    </>
+                  ) : (
+                    <span>{progressPercent}% Complete</span>
+                  )}
                 </span>
               )}
             </div>
@@ -2485,6 +2541,35 @@ function TodayPageContent() {
               title="Next day (Tomorrow)"
             >
               <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
+
+        {/* 100% Protocol Completion Micro-Celebration Banner */}
+        {show100Celebration && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-teal-950/70 to-slate-950/80 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.25)] flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.4)] shrink-0">
+                <Sparkles size={16} className="text-emerald-300 animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs font-bold text-white flex items-center gap-1.5 truncate">
+                  <span>100% Daily Protocol Completed!</span>
+                  <span className="text-[9px] font-mono text-emerald-300 bg-emerald-500/20 px-1.5 py-0.2 rounded font-bold uppercase">
+                    All Pathways Active
+                  </span>
+                </h4>
+                <p className="text-[10px] text-emerald-200/80 truncate">
+                  Every scheduled longevity modality has been checked off for today. Exceptional biological consistency!
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShow100Celebration(false)}
+              className="p-1 rounded-lg text-emerald-400/60 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+            >
+              <X size={14} />
             </button>
           </div>
         )}
@@ -2617,7 +2702,7 @@ function TodayPageContent() {
                   dateStr={dateStr}
                   onAddToToday={async (modalityOrProtocolId: string) => {
                     if (typeof window !== 'undefined') {
-                      localStorage.setItem('levl_daily_tip_acted_' + dateStr, 'true')
+                      safeLocalStorageSet('levl_daily_tip_acted_' + dateStr, 'true')
                     }
                     if (profile) {
                       await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityOrProtocolId)
@@ -2626,13 +2711,13 @@ function TodayPageContent() {
                   }}
                   onAddToBench={async (modalityId: string) => {
                     if (typeof window !== 'undefined') {
-                      localStorage.setItem('levl_daily_tip_acted_' + dateStr, 'true')
+                      safeLocalStorageSet('levl_daily_tip_acted_' + dateStr, 'true')
                     }
                     await handleMoveToBench(modalityId)
                   }}
                   onDismiss={(tipId: string) => {
                     if (typeof window !== 'undefined') {
-                      localStorage.setItem('levl_daily_tip_acted_' + dateStr, 'true')
+                      safeLocalStorageSet('levl_daily_tip_acted_' + dateStr, 'true')
                     }
                     setDismissedTipIds(prev => [...prev, tipId])
                   }}

@@ -16,8 +16,8 @@ type CustomizeCheckinOutcomesModalProps = {
   onOutcomesUpdated?: (updatedPreferences?: Record<string, number>, updatedProfile?: UserProfile | null) => void
 }
 
-const RECOMMENDED_IDS = ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep']
-const RECOMMENDED_ANYTIME_IDS = ['mood', 'energy', 'stress', 'focus', 'mental_clarity', 'satiety', 'motivation', 'physical_fatigue']
+const RECOMMENDED_IDS = ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep', 'waking_restedness', 'sleep_latency', 'alertness', 'calmness', 'soreness', 'pain']
+const RECOMMENDED_ANYTIME_IDS = ['mood', 'energy', 'stress', 'focus', 'mental_clarity', 'brain_fog', 'satiety', 'motivation', 'physical_fatigue', 'productivity', 'digestive_comfort', 'emotional_resilience']
 
 export const CHECKIN_EXPOSURES_METADATA = [
   { id: 'alcohol_drinks', name: 'Alcohol Intake', icon: '🍷', description: 'Tracks standard drinks and sleep architecture impact' },

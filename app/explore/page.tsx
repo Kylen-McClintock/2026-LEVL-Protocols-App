@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { format } from 'date-fns'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { 
@@ -31,6 +31,7 @@ import StackFitInspectorModal from '@/components/modals/StackFitInspectorModal'
 import CreateCustomModalityModal from '@/components/modals/CreateCustomModalityModal'
 import { StackFitResult } from '@/lib/synergy/stackFitEngine'
 import { semanticSearchModalities, SemanticSearchResult } from '@/app/actions/search'
+import { calculateModalityRelevance, calculateProtocolRelevance } from '@/lib/search/semanticRelevance'
 import { Protocol } from '@/lib/types'
 
 export default function ExplorePage() {
@@ -323,11 +324,13 @@ export default function ExplorePage() {
   // Auto-search when query changes (debounced)
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery.trim().length > 2) {
+      if (searchQuery.trim().length > 1) {
         setIsSearching(true)
         try {
           const results = await semanticSearchModalities(searchQuery)
-          setSearchResults(results)
+          if (results && results.length > 0) {
+            setSearchResults(results)
+          }
         } catch (e) {
           console.error(e)
         } finally {
@@ -336,7 +339,7 @@ export default function ExplorePage() {
       } else if (searchQuery.trim() === '') {
         setSearchResults([])
       }
-    }, 600)
+    }, 400)
 
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery])
@@ -436,8 +439,6 @@ export default function ExplorePage() {
     })
   }
 
-  if (loading) return <div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">Loading global library...</div>
-
   const allOutcomesRaw = modalities.flatMap(m => m.functional_outcomes_to_track || [])
   const allAvailableOutcomes = Array.from(new Set(allOutcomesRaw)).filter(Boolean).sort()
   
@@ -452,61 +453,25 @@ export default function ExplorePage() {
     )
   }
 
-  const isKeywordMatch = (mod: Modality, query: string) => {
-    const q = query.toLowerCase().trim()
-    if (!q) return true
+  // Precomputed semantic & lexical relevance map for modalities (runs O(N) on query change)
+  const modalityRelevanceMap = useMemo(() => {
+    const map = new Map<string, { isMatch: boolean; score: number }>()
+    if (!searchQuery.trim()) return map
+    modalities.forEach(mod => {
+      map.set(mod.id, calculateModalityRelevance(mod, searchQuery, searchResults))
+    })
+    return map
+  }, [modalities, searchQuery, searchResults])
 
-    const textToSearch = [
-      mod.display_name,
-      mod.name,
-      mod.modality_type,
-      mod.category,
-      mod.brief_description,
-      mod.headline_benefit,
-      mod.expanded_why,
-      mod.primary_outcome,
-      Array.isArray(mod.secondary_outcomes) ? mod.secondary_outcomes.join(' ') : '',
-      mod.mechanism_of_action
-    ].filter(Boolean).join(' ').toLowerCase()
-
-    return textToSearch.includes(q)
-  }
-
-  // Calculate direct keyword match score ignoring profile penalties
-  const getKeywordScore = (mod: Modality, query: string) => {
-    const q = query.toLowerCase().trim()
-    if (!q) {
-      return (mod.nba_result?.score || 0)
-    }
-
-    const name = (mod.display_name || mod.name || '').toLowerCase()
-    const type = (mod.modality_type || '').toLowerCase()
-    const desc = (mod.brief_description || '').toLowerCase()
-    const headline = (mod.headline_benefit || '').toLowerCase()
-    const why = (mod.expanded_why || '').toLowerCase()
-    const cat = (mod.category || '').toLowerCase()
-    const primary = (mod.primary_outcome || '').toLowerCase()
-    const secondary = Array.isArray(mod.secondary_outcomes) ? mod.secondary_outcomes.join(' ').toLowerCase() : ''
-    const mechanism = (mod.mechanism_of_action || '').toLowerCase()
-
-    let score = 0
-
-    if (name === q) score += 1000
-    else if (name.startsWith(q)) score += 500
-    else if (name.includes(q)) score += 300
-
-    if (type.includes(q)) score += 250
-    if (cat.includes(q)) score += 150
-    if (headline.includes(q)) score += 100
-    if (primary.includes(q) || secondary.includes(q)) score += 90
-    if (desc.includes(q)) score += 80
-    if (why.includes(q) || mechanism.includes(q)) score += 50
-
-    const semMatch = searchResults.find(r => r.id === mod.id)
-    if (semMatch) score += Math.round(semMatch.similarity * 100)
-
-    return score
-  }
+  // Precomputed semantic & lexical relevance map for protocols (runs O(N) on query change)
+  const protocolRelevanceMap = useMemo(() => {
+    const map = new Map<string, { isMatch: boolean; score: number }>()
+    if (!searchQuery.trim()) return map
+    protocols.forEach(proto => {
+      map.set(proto.id, calculateProtocolRelevance(proto, searchQuery))
+    })
+    return map
+  }, [protocols, searchQuery])
 
   const filteredModalities = modalities.filter(mod => {
     if (filterBenchHistoryStatus === 'tried_history' && !benchHistoryMap.has(mod.id)) return false
@@ -708,98 +673,61 @@ export default function ExplorePage() {
     }
     
     if (searchQuery.trim().length > 0) {
-      const q = searchQuery.trim()
-      const isSemMatch = searchResults.some(r => r.id === mod.id)
-      const isKeyMatch = isKeywordMatch(mod, q)
-      if (!isSemMatch && !isKeyMatch) return false
+      const rel = modalityRelevanceMap.get(mod.id)
+      if (!rel || !rel.isMatch) return false
     }
     
     return true
   }).sort((a, b) => {
+    // 1. Most Popular & Proven: sorts by popularity score among the relevant search matches
     if (sortMode === 'popularity') {
       const scoreA = calculateModalityPopularityScore(a)
       const scoreB = calculateModalityPopularityScore(b)
       if (scoreB !== scoreA) return scoreB - scoreA
+      if (searchQuery.trim().length > 0) {
+        const relA = modalityRelevanceMap.get(a.id)?.score || 0
+        const relB = modalityRelevanceMap.get(b.id)?.score || 0
+        return relB - relA
+      }
+      return 0
     }
 
-    if (sortMode === 'relevance' || searchQuery.trim().length > 0) {
-      const scoreA = getKeywordScore(a, searchQuery)
-      const scoreB = getKeywordScore(b, searchQuery)
-      if (scoreB !== scoreA) return scoreB - scoreA
+    // 2. Direct Relevance: strictly sorts by semantic match score
+    if (sortMode === 'relevance') {
+      const relA = modalityRelevanceMap.get(a.id)?.score || 0
+      const relB = modalityRelevanceMap.get(b.id)?.score || 0
+      if (relB !== relA) return relB - relA
+      return calculateModalityPopularityScore(b) - calculateModalityPopularityScore(a)
     }
     
+    // 3. Recommended (Next Best Action)
     if (sortMode === 'nba') {
-      return (b.nba_result?.score || 0) - (a.nba_result?.score || 0)
+      const nbaDiff = (b.nba_result?.score || 0) - (a.nba_result?.score || 0)
+      if (nbaDiff !== 0) return nbaDiff
     }
     
+    // 4. Scientific Evidence
     if (sortMode === 'evidence') {
-      return (b.evidence_quality || 0) - (a.evidence_quality || 0)
+      const evDiff = (b.evidence_quality || 0) - (a.evidence_quality || 0)
+      if (evDiff !== 0) return evDiff
     }
     
+    // 5. Longevity Benefit
     if (sortMode === 'impact') {
-      return (b.overall_longevity_benefit || 0) - (a.overall_longevity_benefit || 0)
+      const impDiff = (b.overall_longevity_benefit || 0) - (a.overall_longevity_benefit || 0)
+      if (impDiff !== 0) return impDiff
+    }
+
+    if (searchQuery.trim().length > 0) {
+      const relA = modalityRelevanceMap.get(a.id)?.score || 0
+      const relB = modalityRelevanceMap.get(b.id)?.score || 0
+      if (relB !== relA) return relB - relA
     }
 
     return calculateModalityPopularityScore(b) - calculateModalityPopularityScore(a)
   })
 
-  const isProtocolKeywordMatch = (proto: any, query: string) => {
-    const q = query.toLowerCase().trim()
-    if (!q) return true
 
-    const stepNames = (proto.steps || proto.protocol_steps || [])
-      .map((s: any) => `${s.modality?.display_name || s.modality?.name || ''} ${s.notes || ''} ${s.context_message || ''}`)
-      .join(' ')
-
-    const synergy = PROTOCOL_SYNERGY_MAP[proto.id] || ''
-
-    const textToSearch = [
-      proto.name,
-      proto.description,
-      proto.primary_goal,
-      proto.goal,
-      Array.isArray(proto.secondary_goals) ? proto.secondary_goals.join(' ') : '',
-      proto.target_population,
-      Array.isArray(proto.target_vectors) ? proto.target_vectors.join(' ') : '',
-      proto.protocol_type,
-      proto.source_label,
-      proto.source_id,
-      proto.author_id,
-      stepNames,
-      synergy
-    ].filter(Boolean).join(' ').toLowerCase()
-
-    return textToSearch.includes(q)
-  }
-
-  const getProtocolKeywordScore = (proto: any, query: string) => {
-    const q = query.toLowerCase().trim()
-    if (!q) {
-      return calculateProtocolPopularityScore(proto)
-    }
-
-    const name = (proto.name || '').toLowerCase()
-    const desc = (proto.description || '').toLowerCase()
-    const primaryGoal = (proto.primary_goal || proto.goal || '').toLowerCase()
-    const source = (proto.source_label || proto.author_id || '').toLowerCase()
-    const steps = (proto.steps || proto.protocol_steps || [])
-      .map((s: any) => (s.modality?.display_name || s.modality?.name || '').toLowerCase())
-      .join(' ')
-    const synergy = (PROTOCOL_SYNERGY_MAP[proto.id] || '').toLowerCase()
-
-    let score = 0
-    if (name === q) score += 1000
-    else if (name.startsWith(q)) score += 500
-    else if (name.includes(q)) score += 300
-
-    if (primaryGoal.includes(q)) score += 200
-    if (source.includes(q)) score += 180
-    if (steps.includes(q)) score += 150
-    if (desc.includes(q)) score += 100
-    if (synergy.includes(q)) score += 80
-
-    return score
-  }
 
   const isProtocolCategoryMatch = (proto: any) => {
     const isAllMain = selectedMainCategories.includes('all') || selectedMainCategories.length === 0
@@ -895,27 +823,44 @@ export default function ExplorePage() {
     if (filterEvidence === 'high_evidence' && proto.evidence_level && !['Level A', 'Meta-Analysis', 'High', 'RCT'].some(lvl => (proto.evidence_level || '').includes(lvl))) return false
     if (filterSafety !== 'all' && (proto.safety_level && proto.safety_level !== filterSafety)) return false
 
-    // Search query
+    // Search query: filter down to relevant protocol matches
     if (searchQuery.trim().length > 0) {
-      if (!isProtocolKeywordMatch(proto, searchQuery)) return false
+      const rel = protocolRelevanceMap.get(proto.id)
+      if (!rel || !rel.isMatch) return false
     }
 
     return true
   }).sort((a, b) => {
-    if (searchQuery.trim().length > 0 || sortMode === 'relevance') {
-      const scoreA = getProtocolKeywordScore(a, searchQuery)
-      const scoreB = getProtocolKeywordScore(b, searchQuery)
-      if (scoreB !== scoreA) return scoreB - scoreA
-    }
-
+    // 1. Most Popular & Proven: sorts by popularity score among the relevant protocol matches
     if (sortMode === 'popularity') {
       const scoreA = calculateProtocolPopularityScore(a)
       const scoreB = calculateProtocolPopularityScore(b)
       if (scoreB !== scoreA) return scoreB - scoreA
+      if (searchQuery.trim().length > 0) {
+        const relA = protocolRelevanceMap.get(a.id)?.score || 0
+        const relB = protocolRelevanceMap.get(b.id)?.score || 0
+        return relB - relA
+      }
+      return 0
+    }
+
+    // 2. Direct Relevance
+    if (sortMode === 'relevance' || searchQuery.trim().length > 0) {
+      const relA = protocolRelevanceMap.get(a.id)?.score || 0
+      const relB = protocolRelevanceMap.get(b.id)?.score || 0
+      if (relB !== relA) return relB - relA
     }
 
     return calculateProtocolPopularityScore(b) - calculateProtocolPopularityScore(a)
   })
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">
+        Loading global library...
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto pt-6 sm:pt-8 pb-32">
@@ -1028,10 +973,15 @@ export default function ExplorePage() {
               setSearchResults([])
               return
             }
-            if (activeTab === 'modalities') {
-              setIsSearching(true)
+            setIsSearching(true)
+            try {
               const results = await semanticSearchModalities(searchQuery)
-              setSearchResults(results)
+              if (results && results.length > 0) {
+                setSearchResults(results)
+              }
+            } catch (err) {
+              console.error(err)
+            } finally {
               setIsSearching(false)
             }
           }}
@@ -1326,7 +1276,10 @@ export default function ExplorePage() {
             ) : (
               filteredModalities.slice(0, visibleCount).map((mod, index) => {
                 const isLast = index === visibleCount - 1
-                const searchScore = searchQuery ? searchResults.find(r => r.id === mod.id)?.similarity : undefined
+                const relScore = modalityRelevanceMap.get(mod.id)?.score
+                const searchScore = searchQuery 
+                  ? (searchResults.find(r => r.id === mod.id)?.similarity || (relScore ? Math.min(0.99, Number((relScore / 1200).toFixed(2))) : undefined)) 
+                  : undefined
                 
                 return (
                   <div key={mod.id} ref={isLast ? lastElementRef : null} className="min-w-0 w-full">

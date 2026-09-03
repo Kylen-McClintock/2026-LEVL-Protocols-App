@@ -74,6 +74,7 @@ export default function TopStickyHeader() {
     return () => window.removeEventListener('levl_today_tasks_stats', handleStatsUpdate)
   }, [])
 
+  const is100Percent = stats.total > 0 && stats.completed === stats.total
   const percentCompleted = stats.total > 0 ? Math.min(100, Math.round((stats.completed / stats.total) * 100)) : 0
 
   return (
@@ -89,7 +90,11 @@ export default function TopStickyHeader() {
         {/* Top Edge Gradient Completion Progress Bar */}
         <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-slate-800/40 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(56,189,248,0.7)]"
+            className={`h-full transition-all duration-500 ease-out ${
+              is100Percent
+                ? 'bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400 shadow-[0_0_16px_rgba(52,211,153,0.9)] animate-pulse'
+                : 'bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500 shadow-[0_0_8px_rgba(56,189,248,0.7)]'
+            }`}
             style={{ width: `${percentCompleted}%` }}
           />
         </div>
@@ -138,15 +143,19 @@ export default function TopStickyHeader() {
 
           {/* Center: Completion Counter */}
           <div className="flex items-center justify-center">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800/90 text-white shadow-inner">
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-inner transition-all duration-500 ${
+              is100Percent 
+                ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-200 shadow-[0_0_16px_rgba(16,185,129,0.35)]' 
+                : 'bg-slate-900/90 border-slate-800/90 text-white'
+            }`}>
               <span className="text-xs font-semibold tracking-tight">
                 {stats.completed} / {stats.total}
               </span>
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">
-                Done
+              <span className={`text-[10px] uppercase tracking-wider font-medium ${is100Percent ? 'text-emerald-300' : 'text-slate-400'}`}>
+                {is100Percent ? 'Complete' : 'Done'}
               </span>
-              {stats.total > 0 && stats.completed === stats.total && (
-                <CheckCircle2 size={12} className="text-emerald-400 ml-0.5" />
+              {is100Percent && (
+                <CheckCircle2 size={12} className="text-emerald-400 ml-0.5 animate-bounce" />
               )}
             </div>
           </div>

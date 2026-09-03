@@ -31,6 +31,21 @@ const voiceLogSchema = z.object({
     modality_name: z.string(),
     note: z.string().describe('Nuanced context or side observation to be saved directly to the modality notes field')
   })).optional().describe('Specific notes to attach to completed modalities.'),
+  checkin_timings: z.object({
+    last_meal_time: z.string().optional().describe('24-hour time HH:MM format (e.g. "19:30" or "20:00") if dinner or last food was mentioned'),
+    last_caffeine_time: z.string().optional().describe('24-hour time HH:MM format (e.g. "14:00") if last coffee or caffeine cutoff was mentioned'),
+    last_screen_time: z.string().optional().describe('24-hour time HH:MM format (e.g. "21:30") if screen cutoff or blue light was mentioned'),
+    alcohol_drinks: z.number().optional().describe('Number of alcoholic drinks consumed today if mentioned'),
+    sitting_duration: z.string().optional().describe('Sitting duration category if mentioned (e.g. "< 4 hrs", "4-8 hrs", "> 8 hrs")'),
+    processed_sugar: z.string().optional().describe('Processed sugar exposure level if mentioned (e.g. "None", "Low", "Moderate", "High")')
+  }).optional().describe('Timings and negative longevity exposures extracted from speech for daily check-ins.'),
+  hotkey_actions: z.object({
+    water_oz: z.number().optional().describe('Fluid ounces of water to log (e.g. 24, 32, 40)'),
+    sunlight_minutes: z.number().optional().describe('Minutes of outdoor sunlight to log (e.g. 15, 20, 30)'),
+    coffee_cups: z.number().optional().describe('Number of coffee or caffeine cups to log (e.g. 1, 2)'),
+    meal_calories: z.number().optional().describe('Calories from meal/food to log if mentioned (e.g. 450, 600)')
+  }).optional().describe('Quick-log hotkey increments to add directly to daily totals.'),
+  checkin_notes: z.string().optional().describe('General check-in or qualitative wellbeing notes extracted from speech.'),
   deviations_and_symptoms: z.string().optional().describe('Protocol deviations (e.g. stopped early, took with meal) or adverse symptoms (e.g. lightheadedness, nausea, cramps).'),
   ai_response_text: z.string().describe('A 1-3 sentence natural conversational response matching the selected Persona tone. If a conversation history was provided, maintain context and reply directly to the user\'s response.')
 })
@@ -133,6 +148,22 @@ TASK MATCHING & FUZZY CONFIRMATIONS:
 2. Ambiguous or Vague Match: If the user says something general like "did some heat therapy" or "took longevity stack", suggest it in pending_confirmations with the candidate modality name so the user can 1-tap confirm.
 3. Ad-Hoc Items: If they took something not on today's schedule, put into ad_hoc_items.
 4. Specific Modality Notes: If the user shared nuance (e.g. "felt a tingle after niacin", "took 30 mins before workout", "only drank 8oz water"), attach it into task_notes.
+
+CHECK-IN TIMINGS & NEGATIVE EXPOSURES:
+- Last Meal: If user mentions dinner or last food time (e.g. "dinner at 7:30", "ate last meal at 8 pm"), set checkin_timings.last_meal_time as 24h format "19:30" or "20:00".
+- Last Caffeine: If user mentions last coffee or caffeine cutoff (e.g. "last coffee at 2", "stopped caffeine at 1:30"), set checkin_timings.last_caffeine_time as 24h format "14:00" or "13:30".
+- Last Screen: If user mentions screen cutoff or blue light (e.g. "screens off at 9:30", "stopped screens at 10 pm"), set checkin_timings.last_screen_time as 24h format "21:30" or "22:00".
+- Alcohol: If user mentions alcoholic drinks (e.g. "had 2 drinks", "one glass of red wine"), set checkin_timings.alcohol_drinks to number.
+
+QUICK-LOG HOTKEY ADDITIONS:
+- Water: e.g. "drank 32 oz of water", "had two glasses of water" (~16-24 oz) -> hotkey_actions.water_oz.
+- Sunlight: e.g. "went outside for 20 minutes", "got 15 mins of sun" -> hotkey_actions.sunlight_minutes.
+- Coffee: e.g. "had a cup of coffee", "drank 2 coffees" -> hotkey_actions.coffee_cups.
+- Food/Calories: e.g. "logged lunch 500 calories" -> hotkey_actions.meal_calories.
+
+CHECK-IN NOTES:
+- Capture any overall subjective reflections or qualitative observations into checkin_notes.
+
 5. Cohesive Response: Write a 1-2 sentence response directly acknowledging what was logged in the chosen Persona tone.`
 
     const { object } = await generateObject({

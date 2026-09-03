@@ -8,6 +8,8 @@ import { getRecentOutcomeSnapshot, getLatestOutcomeLiveState, OutcomeLiveState }
 import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sparkles, ArrowUpRight, ArrowDownRight, Radio, Activity } from 'lucide-react'
 import CustomizeCheckinOutcomesModal from '@/components/modals/CustomizeCheckinOutcomesModal'
 import QuickOutcomeUpdateModal from '@/components/modals/QuickOutcomeUpdateModal'
+import { safeLocalStorageSet } from '@/lib/utils/storage'
+import UnifiedVoiceBar, { ParsedVoiceCheckinData } from '@/components/voice/UnifiedVoiceBar'
 
 function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: string = '22:30'): number {
   const [h, m] = timeStr.split(':').map(Number)
@@ -42,19 +44,23 @@ function TimingExposureCard({
   idealBedtime?: string
   theme?: 'indigo' | 'rose'
 }) {
-  const [inputMode, setInputMode] = useState<'hours' | 'time'>(value.startsWith('time:') ? 'time' : 'hours')
+  const isExplicitHours = value !== 'skip' && !value.startsWith('time:') && !isNaN(parseFloat(value))
+  const [inputMode, setInputMode] = useState<'hours' | 'time'>(isExplicitHours ? 'hours' : 'time')
+  const defaultExactTime = type === 'meal' ? '19:30' : type === 'caffeine' ? '14:00' : '21:30'
   const [exactTimeVal, setExactTimeVal] = useState(
     value.startsWith('time:') 
       ? value.replace('time:', '') 
-      : (type === 'meal' ? '19:30' : type === 'caffeine' ? '14:00' : '21:30')
+      : defaultExactTime
   )
 
   useEffect(() => {
     if (value.startsWith('time:')) {
       setInputMode('time')
       setExactTimeVal(value.replace('time:', ''))
-    } else {
+    } else if (value !== 'skip' && !isNaN(parseFloat(value))) {
       setInputMode('hours')
+    } else {
+      setInputMode('time')
     }
   }, [value])
 
@@ -106,6 +112,20 @@ function TimingExposureCard({
           <button
             type="button"
             onClick={() => {
+              setInputMode('time')
+              if (!value.startsWith('time:')) onChange(`time:${exactTimeVal}`)
+            }}
+            className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
+              inputMode === 'time' 
+                ? theme === 'rose' ? 'bg-rose-500/30 text-rose-300 border border-rose-500/40' : 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40' 
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            Exact Time
+          </button>
+          <button
+            type="button"
+            onClick={() => {
               setInputMode('hours')
               if (value.startsWith('time:')) {
                 const hrs = calculateHoursBeforeBedFromTime(value.replace('time:', ''), idealBedtime)
@@ -119,20 +139,6 @@ function TimingExposureCard({
             }`}
           >
             Hrs Before Bed
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setInputMode('time')
-              if (!value.startsWith('time:')) onChange(`time:${exactTimeVal}`)
-            }}
-            className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
-              inputMode === 'time' 
-                ? theme === 'rose' ? 'bg-rose-500/30 text-rose-300 border border-rose-500/40' : 'bg-indigo-500/30 text-indigo-300 border border-indigo-500/40' 
-                : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            Exact Time
           </button>
         </div>
       </div>
@@ -212,12 +218,15 @@ function TimingExposureCard({
           <button
             type="button"
             onClick={() => {
-              setInputMode('hours')
               onChange('skip')
             }}
-            className="text-[10px] text-gray-400 hover:text-white px-2 py-1.5 bg-white/5 rounded border border-white/10"
+            className={`text-[10px] px-2 py-1.5 rounded border transition-colors ${
+              value === 'skip'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold'
+                : 'text-gray-400 hover:text-white bg-white/5 border-white/10'
+            }`}
           >
-            Clear
+            {value === 'skip' ? 'Skipped' : 'Skip'}
           </button>
         </div>
       )}
@@ -268,14 +277,14 @@ export default function DailyWellbeingCheckin({
   const [quickModalOutcome, setQuickModalOutcome] = useState<OutcomeLiveState | null>(null)
   const [isQuickModalOpen, setIsQuickModalOpen] = useState(false)
 
-  // Negative Longevity Exposures State (Default: 'skip' for all)
+  // Negative Longevity Exposures State (Default: Exact Time for caffeine, screen, and meal)
   const [alcoholDrinks, setAlcoholDrinks] = useState<number | 'skip'>('skip')
-  const [lateCaffeine, setLateCaffeine] = useState<string>('skip')
+  const [lateCaffeine, setLateCaffeine] = useState<string>('time:14:00')
   const [nicotineExposure, setNicotineExposure] = useState<string>('skip')
   const [cannabisExposure, setCannabisExposure] = useState<string>('skip')
   const [sittingDuration, setSittingDuration] = useState<string>('skip')
-  const [lateMeal, setLateMeal] = useState<string>('skip')
-  const [blueLight, setBlueLight] = useState<string>('skip')
+  const [lateMeal, setLateMeal] = useState<string>('time:19:30')
+  const [blueLight, setBlueLight] = useState<string>('time:21:30')
   const [processedSugar, setProcessedSugar] = useState<string>('skip')
 
   // Section Collapse Toggles
@@ -317,6 +326,64 @@ export default function DailyWellbeingCheckin({
   const [isEditing, setIsEditing] = useState(false)
   const [isCollapsedAll, setIsCollapsedAll] = useState(isCollapsedByDefault)
   const [isMounted, setIsMounted] = useState(false)
+
+  const effectiveUserId = profile?.local_user_id || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') || 'local_user' : 'local_user')
+  const dStr = date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+
+  const handleApplyVoiceData = (parsed: ParsedVoiceCheckinData, target: 'morning' | 'anytime' | 'nightly') => {
+    // 1. Outcomes calibration
+    if (parsed.outcomes && parsed.outcomes.length > 0) {
+      parsed.outcomes.forEach(o => {
+        if (target === 'anytime') {
+          if (o.outcome_id === 'mood') { setDaytimeMood(o.rating_0_10); setDaytimeTouchedOutcomes(p => ({ ...p, mood: true })) }
+          else if (o.outcome_id === 'energy') { setDaytimeEnergy(o.rating_0_10); setDaytimeTouchedOutcomes(p => ({ ...p, energy: true })) }
+          else if (o.outcome_id === 'stress_resilience') { setDaytimeStress(10 - o.rating_0_10); setDaytimeTouchedOutcomes(p => ({ ...p, stress: true })) }
+          else if (o.outcome_id === 'cognitive_performance') { setDaytimeFocus(o.rating_0_10); setDaytimeTouchedOutcomes(p => ({ ...p, focus: true })) }
+          else {
+            setDaytimeCustomValues(prev => ({ ...prev, [o.outcome_id]: o.rating_0_10 }))
+            setDaytimeTouchedOutcomes(p => ({ ...p, [o.outcome_id]: true }))
+          }
+          setShowDaytimeCard(true)
+        } else {
+          // Morning / Nightly
+          if (o.outcome_id === 'mood') { setMood(o.rating_0_10); setTouchedOutcomes(p => ({ ...p, mood: true })) }
+          else if (o.outcome_id === 'energy') { setEnergy(o.rating_0_10); setTouchedOutcomes(p => ({ ...p, energy: true })) }
+          else if (o.outcome_id === 'stress_resilience') { setStress(10 - o.rating_0_10); setTouchedOutcomes(p => ({ ...p, stress: true })) }
+          else if (o.outcome_id === 'sleep_quality') { setSubjectiveSleep(o.rating_0_10); setTouchedOutcomes(p => ({ ...p, sleep: true })) }
+          else if (o.outcome_id === 'cognitive_performance') { setFocusScore(o.rating_0_10); setTouchedOutcomes(p => ({ ...p, focus: true })) }
+          else {
+            setCustomOutcomeValues(prev => ({ ...prev, [o.outcome_id]: o.rating_0_10 }))
+            setTouchedOutcomes(p => ({ ...p, [o.outcome_id]: true }))
+          }
+        }
+      })
+    }
+
+    // 2. Timings & Negative Exposures
+    if (parsed.timings?.last_meal_time) {
+      setLastFoodTime(parsed.timings.last_meal_time)
+      setLateMeal(`time:${parsed.timings.last_meal_time}`)
+    }
+    if (parsed.timings?.last_caffeine_time) {
+      setLateCaffeine(`time:${parsed.timings.last_caffeine_time}`)
+    }
+    if (parsed.timings?.last_screen_time) {
+      setBlueLight(`time:${parsed.timings.last_screen_time}`)
+    }
+    if (parsed.timings?.alcohol_drinks !== undefined) {
+      setAlcoholDrinks(parsed.timings.alcohol_drinks)
+    }
+
+    // 3. Open the target section so user sees the populated values
+    if (target === 'morning') {
+      setIsEditing(true)
+      setIsCollapsedAll(false)
+    } else if (target === 'nightly') {
+      setShowNightlyCard(true)
+    } else if (target === 'anytime') {
+      setShowDaytimeCard(true)
+    }
+  }
 
   useEffect(() => {
     setIsMounted(true)
@@ -575,12 +642,12 @@ export default function DailyWellbeingCheckin({
       setSkinClarity(customJSON.skin_clarity ?? 5)
       setFocusScore(customJSON.focus_score ?? 5)
       setAlcoholDrinks(customJSON.alcohol_drinks !== undefined && customJSON.alcohol_drinks !== null ? customJSON.alcohol_drinks : 'skip')
-      setLateCaffeine(customJSON.late_caffeine || 'skip')
+      setLateCaffeine(customJSON.late_caffeine || 'time:14:00')
       setNicotineExposure(customJSON.nicotine_exposure || 'skip')
       setCannabisExposure(customJSON.cannabis_exposure || 'skip')
       setSittingDuration(customJSON.sitting_duration || 'skip')
-      setLateMeal(customJSON.late_meal !== undefined && customJSON.late_meal !== null ? (typeof customJSON.late_meal === 'string' ? customJSON.late_meal : customJSON.late_meal ? '1.5' : '4.0') : 'skip')
-      setBlueLight(customJSON.blue_light || 'skip')
+      setLateMeal(customJSON.late_meal !== undefined && customJSON.late_meal !== null ? (typeof customJSON.late_meal === 'string' ? customJSON.late_meal : customJSON.late_meal ? 'time:19:30' : 'time:19:30') : 'time:19:30')
+      setBlueLight(customJSON.blue_light || 'time:21:30')
       setProcessedSugar(customJSON.processed_sugar || 'skip')
       
       // Restore all dynamic outcome slider values from customJSON
@@ -622,25 +689,19 @@ export default function DailyWellbeingCheckin({
       setDaytimeFocus(snapFocus.value)
       setDaytimeSkin(snapSkin.value)
 
-      const hasMorningData = initialData.mood_0_10 != null || initialData.energy_0_10 != null || initialData.subjective_sleep_0_10 != null
-      const savedBool = Boolean(hasMorningData)
-      setIsSaved(savedBool)
-      if (typeof window !== 'undefined' && date) {
-        const dStr = format(date, 'yyyy-MM-dd')
-        localStorage.setItem('levl_checkin_saved_' + dStr, savedBool ? 'true' : 'false')
-      }
+      const dStr = date ? format(date, 'yyyy-MM-dd') : ''
+      const hasMorningData = Boolean(
+        customJSON._morning_logged_at ||
+        (initialData.mood_0_10 != null && initialData.energy_0_10 != null && initialData.subjective_sleep_0_10 != null) ||
+        (typeof window !== 'undefined' && dStr && localStorage.getItem('levl_checkin_saved_' + dStr) === 'true')
+      )
+      setIsSaved(hasMorningData)
 
-      const hasNightlyData = initialData.last_food_time != null ||
-        customJSON.alcohol_drinks !== undefined ||
-        customJSON.late_caffeine ||
-        customJSON.nicotine_exposure ||
-        customJSON.cannabis_exposure ||
-        customJSON.sitting_duration ||
-        customJSON.late_meal !== undefined ||
-        customJSON.blue_light ||
-        customJSON.processed_sugar
-      
-      setIsNightlySaved(Boolean(hasNightlyData))
+      const hasNightlyData = Boolean(
+        customJSON._nightly_logged_at ||
+        (typeof window !== 'undefined' && dStr && localStorage.getItem('levl_nightly_saved_' + dStr) === 'true')
+      )
+      setIsNightlySaved(hasNightlyData)
     } else {
       setMood(5)
       setEnergy(5)
@@ -651,20 +712,20 @@ export default function DailyWellbeingCheckin({
       setSkinClarity(5)
       setFocusScore(5)
       setAlcoholDrinks('skip')
-      setLateCaffeine('skip')
+      setLateCaffeine('time:14:00')
       setNicotineExposure('skip')
       setCannabisExposure('skip')
       setSittingDuration('skip')
-      setLateMeal('skip')
-      setBlueLight('skip')
+      setLateMeal('time:19:30')
+      setBlueLight('time:21:30')
       setProcessedSugar('skip')
       const dStr = date ? format(date, 'yyyy-MM-dd') : ''
-      const localSaved = typeof window !== 'undefined' && dStr && localStorage.getItem('levl_checkin_saved_' + dStr) === 'true'
-      if (!localSaved) {
-        setIsSaved(false)
-      }
+      const localMorningSaved = typeof window !== 'undefined' && dStr && localStorage.getItem('levl_checkin_saved_' + dStr) === 'true'
+      setIsSaved(Boolean(localMorningSaved))
+
+      const localNightlySaved = typeof window !== 'undefined' && dStr && localStorage.getItem('levl_nightly_saved_' + dStr) === 'true'
+      setIsNightlySaved(Boolean(localNightlySaved))
       setIsEditing(false)
-      setIsNightlySaved(false)
     }
   }, [initialData, date])
 
@@ -673,7 +734,7 @@ export default function DailyWellbeingCheckin({
       ...customOutcomeValues,
       skin_clarity: skinClarity,
       focus_score: focusScore,
-      _morning_logged_at: (initialData as any)?.custom_outcomes_jsonb?._morning_logged_at || new Date().toISOString()
+      _morning_logged_at: new Date().toISOString()
     }
 
     if (alcoholDrinks !== 'skip') combinedCustomOutcomes.alcohol_drinks = Number(alcoholDrinks)
@@ -685,12 +746,12 @@ export default function DailyWellbeingCheckin({
     if (blueLight !== 'skip') combinedCustomOutcomes.blue_light = blueLight
     if (processedSugar !== 'skip') combinedCustomOutcomes.processed_sugar = processedSugar
 
-    onSave(mood, energy, stress, subjectiveSleep, sleepScore === '' ? undefined : Number(sleepScore), combinedCustomOutcomes, lastFoodTime)
+    onSave(mood, energy, stress, subjectiveSleep, sleepScore === '' ? undefined : Number(sleepScore), combinedCustomOutcomes, isNightlySaved ? lastFoodTime : undefined)
     setIsSaved(true)
     setIsEditing(false)
     if (typeof window !== 'undefined' && date) {
       const dStr = format(date, 'yyyy-MM-dd')
-      localStorage.setItem('levl_checkin_saved_' + dStr, 'true')
+      safeLocalStorageSet('levl_checkin_saved_' + dStr, 'true')
     }
   }
 
@@ -698,7 +759,8 @@ export default function DailyWellbeingCheckin({
     const combinedCustomOutcomes: Record<string, any> = {
       ...customOutcomeValues,
       skin_clarity: skinClarity,
-      focus_score: focusScore
+      focus_score: focusScore,
+      _nightly_logged_at: new Date().toISOString()
     }
 
     if (alcoholDrinks !== 'skip') combinedCustomOutcomes.alcohol_drinks = Number(alcoholDrinks)
@@ -712,6 +774,10 @@ export default function DailyWellbeingCheckin({
 
     onSave(mood, energy, stress, subjectiveSleep, sleepScore === '' ? undefined : Number(sleepScore), combinedCustomOutcomes, lastFoodTime)
     setIsNightlySaved(true)
+    if (typeof window !== 'undefined' && date) {
+      const dStr = format(date, 'yyyy-MM-dd')
+      safeLocalStorageSet('levl_nightly_saved_' + dStr, 'true')
+    }
     setShowNightlyCard(false)
   }
 
@@ -865,7 +931,7 @@ export default function DailyWellbeingCheckin({
             onClick={() => setIsEditing(true)}
             className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
           >
-            ✏️ {initialData ? 'Edit' : 'Log'}
+            ✏️ {isSaved ? 'Edit' : 'Log'}
           </button>
         </div>
 
@@ -1032,6 +1098,16 @@ export default function DailyWellbeingCheckin({
       {/* ⚡ CONNECTED CONTAINER: Top Row (Morning Check-in Status / Edit) + Current State 4-Box Grid */}
       {(isSaved && !isEditing) || isCollapsedAll ? (
         <div className="glass-card mb-4 rounded-2xl border border-emerald-500/30 bg-slate-950/70 shadow-xl overflow-hidden animate-in fade-in">
+          {/* Voice Record Bar in Summary View */}
+          <div className="px-3 sm:px-4 pt-2.5 pb-1.5 bg-black/40 border-b border-white/5">
+            <UnifiedVoiceBar
+              mode="morning"
+              localUserId={effectiveUserId}
+              dateStr={dStr}
+              placeholder="🎙️ Speak check-in, waking energy, or last night..."
+              onApplyParsedData={(data) => handleApplyVoiceData(data, 'morning')}
+            />
+          </div>
           {/* SMALL CONNECTED ROW DIRECTLY ABOVE: Morning Check-in Status & Edit */}
           <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-black/40 border-b border-white/10 text-xs">
             <div className="flex items-center gap-2">
@@ -1055,7 +1131,7 @@ export default function DailyWellbeingCheckin({
                 }}
                 className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
               >
-                <span>{isSaved ? '✏ Edit' : 'Start Check-in'}</span>
+                <span>{isSaved ? '✏ Edit Check-in' : 'Log Morning Check-in'}</span>
               </button>
             </div>
           </div>
@@ -1264,6 +1340,17 @@ export default function DailyWellbeingCheckin({
                   </div>
                 </div>
 
+                {/* Anytime Voice Bar */}
+                <div className="pt-1 pb-1">
+                  <UnifiedVoiceBar
+                    mode="anytime"
+                    localUserId={effectiveUserId}
+                    dateStr={dStr}
+                    placeholder="🎙️ Speak daytime state snapshot, notes, or hotkeys..."
+                    onApplyParsedData={(data) => handleApplyVoiceData(data, 'anytime')}
+                  />
+                </div>
+
                 {showDaytimeCard && anytimeLogs.length > 0 && (
                   <div className="flex items-center gap-1.5 flex-wrap pt-1 pb-1 border-b border-white/10">
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
@@ -1431,7 +1518,7 @@ export default function DailyWellbeingCheckin({
               onClick={() => setShowLastNightRetro(!showLastNightRetro)}
               className="text-xs font-bold text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 px-3.5 py-1.5 rounded-lg hover:bg-indigo-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
             >
-              <Moon size={14} /> {showLastNightRetro ? 'Hide Last Night Log' : "Log Last Night's Exposures & Sleep"}
+              <Moon size={14} /> {showLastNightRetro ? 'Hide Last Night Log' : (isNightlySaved ? "Edit Last Night's Exposures & Sleep" : "Log Last Night's Exposures & Sleep")}
             </button>
           )}
 
@@ -1444,6 +1531,15 @@ export default function DailyWellbeingCheckin({
           </button>
         </div>
       </div>
+
+      {/* Unified Voice Bar for Open Morning Form */}
+      <UnifiedVoiceBar
+        mode="morning"
+        localUserId={effectiveUserId}
+        dateStr={dStr}
+        placeholder="🎙️ Speak check-in, waking energy, or last night..."
+        onApplyParsedData={(data) => handleApplyVoiceData(data, 'morning')}
+      />
 
       {/* Retroactive Last Night's Exposures & Sleep Box (Morning Mode Expandable) */}
       {(!isNightly && showLastNightRetro) && (
@@ -2261,7 +2357,7 @@ export default function DailyWellbeingCheckin({
       )}
 
       <button onClick={handleMorningSave} className="w-full bg-levl-accent text-white rounded-lg py-3 text-sm font-bold hover:bg-levl-accent/90 transition-colors mt-2 shadow-lg shadow-levl-accent/20 cursor-pointer">
-        {isSaved ? `Update Morning Check-in Ratings` : `Log Morning Check-in`}
+        {isSaved ? `Edit Morning Check-in` : `Log Morning Check-in`}
       </button>
     </div>
   )}
@@ -2279,7 +2375,7 @@ export default function DailyWellbeingCheckin({
               <Moon size={15} className="text-rose-300" /> Today's Nightly Check-in
             </h3>
             <span className="text-[10px] text-rose-300/80 font-semibold bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
-              {showNightlyCard ? '▲ Collapse' : isNightlySaved ? '▼ Edit' : '▼ Expand'}
+              {showNightlyCard ? '▲ Collapse' : isNightlySaved ? '▼ Edit' : '▼ Log'}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -2300,6 +2396,14 @@ export default function DailyWellbeingCheckin({
 
         {showNightlyCard ? (
           <div className="space-y-4 pt-2 border-t border-rose-500/20 animate-in fade-in">
+            {/* Nightly Voice Bar */}
+            <UnifiedVoiceBar
+              mode="nightly"
+              localUserId={effectiveUserId}
+              dateStr={dStr}
+              placeholder="🎙️ Speak evening reflection, meal cutoff, or caffeine/screen..."
+              onApplyParsedData={(data) => handleApplyVoiceData(data, 'nightly')}
+            />
             {/* Negative Longevity Exposures Grid */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -2688,7 +2792,7 @@ export default function DailyWellbeingCheckin({
               onClick={handleNightlySave}
               className="w-full bg-rose-600 hover:bg-rose-500 text-white rounded-lg py-2.5 text-xs font-bold transition-all shadow-lg shadow-rose-600/20 cursor-pointer"
             >
-              {isNightlySaved ? "Update Nightly Check-in" : "Log Today's Nightly Check-in"}
+              {isNightlySaved ? "Edit Evening Check-in" : "Log Evening Check-in"}
             </button>
           </div>
         ) : null}

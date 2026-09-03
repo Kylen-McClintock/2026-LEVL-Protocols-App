@@ -107,7 +107,10 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
       if (onDoseChange) {
         onDoseChange(customDose, 0)
       }
-      window.location.reload()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+        window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+      }
     }
   }
 
@@ -132,7 +135,10 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
       userProfile={userProfile}
       onSaveSuccess={() => {
         setIsModalOpen(false)
-        window.location.reload()
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+          window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+        }
       }}
     />
   )

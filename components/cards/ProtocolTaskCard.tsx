@@ -23,6 +23,7 @@ import StrengthExecutionLog from '../execution/StrengthExecutionLog'
 import FastingExecutionLog from '../execution/FastingExecutionLog'
 import ThermalExecutionLog from '../execution/ThermalExecutionLog'
 import BreathworkExecutionLog from '../execution/BreathworkExecutionLog'
+import { triggerHaptic } from '@/lib/utils/haptics'
 import CardioExecutionLog from '../execution/CardioExecutionLog'
 import SupplementExecutionLog from '../execution/SupplementExecutionLog'
 import NutritionMacroExecutionLog from '../execution/NutritionMacroExecutionLog'
@@ -1483,15 +1484,11 @@ export default function ProtocolTaskCard({
 
     if (dragOffset >= SWIPE_THRESHOLD) {
       // Swiped Right -> Complete
-      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-        try { navigator.vibrate(15) } catch (e) {}
-      }
+      triggerHaptic('light')
       onStatusChange(task.id, 'completed')
     } else if (dragOffset <= -SWIPE_THRESHOLD) {
       // Swiped Left -> Reschedule / Snooze
-      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-        try { navigator.vibrate(15) } catch (e) {}
-      }
+      triggerHaptic('selection')
       if (onOpenRescheduleModal) {
         onOpenRescheduleModal(task)
       } else {
@@ -1663,7 +1660,10 @@ export default function ProtocolTaskCard({
                       protocolStepId: task?.protocol_step_id || undefined,
                       scheduleConfig: task?.execution_details?.schedule_config
                     })
-                    window.location.reload()
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+                      window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+                    }
                   }}
                   protocolContext={null}
                 />
@@ -1882,7 +1882,10 @@ export default function ProtocolTaskCard({
                   protocolStepId: task?.protocol_step_id || undefined,
                   scheduleConfig: task?.execution_details?.schedule_config
                 })
-                window.location.reload()
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+                  window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+                }
               }}
               protocolContext={
                 lineages.length > 0
@@ -3737,7 +3740,10 @@ export default function ProtocolTaskCard({
           onSaveSuccess={() => {
             setShowPersonalizeModal(false)
             setShowManageModal(false)
-            window.location.reload()
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+              window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+            }
           }}
         />
       )}

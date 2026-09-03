@@ -95,6 +95,7 @@ export default function TrackingPage() {
   const [frictionBusterModality, setFrictionBusterModality] = useState<{ modality: Modality; adherence: number } | null>(null)
   const [habits, setHabits] = useState<UserModalityHabit[]>([])
   const [kpiModalType, setKpiModalType] = useState<KpiModalType>(null)
+  const [dataVersion, setDataVersion] = useState<number>(0)
 
   // Analytics View mode & 12 Hallmark suite state
   const [activeViewSection, setActiveViewSection] = useState<ViewSection>('adherence_roi')
@@ -349,14 +350,20 @@ export default function TrackingPage() {
     }
     load()
 
-    const handleAuthChange = () => {
+    const handleRefresh = () => {
       load()
     }
-    window.addEventListener('levl_auth_user_changed', handleAuthChange)
+    window.addEventListener('levl_auth_user_changed', handleRefresh)
+    window.addEventListener('levl_tasks_updated', handleRefresh)
+    window.addEventListener('levl_bench_updated', handleRefresh)
+    window.addEventListener('levl_schedule_updated', handleRefresh)
     return () => {
-      window.removeEventListener('levl_auth_user_changed', handleAuthChange)
+      window.removeEventListener('levl_auth_user_changed', handleRefresh)
+      window.removeEventListener('levl_tasks_updated', handleRefresh)
+      window.removeEventListener('levl_bench_updated', handleRefresh)
+      window.removeEventListener('levl_schedule_updated', handleRefresh)
     }
-  }, [authLoading, authUserId])
+  }, [authLoading, authUserId, dataVersion])
 
   // Filtered outcomes list based on tabs & search
   const filteredOutcomes = useMemo(() => {
@@ -1025,7 +1032,11 @@ export default function TrackingPage() {
                                     e.stopPropagation()
                                     const localUserId = getLocalUserId()
                                     await addToBench(localUserId, modData.modality.id)
-                                    window.location.reload()
+                                    if (typeof window !== 'undefined') {
+                                      window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+                                      window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+                                    }
+                                    setDataVersion(v => v + 1)
                                   }}
                                   className="px-2.5 py-1 rounded-md bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[10px] font-bold transition-colors cursor-pointer"
                                 >
@@ -1189,7 +1200,11 @@ export default function TrackingPage() {
           activeModalityIds={activeModalityIds}
           onSwapComplete={() => {
             setSwappingModality(null)
-            window.location.reload()
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+              window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+            }
+            setDataVersion(v => v + 1)
           }}
         />
       )}
@@ -1204,7 +1219,11 @@ export default function TrackingPage() {
           userProfile={profile}
           onShiftApplied={() => {
             setFrictionBusterModality(null)
-            window.location.reload()
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+              window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+            }
+            setDataVersion(v => v + 1)
           }}
         />
       )}

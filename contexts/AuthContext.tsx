@@ -49,11 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       storedId = localStorage.getItem(LOCAL_USER_ID_KEY) || ''
       if (!storedId) {
-        storedId = uuidv4()
+        storedId = 'guest_' + uuidv4()
         localStorage.setItem(LOCAL_USER_ID_KEY, storedId)
+        localStorage.setItem('levl_active_is_guest', 'true')
       }
     } catch (e) {
-      storedId = uuidv4()
+      storedId = 'guest_' + uuidv4()
     }
     setLocalUserId(storedId)
 
@@ -83,15 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           try {
             const prevId = localStorage.getItem(LOCAL_USER_ID_KEY)
-            const cachedGuestId = localStorage.getItem('levl_prev_guest_id')
-            const targetGuestId = (prevId && prevId !== session.user.id) ? prevId : cachedGuestId
-            if (targetGuestId && targetGuestId !== session.user.id) {
-              await linkGuestDataToAuthUser(targetGuestId, session.user).catch(() => {})
-            }
-            if (prevId && prevId !== session.user.id) {
-              localStorage.setItem('levl_prev_guest_id', prevId)
+            const wasGuest = localStorage.getItem('levl_active_is_guest') === 'true' || (prevId && prevId.startsWith('guest_'))
+            if (wasGuest && prevId && prevId !== session.user.id) {
+              await linkGuestDataToAuthUser(prevId, session.user).catch(() => {})
             }
             localStorage.setItem(LOCAL_USER_ID_KEY, session.user.id)
+            localStorage.setItem('levl_active_is_guest', 'false')
+            localStorage.removeItem('levl_prev_guest_id')
           } catch (err) {}
           setLocalUserId(session.user.id)
           if (typeof window !== 'undefined') {
@@ -115,19 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (newSession?.user) {
           try {
-            const previousGuestId = localStorage.getItem(LOCAL_USER_ID_KEY)
-            const cachedGuestId = localStorage.getItem('levl_prev_guest_id')
-            const targetGuestId = (previousGuestId && previousGuestId !== newSession.user.id) ? previousGuestId : cachedGuestId
-            if (targetGuestId && targetGuestId !== newSession.user.id) {
-              // Automatically migrate guest data to the authenticated account
-              await linkGuestDataToAuthUser(targetGuestId, newSession.user).catch(() => {})
+            const previousId = localStorage.getItem(LOCAL_USER_ID_KEY)
+            const wasGuest = localStorage.getItem('levl_active_is_guest') === 'true' || (previousId && previousId.startsWith('guest_'))
+            if (wasGuest && previousId && previousId !== newSession.user.id) {
+              // Automatically migrate transient guest data to the authenticated account
+              await linkGuestDataToAuthUser(previousId, newSession.user).catch(() => {})
             }
-
-            if (previousGuestId && previousGuestId !== newSession.user.id) {
-              localStorage.setItem('levl_prev_guest_id', previousGuestId)
-            }
-
             localStorage.setItem(LOCAL_USER_ID_KEY, newSession.user.id)
+            localStorage.setItem('levl_active_is_guest', 'false')
+            localStorage.removeItem('levl_prev_guest_id')
           } catch (err) {}
 
           setLocalUserId(newSession.user.id)
@@ -178,9 +173,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null)
     setSession(null)
-    // Generate new guest ID for a clean guest slate
-    const newGuestId = uuidv4()
-    localStorage.setItem(LOCAL_USER_ID_KEY, newGuestId)
+    // Generate isolated guest session with guest_ prefix
+    const newGuestId = 'guest_' + uuidv4()
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('levl_prev_guest_id')
+      localStorage.setItem('levl_active_is_guest', 'true')
+      localStorage.setItem(LOCAL_USER_ID_KEY, newGuestId)
+    }
     setLocalUserId(newGuestId)
   }, [])
 

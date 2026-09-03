@@ -10,6 +10,12 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
     return
   }
 
+  // Prevent cross-account data bleeding: Only migrate if guestId represents an anonymous guest
+  const isGuest = guestId.startsWith('guest_') || (typeof window !== 'undefined' && localStorage.getItem('levl_active_is_guest') === 'true')
+  if (!isGuest) {
+    return
+  }
+
   // 1. Re-index and copy client-side LocalStorage cache so data is instant offline
   if (typeof window !== 'undefined') {
     try {
@@ -62,7 +68,7 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
       // Hotkeys cache
       const guestHotkeysKey = `levl_user_hotkeys_${guestId}`
       const authHotkeysKey = `levl_user_hotkeys_${authUser.id}`
-      const guestHotkeysRaw = localStorage.getItem(guestHotkeysKey) || localStorage.getItem('levl_user_hotkeys')
+      const guestHotkeysRaw = localStorage.getItem(guestHotkeysKey)
       if (guestHotkeysRaw) {
         localStorage.setItem(authHotkeysKey, guestHotkeysRaw)
       }
