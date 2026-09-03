@@ -19,10 +19,30 @@ import {
   Check, 
   Flame, 
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck,
+  Moon,
+  Sun,
+  Droplets,
+  Thermometer,
+  BookOpen,
+  Info,
+  Timer,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { DailyProtocolTask, UserProfile } from '@/lib/types'
-import { calculateDailyPulseBalance, applyTimingOptimization, TimingOptimizationSuggestion } from '@/lib/calendar/pulseOptimizationEngine'
+import { 
+  calculateDailyPulseBalance, 
+  applyTimingOptimization, 
+  TimingOptimizationSuggestion,
+  calculateDayPhasesAndTransitions,
+  getTaskDecimalHour,
+  formatHourToTimeStr,
+  TimelineTransitionMarker,
+  CriticalModalityEvaluation,
+  ChronoGuardrailStatus
+} from '@/lib/calendar/pulseOptimizationEngine'
 import { calculateDynamicFastedWindow } from '@/lib/calendar/waveformMapper'
 import PulsingPhilosophyGuide from './PulsingPhilosophyGuide'
 
@@ -48,6 +68,8 @@ export default function DailyVerticalPulseView({
 
   const [applyingSuggestionId, setApplyingSuggestionId] = useState<string | null>(null)
   const [appliedSuccessId, setAppliedSuccessId] = useState<string | null>(null)
+  const [activeOptimizationTab, setActiveOptimizationTab] = useState<'growth' | 'recovery' | 'guardrails'>('growth')
+  const [expandedModalityId, setExpandedModalityId] = useState<string | null>(null)
 
   // 1. Calculate Daily Pulse Balance & Timing Optimizations
   const pulseBalance = useMemo(() => {
@@ -63,7 +85,12 @@ export default function DailyVerticalPulseView({
     return calculateDynamicFastedWindow(dayTasks)
   }, [dayTasks])
 
-  // 3. Handle Auto-Optimization action
+  // 3. Calculate Day Phases, Dynamic Transitions, and Critical Modalities
+  const dayPhasesAndTransitions = useMemo(() => {
+    return calculateDayPhasesAndTransitions(dayTasks, userProfile, dateStr)
+  }, [dayTasks, userProfile, dateStr])
+
+  // 4. Handle Auto-Optimization action
   const handleApplySuggestion = async (suggestion: TimingOptimizationSuggestion) => {
     setApplyingSuggestionId(suggestion.id)
     try {
@@ -80,19 +107,54 @@ export default function DailyVerticalPulseView({
     }
   }
 
-  // Helper to map timing slots to rough hours
-  const getSlotHour = (slot?: string): number => {
-    if (!slot) return 9
-    const s = slot.toLowerCase()
-    if (s.includes('waking') || s.includes('early')) return 6
-    if (s.includes('morning') || s.includes('routine')) return 8
-    if (s.includes('supplement')) return 8.5
-    if (s.includes('midday') || s.includes('noon') || s.includes('lunch')) return 12
-    if (s.includes('afternoon') || s.includes('post_workout')) return 14
-    if (s.includes('evening') || s.includes('dinner')) return 18
-    if (s.includes('pre_bed') || s.includes('bed') || s.includes('night')) return 21
-    return 10
+  // 5. Build unified chronological timeline stream combining tasks and phase transitions
+  type TimelineEntry = 
+    | { type: 'transition'; marker: TimelineTransitionMarker; hour: number }
+    | { type: 'task'; task: DailyProtocolTask; hour: number }
+
+  const timelineEntries = useMemo(() => {
+    const entries: TimelineEntry[] = []
+
+    // Add all transition markers
+    dayPhasesAndTransitions.transitions.forEach(marker => {
+      entries.push({ type: 'transition', marker, hour: marker.hour })
+    })
+
+    // Add all tasks
+    dayTasks.forEach(task => {
+      entries.push({ type: 'task', task, hour: getTaskDecimalHour(task) })
+    })
+
+    // Sort chronologically. If times match closely, transition markers are placed first to bracket the phase
+    entries.sort((a, b) => {
+      if (Math.abs(a.hour - b.hour) < 0.05) {
+        return a.type === 'transition' ? -1 : 1
+      }
+      return a.hour - b.hour
+    })
+
+    return entries
+  }, [dayTasks, dayPhasesAndTransitions])
+
+  // Helper to check if a task satisfies one of the critical modalities
+  const findCriticalModalityMatch = (task: DailyProtocolTask): { mode: 'growth' | 'recovery'; spec: CriticalModalityEvaluation } | null => {
+    const name = (task.protocol_step?.modality?.name || task.loose_modality?.name || (task as any).modality?.name || '').toLowerCase()
+    const cat = (task.protocol_step?.modality?.category || task.loose_modality?.category || '').toLowerCase()
+
+    for (const spec of dayPhasesAndTransitions.criticalModalities.growth) {
+      if (spec.matcherKeywords.some(kw => name.includes(kw) || cat.includes(kw))) {
+        return { mode: 'growth', spec }
+      }
+    }
+    for (const spec of dayPhasesAndTransitions.criticalModalities.recovery) {
+      if (spec.matcherKeywords.some(kw => name.includes(kw) || cat.includes(kw))) {
+        return { mode: 'recovery', spec }
+      }
+    }
+    return null
   }
+
+  const passingGuardrailsCount = dayPhasesAndTransitions.guardrails.filter(g => g.status === 'passed').length
 
   return (
     <div className="space-y-6">
@@ -216,9 +278,391 @@ export default function DailyVerticalPulseView({
             <span>AMPK Clearance &amp; Vagus ({pulseBalance.recoveryAUC} AUC)</span>
           </div>
         </div>
+
+        {/* CIRCADIAN MODE TRANSITION SUMMARY PILLS */}
+        <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/30 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse shrink-0" />
+              <div className="min-w-0">
+                <span className="text-[10px] font-mono uppercase font-bold text-purple-300 block">
+                  Growth Mode Begins
+                </span>
+                <span className="text-xs font-bold text-white truncate block">
+                  {dayPhasesAndTransitions.growthTriggerText}
+                </span>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-black text-purple-300 shrink-0 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">
+              {dayPhasesAndTransitions.growthStartTimeFormatted}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <div className="min-w-0">
+                <span className="text-[10px] font-mono uppercase font-bold text-emerald-300 block">
+                  Recovery Mode Begins
+                </span>
+                <span className="text-xs font-bold text-white truncate block">
+                  {dayPhasesAndTransitions.recoveryTriggerText}
+                </span>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-black text-emerald-300 shrink-0 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+              {dayPhasesAndTransitions.recoveryStartTimeFormatted}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* 4. AUTO-SUGGESTIONS & CHRONO-HARMONY INTERFERENCE ALERT */}
+      {/* 4. CRITICAL MODALITIES TO CONSIDER WHEN OPTIMIZING FOR BOTH */}
+      <div className="rounded-2xl border border-white/10 bg-slate-900/80 shadow-2xl backdrop-blur-md overflow-hidden space-y-4 p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/20 to-emerald-500/20 border border-white/10 flex items-center justify-center text-cyan-400">
+                <Sparkles size={16} />
+              </span>
+              <h3 className="text-sm sm:text-base font-extrabold text-white tracking-tight">
+                Critical Modalities for Dual Optimization
+              </h3>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                Evidence-Based Protocol Stack
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1">
+              How to maximize muscular and structural <strong>Growth</strong> without blunting cellular and somatic <strong>Recovery</strong>.
+            </p>
+          </div>
+
+          {/* Tab Selector */}
+          <div className="flex items-center p-1 bg-black/60 rounded-xl border border-white/10 text-xs font-bold shrink-0 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setActiveOptimizationTab('growth')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeOptimizationTab === 'growth'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Dumbbell size={13} />
+              <span>Growth ({dayPhasesAndTransitions.criticalModalities.growthCoveragePercentage}%)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveOptimizationTab('recovery')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeOptimizationTab === 'recovery'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <HeartPulse size={13} />
+              <span>Recovery ({dayPhasesAndTransitions.criticalModalities.recoveryCoveragePercentage}%)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveOptimizationTab('guardrails')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeOptimizationTab === 'guardrails'
+                  ? 'bg-amber-600 text-slate-950 shadow-md font-extrabold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <ShieldCheck size={13} />
+              <span>Guardrails ({passingGuardrailsCount}/3)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* TAB 1: GROWTH MODE OPTIMIZATION STACK */}
+        {activeOptimizationTab === 'growth' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/30 flex items-start gap-3 text-xs text-purple-200 leading-relaxed">
+              <Info size={16} className="text-purple-400 shrink-0 mt-0.5" />
+              <div>
+                <strong>Growth Mode Directive:</strong> Drive maximal mechanotransduction (p70S6K) and muscle protein synthesis during diurnal hours. Anchor with progressive mechanical loading, leucine-rich amino acid pulses, and satellite cell hydration.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+              {dayPhasesAndTransitions.criticalModalities.growth.map(mod => {
+                const isExpanded = expandedModalityId === mod.id
+
+                return (
+                  <div 
+                    key={mod.id} 
+                    className={`p-4 rounded-xl border transition-all space-y-3 ${
+                      mod.isScheduledToday
+                        ? 'bg-purple-950/20 border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)]'
+                        : 'bg-black/40 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-white">{mod.name}</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-purple-300 border border-purple-500/30">
+                            {mod.category}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Today's Schedule Status Badge */}
+                      {mod.isScheduledToday ? (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shrink-0">
+                          <Check size={11} className="stroke-[3]" />
+                          <span>Active ({mod.matchedTiming})</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10 shrink-0">
+                          Not Scheduled Today
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Exact Parameters (Mandatory Dosing Specs) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2 rounded-lg bg-black/50 border border-white/5 space-y-0.5">
+                        <span className="text-[10px] font-mono text-purple-300 uppercase font-bold block">
+                          Exact Dosing / Strain
+                        </span>
+                        <span className="text-slate-200 font-medium">{mod.exactDose}</span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-black/50 border border-white/5 space-y-0.5">
+                        <span className="text-[10px] font-mono text-purple-300 uppercase font-bold block">
+                          Duration &amp; Cadence
+                        </span>
+                        <span className="text-slate-200 font-medium">{mod.durationAndFrequency}</span>
+                      </div>
+                    </div>
+
+                    {/* Administration Notes */}
+                    <div className="text-[11px] text-slate-300 bg-white/[0.02] p-2.5 rounded-lg border border-white/5">
+                      <strong className="text-purple-300">Synergy &amp; Administration: </strong>
+                      <span>{mod.administrationNotes}</span>
+                    </div>
+
+                    {/* Expandable Biological Mechanism & Verified PubMed Link */}
+                    <div className="pt-1 flex items-center justify-between text-[11px]">
+                      <a
+                        href={mod.pubMedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-cyan-400 hover:text-cyan-300 font-mono font-bold flex items-center gap-1 transition-colors"
+                      >
+                        <ExternalLink size={12} />
+                        <span>PubMed: {mod.citationText} (PMID: {mod.pmid})</span>
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => setExpandedModalityId(isExpanded ? null : mod.id)}
+                        className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>{isExpanded ? 'Less' : 'Mechanism'}</span>
+                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="p-3 rounded-lg bg-purple-950/40 border border-purple-500/30 text-xs text-purple-200 animate-in fade-in space-y-1.5">
+                        <strong className="font-bold text-white block">Molecular Mechanism:</strong>
+                        <p className="leading-relaxed">{mod.biologicalMechanism}</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: RECOVERY MODE OPTIMIZATION STACK */}
+        {activeOptimizationTab === 'recovery' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-start gap-3 text-xs text-emerald-200 leading-relaxed">
+              <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <strong>Recovery Mode Directive:</strong> Activate hepatic AMPK, macroautophagy (ULK1), and vagal parasympathetic down-regulation. Cease caloric intake $\ge$3h before bed and protect deep Stage 3 Slow-Wave Sleep from late stimulants or thermal stress.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+              {dayPhasesAndTransitions.criticalModalities.recovery.map(mod => {
+                const isExpanded = expandedModalityId === mod.id
+
+                return (
+                  <div 
+                    key={mod.id} 
+                    className={`p-4 rounded-xl border transition-all space-y-3 ${
+                      mod.isScheduledToday
+                        ? 'bg-emerald-950/20 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                        : 'bg-black/40 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-white">{mod.name}</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-emerald-300 border border-emerald-500/30">
+                            {mod.category}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Today's Schedule Status Badge */}
+                      {mod.isScheduledToday ? (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shrink-0">
+                          <Check size={11} className="stroke-[3]" />
+                          <span>Active ({mod.matchedTiming})</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10 shrink-0">
+                          Not Scheduled Today
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Exact Parameters (Mandatory Dosing Specs) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2 rounded-lg bg-black/50 border border-white/5 space-y-0.5">
+                        <span className="text-[10px] font-mono text-emerald-300 uppercase font-bold block flex items-center gap-1">
+                          {mod.temperature && <Thermometer size={10} />}
+                          <span>{mod.temperature ? 'Dose & Temp' : 'Exact Protocol / Dose'}</span>
+                        </span>
+                        <span className="text-slate-200 font-medium">
+                          {mod.temperature ? `${mod.temperature} • ${mod.exactDose}` : mod.exactDose}
+                        </span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-black/50 border border-white/5 space-y-0.5">
+                        <span className="text-[10px] font-mono text-emerald-300 uppercase font-bold block">
+                          Duration &amp; Cadence
+                        </span>
+                        <span className="text-slate-200 font-medium">{mod.durationAndFrequency}</span>
+                      </div>
+                    </div>
+
+                    {/* Administration Notes */}
+                    <div className="text-[11px] text-slate-300 bg-white/[0.02] p-2.5 rounded-lg border border-white/5">
+                      <strong className="text-emerald-300">Synergy &amp; Administration: </strong>
+                      <span>{mod.administrationNotes}</span>
+                    </div>
+
+                    {/* Expandable Biological Mechanism & Verified PubMed Link */}
+                    <div className="pt-1 flex items-center justify-between text-[11px]">
+                      <a
+                        href={mod.pubMedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-cyan-400 hover:text-cyan-300 font-mono font-bold flex items-center gap-1 transition-colors"
+                      >
+                        <ExternalLink size={12} />
+                        <span>PubMed: {mod.citationText} (PMID: {mod.pmid})</span>
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => setExpandedModalityId(isExpanded ? null : mod.id)}
+                        className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>{isExpanded ? 'Less' : 'Mechanism'}</span>
+                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-200 animate-in fade-in space-y-1.5">
+                        <strong className="font-bold text-white block">Molecular Mechanism:</strong>
+                        <p className="leading-relaxed">{mod.biologicalMechanism}</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: CHRONO-SPACING GUARDRAILS */}
+        {activeOptimizationTab === 'guardrails' && (
+          <div className="space-y-3.5 animate-in fade-in duration-200">
+            <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200 leading-relaxed">
+              <ShieldAlert size={16} className="text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong>Chrono-Interference Guardrails:</strong> When combining growth and recovery on the same day, chronological timing errors can neutralize beneficial adaptations (e.g. cold water immersion within 4 hours after lifting blunts mTORC1 phosphorylation).
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              {dayPhasesAndTransitions.guardrails.map(rail => {
+                const isWarning = rail.status === 'warning'
+                const isPassed = rail.status === 'passed'
+
+                return (
+                  <div 
+                    key={rail.id}
+                    className={`p-4 rounded-xl border space-y-3 ${
+                      isWarning
+                        ? 'bg-amber-950/25 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
+                        : isPassed
+                        ? 'bg-emerald-950/20 border-emerald-500/30'
+                        : 'bg-black/40 border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xs font-extrabold text-white leading-tight">
+                        {rail.title}
+                      </span>
+                      <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-full border shrink-0 ${
+                        isWarning
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                          : isPassed
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          : 'bg-white/5 text-slate-400 border-white/10'
+                      }`}>
+                        {rail.statusLabel}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {rail.description}
+                    </p>
+
+                    <div className="p-2 rounded-lg bg-black/50 border border-white/5 text-[11px] text-slate-300">
+                      <strong className={isWarning ? 'text-amber-300' : 'text-emerald-300'}>
+                        Guidance: 
+                      </strong>{' '}
+                      <span>{rail.recommendation}</span>
+                    </div>
+
+                    <div className="pt-1">
+                      <a
+                        href={rail.pubMedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-cyan-400 hover:text-cyan-300 font-mono font-bold flex items-center gap-1 transition-colors"
+                      >
+                        <ExternalLink size={11} />
+                        <span>Evidence: {rail.citation}</span>
+                      </a>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 5. AUTO-SUGGESTIONS & CHRONO-HARMONY INTERFERENCE ALERT */}
       {pulseBalance.suggestions.length > 0 ? (
         <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-950/40 via-slate-900 to-rose-950/30 border border-amber-500/40 shadow-xl space-y-3.5 animate-in fade-in">
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -283,156 +727,248 @@ export default function DailyVerticalPulseView({
         </div>
       )}
 
-      {/* 5. DRIVERS BREAKDOWN: GROWTH VS RECOVERY LISTS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* GROWTH DRIVERS */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-purple-950/20 border border-purple-500/30 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-purple-200 flex items-center gap-1.5">
-              <Dumbbell size={14} className="text-purple-400" />
-              <span>Growth Drivers ({pulseBalance.growthDrivers.length})</span>
+      {/* 6. EXPANDED VERTICAL 24-HOUR CIRCADIAN TIMELINE WITH GROWTH/RECOVERY ONSETS & TRANSITIONS */}
+      <div className="p-4 sm:p-6 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-md space-y-6">
+        <div className="flex items-center justify-between pb-3 border-b border-white/10 flex-wrap gap-2">
+          <div>
+            <h4 className="text-xs sm:text-sm font-extrabold text-white flex items-center gap-2">
+              <Clock size={16} className="text-cyan-400" />
+              <span>Vertical 24-Hour Day Timeline ({format(selectedDate, 'EEE, MMM d')})</span>
             </h4>
-            <span className="text-[10px] font-mono text-purple-300">
-              mTORC1 Anabolism
-            </span>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Live mapping of Growth Mode onsets, Recovery Mode onsets, and biological transitions.
+            </p>
           </div>
 
-          {pulseBalance.growthDrivers.length === 0 ? (
-            <p className="text-xs text-slate-400 py-3 text-center italic">
-              No anabolic growth modalities scheduled today.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {pulseBalance.growthDrivers.map((item, idx) => (
-                <div key={idx} className="p-2.5 rounded-xl bg-black/40 border border-purple-500/20 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-white">{item.name}</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                      {item.timing.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 flex items-center justify-between">
-                    <span>{item.dose}</span>
-                    <span className="text-purple-300/80 font-medium text-[10px]">{item.impact}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* RECOVERY DRIVERS */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-emerald-500/20">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-200 flex items-center gap-1.5">
-              <HeartPulse size={14} className="text-emerald-400" />
-              <span>Recovery Drivers ({pulseBalance.recoveryDrivers.length})</span>
-            </h4>
-            <span className="text-[10px] font-mono text-emerald-300">
-              AMPK &amp; Vagus
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
+              ⚡ Growth Begins: {dayPhasesAndTransitions.growthStartTimeFormatted}
+            </span>
+            <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+              🌙 Recovery Begins: {dayPhasesAndTransitions.recoveryStartTimeFormatted}
             </span>
           </div>
+        </div>
 
-          {pulseBalance.recoveryDrivers.length === 0 ? (
-            <p className="text-xs text-slate-400 py-3 text-center italic">
-              No active recovery protocols scheduled today.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {pulseBalance.recoveryDrivers.map((item, idx) => (
-                <div key={idx} className="p-2.5 rounded-xl bg-black/40 border border-emerald-500/20 space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-white">{item.name}</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      {item.timing.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 flex items-center justify-between">
-                    <span>{item.dose}</span>
-                    <span className="text-emerald-300/80 font-medium text-[10px]">{item.impact}</span>
-                  </div>
-                </div>
-              ))}
+        {/* Circadian Phase Rail Overview Ribbon */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+          {dayPhasesAndTransitions.phases.map(phase => (
+            <div 
+              key={phase.id}
+              className={`p-3 rounded-xl border bg-gradient-to-br ${phase.bgGradient} ${phase.borderGlow} space-y-1`}
+            >
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className={`font-bold ${phase.textAccent}`}>{phase.title}</span>
+                <span className="text-slate-400 font-medium">
+                  {phase.startTimeFormatted}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">
+                {phase.description}
+              </p>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* 6. EXPANDED VERTICAL 24-HOUR CIRCADIAN TIMELINE */}
-      <div className="p-4 sm:p-6 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-md space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
-          <h4 className="text-xs sm:text-sm font-extrabold text-white flex items-center gap-2">
-            <Clock size={16} className="text-cyan-400" />
-            <span>Vertical 24-Hour Circadian Timeline ({format(selectedDate, 'EEE, MMM d')})</span>
-          </h4>
-          <span className="text-xs text-slate-400 font-mono">
-            {dayTasks.length} modalities mapped
-          </span>
+          ))}
         </div>
 
-        {/* 24-Hour Vertical Rail (5 AM to 11 PM) */}
-        <div className="relative border-l-2 border-white/10 ml-4 sm:ml-8 pl-4 sm:pl-6 space-y-6">
-          {dayTasks.length === 0 ? (
+        {/* 24-Hour Continuous Vertical Rail */}
+        <div className="relative border-l-2 border-white/15 ml-4 sm:ml-8 pl-4 sm:pl-7 space-y-7">
+          {timelineEntries.length === 0 ? (
             <div className="py-12 text-center text-slate-500 text-xs">
-              No modalities scheduled for this date. Use Explore or Bench to schedule tasks.
+              No modalities or transitions scheduled for this date.
             </div>
           ) : (
-            dayTasks
-              .slice()
-              .sort((a, b) => getSlotHour(a.timing_slot) - getSlotHour(b.timing_slot))
-              .map(task => {
-                const name = (task.protocol_step?.modality?.name || task.loose_modality?.name || (task as any).modality?.name || 'Protocol Task')
-                const dose = task.execution_details?.custom_dose || task.protocol_step?.dose_text || (task.protocol_step?.modality as any)?.dose_or_exposure || 'Standard Dose'
-                const hour = getSlotHour(task.timing_slot)
-                const isGrowth = name.toLowerCase().includes('lift') || name.toLowerCase().includes('resistance') || name.toLowerCase().includes('strength') || name.toLowerCase().includes('creatine') || name.toLowerCase().includes('protein') || name.toLowerCase().includes('hiit')
-                const isRecovery = name.toLowerCase().includes('sauna') || name.toLowerCase().includes('cold') || name.toLowerCase().includes('plunge') || name.toLowerCase().includes('breath') || name.toLowerCase().includes('walk') || name.toLowerCase().includes('sleep') || name.toLowerCase().includes('magnesium')
+            timelineEntries.map((entry, idx) => {
+              // -------------------------------------------------------------
+              // CASE A: BIOLOGICAL TRANSITION MARKER ON THE VERTICAL TIMELINE
+              // -------------------------------------------------------------
+              if (entry.type === 'transition') {
+                const marker = entry.marker
+                const isGrowthOnset = marker.type === 'growth_onset'
+                const isRecoveryOnset = marker.type === 'recovery_onset'
+                const isPostLift = marker.type === 'post_strain_window'
+                const isMorning = marker.type === 'morning_activation'
 
                 return (
-                  <div key={task.id} className="relative group">
-                    {/* Circle Anchor on Vertical Line */}
-                    <div className={`absolute -left-[23px] sm:-left-[31px] top-1.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 shadow-md ${
-                      isGrowth ? 'bg-purple-500' : isRecovery ? 'bg-emerald-400' : 'bg-cyan-400'
-                    }`} />
-
-                    {/* Modality Card */}
-                    <div className={`p-4 rounded-xl border transition-all ${
-                      isGrowth 
-                        ? 'bg-purple-950/20 border-purple-500/30 hover:border-purple-500/50' 
-                        : isRecovery 
-                        ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/50' 
-                        : 'bg-slate-900/60 border-white/10 hover:border-white/20'
+                  <div key={marker.id} className="relative group pt-1 pb-1">
+                    {/* Glowing Circular Anchor on the Vertical Rail */}
+                    <div className={`absolute -left-[23px] sm:-left-[35px] top-4 w-5 h-5 rounded-full border-2 border-slate-950 flex items-center justify-center shadow-lg z-10 ${
+                      isGrowthOnset
+                        ? 'bg-purple-500 text-slate-950 shadow-[0_0_15px_#a855f7]'
+                        : isRecoveryOnset
+                        ? 'bg-emerald-400 text-slate-950 shadow-[0_0_15px_#34d399]'
+                        : isPostLift
+                        ? 'bg-indigo-500 text-white shadow-[0_0_12px_#6366f1]'
+                        : isMorning
+                        ? 'bg-amber-400 text-slate-950 shadow-[0_0_12px_#fbbf24]'
+                        : 'bg-teal-500 text-slate-950'
                     }`}>
+                      <span className="text-[10px] font-black">
+                        {isGrowthOnset ? '⚡' : isRecoveryOnset ? '🌙' : isPostLift ? '⚡' : isMorning ? '🌅' : '🌙'}
+                      </span>
+                    </div>
+
+                    {/* Transition Card */}
+                    <div className={`p-4 sm:p-5 rounded-2xl border transition-all space-y-3 relative overflow-hidden ${
+                      isGrowthOnset
+                        ? 'bg-gradient-to-br from-purple-950/60 via-slate-900 to-indigo-950/40 border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.2)]'
+                        : isRecoveryOnset
+                        ? 'bg-gradient-to-br from-emerald-950/60 via-slate-900 to-teal-950/40 border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.2)]'
+                        : isPostLift
+                        ? 'bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border-indigo-500/40'
+                        : isMorning
+                        ? 'bg-gradient-to-br from-amber-950/35 via-slate-900 to-slate-900 border-amber-500/30'
+                        : 'bg-gradient-to-br from-teal-950/30 via-slate-900 to-slate-900 border-teal-500/30'
+                    }`}>
+                      {/* Top Header */}
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-white">{name}</span>
-                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                            isGrowth 
-                              ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' 
-                              : isRecovery 
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
-                              : 'bg-white/10 text-slate-300 border-white/15'
+                          <span className={`text-xs sm:text-sm font-black tracking-wide uppercase ${
+                            isGrowthOnset ? 'text-purple-100' : isRecoveryOnset ? 'text-emerald-100' : 'text-white'
                           }`}>
-                            {isGrowth ? '🟣 Growth Mode (mTOR)' : isRecovery ? '🟢 Recovery Mode (AMPK)' : 'Baseline'}
+                            {marker.title}
                           </span>
                         </div>
 
-                        <span className="text-[11px] font-mono text-cyan-300 font-bold">
-                          {task.timing_slot ? task.timing_slot.replace(/_/g, ' ').toUpperCase() : 'ANYTIME'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-mono font-extrabold px-2.5 py-0.5 rounded-full border ${marker.badgeColor}`}>
+                            {marker.badgeText}
+                          </span>
+                          <span className="text-xs font-mono font-black text-cyan-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                            {marker.timeFormatted}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="mt-1.5 text-xs text-slate-300 flex items-center justify-between flex-wrap gap-2">
-                        <span>Dose / Protocol: <strong className="text-white">{dose}</strong></span>
-                        {task.status === 'completed' && (
-                          <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1">
-                            <CheckCircle2 size={12} /> Completed
+                      {/* Trigger Context Pill */}
+                      <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                        <span className="text-slate-400 font-mono text-[11px]">Trigger:</span>
+                        <strong className="text-white bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                          {marker.triggerText}
+                        </strong>
+                      </div>
+
+                      {/* Biological Mechanism Description */}
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        {marker.biologicalMechanism}
+                      </p>
+
+                      {/* Key Actions Checklist */}
+                      <div className="space-y-1.5 pt-1 border-t border-white/5">
+                        <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block">
+                          Phase Optimization Directives:
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[11px]">
+                          {marker.keyActions.map((action, aIdx) => (
+                            <div key={aIdx} className="p-1.5 rounded-lg bg-black/40 border border-white/5 flex items-start gap-1.5">
+                              <span className={`font-bold text-xs ${
+                                isGrowthOnset ? 'text-purple-400' : isRecoveryOnset ? 'text-emerald-400' : 'text-amber-400'
+                              }`}>✓</span>
+                              <span className="text-slate-300">{action}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Critical Modalities to Consider Badges */}
+                      <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                        <span className="text-[10px] font-mono text-slate-400">Critical Modalities:</span>
+                        {marker.criticalModalitiesToConsider.map((cm, cIdx) => (
+                          <span 
+                            key={cIdx}
+                            className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded border ${
+                              isGrowthOnset
+                                ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                                : isRecoveryOnset
+                                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                : 'bg-white/5 text-slate-300 border-white/10'
+                            }`}
+                          >
+                            {cm}
                           </span>
-                        )}
+                        ))}
                       </div>
                     </div>
                   </div>
                 )
-              })
+              }
+
+              // -------------------------------------------------------------
+              // CASE B: PROTOCOL TASK ON THE VERTICAL TIMELINE
+              // -------------------------------------------------------------
+              const task = entry.task
+              const name = (task.protocol_step?.modality?.name || task.loose_modality?.name || (task as any).modality?.name || 'Protocol Task')
+              const dose = task.execution_details?.custom_dose || task.protocol_step?.dose_text || (task.protocol_step?.modality as any)?.dose_or_exposure || 'Standard Dose'
+              const slot = task.timing_slot || 'anytime'
+              const timeStr = task.scheduled_time || formatHourToTimeStr(entry.hour)
+
+              const lowerName = name.toLowerCase()
+              const isGrowth = lowerName.includes('lift') || lowerName.includes('resistance') || lowerName.includes('strength') || lowerName.includes('creatine') || lowerName.includes('protein') || lowerName.includes('hiit')
+              const isRecovery = lowerName.includes('sauna') || lowerName.includes('cold') || lowerName.includes('plunge') || lowerName.includes('breath') || lowerName.includes('walk') || lowerName.includes('sleep') || lowerName.includes('magnesium')
+
+              const criticalMatch = findCriticalModalityMatch(task)
+
+              return (
+                <div key={task.id} className="relative group">
+                  {/* Task Anchor Node on the Vertical Rail */}
+                  <div className={`absolute -left-[20px] sm:-left-[32px] top-3.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 shadow-md transition-transform group-hover:scale-125 ${
+                    isGrowth 
+                      ? 'bg-purple-500 shadow-[0_0_8px_#a855f7]' 
+                      : isRecovery 
+                      ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' 
+                      : 'bg-cyan-400'
+                  }`} />
+
+                  {/* Modality Card */}
+                  <div className={`p-4 rounded-xl border transition-all ${
+                    isGrowth 
+                      ? 'bg-purple-950/20 border-purple-500/30 hover:border-purple-500/50' 
+                      : isRecovery 
+                      ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/50' 
+                      : 'bg-slate-900/60 border-white/10 hover:border-white/20'
+                  }`}>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-black text-white">{name}</span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                          isGrowth 
+                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' 
+                            : isRecovery 
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                            : 'bg-white/10 text-slate-300 border-white/15'
+                        }`}>
+                          {isGrowth ? '🟣 Growth Mode (mTOR)' : isRecovery ? '🟢 Recovery Mode (AMPK)' : 'Baseline Support'}
+                        </span>
+
+                        {criticalMatch && (
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
+                            <Sparkles size={10} />
+                            <span>Critical Modality</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-bold text-cyan-300">
+                          {timeStr}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                          {slot.replace(/_/g, ' ').toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 text-xs text-slate-300 flex items-center justify-between flex-wrap gap-2">
+                      <span>Dose / Protocol: <strong className="text-white">{dose}</strong></span>
+                      {task.status === 'completed' && (
+                        <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                          <CheckCircle2 size={12} /> Completed
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })
           )}
         </div>
       </div>
