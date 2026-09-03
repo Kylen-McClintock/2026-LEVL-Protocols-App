@@ -65,35 +65,35 @@ export default function MindfulReflectionPrompt({
     <div
       className={`relative overflow-hidden rounded-2xl border transition-all duration-300 p-4 sm:p-5 ${className}`}
       style={isMorning ? {
-        background: 'linear-gradient(to bottom, rgba(66, 136, 186, 0.36) 0%, rgba(104, 151, 195, 0.28) 12%, rgba(142, 169, 203, 0.22) 24%, rgba(176, 182, 208, 0.18) 36%, rgba(205, 194, 206, 0.18) 48%, rgba(234, 206, 199, 0.22) 58%, rgba(237, 195, 136, 0.28) 70%, rgba(241, 166, 72, 0.36) 82%, rgba(240, 147, 46, 0.44) 92%, rgba(203, 89, 50, 0.52) 100%), #0b1120',
-        borderColor: 'rgba(241, 166, 72, 0.35)',
-        boxShadow: '0 0 30px rgba(241, 166, 72, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08)'
+        background: 'linear-gradient(to bottom, #295b82 0%, #3a6d96 14%, #547fa6 28%, #798fb1 42%, #a39bb7 56%, #c89c9e 70%, #e2956f 84%, #cb5932 100%)',
+        borderColor: 'rgba(251, 191, 36, 0.45)',
+        boxShadow: '0 8px 32px rgba(203, 89, 50, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
       } : {
-        background: 'linear-gradient(to bottom, rgba(15, 13, 50, 0.95) 0%, rgba(35, 20, 70, 0.88) 18%, rgba(65, 28, 88, 0.78) 38%, rgba(105, 38, 96, 0.65) 58%, rgba(155, 55, 90, 0.52) 78%, rgba(195, 75, 78, 0.42) 90%, rgba(221, 95, 66, 0.38) 100%)',
-        borderColor: 'rgba(168, 62, 85, 0.35)',
-        boxShadow: '0 0 30px rgba(125, 47, 95, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08)'
+        background: 'linear-gradient(to bottom, #0f0d32 0%, #1a1343 14%, #2e1850 28%, #4b1e5e 44%, #6e2664 60%, #962f5e 74%, #ba4353 86%, #dd5f42 100%)',
+        borderColor: 'rgba(244, 63, 94, 0.45)',
+        boxShadow: '0 8px 32px rgba(221, 95, 66, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
       }}
     >
       {/* Ambient Glow Accents */}
       {isMorning ? (
         <>
           <div
-            className="absolute -top-16 -left-16 w-44 h-44 rounded-full blur-3xl pointer-events-none opacity-25"
+            className="absolute -top-16 -left-16 w-44 h-44 rounded-full blur-3xl pointer-events-none opacity-40"
             style={{ background: '#4288BA' }}
           />
           <div
-            className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-25"
+            className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-35"
             style={{ background: '#CB5932' }}
           />
         </>
       ) : (
         <>
           <div
-            className="absolute -top-16 -left-16 w-44 h-44 rounded-full blur-3xl pointer-events-none opacity-30"
+            className="absolute -top-16 -left-16 w-44 h-44 rounded-full blur-3xl pointer-events-none opacity-40"
             style={{ background: '#2B1B55' }}
           />
           <div
-            className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-25"
+            className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full blur-3xl pointer-events-none opacity-35"
             style={{ background: '#DD5F42' }}
           />
         </>
@@ -103,14 +103,14 @@ export default function MindfulReflectionPrompt({
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <div
-            className="w-7 h-7 rounded-xl flex items-center justify-center shadow-inner"
+            className="w-7 h-7 rounded-xl flex items-center justify-center shadow-inner border"
             style={isMorning ? {
-              background: 'linear-gradient(to bottom, rgba(66, 136, 186, 0.45) 0%, rgba(241, 166, 72, 0.45) 100%)',
-              borderColor: 'rgba(241, 166, 72, 0.4)',
-              color: '#FDE68A'
+              background: 'rgba(0, 0, 0, 0.35)',
+              borderColor: 'rgba(254, 240, 138, 0.4)',
+              color: '#FEF08A'
             } : {
-              background: 'linear-gradient(to bottom, rgba(43, 27, 85, 0.7) 0%, rgba(125, 47, 95, 0.6) 100%)',
-              borderColor: 'rgba(168, 62, 85, 0.4)',
+              background: 'rgba(0, 0, 0, 0.35)',
+              borderColor: 'rgba(254, 205, 211, 0.4)',
               color: '#FECDD3'
             }}
           >
@@ -118,14 +118,10 @@ export default function MindfulReflectionPrompt({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span
-                className={`text-[11px] font-black uppercase tracking-wider ${
-                  isMorning ? 'text-amber-200' : 'text-rose-200'
-                }`}
-              >
+              <span className="text-[11px] font-black uppercase tracking-wider text-white drop-shadow-sm">
                 {isMorning ? 'Morning Mindfulness & Presence' : 'Evening Decompression & Reflection'}
               </span>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-300">
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/40 border border-white/15 text-white/90">
                 {index}/{total}
               </span>
             </div>
@@ -137,12 +133,12 @@ export default function MindfulReflectionPrompt({
           <button
             type="button"
             onClick={toggleBreathing}
-            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer border shadow-sm ${
               isBreathing
                 ? isMorning
-                  ? 'bg-gradient-to-r from-sky-500 to-amber-500 text-slate-950 border-amber-300 animate-pulse'
-                  : 'bg-gradient-to-r from-rose-500 to-amber-500 text-white border-rose-400 animate-pulse'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
+                  ? 'bg-amber-400 text-slate-950 border-white animate-pulse font-extrabold'
+                  : 'bg-rose-400 text-slate-950 border-white animate-pulse font-extrabold'
+                : 'bg-black/35 hover:bg-black/50 border-white/20 text-white hover:text-white'
             }`}
             title="Take a 12-second mindful breath before checking in"
           >
@@ -154,7 +150,7 @@ export default function MindfulReflectionPrompt({
           <button
             type="button"
             onClick={handleNextPrompt}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer active:scale-95"
+            className="p-1.5 rounded-lg text-white/80 hover:text-white bg-black/35 hover:bg-black/50 border border-white/20 transition-colors cursor-pointer active:scale-95 shadow-sm"
             title="Cycle to next reflection prompt"
           >
             <RotateCcw size={12} className="hover:rotate-180 transition-transform duration-300" />
@@ -164,7 +160,7 @@ export default function MindfulReflectionPrompt({
 
       {/* Guided Breath Animation Overlay (When active) */}
       {isBreathing && (
-        <div className="my-2 p-2.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between animate-in fade-in">
+        <div className="my-2 p-2.5 rounded-xl bg-black/50 backdrop-blur-md border border-white/15 flex items-center justify-between animate-in fade-in shadow-lg">
           <div className="flex items-center gap-2">
             <div
               className={`w-3 h-3 rounded-full transition-all duration-1000 ${
@@ -185,21 +181,17 @@ export default function MindfulReflectionPrompt({
         </div>
       )}
 
-      {/* Reflection Prompt Text */}
-      <div className="relative pl-3.5 sm:pl-4">
+      {/* Reflection Prompt Text with Frosted Dark Plate for Crisp Readability */}
+      <div className="relative pl-3.5 sm:pl-4 p-3 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 shadow-inner">
         <div
-          className="absolute left-0 top-0 bottom-0 w-1 rounded-full"
+          className="absolute left-0 top-2 bottom-2 w-1 rounded-full"
           style={isMorning ? {
             background: 'linear-gradient(to bottom, #4288BA 0%, #8EA9CB 22%, #CDC2CE 42%, #EDC388 64%, #F1A648 84%, #CB5932 100%)'
           } : {
             background: 'linear-gradient(to bottom, #0F0D32 0%, #2B1B55 18%, #53235E 36%, #7D2F5F 55%, #A83E55 75%, #DD5F42 100%)'
           }}
         />
-        <p
-          className={`text-xs sm:text-[13px] leading-relaxed font-sans font-medium tracking-normal select-text ${
-            isMorning ? 'text-amber-50/95' : 'text-slate-100/95'
-          }`}
-        >
+        <p className="text-xs sm:text-[13px] leading-relaxed font-sans font-medium tracking-normal text-white drop-shadow-sm select-text">
           {prompt}
         </p>
       </div>
