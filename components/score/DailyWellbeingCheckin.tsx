@@ -1099,8 +1099,13 @@ export default function DailyWellbeingCheckin({
       {/* ⚡ CONNECTED CONTAINER: Top Row (Morning Check-in Status / Edit) + Current State 4-Box Grid */}
       {(isSaved && !isEditing) || isCollapsedAll ? (
         <div className="glass-card mb-4 rounded-2xl border border-emerald-500/30 bg-slate-950/70 shadow-xl overflow-hidden animate-in fade-in">
+          {/* Morning Mindful Reflection & Somatic Presence Prompt */}
+          <div className="p-2 sm:p-3 pb-1">
+            <MindfulReflectionPrompt mode="morning" date={date} />
+          </div>
+
           {/* Voice Record Bar in Summary View */}
-          <div className="px-3 sm:px-4 pt-2.5 pb-1.5 bg-black/40 border-b border-white/5">
+          <div className="px-3 sm:px-4 pt-2 pb-1.5 bg-black/40 border-b border-white/5">
             <UnifiedVoiceBar
               mode="morning"
               localUserId={effectiveUserId}
