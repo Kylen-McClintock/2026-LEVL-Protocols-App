@@ -3244,8 +3244,15 @@ export async function saveDailyWellbeingCheckin(
     ...(customOutcomes || {})
   }
 
+  const extractedNotes = customOutcomes?.notes || customOutcomes?.freeform_notes || existingNotesObj?.notes || existingNotesObj?.freeform_notes || existingNotesObj?.plain_notes || ''
+  const extractedEveningNotes = customOutcomes?._evening_notes || customOutcomes?.evening_notes || existingNotesObj?._evening_notes || existingNotesObj?.evening_notes || ''
+
   const notesMeta = {
     ...existingNotesObj,
+    notes: extractedNotes,
+    freeform_notes: extractedNotes,
+    _evening_notes: extractedEveningNotes,
+    evening_notes: extractedEveningNotes,
     last_food_time: newLastFoodTime,
     custom_outcomes_jsonb: mergedCustomOutcomes
   }
@@ -3261,7 +3268,7 @@ export async function saveDailyWellbeingCheckin(
     notes: JSON.stringify(notesMeta)
   }
 
-  const result = { ...payload, last_food_time: newLastFoodTime, custom_outcomes_jsonb: mergedCustomOutcomes }
+  const result = { ...payload, notes: extractedNotes, last_food_time: newLastFoodTime, custom_outcomes_jsonb: mergedCustomOutcomes }
 
   if (typeof window !== 'undefined') {
     try {

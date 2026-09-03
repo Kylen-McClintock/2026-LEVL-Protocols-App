@@ -5,7 +5,7 @@ import { DailyWellbeingCheckin as WellbeingType, UserProfile, OutcomeDimension }
 import { isFuture, isPast, isSameDay, format } from 'date-fns'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getRecentOutcomeSnapshot, getLatestOutcomeLiveState, OutcomeLiveState } from '@/lib/utils/outcomeRecency'
-import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sparkles, ArrowUpRight, ArrowDownRight, Radio, Activity } from 'lucide-react'
+import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sparkles, ArrowUpRight, ArrowDownRight, Radio, Activity, FileText } from 'lucide-react'
 import CustomizeCheckinOutcomesModal from '@/components/modals/CustomizeCheckinOutcomesModal'
 import QuickOutcomeUpdateModal from '@/components/modals/QuickOutcomeUpdateModal'
 import { safeLocalStorageSet } from '@/lib/utils/storage'
@@ -268,6 +268,8 @@ export default function DailyWellbeingCheckin({
   const [subjectiveSleep, setSubjectiveSleep] = useState(5)
   const [sleepScore, setSleepScore] = useState<string>('')
   const [lastFoodTime, setLastFoodTime] = useState<string>('19:00')
+  const [notes, setNotes] = useState<string>('')
+  const [eveningNotes, setEveningNotes] = useState<string>('')
 
   // Additional Functional Outcomes
   const [skinClarity, setSkinClarity] = useState(5)
@@ -373,6 +375,15 @@ export default function DailyWellbeingCheckin({
     }
     if (parsed.timings?.alcohol_drinks !== undefined) {
       setAlcoholDrinks(parsed.timings.alcohol_drinks)
+    }
+
+    // 2.5 Freeform Notes from voice
+    if (parsed.notes) {
+      if (target === 'nightly') {
+        setEveningNotes(prev => prev ? `${prev}\n${parsed.notes}` : parsed.notes!)
+      } else {
+        setNotes(prev => prev ? `${prev}\n${parsed.notes}` : parsed.notes!)
+      }
     }
 
     // 3. Open the target section so user sees the populated values
@@ -587,16 +598,22 @@ export default function DailyWellbeingCheckin({
       checkin_date: initialData?.checkin_date || dateStr,
       created_at: morningCreatedAt,
       updated_at: (initialData as any)?.updated_at || (hasSavedMorning ? new Date().toISOString() : undefined),
-      notes: initialData?.notes,
+      notes: notes || initialData?.notes,
       sleep_score_0_100: initialData?.sleep_score_0_100,
       last_food_time: initialData?.last_food_time,
       mood_0_10: touchedOutcomes.mood || hasSavedMorning ? mood : (initialData?.mood_0_10 ?? null),
       energy_0_10: touchedOutcomes.energy || hasSavedMorning ? energy : (initialData?.energy_0_10 ?? null),
       stress_0_10: touchedOutcomes.stress || hasSavedMorning ? stress : (initialData?.stress_0_10 ?? null),
       subjective_sleep_0_10: touchedOutcomes.sleep || hasSavedMorning ? subjectiveSleep : (initialData?.subjective_sleep_0_10 ?? null),
-      custom_outcomes_jsonb: customJSON,
+      custom_outcomes_jsonb: {
+        ...customJSON,
+        notes: notes || customJSON.notes,
+        freeform_notes: notes || customJSON.freeform_notes,
+        _evening_notes: eveningNotes || customJSON._evening_notes,
+        evening_notes: eveningNotes || customJSON.evening_notes
+      },
     } as WellbeingType
-  }, [initialData, mood, energy, stress, subjectiveSleep, skinClarity, focusScore, customOutcomeValues, touchedOutcomes, isSaved, date, localProfile, localAnytimeLogs, daytimeMood, daytimeEnergy, daytimeStress, daytimeFocus, daytimeSkin, daytimeCustomValues, daytimeTouchedOutcomes])
+  }, [initialData, mood, energy, stress, subjectiveSleep, skinClarity, focusScore, notes, eveningNotes, customOutcomeValues, touchedOutcomes, isSaved, date, localProfile, localAnytimeLogs, daytimeMood, daytimeEnergy, daytimeStress, daytimeFocus, daytimeSkin, daytimeCustomValues, daytimeTouchedOutcomes])
 
   // Real-time live outcome state map aggregating latest readings across all sources
   const liveStateMap = useMemo(() => {
@@ -650,6 +667,25 @@ export default function DailyWellbeingCheckin({
       setLateMeal(customJSON.late_meal !== undefined && customJSON.late_meal !== null ? (typeof customJSON.late_meal === 'string' ? customJSON.late_meal : customJSON.late_meal ? 'time:19:30' : 'time:19:30') : 'time:19:30')
       setBlueLight(customJSON.blue_light || 'time:21:30')
       setProcessedSugar(customJSON.processed_sugar || 'skip')
+      
+      // Hydrate freeform notes
+      let parsedNotesStr = ''
+      let parsedEveNotesStr = ''
+      if (initialData.notes) {
+        try {
+          const parsed = JSON.parse(initialData.notes)
+          parsedNotesStr = parsed.freeform_notes || parsed.notes || parsed.plain_notes || ''
+          parsedEveNotesStr = parsed.evening_notes || parsed._evening_notes || ''
+        } catch (e) {
+          parsedNotesStr = initialData.notes
+        }
+      }
+      if (!parsedNotesStr && customJSON.notes) parsedNotesStr = customJSON.notes
+      if (!parsedNotesStr && customJSON.freeform_notes) parsedNotesStr = customJSON.freeform_notes
+      if (!parsedEveNotesStr && customJSON._evening_notes) parsedEveNotesStr = customJSON._evening_notes
+      if (!parsedEveNotesStr && customJSON.evening_notes) parsedEveNotesStr = customJSON.evening_notes
+      setNotes(parsedNotesStr)
+      setEveningNotes(parsedEveNotesStr)
       
       // Restore all dynamic outcome slider values from customJSON
       const restoredCustom: Record<string, number> = {}
@@ -720,6 +756,8 @@ export default function DailyWellbeingCheckin({
       setLateMeal('time:19:30')
       setBlueLight('time:21:30')
       setProcessedSugar('skip')
+      setNotes('')
+      setEveningNotes('')
       const dStr = date ? format(date, 'yyyy-MM-dd') : ''
       const localMorningSaved = typeof window !== 'undefined' && dStr && localStorage.getItem('levl_checkin_saved_' + dStr) === 'true'
       setIsSaved(Boolean(localMorningSaved))
@@ -1099,13 +1137,8 @@ export default function DailyWellbeingCheckin({
       {/* ⚡ CONNECTED CONTAINER: Top Row (Morning Check-in Status / Edit) + Current State 4-Box Grid */}
       {(isSaved && !isEditing) || isCollapsedAll ? (
         <div className="glass-card mb-4 rounded-2xl border border-emerald-500/30 bg-slate-950/70 shadow-xl overflow-hidden animate-in fade-in">
-          {/* Morning Mindful Reflection & Somatic Presence Prompt */}
-          <div className="p-2 sm:p-3 pb-1">
-            <MindfulReflectionPrompt mode="morning" date={date} />
-          </div>
-
           {/* Voice Record Bar in Summary View */}
-          <div className="px-3 sm:px-4 pt-2 pb-1.5 bg-black/40 border-b border-white/5">
+          <div className="px-3 sm:px-4 pt-2.5 pb-1.5 bg-black/40 border-b border-white/5">
             <UnifiedVoiceBar
               mode="morning"
               localUserId={effectiveUserId}
@@ -2365,6 +2398,27 @@ export default function DailyWellbeingCheckin({
         </div>
       )}
 
+      {/* Morning Freeform Reflection & Notes Card */}
+      <div className="bg-black/40 p-4 rounded-xl border border-white/10 space-y-2 mt-3">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-amber-200 uppercase tracking-wider flex items-center gap-1.5">
+            <FileText size={13} className="text-amber-400" /> Morning Notes &amp; Reflections
+          </label>
+          {notes && (
+            <span className="text-[10px] text-slate-400 font-mono">
+              {notes.length} characters
+            </span>
+          )}
+        </div>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Capture somatic sensations, intentions for today, how you slept, or thoughts before the day begins..."
+          rows={3}
+          className="w-full bg-slate-900/70 border border-amber-500/20 rounded-xl p-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400/50 transition-all resize-none shadow-inner"
+        />
+      </div>
+
       <button onClick={handleMorningSave} className="w-full bg-levl-accent text-white rounded-lg py-3 text-sm font-bold hover:bg-levl-accent/90 transition-colors mt-2 shadow-lg shadow-levl-accent/20 cursor-pointer">
         {isSaved ? `Edit Morning Check-in` : `Log Morning Check-in`}
       </button>
@@ -2797,6 +2851,27 @@ export default function DailyWellbeingCheckin({
                   className="bg-black/80 border border-white/20 rounded-lg px-3 py-1.5 text-white font-mono text-xs focus:border-rose-400 focus:outline-none cursor-pointer w-28 text-center"
                 />
               </div>
+            </div>
+
+            {/* Evening Freeform Reflection & Notes Card */}
+            <div className="bg-black/40 p-4 rounded-xl border border-white/10 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-rose-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText size={13} className="text-rose-400" /> Evening Notes &amp; Day Decompression
+                </label>
+                {eveningNotes && (
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {eveningNotes.length} characters
+                  </span>
+                )}
+              </div>
+              <textarea
+                value={eveningNotes}
+                onChange={(e) => setEveningNotes(e.target.value)}
+                placeholder="Reflect on today's wins, stressors, cognitive clarity, nutrition, or observations before sleep..."
+                rows={3}
+                className="w-full bg-slate-900/70 border border-rose-500/20 rounded-xl p-3 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-400/50 transition-all resize-none shadow-inner"
+              />
             </div>
 
             <button
