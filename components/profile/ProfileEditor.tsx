@@ -48,7 +48,10 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
 
   const [isSaving, setIsSaving] = useState(false)
 
-  // Advanced Biomarker States
+  // Personal Identity & Biomarker States
+  const [displayName, setDisplayName] = useState<string>(
+    profile.display_name && profile.display_name !== 'Protocol Optimizer' ? profile.display_name : ''
+  )
   const [age, setAge] = useState<string>(profile.age?.toString() || '')
   const [heightFeet, setHeightFeet] = useState<string>(
     profile.height_inches ? Math.floor(profile.height_inches / 12).toString() : ''
@@ -93,6 +96,9 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
   // Sync state when profile prop changes externally (e.g. from onboarding or recalibration)
   useEffect(() => {
     isSyncingFromPropsRef.current = true
+    if (profile.display_name && profile.display_name !== 'Protocol Optimizer') {
+      setDisplayName(profile.display_name)
+    }
     if (profile.primary_goals) setGoals(profile.primary_goals)
     if (profile.outcome_preference_scores) setPreferences(profile.outcome_preference_scores)
     if (profile.age != null) setAge(profile.age.toString())
@@ -150,6 +156,7 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
       const totalHeightInches = (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
 
       await updateUserProfile(profile.local_user_id, {
+        display_name: displayName.trim() || null as any,
         primary_goals: goals,
         outcome_preference_scores: updatedPref,
         weekly_spend_budget_usd: enableBudget ? budget : null as any,
@@ -259,9 +266,20 @@ export default function ProfileEditor({ profile, outcomes }: ProfileEditorProps)
 
       {/* Advanced Biomarkers */}
       <div className="glass-card p-4 rounded-xl space-y-4">
-        <h3 className="font-bold flex items-center gap-2"><Activity size={18} className="text-levl-accent" /> Biomarkers & Lifestyle</h3>
-        <p className="text-xs text-levl-text-secondary">All fields are optional but help the engine calibrate mg/kg dosing, BMI, and PhenoAge biological age.</p>
+        <h3 className="font-bold flex items-center gap-2"><Activity size={18} className="text-levl-accent" /> Identity, Biomarkers & Lifestyle</h3>
+        <p className="text-xs text-levl-text-secondary">Personalize your name, dosing calibration parameters, and biological baselines.</p>
         
+        <div>
+          <label className="block text-xs font-medium text-gray-400 mb-1">Your Name / Display Name</label>
+          <input 
+            type="text" 
+            value={displayName} 
+            onChange={e => setDisplayName(e.target.value)} 
+            placeholder="e.g. Kylen" 
+            className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white placeholder:text-slate-600 focus:border-levl-accent outline-none" 
+          />
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1">Chronological Age</label>

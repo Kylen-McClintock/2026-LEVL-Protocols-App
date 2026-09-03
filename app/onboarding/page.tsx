@@ -866,7 +866,7 @@ function OnboardingContent() {
     try {
       const localUserId = getLocalUserId()
       const todayStr = format(new Date(), 'yyyy-MM-dd')
-      const nameToSave = displayName.trim() || 'Protocol Optimizer'
+      const nameToSave = displayName.trim() || undefined
 
       // Map outcome preference scores (default 7/10 priority for checked outcomes)
       const outcomeScores: Record<string, any> = {}

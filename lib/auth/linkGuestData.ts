@@ -108,11 +108,11 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
         // Clone guest profile under the authenticated user's local_user_id
         await updateUserProfile(authUser.id, {
           ...guestProfile,
-          display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || guestProfile.display_name || 'Protocol Optimizer'
+          display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || (guestProfile.display_name && guestProfile.display_name !== 'Protocol Optimizer' ? guestProfile.display_name : undefined)
         })
       } else {
         await updateUserProfile(authUser.id, {
-          display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || 'Protocol Optimizer'
+          display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || undefined
         })
       }
     } else if (guestProfile) {

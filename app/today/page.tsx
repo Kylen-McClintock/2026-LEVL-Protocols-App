@@ -168,28 +168,78 @@ function TodayPageContent() {
   const [allOutcomes, setAllOutcomes] = useState<OutcomeDimension[]>([])
 
   const userFirstName = useMemo(() => {
-    if ((profile as any)?.first_name) return (profile as any).first_name
-    if (profile?.display_name) {
-      const parts = profile.display_name.trim().split(/\s+/)
-      if (parts[0]) return parts[0]
+    // Helper to validate and clean a candidate first name
+    const isValidName = (name?: string | null): string | null => {
+      if (!name || typeof name !== 'string') return null
+      const clean = name.trim()
+      if (!clean) return null
+      // Discard placeholder/default words that are not user names
+      if (/^(protocol|protocol optimizer|protocol user|user|guest|anonymous|your|null|undefined)$/i.test(clean)) {
+        return null
+      }
+      const firstWord = clean.split(/\s+/)[0]
+      if (/^(protocol|protocol optimizer|protocol user|user|guest|anonymous|your|null|undefined)$/i.test(firstWord)) {
+        return null
+      }
+      return firstWord.charAt(0).toUpperCase() + firstWord.slice(1)
     }
-    if ((profile as any)?.name) {
-      const parts = (profile as any).name.trim().split(/\s+/)
-      if (parts[0]) return parts[0]
+
+    // 1. Check direct profile fields
+    const fromProfileFirst = isValidName((profile as any)?.first_name)
+    if (fromProfileFirst) return fromProfileFirst
+
+    const fromProfileDisplay = isValidName(profile?.display_name)
+    if (fromProfileDisplay) return fromProfileDisplay
+
+    const fromProfileName = isValidName((profile as any)?.name)
+    if (fromProfileName) return fromProfileName
+
+    // 2. Check authUser metadata
+    const fromAuthFirst = isValidName(authUser?.user_metadata?.first_name)
+    if (fromAuthFirst) return fromAuthFirst
+
+    const fromAuthFull = isValidName(authUser?.user_metadata?.full_name)
+    if (fromAuthFull) return fromAuthFull
+
+    const fromAuthName = isValidName(authUser?.user_metadata?.name)
+    if (fromAuthName) return fromAuthName
+
+    // 3. Check authUser email prefix (e.g. kylenmcclintock@... -> Kylen)
+    if (authUser?.email) {
+      const emailPrefix = authUser.email.split('@')[0]
+      const token = emailPrefix.split(/[._\d-]/)[0]
+      const fromEmail = isValidName(token)
+      if (fromEmail) return fromEmail
     }
+
+    // 4. Check cached profile in localStorage
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem('levl_cached_user_profile')
         if (cached) {
           const parsed = JSON.parse(cached)
-          if (parsed.first_name) return parsed.first_name
-          if (parsed.display_name) return parsed.display_name.trim().split(/\s+/)[0]
-          if (parsed.name) return parsed.name.trim().split(/\s+/)[0]
+          const fromCachedFirst = isValidName(parsed.first_name)
+          if (fromCachedFirst) return fromCachedFirst
+          const fromCachedDisplay = isValidName(parsed.display_name)
+          if (fromCachedDisplay) return fromCachedDisplay
+          const fromCachedName = isValidName(parsed.name)
+          if (fromCachedName) return fromCachedName
+        }
+
+        const localId = authUserId || localStorage.getItem('levl_local_user_id')
+        if (localId) {
+          const rawUserProf = localStorage.getItem(`levl_user_profile_${localId}`)
+          if (rawUserProf) {
+            const parsed = JSON.parse(rawUserProf)
+            const fromProfDisplay = isValidName(parsed.display_name)
+            if (fromProfDisplay) return fromProfDisplay
+          }
         }
       } catch (e) {}
     }
+
     return 'Your'
-  }, [profile])
+  }, [profile, authUser, authUserId])
 
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
