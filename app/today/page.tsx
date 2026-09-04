@@ -3133,25 +3133,34 @@ function TodayPageContent() {
           </div>
         )}
 
-        {/* 1. TOP VIEW SELECTOR NAVIGATION BAR (Always at Top) */}
-        <ViewSelectorHeader
-          viewMode={calendarViewMode}
-          onViewModeChange={setCalendarViewMode}
-          dateTitle={dateTitle}
-          selectedProtocolFilter={selectedProtocolFilter}
-          onProtocolFilterChange={setSelectedProtocolFilter}
-          availableProtocols={availableProtocols}
-          selectedMainCategories={selectedMainCategories}
-          selectedSubCategories={selectedSubCategories}
-          onToggleMainCategory={handleToggleMainCategory}
-          onToggleSubCategory={handleToggleSubCategory}
-          layoutOrientation={layoutOrientation}
-          onToggleLayoutOrientation={setLayoutOrientation}
-          onEnrollClick={() => setIsEnrollModalOpen(true)}
-          completionMode={completionMode}
-          onCompletionModeChange={handleCompletionModeChange}
-          showCategoryFilters={calendarViewMode !== 'today' && calendarViewMode !== 'pulse'}
-        />
+        {/* Unified Category & Outcomes Filter at Top (Today, 3-Day, Week, and Month Views) */}
+        {calendarViewMode !== 'pulse' && (
+          <CategoryFiltersBar
+            selectedMainCategories={selectedMainCategories}
+            selectedSubCategories={selectedSubCategories}
+            onToggleMainCategory={handleToggleMainCategory}
+            onToggleSubCategory={handleToggleSubCategory}
+            viewMode={calendarViewMode}
+            layoutOrientation={layoutOrientation}
+            onToggleLayoutOrientation={setLayoutOrientation}
+            filterLens={filterLens}
+            onToggleFilterLens={setFilterLens}
+            selectedOutcomes={selectedOutcomes}
+            onToggleOutcome={(outcomeName) => {
+              setSelectedOutcomes(prev =>
+                prev.includes(outcomeName) ? prev.filter(o => o !== outcomeName) : [...prev, outcomeName]
+              )
+            }}
+            onClearOutcomes={() => setSelectedOutcomes([])}
+            availableOutcomes={allOutcomes.map(o => o.name)}
+            userProfile={profile}
+            allOutcomeDimensions={allOutcomes}
+            selectedProtocolFilter={selectedProtocolFilter}
+            onProtocolFilterChange={setSelectedProtocolFilter}
+            availableProtocols={availableProtocols}
+            onEnrollClick={() => setIsEnrollModalOpen(true)}
+          />
+        )}
 
         {/* 2. PRIMARY DATE NAVIGATION TOOLBAR (Always at Top, unified across Today, 3-Day, Week, and Month Views) */}
         <div className="flex items-center justify-between w-full my-4 px-1 gap-2">
@@ -3850,31 +3859,6 @@ function TodayPageContent() {
                 )}
               </div>
             )}
-
-            {/* Modality Category & Outcomes Filter Row (Unified across Mobile & Desktop) */}
-            <div className="w-full">
-              <CategoryFiltersBar
-                selectedMainCategories={selectedMainCategories}
-                selectedSubCategories={selectedSubCategories}
-                onToggleMainCategory={handleToggleMainCategory}
-                onToggleSubCategory={handleToggleSubCategory}
-                viewMode={calendarViewMode}
-                layoutOrientation={layoutOrientation}
-                onToggleLayoutOrientation={setLayoutOrientation}
-                filterLens={filterLens}
-                onToggleFilterLens={setFilterLens}
-                selectedOutcomes={selectedOutcomes}
-                onToggleOutcome={(outcomeName) => {
-                  setSelectedOutcomes(prev =>
-                    prev.includes(outcomeName) ? prev.filter(o => o !== outcomeName) : [...prev, outcomeName]
-                  )
-                }}
-                onClearOutcomes={() => setSelectedOutcomes([])}
-                availableOutcomes={allOutcomes.map(o => o.name)}
-                userProfile={profile}
-                allOutcomeDimensions={allOutcomes}
-              />
-            </div>
 
             {/* Timeline Layout Mode & Completion Mode Toggle Bar (Single Non-Scrolling Row) */}
             <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 p-1 sm:p-2 rounded-2xl mb-3 backdrop-blur-md shadow-sm gap-1 sm:gap-2">

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { Plus, Cloud, Sparkles, CheckCircle2, ShieldCheck, User, Clock, ListOrdered, CalendarDays, Activity, Columns, Calendar, LayoutGrid, ChevronDown, Check } from 'lucide-react'
+import { Plus, Cloud, Sparkles, CheckCircle2, ShieldCheck, User, Clock, ListOrdered, CalendarDays, Activity, Columns, Calendar, LayoutGrid, ChevronDown, Check, Zap, Bookmark } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import QuickActionHubModal from '@/components/modals/QuickActionHubModal'
 
@@ -164,7 +164,7 @@ export default function TopStickyHeader() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 md:hidden transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 md:left-64 right-0 z-[9999] transition-transform duration-300 ease-in-out ${
           isVisible ? 'translate-y-0' : '-translate-y-full'
         } bg-slate-950/85 backdrop-blur-xl border-b border-levl-border/80 shadow-lg shadow-black/20`}
         style={{
@@ -186,7 +186,7 @@ export default function TopStickyHeader() {
         <div className="flex items-center justify-between px-3.5 py-2.5">
           {/* Left: Logo & Cloud Sync Status */}
           <div className="flex items-center gap-2">
-            <Link href="/today" className="shrink-0 flex items-center">
+            <Link href="/today" className="shrink-0 flex items-center md:hidden">
               <img
                 src="/logo.png"
                 alt="LEVL"
@@ -225,12 +225,12 @@ export default function TopStickyHeader() {
             )}
           </div>
 
-          {/* Center: View Selector Dropdown & Micro Progress Badge */}
-          <div className="flex items-center justify-center relative z-50" ref={viewDropdownRef}>
+          {/* Center: View Selector Dropdown (No x/y badge, completely in front of all app elements) */}
+          <div className="flex items-center justify-center relative z-[9999]" ref={viewDropdownRef}>
             <button
               type="button"
               onClick={() => setIsViewDropdownOpen(!isViewDropdownOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/90 border border-slate-800 hover:border-slate-700 shadow-inner text-white transition-all cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 hover:border-slate-600 shadow-lg text-white transition-all cursor-pointer active:scale-95"
             >
               <div className="flex items-center gap-1.5 min-w-0">
                 {currentViewDetails.icon}
@@ -238,24 +238,13 @@ export default function TopStickyHeader() {
                   {currentViewDetails.label}
                 </span>
               </div>
-              <ChevronDown size={11} className={`text-slate-400 shrink-0 transition-transform ${isViewDropdownOpen ? 'rotate-180 text-purple-400' : ''}`} />
-              
-              {/* Micro Completion Counter Badge */}
-              {stats.total > 0 && (
-                <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full border shrink-0 ${
-                  is100Percent 
-                    ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.35)]' 
-                    : 'bg-black/60 border-white/10 text-slate-300'
-                }`}>
-                  {stats.completed}/{stats.total}
-                </span>
-              )}
+              <ChevronDown size={11} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isViewDropdownOpen ? 'rotate-180 text-purple-400' : ''}`} />
             </button>
 
-            {/* Floating Popover Dropdown Menu */}
+            {/* Floating Popover Dropdown Menu (Guaranteed in front of all page elements) */}
             {isViewDropdownOpen && (
               <div 
-                className="absolute top-full mt-2 w-56 p-1.5 rounded-2xl bg-slate-950/95 border border-slate-800 shadow-2xl backdrop-blur-2xl z-[100] animate-in fade-in zoom-in-95 duration-150"
+                className="absolute top-full mt-2 w-60 p-2 rounded-2xl bg-slate-950 border border-slate-700 shadow-[0_25px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl z-[100000] animate-in fade-in zoom-in-95 duration-150"
                 style={{ left: '50%', transform: 'translateX(-50%)' }}
               >
                 {/* Section 1: Daily Layout Mode */}
@@ -366,6 +355,37 @@ export default function TopStickyHeader() {
                     </div>
                     {activeCalendarView === 'month' && <Check size={13} />}
                   </button>
+                </div>
+
+                {/* Section 3: Navigation Hubs */}
+                <div className="pt-1 mt-1 border-t border-slate-800/80 space-y-0.5">
+                  <Link
+                    href="/schedule"
+                    onClick={() => setIsViewDropdownOpen(false)}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-300 hover:bg-amber-950/60 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Zap size={13} className="text-amber-400 shrink-0" />
+                      <span>Master Schedule</span>
+                    </div>
+                    <span className="text-[9px] uppercase font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
+                      Rhythms
+                    </span>
+                  </Link>
+
+                  <Link
+                    href="/bench"
+                    onClick={() => setIsViewDropdownOpen(false)}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-purple-300 hover:bg-purple-950/60 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Bookmark size={13} className="text-purple-400 shrink-0" />
+                      <span>Protocol Bench</span>
+                    </div>
+                    <span className="text-[9px] uppercase font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30">
+                      Saved
+                    </span>
+                  </Link>
                 </div>
               </div>
             )}
