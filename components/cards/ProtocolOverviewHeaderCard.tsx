@@ -27,6 +27,8 @@ import ProtocolVarianceModal from '../modals/ProtocolVarianceModal'
 import ProtocolActionModal from '../modals/ProtocolActionModal'
 import { ModalityExecutionGuide } from '../modals/ModalityExecutionGuide'
 import { getModalityVideoInfo, getProtocolVideoInfo } from '@/lib/data/modalityVideos'
+import ProtocolAvatar, { ProtocolCategoryPills } from '@/components/ui/ProtocolAvatar'
+import { getProtocolVisualTheme } from '@/lib/utils/protocolThemes'
 
 interface ProtocolOverviewHeaderCardProps {
   protocolName: string
@@ -258,33 +260,51 @@ export default function ProtocolOverviewHeaderCard({
     groupStatusLabel = 'Partially Completed'
   }
 
+  const visualTheme = getProtocolVisualTheme(protocolInfo || protocolName, groupTasks)
+
   return (
     <>
       <div 
         onClick={() => setIsExpanded(!isExpanded)}
-        className="glass-card rounded-xl p-4 border border-white/5 space-y-3 cursor-pointer transition-all hover:border-white/10"
+        className="glass-card rounded-xl p-4 border border-white/5 space-y-3 cursor-pointer transition-all hover:border-white/15 relative overflow-hidden group shadow-lg"
       >
+        {/* Top Edge Signature Protocol Gradient Ribbon */}
+        <div 
+          className="h-[3px] w-full absolute top-0 left-0 transition-opacity duration-300 opacity-90 group-hover:opacity-100" 
+          style={{ background: visualTheme.accentBorderCSS }} 
+        />
+
         {/* Header Preview Section */}
-        <div className="space-y-2 border-b border-white/10 pb-3">
-          {/* Line 1: Full-width protocol title as clickable link to protocol page */}
-          <div className="flex items-center gap-2.5">
-            <Layers size={20} className="text-levl-purple shrink-0" />
-            <h2 className="text-base sm:text-lg font-extrabold text-white tracking-wide leading-snug">
-              <Link 
-                href={`/protocols/${encodeURIComponent(protocolInfo?.id || protocolName)}`}
-                onClick={(e) => e.stopPropagation()}
-                className="hover:underline hover:text-purple-300 transition-colors flex items-center gap-1.5 inline-flex"
-                title="Click to view full protocol focus page"
-              >
-                <span>{protocolName}</span>
-                <ExternalLink size={14} className="text-purple-400 opacity-80" />
-              </Link>
-            </h2>
+        <div className="space-y-2 border-b border-white/10 pb-3 pt-0.5">
+          {/* Line 1: Detailed Protocol Avatar & Full-width protocol title as clickable link to protocol page */}
+          <div className="flex items-center gap-3">
+            <ProtocolAvatar 
+              protocolName={protocolName}
+              protocolInfo={protocolInfo}
+              groupTasksOrSteps={groupTasks}
+              themeOverride={visualTheme}
+              size={38}
+            />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base sm:text-lg font-extrabold text-white tracking-wide leading-snug">
+                <Link 
+                  href={`/protocols/${encodeURIComponent(protocolInfo?.id || protocolName)}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:underline hover:text-purple-300 transition-colors flex items-center gap-1.5 inline-flex"
+                  title="Click to view full protocol focus page"
+                >
+                  <span className="truncate">{protocolName}</span>
+                  <ExternalLink size={14} className="text-purple-400 opacity-80 shrink-0" />
+                </Link>
+              </h2>
+            </div>
           </div>
 
-          {/* Line 2: Modified & Modalities count (Left), Status Badge & Expand Chevron (Right) */}
-          <div className="flex items-center justify-between gap-3 pt-0.5 flex-wrap">
-            <div className="flex items-center gap-2.5">
+          {/* Line 2: Category Gradient Badges & Modalities count (Left), Status Badge & Expand Chevron (Right) */}
+          <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <ProtocolCategoryPills theme={visualTheme} />
+
               {isModified && (
                 <button
                   type="button"

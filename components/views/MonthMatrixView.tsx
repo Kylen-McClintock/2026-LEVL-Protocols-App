@@ -8,6 +8,7 @@ import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
 import { groupTasksByTimeBlock, groupTasksByProtocol, sortTasksChronologically } from '@/lib/data/resolveOptimalTiming'
 import { getModalityTheme } from '@/lib/utils/modalityColors'
+import ProtocolAvatar from '../ui/ProtocolAvatar'
 
 interface MonthMatrixViewProps {
   tasksByDate: Record<string, DailyProtocolTask[]>
@@ -231,11 +232,14 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
                     protocolBlocks.map((pBlock) => (
                       <div key={pBlock.protocolName} className="space-y-1">
                         <div className="flex items-center gap-1.5 px-1 py-0.5 border-b border-white/5">
-                          <span 
-                            className="w-1.5 h-1.5 rounded-full" 
-                            style={{ backgroundColor: pBlock.protocolColorHex || '#A855F7' }} 
+                          <ProtocolAvatar
+                            protocolName={pBlock.protocolName}
+                            groupTasksOrSteps={pBlock.tasks}
+                            size={18}
+                            showHalo={false}
+                            roundedClass="rounded-[4px]"
                           />
-                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">
+                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-200">
                             {pBlock.protocolName}
                           </span>
                         </div>

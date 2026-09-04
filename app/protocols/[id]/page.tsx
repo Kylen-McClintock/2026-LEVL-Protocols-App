@@ -61,6 +61,8 @@ import {
   SKIN_CYCLE_PHASES, 
   SkinCyclePhase 
 } from '@/lib/calendar/skinCyclingEngine'
+import ProtocolAvatar, { ProtocolCategoryPills } from '@/components/ui/ProtocolAvatar'
+import { getProtocolVisualTheme } from '@/lib/utils/protocolThemes'
 
 const formatSlotName = (str: string) => {
   if (!str) return 'Daily'
@@ -540,6 +542,8 @@ export default function ProtocolFocusPage() {
     authorBadgeBgClass = 'bg-cyan-950/80 border-cyan-500/50 text-cyan-300'
   }
 
+  const visualTheme = getProtocolVisualTheme(protocol, steps)
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-24 selection:bg-purple-500/30">
       
@@ -603,25 +607,48 @@ export default function ProtocolFocusPage() {
         )}
 
         {/* COMPACT HERO PROTOCOL FOCUS CARD */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/40 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden">
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/40 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden group">
+          {/* Top Edge Signature Protocol Gradient Ribbon */}
+          <div 
+            className="h-[3.5px] w-full absolute top-0 left-0 transition-opacity duration-300 opacity-90 group-hover:opacity-100" 
+            style={{ background: visualTheme.accentBorderCSS }} 
+          />
 
-          {/* Header Row: Title & Primary Metadata Pills */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2 text-purple-400 text-xs font-bold uppercase tracking-wider">
-                <Sparkles size={14} /> Protocol Deep Dive
+          <div 
+            className="absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl pointer-events-none opacity-40 transition-all duration-500" 
+            style={{ background: visualTheme.glowColor }}
+          />
+
+          {/* Header Row: Detailed Protocol Avatar, Title & Primary Metadata Pills */}
+          <div className="flex items-start gap-3.5 sm:gap-4">
+            <ProtocolAvatar
+              protocolName={protocol.name}
+              protocolInfo={protocol}
+              groupTasksOrSteps={steps}
+              themeOverride={visualTheme}
+              size={52}
+              roundedClass="rounded-2xl"
+            />
+
+            <div className="space-y-2 flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 text-purple-400 text-xs font-bold uppercase tracking-wider">
+                    <Sparkles size={14} /> Protocol Deep Dive
+                  </div>
+                  <ProtocolCategoryPills theme={visualTheme} />
+                </div>
+
+                {/* Modality Count Chip */}
+                <span className="text-[11px] font-mono font-bold text-slate-300 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full">
+                  {evaluatedSteps.length} Modalities
+                </span>
               </div>
 
-              {/* Modality Count Chip */}
-              <span className="text-[11px] font-mono font-bold text-slate-300 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full">
-                {evaluatedSteps.length} Modalities
-              </span>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                {protocol.name}
+              </h1>
             </div>
-
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-              {protocol.name}
-            </h1>
           </div>
 
           {/* PROTOCOL-LEVEL QUICK ACTIONS BAR (Easy to Add, Bench, or Eliminate Entire Protocol) */}

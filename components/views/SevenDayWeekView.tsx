@@ -7,6 +7,7 @@ import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
 import { groupTasksByTimeBlock, groupTasksByProtocol } from '@/lib/data/resolveOptimalTiming'
 import { getModalityTheme } from '@/lib/utils/modalityColors'
+import ProtocolAvatar from '../ui/ProtocolAvatar'
 
 interface SevenDayWeekViewProps {
   tasksByDate: Record<string, DailyProtocolTask[]>
@@ -171,12 +172,15 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
                     protocolBlocks.map((pBlock) => (
                       <div key={pBlock.protocolName} className="space-y-0.5">
                         {/* Protocol Section Header Break */}
-                        <div className="flex items-center gap-1 px-1 py-0.5 border-b border-white/5">
-                          <span 
-                            className="w-1.5 h-1.5 rounded-full shrink-0" 
-                            style={{ backgroundColor: pBlock.protocolColorHex || '#A855F7' }} 
+                        <div className="flex items-center gap-1.5 px-1 py-0.5 border-b border-white/5">
+                          <ProtocolAvatar
+                            protocolName={pBlock.protocolName}
+                            groupTasksOrSteps={pBlock.tasks}
+                            size={18}
+                            showHalo={false}
+                            roundedClass="rounded-[4px]"
                           />
-                          <span className="text-[8px] sm:text-[8.5px] font-black uppercase tracking-wider text-slate-300 truncate">
+                          <span className="text-[8px] sm:text-[8.5px] font-black uppercase tracking-wider text-slate-200 truncate">
                             {pBlock.protocolName}
                           </span>
                         </div>

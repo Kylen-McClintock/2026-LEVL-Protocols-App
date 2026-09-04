@@ -8,6 +8,7 @@ import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
 import { groupTasksByTimeBlock, groupTasksByProtocol } from '@/lib/data/resolveOptimalTiming'
 import { getModalityTheme } from '@/lib/utils/modalityColors'
+import ProtocolAvatar from '../ui/ProtocolAvatar'
 
 interface ThreeDaySplitViewProps {
   tasksByDate: Record<string, DailyProtocolTask[]>
@@ -176,15 +177,18 @@ export const ThreeDaySplitView: React.FC<ThreeDaySplitViewProps> = ({
                     protocolBlocks.map((pBlock) => (
                       <div key={pBlock.protocolName} className="space-y-1.5">
                         {/* Protocol Header Break */}
-                        <div className="flex items-center gap-1.5 pt-1.5 pb-1 px-1 border-b border-white/10">
-                          <span 
-                            className="w-2 h-2 rounded-full shrink-0" 
-                            style={{ backgroundColor: pBlock.protocolColorHex || '#A855F7' }} 
+                        <div className="flex items-center gap-2 pt-1.5 pb-1 px-1 border-b border-white/10">
+                          <ProtocolAvatar
+                            protocolName={pBlock.protocolName}
+                            groupTasksOrSteps={pBlock.tasks}
+                            size={20}
+                            showHalo={false}
+                            roundedClass="rounded-md"
                           />
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-300 truncate">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-200 truncate">
                             {pBlock.protocolName}
                           </span>
-                          <span className="text-[9px] font-mono text-slate-500 font-bold ml-auto shrink-0">
+                          <span className="text-[9px] font-mono text-slate-400 font-bold ml-auto shrink-0">
                             {pBlock.tasks.length}
                           </span>
                         </div>

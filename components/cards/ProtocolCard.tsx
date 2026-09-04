@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BookmarkPlus, Plus, Check, Link as LinkIcon, Info, ShieldCheck, User, Zap, ExternalLink, Scale, CheckCircle2, Bookmark } from 'lucide-react'
 import { Protocol, ProtocolStep } from '@/lib/types'
+import ProtocolAvatar, { ProtocolCategoryPills } from '@/components/ui/ProtocolAvatar'
+import { getProtocolVisualTheme } from '@/lib/utils/protocolThemes'
 
 type ProtocolCardProps = {
   protocol: Protocol | any // Using any to tolerate partial/mock data for now
@@ -111,79 +113,98 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
     return posA - posB
   })
 
+  const visualTheme = getProtocolVisualTheme(protocol)
+
   const cardContainerStyle = isCurrentlyActiveInToday
     ? 'border-emerald-500/40 bg-emerald-950/10 shadow-[0_0_15px_rgba(16,185,129,0.12)]'
     : isCurrentlyOnBench
     ? 'border-cyan-500/40 bg-cyan-950/10 shadow-[0_0_15px_rgba(6,182,212,0.12)]'
-    : 'border-levl-accent/20 glass-card'
+    : 'border-white/10 glass-card'
 
   return (
-    <div className={`rounded-xl overflow-hidden transition-all duration-300 w-full min-w-0 ${cardContainerStyle}`}>
+    <div className={`rounded-xl overflow-hidden transition-all duration-300 w-full min-w-0 relative group shadow-md ${cardContainerStyle}`}>
+      {/* Top Edge Signature Protocol Gradient Ribbon */}
       <div 
-        className="p-4 cursor-pointer flex flex-col gap-3 hover:bg-white/5 transition-colors w-full min-w-0"
+        className="h-[3px] w-full absolute top-0 left-0 transition-opacity duration-300 opacity-90 group-hover:opacity-100" 
+        style={{ background: visualTheme.accentBorderCSS }} 
+      />
+
+      <div 
+        className="p-4 pt-4.5 cursor-pointer flex flex-col gap-3 hover:bg-white/5 transition-colors w-full min-w-0"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex justify-between items-start gap-2 w-full min-w-0">
-          <div className="w-full min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-bold text-lg text-white break-words">
-                <Link 
-                  href={`/protocols/${encodeURIComponent(protocol.id || protocol.name)}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="hover:underline hover:text-purple-300 transition-colors flex items-center gap-1.5 inline-flex"
-                  title="Click to view full protocol focus page"
-                >
-                  <span>{protocol.name}</span>
-                  <ExternalLink size={14} className="text-purple-400 opacity-80" />
-                </Link>
-              </h3>
+        <div className="flex justify-between items-start gap-2.5 w-full min-w-0">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <ProtocolAvatar 
+              protocolName={protocol.name}
+              protocolInfo={protocol}
+              themeOverride={visualTheme}
+              size={36}
+            />
 
-              {/* Active Today / Bench Status Badges */}
-              {isCurrentlyActiveInToday && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    router.push(`/today?protocol=${encodeURIComponent(protocol.id || protocol.name)}&name=${encodeURIComponent(protocol.name)}`)
-                  }}
-                  className="flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] transition-colors cursor-pointer"
-                >
-                  <CheckCircle2 size={11} className="text-emerald-400" /> Added to today
-                </button>
-              )}
+            <div className="w-full min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-bold text-base sm:text-lg text-white break-words">
+                  <Link 
+                    href={`/protocols/${encodeURIComponent(protocol.id || protocol.name)}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hover:underline hover:text-purple-300 transition-colors flex items-center gap-1.5 inline-flex"
+                    title="Click to view full protocol focus page"
+                  >
+                    <span>{protocol.name}</span>
+                    <ExternalLink size={14} className="text-purple-400 opacity-80" />
+                  </Link>
+                </h3>
 
-              {isCurrentlyOnBench && !isCurrentlyActiveInToday && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    router.push(`/bench`)
-                  }}
-                  className="flex items-center gap-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(6,182,212,0.3)] transition-colors cursor-pointer"
-                >
-                  <Bookmark size={11} className="text-cyan-400" /> In Bench
-                </button>
-              )}
-            </div>
-            
-            {/* Split out Source and Evidence badges */}
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              {protocol.source_id && (
-                <div className="flex items-center gap-1 text-[10px] text-levl-text-secondary bg-white/5 px-2 py-1 rounded">
-                  <User size={10} className="text-levl-accent" />
-                  Source: <span className="text-levl-accent font-medium">{protocol.source_id}</span>
+                {/* Active Today / Bench Status Badges */}
+                {isCurrentlyActiveInToday && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/today?protocol=${encodeURIComponent(protocol.id || protocol.name)}&name=${encodeURIComponent(protocol.name)}`)
+                    }}
+                    className="flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] transition-colors cursor-pointer"
+                  >
+                    <CheckCircle2 size={11} className="text-emerald-400" /> Added to today
+                  </button>
+                )}
+
+                {isCurrentlyOnBench && !isCurrentlyActiveInToday && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/bench`)
+                    }}
+                    className="flex items-center gap-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(6,182,212,0.3)] transition-colors cursor-pointer"
+                  >
+                    <Bookmark size={11} className="text-cyan-400" /> In Bench
+                  </button>
+                )}
+              </div>
+              
+              {/* Category Badges, Source, and Evidence badges */}
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <ProtocolCategoryPills theme={visualTheme} />
+
+                {protocol.source_id && (
+                  <div className="flex items-center gap-1 text-[10px] text-levl-text-secondary bg-white/5 px-2 py-1 rounded">
+                    <User size={10} className="text-levl-accent" />
+                    Source: <span className="text-levl-accent font-medium">{protocol.source_id}</span>
+                  </div>
+                )}
+                {protocol.evidence_level && (
+                  <div className="flex items-center gap-1 text-[10px] text-levl-text-secondary bg-white/5 px-2 py-1 rounded">
+                    <ShieldCheck size={10} className="text-blue-400" />
+                    <span className="text-blue-400 font-medium">{protocol.evidence_level}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 text-[10px] text-levl-text-secondary bg-white/5 px-2 py-1 rounded uppercase tracking-wide">
+                  <span className={protocol.status === 'published' || protocol.status === 'reviewed' ? 'text-green-400' : 'text-orange-400'}>
+                    {protocol.status || 'draft'}
+                  </span>
                 </div>
-              )}
-              {protocol.evidence_level && (
-                <div className="flex items-center gap-1 text-[10px] text-levl-text-secondary bg-white/5 px-2 py-1 rounded">
-                  <ShieldCheck size={10} className="text-blue-400" />
-                  <span className="text-blue-400 font-medium">{protocol.evidence_level}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1 text-[10px] text-levl-text-secondary bg-white/5 px-2 py-1 rounded uppercase tracking-wide">
-                <span className={protocol.status === 'published' || protocol.status === 'reviewed' ? 'text-green-400' : 'text-orange-400'}>
-                  {protocol.status || 'draft'}
-                </span>
               </div>
             </div>
           </div>

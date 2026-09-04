@@ -1,4 +1,5 @@
 import { Modality, ProtocolStep, UserProfile, DailyProtocolTask } from '../types'
+import { getProtocolVisualTheme } from '../utils/protocolThemes'
 
 /**
  * Smart Modality Timing Resolver Engine
@@ -617,6 +618,8 @@ export function groupTasksByTimeBlock(
 export interface GroupedProtocolBlock {
   protocolName: string
   protocolColorHex?: string
+  gradientCSS?: string
+  iconName?: string
   tasks: DailyProtocolTask[]
 }
 
@@ -642,6 +645,15 @@ export function groupTasksByProtocol(
     }
   })
 
-  return Array.from(map.values())
+  return Array.from(map.values()).map(group => {
+    const theme = getProtocolVisualTheme(group.protocolName, group.tasks)
+    return {
+      protocolName: group.protocolName,
+      protocolColorHex: theme.primaryColorHex || group.protocolColorHex,
+      gradientCSS: theme.gradientCSS,
+      iconName: theme.iconName,
+      tasks: group.tasks
+    }
+  })
 }
 
