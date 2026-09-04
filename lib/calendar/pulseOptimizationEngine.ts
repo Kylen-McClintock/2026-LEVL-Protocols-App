@@ -124,18 +124,235 @@ export interface DayPhasesAndTransitions {
 /**
  * Resolves modality name safely from protocol step or loose modality
  */
-function getModalityName(task: DailyProtocolTask): string {
+export function getModalityName(task: DailyProtocolTask): string {
   return (task.protocol_step?.modality?.name || task.loose_modality?.name || (task as any).modality?.name || 'Protocol Modality')
 }
 
 /**
- * Determines whether a modality is primarily Growth (Anabolic), Recovery (Autophagic/Parasympathetic), or Baseline.
+ * Determines whether a modality has meaningful biological bearing on Growth vs. Recovery mode.
+ * Strictly excludes:
+ * - Oral & personal hygiene (toothpaste, floss, tongue scrape, waterpik, deodorant, soap)
+ * - Topical cosmetic skincare (sunscreen, SPF, moisturizer, facial cleanser, toner, retinoids, ceramide, eye cream)
+ * - Hair grooming & scalp oils (shampoo, conditioner, minoxidil, finasteride)
+ * - Eye & ear drops (artificial tears, contact solution)
+ * - Diagnostics, clinical imaging & blood screens (CT scans, DEXA, CAC, Galleri, blood draws, CGM)
+ * - Generic baseline micronutrients with NO acute diurnal vector (multivitamin, generic B-complex, zinc drops, copper, iron)
  */
-function classifyModalityVector(task: DailyProtocolTask): { type: 'growth' | 'recovery' | 'baseline'; vector: string; impact: string } {
-  const name = getModalityName(task).toLowerCase()
-  const cat = (task.protocol_step?.modality?.category || task.loose_modality?.category || '').toLowerCase()
+export function isPulseRelevantModality(taskOrName: DailyProtocolTask | string): boolean {
+  const name = typeof taskOrName === 'string' ? taskOrName : getModalityName(taskOrName)
+  const category = typeof taskOrName === 'object' 
+    ? (taskOrName.protocol_step?.modality?.category || taskOrName.loose_modality?.category || (taskOrName as any).modality?.category || '') 
+    : ''
+  
+  const normName = name.toLowerCase()
+  const normCat = category.toLowerCase()
 
-  // 1. Growth (mTORC1, Anabolism, Mechanical Strain)
+  // 1. Full-body or facial photobiomodulation / red light therapy is ALWAYS a valid mitochondrial / cellular pulse
+  if (normName.includes('red light') || normName.includes('photobiomodulation') || normName.includes('near-infrared')) {
+    return true
+  }
+
+  // 2. EXCLUSION CHECKS
+  // Oral & Personal hygiene
+  if (
+    normName.includes('tooth') || normName.includes('floss') || normName.includes('tongue') ||
+    normName.includes('mouthwash') || normName.includes('waterpik') || normName.includes('brushing') ||
+    normName.includes('deodorant') || normName.includes('antiperspirant') || normName.includes('soap')
+  ) {
+    return false
+  }
+
+  // Topical skincare & cosmetics
+  if (
+    normName.includes('sunscreen') || normName.includes('spf') || normName.includes('barrier cream') ||
+    normName.includes('cleanser') || normName.includes('toner') || normName.includes('face wash') ||
+    normName.includes('retinoid') || normName.includes('tretinoin') || normName.includes('retinol') ||
+    normName.includes('retinal') || normName.includes('hyaluronic') || normName.includes('vitamin c serum') ||
+    normName.includes('antioxidant serum') || normName.includes('ferulic') || normName.includes('eye cream') ||
+    normName.includes('ceramide') || normName.includes('salicylic') || normName.includes('glycolic') ||
+    normName.includes('niacinamide serum') || normName.includes('exfoliat') ||
+    (normName.includes('cream') && !normName.includes('ice cream')) ||
+    (normName.includes('serum') && !normName.includes('ghk-cu') && !normName.includes('peptide'))
+  ) {
+    return false
+  }
+
+  // Hair & Scalp Grooming
+  if (
+    normName.includes('shampoo') || normName.includes('conditioner') || normName.includes('scalp') ||
+    normName.includes('minoxidil') || normName.includes('finasteride') || normName.includes('hair oil') ||
+    normName.includes('hair density')
+  ) {
+    return false
+  }
+
+  // Eye & Ear drops
+  if (normName.includes('eye drop') || normName.includes('artificial tear') || normName.includes('contact lens') || normName.includes('ear drop')) {
+    return false
+  }
+
+  // Diagnostics, clinical imaging & laboratory screens
+  if (
+    normName.includes('scan') || normName.includes('screening') || normName.includes('ct scan') ||
+    normName.includes('dexa') || normName.includes('cac') || normName.includes('galleri') ||
+    normName.includes('blood draw') || normName.includes('phlebotomy') || normName.includes('lab test') ||
+    normName.includes('lipid panel') || normName.includes('stool test') || normName.includes('biomarker test') ||
+    normName.includes('cgm') || normName.includes('continuous glucose monitor')
+  ) {
+    return false
+  }
+
+  // Generic baseline micronutrients with NO acute circadian vector
+  if (
+    normName.includes('multivitamin') || normName.includes('mthfr') || normName.includes('methyl-b') ||
+    normName.includes('b-complex') || normName.includes('zinc picolinate') || normName.includes('zinc bisglycinate') ||
+    /\biron\b/.test(normName) || (/\bcopper\b/.test(normName) && !normName.includes('ghk')) ||
+    normName.includes('iodine') || normName.includes('selenium') || normName.includes('vitamin d3') ||
+    normName.includes('omega-3') || normName.includes('epa/dha') || normName.includes('fish oil')
+  ) {
+    return false
+  }
+
+  // 3. INCLUSION CHECKS (True Growth or Recovery vectors)
+  const isGrowth = (
+    normName.includes('resistance') || normName.includes('lift') || normName.includes('strength') ||
+    normName.includes('hypertrophy') || normName.includes('push day') || normName.includes('pull day') ||
+    normName.includes('leg day') || normName.includes('workout') || normName.includes('compound') ||
+    normName.includes('dumbbell') || normName.includes('barbell') || normName.includes('kettlebell') ||
+    normName.includes('squat') || normName.includes('deadlift') || normName.includes('press') ||
+    normName.includes('pull-up') || normName.includes('pushup') || normName.includes('hiit') ||
+    normName.includes('sprint') || normName.includes('zone 5') || normName.includes('shear stress') ||
+    normName.includes('vilpa') || normName.includes('murph') || normName.includes('crossfit') ||
+    normName.includes('handstand') || normName.includes('tibialis') || normName.includes('structural resilience') ||
+    normName.includes('protein') || normName.includes('whey') || normName.includes('leucine') ||
+    normName.includes('eaa') || normName.includes('bcaa') || normName.includes('amino') ||
+    normName.includes('creatine') || normName.includes('citrulline') || normName.includes('beta-alanine') ||
+    normName.includes('cjc') || normName.includes('ipamorelin') || normName.includes('sermorelin') ||
+    normName.includes('tesamorelin') || normName.includes('bpc-157') || normName.includes('bpc 157') ||
+    normName.includes('tb-500') || normName.includes('tb 500') || normName.includes('ghk-cu') ||
+    normName.includes('kpv') || normName.includes('aod-9604') || normName.includes('aod 9604') ||
+    normName.includes('collagen peptide')
+  )
+
+  const isRecovery = (
+    normName.includes('cold') || normName.includes('plunge') || normName.includes('ice bath') || normName.includes('cryo') ||
+    normName.includes('sauna') || normName.includes('hyperthermi') || normName.includes('steam room') || normName.includes('hot bath') ||
+    normName.includes('breath') || normName.includes('sigh') || normName.includes('box breath') || normName.includes('4-7-8') ||
+    normName.includes('coherent') || normName.includes('wim hof') || normName.includes('respiration') ||
+    normName.includes('meditat') || normName.includes('mindful') || normName.includes('nsdr') || normName.includes('nidra') ||
+    normName.includes('vagus') || normName.includes('vagal') ||
+    normName.includes('zone 2') || normName.includes('walk') || normName.includes('ambulation') || normName.includes('glucose walk') ||
+    normName.includes('soleus') || normName.includes('stretch') || normName.includes('flexibility') || normName.includes('mobility') ||
+    normName.includes('yoga') || normName.includes('run') || normName.includes('cardio') || normName.includes('endurance') ||
+    normName.includes('fast') || normName.includes('feeding window') || normName.includes('time-restrict') || normName.includes('tre') ||
+    normName.includes('trf') || normName.includes('omad') || normName.includes('autophagy') || normName.includes('fmd') ||
+    normName.includes('sleep') || normName.includes('wind down') || normName.includes('bedtime') || normName.includes('mouth tape') ||
+    normName.includes('blue light') || normName.includes('melatonin') || normName.includes('thermal drop') || normName.includes('circadian') ||
+    normName.includes('morning light') || normName.includes('sunlight') || normName.includes('caffeine cutoff') ||
+    normName.includes('magnesium') || normName.includes('glycine') || normName.includes('theanine') || normName.includes('apigenin') ||
+    normName.includes('gaba') || normName.includes('inositol') || normName.includes('tart cherry') ||
+    normName.includes('berberine') || normName.includes('metformin') || normName.includes('acarbose') ||
+    normName.includes('acetic acid') || normName.includes('apple cider vinegar') ||
+    normName.includes('urolithin') || normName.includes('spermidine') || normName.includes('rapamycin') ||
+    normName.includes('sirolimus') || normName.includes('fisetin') || normName.includes('quercetin') ||
+    normName.includes('dasatinib') || normName.includes('ashwagandha') || normName.includes('sulforaphane') ||
+    normName.includes('ndga') || normName.includes('ala') || normName.includes('alpha-lipoic') ||
+    normName.includes('nmn') || normName.includes('nad')
+  )
+
+  return isGrowth || isRecovery
+}
+
+/**
+ * Deduplicates tasks on the same date by modality identity, merging protocol lineages and completed statuses.
+ * Guarantees modalities never repeat 5+ times on the daily pulse.
+ */
+export function deduplicatePulseTasks(tasks: DailyProtocolTask[]): DailyProtocolTask[] {
+  const map = new Map<string, DailyProtocolTask>()
+
+  tasks.forEach(task => {
+    const modality = task.protocol_step?.modality || task.loose_modality || (task as any).modality
+    const modalityId = (task.modality_id || task.protocol_step?.modality_id || modality?.id || modality?.slug || '').trim().toLowerCase()
+    const modalityName = (modality?.name || modality?.display_name || (task as any).name || '').trim().toLowerCase()
+    
+    // Key based on normalized modality ID or name
+    const baseKey = modalityId || modalityName || task.id
+    const splitNumber = task.execution_details?.split_dose_number || 0
+    const dedupeKey = splitNumber > 0 ? `${baseKey}_split_${splitNumber}` : baseKey
+
+    if (!map.has(dedupeKey)) {
+      const initialLineages: Array<{ protocol_id?: string; protocol_name: string; color_hex?: string; protocol_type?: string }> = []
+      if (task.lineages && task.lineages.length > 0) {
+        initialLineages.push(...task.lineages)
+      } else if (task.protocol_step?.protocol) {
+        initialLineages.push({
+          protocol_id: task.protocol_step.protocol.id,
+          protocol_name: task.protocol_step.protocol.name,
+          color_hex: (task.protocol_step.protocol as any).color_hex || '#A855F7'
+        })
+      } else if ((task as any).user_protocol_instance?.protocol) {
+        initialLineages.push({
+          protocol_id: (task as any).user_protocol_instance.protocol.id,
+          protocol_name: (task as any).user_protocol_instance.protocol.name,
+          color_hex: (task as any).user_protocol_instance.protocol.color_hex || '#A855F7'
+        })
+      }
+
+      map.set(dedupeKey, {
+        ...task,
+        lineages: initialLineages
+      })
+    } else {
+      const existing = map.get(dedupeKey)!
+      
+      // 1. If any task instance is completed, mark consolidated task completed
+      if (task.status === 'completed' && existing.status !== 'completed') {
+        existing.status = 'completed'
+        existing.completed_at = task.completed_at
+      }
+      
+      // 2. Merge protocol lineages
+      if (task.lineages && task.lineages.length > 0) {
+        task.lineages.forEach(l => {
+          if (!existing.lineages?.some(el => el.protocol_name === l.protocol_name)) {
+            existing.lineages = [...(existing.lineages || []), l]
+          }
+        })
+      } else if (task.protocol_step?.protocol) {
+        const proto = task.protocol_step.protocol
+        if (!existing.lineages?.some(el => el.protocol_name === proto.name)) {
+          existing.lineages = [
+            ...(existing.lineages || []),
+            {
+              protocol_id: proto.id,
+              protocol_name: proto.name,
+              color_hex: (proto as any).color_hex || '#A855F7'
+            }
+          ]
+        }
+      }
+
+      // 3. Preserve richest execution details
+      if (task.execution_details && !existing.execution_details) {
+        existing.execution_details = task.execution_details
+      }
+    }
+  })
+
+  return Array.from(map.values())
+}
+
+/**
+ * Determines whether a modality is primarily Growth (Anabolic), Recovery (Autophagic/Parasympathetic), or Irrelevant.
+ */
+export function classifyModalityVector(task: DailyProtocolTask): { type: 'growth' | 'recovery' | 'irrelevant'; vector: string; impact: string } {
+  if (!isPulseRelevantModality(task)) {
+    return { type: 'irrelevant', vector: 'None', impact: 'Little to no bearing on growth vs recovery' }
+  }
+
+  const name = getModalityName(task).toLowerCase()
+
+  // 1. Growth (mTORC1, Anabolism, Mechanical Strain, Ergogenic, Hypertrophic Remodeling)
   if (
     name.includes('resistance') ||
     name.includes('lift') ||
@@ -143,71 +360,85 @@ function classifyModalityVector(task: DailyProtocolTask): { type: 'growth' | 're
     name.includes('hypertrophy') ||
     name.includes('push') ||
     name.includes('pull') ||
-    name.includes('legs') ||
+    name.includes('leg') ||
+    name.includes('workout') ||
+    name.includes('compound') ||
+    name.includes('dumbbell') ||
+    name.includes('barbell') ||
+    name.includes('kettlebell') ||
+    name.includes('squat') ||
+    name.includes('deadlift') ||
+    name.includes('press') ||
     name.includes('protein') ||
+    name.includes('whey') ||
     name.includes('creatine') ||
     name.includes('eaa') ||
     name.includes('bcaa') ||
     name.includes('zone 5') ||
     name.includes('sprint') ||
-    name.includes('hiit')
+    name.includes('hiit') ||
+    name.includes('shear stress') ||
+    name.includes('vilpa') ||
+    name.includes('murph') ||
+    name.includes('cjc') ||
+    name.includes('ipamorelin') ||
+    name.includes('bpc-157') ||
+    name.includes('tb-500') ||
+    name.includes('ghk-cu') ||
+    name.includes('kpv') ||
+    name.includes('aod-9604') ||
+    name.includes('red light') ||
+    name.includes('photobiomodulation')
   ) {
     if (name.includes('creatine')) {
       return { type: 'growth', vector: 'mTOR_Growth', impact: 'Cellular ATP replenishment & satellite cell signaling' }
     }
-    if (name.includes('protein') || name.includes('eaa')) {
+    if (name.includes('protein') || name.includes('eaa') || name.includes('leucine')) {
       return { type: 'growth', vector: 'mTOR_Growth', impact: 'Leucine-triggered muscle protein synthesis (MPS)' }
+    }
+    if (name.includes('red light') || name.includes('photobiomodulation')) {
+      return { type: 'growth', vector: 'mTOR_Growth', impact: 'Cytochrome c oxidase stimulation & mitochondrial ATP remodeling' }
+    }
+    if (name.includes('bpc') || name.includes('tb-500') || name.includes('ghk') || name.includes('kpv')) {
+      return { type: 'growth', vector: 'mTOR_Growth', impact: 'Angiogenesis, fibroblast migration & tissue remodeling' }
     }
     return { type: 'growth', vector: 'mTOR_Growth', impact: 'Mechanical tension & anabolic mechanotransduction' }
   }
 
-  // 2. Recovery (AMPK, Autophagy, Parasympathetic, Vagal)
-  if (
-    name.includes('fast') ||
-    name.includes('cold') ||
-    name.includes('plunge') ||
-    name.includes('ice') ||
-    name.includes('sauna') ||
-    name.includes('heat') ||
-    name.includes('breath') ||
-    name.includes('nsdr') ||
-    name.includes('nidra') ||
-    name.includes('meditat') ||
-    name.includes('magnesium') ||
-    name.includes('glycine') ||
-    name.includes('sleep') ||
-    name.includes('zone 2') ||
-    name.includes('walk') ||
-    name.includes('fisetin') ||
-    name.includes('quercetin')
-  ) {
-    if (name.includes('cold') || name.includes('plunge')) {
-      return { type: 'recovery', vector: 'Parasympathetic_Recovery', impact: 'Vagal rebound, dopamine sustain & mitochondrial biogenesis' }
-    }
-    if (name.includes('sauna')) {
-      return { type: 'recovery', vector: 'Parasympathetic_Recovery', impact: 'Heat shock proteins (HSP70) & peripheral vasodilation' }
-    }
-    if (name.includes('fast')) {
-      return { type: 'recovery', vector: 'AMPK_Clearance', impact: 'Hepatic glycogen clearing & macroautophagy' }
-    }
-    if (name.includes('zone 2')) {
-      return { type: 'recovery', vector: 'AMPK_Clearance', impact: 'Mitochondrial efficiency & lactate clearance' }
-    }
-    if (name.includes('fisetin') || name.includes('quercetin')) {
-      return { type: 'recovery', vector: 'Senolytic_Clearance', impact: 'Selective apoptotic clearance of senescent cells' }
-    }
-    return { type: 'recovery', vector: 'Parasympathetic_Recovery', impact: 'Autonomic nervous system down-regulation & restorative sleep prep' }
+  // 2. Recovery (AMPK, Autophagy, Parasympathetic, Vagal, Restorative Sleep)
+  if (name.includes('cold') || name.includes('plunge') || name.includes('cryo')) {
+    return { type: 'recovery', vector: 'Parasympathetic_Recovery', impact: 'Vagal rebound, norepinephrine surge & mitochondrial biogenesis' }
+  }
+  if (name.includes('sauna') || name.includes('hyperthermi') || name.includes('heat')) {
+    return { type: 'recovery', vector: 'Parasympathetic_Recovery', impact: 'Heat shock proteins (HSP70) & peripheral vasodilation' }
+  }
+  if (name.includes('fast') || name.includes('trf') || name.includes('omad') || name.includes('autophagy')) {
+    return { type: 'recovery', vector: 'AMPK_Clearance', impact: 'Hepatic glycogen clearing & macroautophagy' }
+  }
+  if (name.includes('zone 2') || name.includes('walk') || name.includes('ambulation')) {
+    return { type: 'recovery', vector: 'AMPK_Clearance', impact: 'Mitochondrial fatty acid oxidation & lactate clearance' }
+  }
+  if (name.includes('breath') || name.includes('sigh') || name.includes('4-7-8') || name.includes('box breath') || name.includes('meditat') || name.includes('nsdr')) {
+    return { type: 'recovery', vector: 'Parasympathetic_Recovery', impact: 'Vagal nerve stimulation & central parasympathetic shift' }
+  }
+  if (name.includes('fisetin') || name.includes('quercetin') || name.includes('dasatinib')) {
+    return { type: 'recovery', vector: 'Senolytic_Clearance', impact: 'Selective apoptotic clearance of senescent cells' }
+  }
+  if (name.includes('berberine') || name.includes('metformin') || name.includes('acarbose')) {
+    return { type: 'recovery', vector: 'AMPK_Clearance', impact: 'AMPK Thr172 phosphorylation & glycemic clearing' }
   }
 
-  // Baseline
-  return { type: 'baseline', vector: 'Baseline_Hygiene', impact: 'Circadian anchoring & baseline micronutrient support' }
+  return { type: 'recovery', vector: 'Parasympathetic_Recovery', impact: 'Autonomic nervous system down-regulation & restorative sleep prep' }
 }
 
 /**
- * Calculates the Growth vs. Recovery Mode Barometer and partitions drivers
+ * Calculates the Growth vs. Recovery Mode Barometer and partitions drivers.
+ * Strictly deduplicates by modality and excludes non-growth/recovery items.
  */
 export function calculateDailyPulseBalance(tasks: DailyProtocolTask[], dateStr: string): DailyPulseBalance {
-  const dayTasks = tasks.filter(t => t.scheduled_date === dateStr)
+  const rawDayTasks = tasks.filter(t => t.scheduled_date === dateStr)
+  const relevantDayTasks = rawDayTasks.filter(isPulseRelevantModality)
+  const dayTasks = deduplicatePulseTasks(relevantDayTasks)
 
   if (dayTasks.length === 0) {
     return {
@@ -259,7 +490,7 @@ export function calculateDailyPulseBalance(tasks: DailyProtocolTask[], dateStr: 
     archetypeColor = 'text-blue-400'
   }
 
-  // 3. Partition Driver Items
+  // 3. Partition Driver Items (Only genuine, deduplicated Growth & Recovery drivers)
   const growthDrivers: DriverItem[] = []
   const recoveryDrivers: DriverItem[] = []
   const baselineDrivers: DriverItem[] = []
@@ -267,6 +498,8 @@ export function calculateDailyPulseBalance(tasks: DailyProtocolTask[], dateStr: 
   dayTasks.forEach(task => {
     const name = getModalityName(task)
     const classification = classifyModalityVector(task)
+    if (classification.type === 'irrelevant') return
+
     const dose = task.execution_details?.custom_dose || task.protocol_step?.dose_text || (task.protocol_step?.modality as any)?.dose_or_exposure || 'Standard Dose'
     const timing = task.timing_slot || 'anytime'
 
@@ -283,12 +516,10 @@ export function calculateDailyPulseBalance(tasks: DailyProtocolTask[], dateStr: 
       growthDrivers.push(item)
     } else if (classification.type === 'recovery') {
       recoveryDrivers.push(item)
-    } else {
-      baselineDrivers.push(item)
     }
   })
 
-  // 4. Run Timing Optimization Checks
+  // 4. Run Timing Optimization Checks on deduplicated tasks
   const suggestions = detectTimingOptimizations(dayTasks)
 
   return {
@@ -584,7 +815,9 @@ export function calculateDayPhasesAndTransitions(
   userProfile?: UserProfile | null,
   dateStr?: string
 ): DayPhasesAndTransitions {
-  const dayTasks = dateStr ? tasks.filter(t => t.scheduled_date === dateStr) : tasks
+  const rawDayTasks = dateStr ? tasks.filter(t => t.scheduled_date === dateStr) : tasks
+  const relevantDayTasks = rawDayTasks.filter(isPulseRelevantModality)
+  const dayTasks = deduplicatePulseTasks(relevantDayTasks)
 
   // 1. Determine user wake time & bedtime defaults
   let wakeHour = 6.5 // 6:30 AM
@@ -1309,7 +1542,9 @@ export function assessProtocolForDeepOptimizations(
   userProfile?: UserProfile | null,
   dateStr?: string
 ): ProtocolOptimizationFinding[] {
-  const dayTasks = dateStr ? tasks.filter(t => t.scheduled_date === dateStr) : tasks
+  const rawDayTasks = dateStr ? tasks.filter(t => t.scheduled_date === dateStr) : tasks
+  const relevantDayTasks = rawDayTasks.filter(isPulseRelevantModality)
+  const dayTasks = deduplicatePulseTasks(relevantDayTasks)
   const findings: ProtocolOptimizationFinding[] = []
 
   // 1. Resolve Bedtime & Wake Time

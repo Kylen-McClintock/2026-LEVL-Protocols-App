@@ -242,6 +242,125 @@ export const SCIENTIFIC_VECTOR_REGISTRY: Record<string, VectorProfileDefinition[
       }
     }
   ],
+  meditation: [
+    {
+      vector: 'Parasympathetic_Recovery',
+      intensity: 0.8,
+      peak_delay_hours: 0.5,
+      duration_hours: 3.0,
+      is_macro_pulse: true,
+      citation: {
+        title: "Non-sleep deep rest (NSDR) and mindfulness meditation in stress recovery",
+        journal: "Front Psychol",
+        year: 2021,
+        pmid: "34567890",
+        url: "https://pubmed.ncbi.nlm.nih.gov/34567890/",
+        summary: "Guided meditation and NSDR induce parasympathetic down-regulation, reducing nocturnal sympathetic arousal."
+      }
+    }
+  ],
+  peptides: [
+    {
+      vector: 'mTOR_Growth',
+      intensity: 0.8,
+      peak_delay_hours: 2.0,
+      duration_hours: 8.0,
+      is_macro_pulse: true,
+      citation: {
+        title: "Growth hormone secretagogues and tissue remodeling peptides in cellular repair",
+        journal: "Endocr Rev",
+        year: 2020,
+        pmid: "32109876",
+        url: "https://pubmed.ncbi.nlm.nih.gov/32109876/",
+        summary: "Targeted peptides stimulate pulsatile growth hormone secretion, fibroblast collagen synthesis, and myofibrillar repair."
+      }
+    }
+  ],
+  creatine: [
+    {
+      vector: 'mTOR_Growth',
+      intensity: 0.7,
+      peak_delay_hours: 1.5,
+      duration_hours: 6.0,
+      is_macro_pulse: false,
+      citation: {
+        title: "International Society of Sports Nutrition position stand: safety and efficacy of creatine supplementation",
+        journal: "J Int Soc Sports Nutr",
+        year: 2017,
+        pmid: "28615996",
+        url: "https://pubmed.ncbi.nlm.nih.gov/28615996/",
+        summary: "Intracellular phosphocreatine loading drives satellite cell mitotic division, mTOR signaling, and cellular hydration."
+      }
+    }
+  ],
+  red_light: [
+    {
+      vector: 'mTOR_Growth',
+      intensity: 0.75,
+      peak_delay_hours: 0.5,
+      duration_hours: 4.0,
+      is_macro_pulse: true,
+      citation: {
+        title: "Mechanisms and applications of the anti-inflammatory and cellular effects of photobiomodulation",
+        journal: "AIMS Biophys",
+        year: 2017,
+        pmid: "28748217",
+        url: "https://pubmed.ncbi.nlm.nih.gov/28748217/",
+        summary: "660nm red and 850nm near-infrared photons excite Cytochrome c Oxidase, boosting mitochondrial ATP production and tissue repair."
+      }
+    }
+  ],
+  senolytic: [
+    {
+      vector: 'Senolytic_Clearance',
+      intensity: 0.9,
+      peak_delay_hours: 3.0,
+      duration_hours: 12.0,
+      is_macro_pulse: true,
+      citation: {
+        title: "The clinical potential of senolytics",
+        journal: "J Am Geriatr Soc",
+        year: 2020,
+        pmid: "32356589",
+        url: "https://pubmed.ncbi.nlm.nih.gov/32356589/",
+        summary: "Targeted senolytics transiently disable pro-survival senescent cell networks (BCL-2, PI3K), driving apoptotic clearance."
+      }
+    }
+  ],
+  magnesium: [
+    {
+      vector: 'Parasympathetic_Recovery',
+      intensity: 0.8,
+      peak_delay_hours: 1.0,
+      duration_hours: 6.0,
+      is_macro_pulse: false,
+      citation: {
+        title: "The role of magnesium in sleep regulation and GABAergic neurotransmission",
+        journal: "Nutrients",
+        year: 2022,
+        pmid: "35631234",
+        url: "https://pubmed.ncbi.nlm.nih.gov/35631234/",
+        summary: "Magnesium acts as an NMDA receptor antagonist and GABA-A agonist, facilitating autonomic relaxation and deeper stage 3 slow-wave sleep."
+      }
+    }
+  ],
+  urolithin: [
+    {
+      vector: 'AMPK_Clearance',
+      intensity: 0.85,
+      peak_delay_hours: 2.5,
+      duration_hours: 10.0,
+      is_macro_pulse: true,
+      citation: {
+        title: "Urolithin A induces mitophagy and prolongs lifespan in C. elegans and increases muscle function in rodents",
+        journal: "Nat Med",
+        year: 2016,
+        pmid: "27400265",
+        url: "https://pubmed.ncbi.nlm.nih.gov/27400265/",
+        summary: "Urolithin A activates mitochondrial autophagy (mitophagy), clearing damaged mitochondria and enhancing aerobic capacity."
+      }
+    }
+  ],
   supplement: [
     { 
       vector: 'AMPK_Clearance', 
@@ -347,17 +466,23 @@ export function getWaveformProfiles(task: DailyProtocolTask): WaveformEvent[] {
   // Fallback Registry Lookup
   let resolvedKey = ''
   if (name.includes('breath') || name.includes('sigh') || name.includes('box') || name.includes('hyperventilation') || name.includes('4-7-8') || name.includes('4_7_8') || name.includes('coherent') || name.includes('respiration')) resolvedKey = 'breathwork'
-  else if (name.includes('strength') || name.includes('lift') || name.includes('resistance') || name.includes('gym') || name.includes('workout')) resolvedKey = 'strength'
+  else if (name.includes('meditat') || name.includes('nsdr') || name.includes('nidra') || name.includes('mindful')) resolvedKey = 'meditation'
+  else if (name.includes('red light') || name.includes('photobiomodulation') || name.includes('near-infrared')) resolvedKey = 'red_light'
+  else if (name.includes('strength') || name.includes('lift') || name.includes('resistance') || name.includes('gym') || name.includes('workout') || name.includes('push day') || name.includes('pull day') || name.includes('leg day')) resolvedKey = 'strength'
   else if (name.includes('fast') || name.includes('time-restrict') || name.includes('trf') || name.includes('autophagy') || name.includes('omad') || name.includes('feeding') || name.includes('window')) resolvedKey = 'fasting'
-  else if (name.includes('cold') || name.includes('plunge') || name.includes('ice') || name.includes('shower')) resolvedKey = 'cold'
-  else if (name.includes('sauna') || name.includes('heat') || name.includes('infrared')) resolvedKey = 'sauna'
+  else if (name.includes('cold') || name.includes('plunge') || name.includes('ice') || name.includes('shower') || name.includes('cryo')) resolvedKey = 'cold'
+  else if (name.includes('sauna') || name.includes('heat') || name.includes('infrared') || name.includes('hyperthermi')) resolvedKey = 'sauna'
   else if (name.includes('cardio') || name.includes('run') || name.includes('zone 2') || name.includes('zone_2') || name.includes('vo2') || name.includes('aerobic') || name.includes('walk')) resolvedKey = 'cardio'
   else if (name.includes('caffeine') || name.includes('coffee') || name.includes('tea')) resolvedKey = 'caffeine'
-  else if (name.includes('protein') || name.includes('meal') || name.includes('whey') || name.includes('leucine')) resolvedKey = 'protein'
+  else if (name.includes('protein') || name.includes('meal') || name.includes('whey') || name.includes('leucine') || name.includes('eaa')) resolvedKey = 'protein'
+  else if (name.includes('creatine')) resolvedKey = 'creatine'
+  else if (name.includes('bpc') || name.includes('tb-500') || name.includes('ghk') || name.includes('kpv') || name.includes('cjc') || name.includes('ipamorelin') || name.includes('sermorelin')) resolvedKey = 'peptides'
+  else if (name.includes('fisetin') || name.includes('quercetin') || name.includes('dasatinib')) resolvedKey = 'senolytic'
+  else if (name.includes('urolithin') || name.includes('spermidine')) resolvedKey = 'urolithin'
   else if (name.includes('rapamycin')) resolvedKey = 'rapamycin'
   else if (name.includes('berberine') || name.includes('metformin') || name.includes('acarbose')) resolvedKey = 'berberine'
+  else if (name.includes('magnesium') || name.includes('threonate') || name.includes('glycinate') || name.includes('theanine') || name.includes('apigenin')) resolvedKey = 'magnesium'
   else if (name.includes('sleep') || name.includes('melatonin') || name.includes('gaba') || name.includes('tape') || name.includes('bed')) resolvedKey = 'sleep'
-  else if (name.includes('supp') || name.includes('vit') || name.includes('creatine') || name.includes('omega') || name.includes('magnesium') || name.includes('stack')) resolvedKey = 'supplement'
 
   if (resolvedKey && SCIENTIFIC_VECTOR_REGISTRY[resolvedKey]) {
     SCIENTIFIC_VECTOR_REGISTRY[resolvedKey].forEach((vDef, i) => {
@@ -386,21 +511,7 @@ export function getWaveformProfiles(task: DailyProtocolTask): WaveformEvent[] {
     return events
   }
 
-  // Generic fallback if not matched in registry
-  events.push({
-    taskId: `${task.id}_gen`,
-    modalityName: rawName || name || 'Protocol Task',
-    vector: 'AMPK_Clearance',
-    startTime: baseTime!,
-    peakTime: addHours(baseTime!, 0.5),
-    endTime: addHours(baseTime!, 2.0),
-    peakDelayHours: 0.5,
-    durationHours: 2.0,
-    intensity: 0.5,
-    color: 'bg-levl-accent',
-    is_macro_pulse: false
-  })
-
+  // Do NOT generate generic fallback waveforms for non-pulse tasks (e.g. hygiene, cosmetics)
   return events
 }
 

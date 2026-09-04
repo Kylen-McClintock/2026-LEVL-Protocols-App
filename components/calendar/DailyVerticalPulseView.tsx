@@ -46,7 +46,10 @@ import {
   resolveModalityMechanism,
   resolveModeKickoffMechanism,
   ModalityMechanismDetail,
-  ProtocolOptimizationFinding
+  ProtocolOptimizationFinding,
+  isPulseRelevantModality,
+  deduplicatePulseTasks,
+  classifyModalityVector
 } from '@/lib/calendar/pulseOptimizationEngine'
 import { calculateDynamicFastedWindow } from '@/lib/calendar/waveformMapper'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
@@ -107,9 +110,12 @@ export default function DailyVerticalPulseView({
     return calculateDailyPulseBalance(tasks, dateStr)
   }, [tasks, dateStr])
 
-  // 2. Calculate day tasks & dynamic fasted window
+  // 2. Calculate day tasks & dynamic fasted window:
+  // Strictly filter to genuine Growth & Recovery modalities and deduplicate to prevent 5+ duplicate rows!
   const dayTasks = useMemo(() => {
-    return tasks.filter(t => t.scheduled_date === dateStr)
+    const rawDayTasks = tasks.filter(t => t.scheduled_date === dateStr)
+    const relevantTasks = rawDayTasks.filter(isPulseRelevantModality)
+    return deduplicatePulseTasks(relevantTasks)
   }, [tasks, dateStr])
 
   const fastedCalc = useMemo(() => {
@@ -191,13 +197,12 @@ export default function DailyVerticalPulseView({
         return true
       }
 
-      // It's a task
-      const name = (entry.task.protocol_step?.modality?.name || entry.task.loose_modality?.name || (entry.task as any).modality?.name || '').toLowerCase()
-      const isGrowth = name.includes('lift') || name.includes('resistance') || name.includes('strength') || name.includes('creatine') || name.includes('protein') || name.includes('hiit') || name.includes('push') || name.includes('pull') || name.includes('legs')
-      const isRecovery = name.includes('sauna') || name.includes('cold') || name.includes('plunge') || name.includes('breath') || name.includes('walk') || name.includes('sleep') || name.includes('magnesium') || name.includes('fast') || name.includes('berberine')
+      // It's a task: classify using classifyModalityVector
+      const classification = classifyModalityVector(entry.task)
+      if (classification.type === 'irrelevant') return false
 
-      if (verticalModeFilter === 'growth') return isGrowth
-      if (verticalModeFilter === 'recovery') return isRecovery || (!isGrowth)
+      if (verticalModeFilter === 'growth') return classification.type === 'growth'
+      if (verticalModeFilter === 'recovery') return classification.type === 'recovery'
       return true
     })
   }, [timelineEntries, verticalModeFilter])
@@ -1128,9 +1133,9 @@ export default function DailyVerticalPulseView({
               const timeStr = task.scheduled_time || formatHourToTimeStr(entry.hour)
               const isExpanded = expandedTimelineKeys.has(task.id)
 
-              const lowerName = name.toLowerCase()
-              const isGrowth = lowerName.includes('lift') || lowerName.includes('resistance') || lowerName.includes('strength') || lowerName.includes('creatine') || lowerName.includes('protein') || lowerName.includes('hiit') || lowerName.includes('push') || lowerName.includes('pull') || lowerName.includes('legs')
-              const isRecovery = lowerName.includes('sauna') || lowerName.includes('cold') || lowerName.includes('plunge') || lowerName.includes('breath') || lowerName.includes('walk') || lowerName.includes('sleep') || lowerName.includes('magnesium') || lowerName.includes('fast') || lowerName.includes('berberine')
+              const classification = classifyModalityVector(task)
+              const isGrowth = classification.type === 'growth'
+              const isRecovery = classification.type === 'recovery'
 
               const criticalMatch = findCriticalModalityMatch(task)
 
@@ -1140,9 +1145,7 @@ export default function DailyVerticalPulseView({
                   <div className={`absolute -left-[20px] sm:-left-[32px] top-3.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 shadow-md transition-transform group-hover:scale-125 ${
                     isGrowth 
                       ? 'bg-purple-500 shadow-[0_0_8px_#a855f7]' 
-                      : isRecovery 
-                      ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' 
-                      : 'bg-cyan-400'
+                      : 'bg-emerald-400 shadow-[0_0_8px_#34d399]'
                   }`} />
 
                   {/* Modality Card - Concise by default, Inspect button to expand */}
@@ -1151,9 +1154,7 @@ export default function DailyVerticalPulseView({
                     className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer hover:scale-[1.006] active:scale-[0.995] group/taskcard ${
                     isGrowth 
                       ? 'bg-purple-950/20 border-purple-500/30 hover:border-purple-400 hover:bg-purple-950/30 shadow-sm' 
-                      : isRecovery 
-                      ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-950/30 shadow-sm' 
-                      : 'bg-slate-900/60 border-white/10 hover:border-white/25 hover:bg-slate-900/80'
+                      : 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-950/30 shadow-sm'
                   }`}>
                     {/* Header Row: Concise By Default */}
                     <div className="flex items-center justify-between gap-2">
@@ -1164,13 +1165,26 @@ export default function DailyVerticalPulseView({
                         <span className="text-xs font-black text-white truncate">{name}</span>
                         <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0 ${
                           isGrowth 
-                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' 
-                            : isRecovery 
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
-                            : 'bg-white/10 text-slate-300 border-white/15'
+                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/30 font-bold' 
+                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 font-bold'
                         }`}>
-                          {isGrowth ? '🟣 Growth' : isRecovery ? '🟢 Recovery' : 'Baseline'}
+                          {isGrowth ? '🟣 Growth' : '🟢 Recovery'}
                         </span>
+
+                        {/* Merged Protocol Lineages Badges */}
+                        {task.lineages && task.lineages.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            {task.lineages.map((lin, lIdx) => (
+                              <span 
+                                key={lIdx} 
+                                style={{ borderColor: `${lin.color_hex || '#A855F7'}60`, color: lin.color_hex || '#C084FC' }}
+                                className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-white/5 border shrink-0"
+                              >
+                                {lin.protocol_name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
 
                         {criticalMatch && (
                           <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1 shrink-0">
