@@ -7,6 +7,7 @@ import GeekMode from './GeekMode'
 import { generateCoachInsight } from '@/lib/ranking/insights'
 import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import OutcomePill from '@/components/outcomes/OutcomePill'
+import ModalityIcon from '../ui/ModalityIcon'
 import MedicalDisclaimerBanner from '../ui/MedicalDisclaimerBanner'
 
 type ModalityCardProps = {
@@ -79,7 +80,10 @@ export default function ModalityCard({ session, userProfile, onComplete, onSkip,
                 </span>
               )}
             </div>
-            <h3 className="font-bold text-lg leading-tight">{modality.display_name || modality.name}</h3>
+            <h3 className="font-bold text-lg leading-tight flex items-center gap-2">
+              <ModalityIcon modality={modality} size={20} className="shrink-0" />
+              <span>{modality.display_name || modality.name}</span>
+            </h3>
             
             {/* Dosing Details */}
             <div className="flex flex-wrap items-center gap-1.5 mt-2">

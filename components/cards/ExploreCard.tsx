@@ -10,6 +10,7 @@ import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import { evaluateStackFit, StackFitResult } from '@/lib/synergy/stackFitEngine'
 import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
 import OutcomePill from '@/components/outcomes/OutcomePill'
+import ModalityIcon from '../ui/ModalityIcon'
 import { detectContraindications } from '@/lib/safety/contraindicationEngine'
 
 type ExploreCardProps = {
@@ -111,7 +112,10 @@ export default function ExploreCard({
       >
         <div className="w-full min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-bold text-lg text-white break-words">{modality.display_name || modality.name}</h3>
+            <h3 className="font-bold text-lg text-white break-words flex items-center gap-2">
+              <ModalityIcon modality={modality} size={20} className="shrink-0" />
+              <span>{modality.display_name || modality.name}</span>
+            </h3>
             
             {/* Active Today / Bench / Conflict / Eliminated History Status Badges */}
             {isCurrentlyActiveInToday && (

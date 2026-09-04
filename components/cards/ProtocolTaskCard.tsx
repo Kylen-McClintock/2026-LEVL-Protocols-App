@@ -38,6 +38,7 @@ import PeptideExecutionLog from '../execution/PeptideExecutionLog'
 import CompletedExecutionSummary from '../execution/CompletedExecutionSummary'
 import ManageTaskModal from '../modals/ManageTaskModal'
 import { DosageBadgeButton } from '../ui/DosageBadgeButton'
+import ModalityIcon from '../ui/ModalityIcon'
 import { HabitAnalyticsModal } from '../modals/HabitAnalyticsModal'
 import MedicalDisclaimerBanner from '../ui/MedicalDisclaimerBanner'
 import { saveInjectionSiteLog } from '@/lib/peptides/reconstitutionEngine'
@@ -1564,8 +1565,9 @@ export default function ProtocolTaskCard({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-sm text-amber-100/90 truncate">
-                  {modality.display_name || modality.name}
+                <h3 className="font-bold text-sm text-amber-100/90 truncate flex items-center gap-1.5">
+                  <ModalityIcon modality={modality} size={16} className="shrink-0 opacity-80" glow={false} />
+                  <span className="truncate">{modality.display_name || modality.name}</span>
                 </h3>
                 <span className="text-xs font-mono font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full shrink-0">
                   ⏰ Snoozed
@@ -1594,8 +1596,9 @@ export default function ProtocolTaskCard({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-sm text-white/90 line-through decoration-emerald-500/50 decoration-2 truncate">
-                  {modality.display_name || modality.name}
+                <h3 className="font-bold text-sm text-white/90 line-through decoration-emerald-500/50 decoration-2 truncate flex items-center gap-1.5">
+                  <ModalityIcon modality={modality} size={16} className="shrink-0 opacity-70" glow={false} />
+                  <span className="truncate">{modality.display_name || modality.name}</span>
                 </h3>
                 {completedSummaryText && (
                   <span 
@@ -1638,6 +1641,7 @@ export default function ProtocolTaskCard({
           <div className="flex items-center justify-between gap-2.5">
             {/* Left: Modality Name & Clickable Dynamic Dosage */}
             <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5 sm:gap-2 overflow-hidden">
+              <ModalityIcon modality={modality} size={18} className="shrink-0" />
               <h3 className="font-extrabold text-sm sm:text-base text-white leading-snug hover:text-purple-300 transition-colors">
                 {modality.display_name || modality.name}
               </h3>
@@ -1827,7 +1831,8 @@ export default function ProtocolTaskCard({
         {/* Line 1: Full-Width Modality Name & Top-Right Expand Chevron */}
         <div className={`${isSupplement ? 'mb-1' : 'mb-2.5'} flex items-start justify-between gap-2`}>
           <h3 className="font-extrabold text-base sm:text-lg leading-tight text-white flex items-center gap-2 flex-wrap min-w-0 flex-1">
-            {modality.display_name || modality.name}
+            <ModalityIcon modality={modality} size={22} className="shrink-0" />
+            <span>{modality.display_name || modality.name}</span>
             {isRecentlyCompleted && (
               <span className="text-xs font-extrabold text-emerald-300 bg-emerald-950/90 border border-emerald-500/60 px-2.5 py-0.5 rounded-full flex items-center gap-1 animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_12px_rgba(16,185,129,0.6)]">
                 <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-400" />
