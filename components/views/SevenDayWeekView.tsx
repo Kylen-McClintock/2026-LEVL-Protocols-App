@@ -235,29 +235,41 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
                     : 'bg-slate-950/60 border-slate-800/80'
                 }`}
               >
-                {/* Day Header Badge (Clickable to select and inspect day) */}
+                {/* Day Header Badge (Clickable to open Today view for this day) */}
                 <div 
                   onClick={() => onSelectDate && onSelectDate(dateStr)}
-                  title={`Click to inspect historical debrief for ${dayName}, ${format(dateObj, 'MMM d')}`}
-                  className={`flex items-center justify-between pb-0.5 border-b border-slate-800/80 cursor-pointer group hover:border-slate-600 transition-colors ${isStacked ? 'px-1' : 'text-center'}`}
+                  title={`Click to open Today view for ${dayName}, ${format(dateObj, 'MMM d')}`}
+                  className={`p-1.5 rounded-lg border cursor-pointer group transition-all active:scale-98 shadow-sm ${
+                    isSelected 
+                      ? 'bg-teal-950/80 border-teal-500/80 ring-1 ring-teal-500/40 shadow-md' 
+                      : 'bg-white/5 hover:bg-teal-500/15 border-white/10 hover:border-teal-400/60'
+                  } ${isStacked ? 'flex items-center justify-between px-2.5' : 'text-center flex flex-col items-center justify-center gap-0.5'}`}
                 >
-                  <div className={isStacked ? 'flex items-center gap-2' : 'w-full text-center'}>
-                    <span className={`text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider transition-colors ${isSelected ? 'text-teal-400' : 'text-slate-400 group-hover:text-teal-300'}`}>
+                  <div className={isStacked ? 'flex items-center gap-2' : 'w-full flex items-center justify-center gap-1.5'}>
+                    <span className={`text-[10px] font-extrabold uppercase tracking-wider transition-colors ${isSelected ? 'text-teal-300' : 'text-slate-400 group-hover:text-teal-200'}`}>
                       {isStacked ? dayName : dayShortName}
                     </span>
-                    <span className={`text-xs sm:text-sm font-extrabold leading-none ml-1 transition-colors ${isSelected ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>{dayNum}</span>
+                    <span className={`text-xs sm:text-sm font-black leading-none transition-colors ${isSelected ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
+                      {dayNum}
+                    </span>
                     
                     {/* Past day adherence % indicator */}
                     {isPastDay && dedupedTasks.length > 0 && (
-                      <span className={`ml-1.5 text-[8px] font-mono font-bold px-1 rounded ${
+                      <span className={`ml-1 text-[8px] font-mono font-bold px-1 rounded ${
                         adherencePct >= 80 
                           ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60' 
                           : 'bg-slate-900 text-slate-400 border border-slate-700'
                       }`}>
-                        {adherencePct}% ({completedCount}/{dedupedTasks.length})
+                        {adherencePct}%
                       </span>
                     )}
                   </div>
+
+                  <div className="flex items-center gap-1 text-[9px] font-bold text-teal-400/80 group-hover:text-teal-200">
+                    <span>Open Day</span>
+                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                  </div>
+
                   {isStacked && (
                     <span className="text-[10px] text-slate-400 font-mono">
                       {dedupedTasks.length} modalities
@@ -266,7 +278,14 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
                 </div>
 
                 {/* Swimlane Task Items */}
-                <div className={`space-y-0.5 flex-1 ${isStacked ? '' : 'overflow-y-auto max-h-[64vh]'}`}>
+                <div 
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                      onSelectDate && onSelectDate(dateStr)
+                    }
+                  }}
+                  className={`space-y-0.5 flex-1 ${isStacked ? '' : 'overflow-y-auto max-h-[64vh]'}`}
+                >
                   {dedupedTasks.length === 0 ? (
                     <div className="text-center py-4 text-slate-500 text-[9px]">Rest / Empty</div>
                   ) : (

@@ -22,7 +22,11 @@ import {
   upsertBenchItemOverride
 } from '@/lib/data'
 import { DailyProtocolTask, Modality, OutcomeDimension, UserProfile, UserBenchItem, DailyWellbeingCheckin as WellbeingType } from '@/lib/types'
-import { format, parseISO, addDays, subDays, isBefore, startOfDay, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns'
+import { 
+  format, parseISO, addDays, subDays, addMonths, subMonths, 
+  isBefore, startOfDay, startOfWeek, endOfWeek, eachDayOfInterval, 
+  isSameMonth, isSameDay 
+} from 'date-fns'
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw 
@@ -2027,6 +2031,102 @@ function TodayPageContent() {
     return format(currentDate, 'MMMM yyyy')
   }, [calendarViewMode, currentDate, threeDates, weekDates])
 
+  const handlePreviousBatch = () => {
+    if (calendarViewMode === '3day') {
+      navigateToDate(subDays(currentDate, 3))
+    } else if (calendarViewMode === 'week') {
+      navigateToDate(subDays(currentDate, 7))
+    } else if (calendarViewMode === 'month') {
+      navigateToDate(subMonths(currentDate, 1))
+    } else {
+      navigateToDate(subDays(currentDate, 1))
+    }
+  }
+
+  const handleNextBatch = () => {
+    if (calendarViewMode === '3day') {
+      navigateToDate(addDays(currentDate, 3))
+    } else if (calendarViewMode === 'week') {
+      navigateToDate(addDays(currentDate, 7))
+    } else if (calendarViewMode === 'month') {
+      navigateToDate(addMonths(currentDate, 1))
+    } else {
+      navigateToDate(addDays(currentDate, 1))
+    }
+  }
+
+  const prevButtonTooltip = useMemo(() => {
+    if (calendarViewMode === '3day') return 'Previous 3 days'
+    if (calendarViewMode === 'week') return 'Previous week'
+    if (calendarViewMode === 'month') return 'Previous month'
+    return 'Previous day (Yesterday)'
+  }, [calendarViewMode])
+
+  const nextButtonTooltip = useMemo(() => {
+    if (calendarViewMode === '3day') return 'Next 3 days'
+    if (calendarViewMode === 'week') return 'Next week'
+    if (calendarViewMode === 'month') return 'Next month'
+    return 'Next day (Tomorrow)'
+  }, [calendarViewMode])
+
+  const isCurrentPeriod = useMemo(() => {
+    const today = new Date()
+    if (calendarViewMode === 'today' || calendarViewMode === 'pulse') {
+      return isSameDay(currentDate, today)
+    }
+    if (calendarViewMode === '3day') {
+      const todayStr = format(today, 'yyyy-MM-dd')
+      return threeDates.includes(todayStr)
+    }
+    if (calendarViewMode === 'week') {
+      const todayStr = format(today, 'yyyy-MM-dd')
+      return weekDates.includes(todayStr)
+    }
+    if (calendarViewMode === 'month') {
+      return isSameMonth(currentDate, today)
+    }
+    return true
+  }, [calendarViewMode, currentDate, threeDates, weekDates])
+
+  const jumpButtonLabel = useMemo(() => {
+    if (calendarViewMode === 'week') return 'Jump to This Week'
+    if (calendarViewMode === 'month') return 'Jump to This Month'
+    return 'Jump to Today'
+  }, [calendarViewMode])
+
+  const navBarTitle = useMemo(() => {
+    if (calendarViewMode === 'today') {
+      return format(currentDate, 'EEEE, MMM d, yyyy')
+    }
+    if (calendarViewMode === 'pulse') {
+      return `Daily Pulse · ${format(currentDate, 'EEEE, MMM d, yyyy')}`
+    }
+    if (calendarViewMode === '3day') {
+      return `${format(parseLocalDate(threeDates[0]), 'MMM d')} – ${format(parseLocalDate(threeDates[2]), 'MMM d, yyyy')}`
+    }
+    if (calendarViewMode === 'week') {
+      return `${format(parseLocalDate(weekDates[0]), 'MMM d')} – ${format(parseLocalDate(weekDates[6]), 'MMM d, yyyy')}`
+    }
+    if (calendarViewMode === 'month') {
+      return format(currentDate, 'MMMM yyyy')
+    }
+    return format(currentDate, 'EEEE, MMM d, yyyy')
+  }, [calendarViewMode, currentDate, threeDates, weekDates])
+
+  const multiDayStats = useMemo(() => {
+    if (calendarViewMode === 'today' || calendarViewMode === 'pulse') return null
+    let total = 0
+    let completed = 0
+    Object.values(filteredMultiDayTasks).forEach(tasks => {
+      tasks.forEach(t => {
+        total++
+        if (t.status === 'completed') completed++
+      })
+    })
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+    return { total, completed, pct }
+  }, [calendarViewMode, filteredMultiDayTasks])
+
   const handleStartGroupTracking = (groupName: string, groupTasks: DedupedTask[]) => {
     setActiveGroupTrackKey(activeGroupTrackKey === groupName ? null : groupName)
     const initialValues: Record<string, number> = {}
@@ -2700,63 +2800,68 @@ function TodayPageContent() {
           showCategoryFilters={calendarViewMode !== 'today' && calendarViewMode !== 'pulse'}
         />
 
-        {/* 2. PRIMARY DATE NAVIGATION TOOLBAR (Always at Top directly below ViewSelector) */}
-        {calendarViewMode === 'today' && (
-          <div className="flex items-center justify-between w-full my-4 px-1 gap-2">
-            <button 
-              type="button"
-              onClick={() => navigateToDate(subDays(currentDate, 1))}
-              className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-800 transition-all shadow-sm cursor-pointer active:scale-95 shrink-0"
-              aria-label="Previous day"
-              title="Previous day (Yesterday)"
-            >
-              <ChevronLeft size={18} />
-            </button>
+        {/* 2. PRIMARY DATE NAVIGATION TOOLBAR (Always at Top, unified across Today, 3-Day, Week, and Month Views) */}
+        <div className="flex items-center justify-between w-full my-4 px-1 gap-2">
+          <button 
+            type="button"
+            onClick={handlePreviousBatch}
+            className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-800 transition-all shadow-sm cursor-pointer active:scale-95 shrink-0"
+            aria-label={prevButtonTooltip}
+            title={prevButtonTooltip}
+          >
+            <ChevronLeft size={18} />
+          </button>
 
-            <div className="flex items-center gap-2.5 sm:gap-3 text-center flex-wrap justify-center">
-              {!isCurrentDay && (
-                <button 
-                  type="button"
-                  onClick={() => navigateToDate(new Date())}
-                  className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900/80 border border-emerald-800/80 text-emerald-300 hover:text-emerald-200 font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer active:scale-95"
-                >
-                  Jump to Today
-                </button>
-              )}
+          <div className="flex items-center gap-2.5 sm:gap-3 text-center flex-wrap justify-center">
+            {!isCurrentPeriod && (
+              <button 
+                type="button"
+                onClick={() => navigateToDate(new Date())}
+                className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900/80 border border-emerald-800/80 text-emerald-300 hover:text-emerald-200 font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer active:scale-95"
+              >
+                {jumpButtonLabel}
+              </button>
+            )}
 
-              <span className={`text-sm sm:text-base font-extrabold text-white tracking-tight transition-opacity duration-150 ${isDateSwitching ? 'opacity-60' : 'opacity-100'}`}>
-                {format(currentDate, 'EEEE, MMM d, yyyy')}
+            <span className={`text-sm sm:text-base font-extrabold text-white tracking-tight transition-opacity duration-150 ${isDateSwitching ? 'opacity-60' : 'opacity-100'}`}>
+              {navBarTitle}
+            </span>
+
+            {calendarViewMode === 'today' && dedupedTasks.length > 0 && (
+              <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold transition-all duration-500 flex items-center gap-1.5 ${
+                progressPercent === 100
+                  ? 'bg-gradient-to-r from-emerald-500/25 via-teal-500/20 to-emerald-500/25 border border-emerald-400/80 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.5)] ring-2 ring-emerald-400/40 animate-pulse'
+                  : 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+              }`}>
+                {progressPercent === 100 ? (
+                  <>
+                    <Sparkles size={12} className="text-amber-300 animate-spin" style={{ animationDuration: '3s' }} />
+                    <span>100% Complete</span>
+                  </>
+                ) : (
+                  <span>{progressPercent}% Complete</span>
+                )}
               </span>
+            )}
 
-              {dedupedTasks.length > 0 && (
-                <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold transition-all duration-500 flex items-center gap-1.5 ${
-                  progressPercent === 100
-                    ? 'bg-gradient-to-r from-emerald-500/25 via-teal-500/20 to-emerald-500/25 border border-emerald-400/80 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.5)] ring-2 ring-emerald-400/40 animate-pulse'
-                    : 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-                }`}>
-                  {progressPercent === 100 ? (
-                    <>
-                      <Sparkles size={12} className="text-amber-300 animate-spin" style={{ animationDuration: '3s' }} />
-                      <span>100% Complete</span>
-                    </>
-                  ) : (
-                    <span>{progressPercent}% Complete</span>
-                  )}
-                </span>
-              )}
-            </div>
-
-            <button 
-              type="button"
-              onClick={() => navigateToDate(addDays(currentDate, 1))}
-              className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-800 transition-all shadow-sm cursor-pointer active:scale-95 shrink-0"
-              aria-label="Next day"
-              title="Next day (Tomorrow)"
-            >
-              <ChevronRight size={18} />
-            </button>
+            {calendarViewMode !== 'today' && calendarViewMode !== 'pulse' && multiDayStats && multiDayStats.total > 0 && (
+              <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center gap-1">
+                <span>{multiDayStats.completed}/{multiDayStats.total}</span>
+                <span className="text-emerald-400/70 font-semibold">({multiDayStats.pct}%)</span>
+              </span>
+            )}
           </div>
-        )}
+
+          <button 
+            type="button"
+            onClick={handleNextBatch}
+            className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-800 transition-all shadow-sm cursor-pointer active:scale-95 shrink-0"
+            aria-label={nextButtonTooltip}
+            title={nextButtonTooltip}
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
 
         {/* If Today view is loading / calibrating, display the dedicated Calibration screen with rotating Circadian Ring */}
         {calendarViewMode === 'today' && (loading || (!tasks.length && isDateSwitching)) ? (

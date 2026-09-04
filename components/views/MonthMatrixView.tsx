@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { DailyProtocolTask, UserProfile } from '@/lib/types'
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns'
-import { Calendar } from 'lucide-react'
+import { Calendar, ChevronRight, ArrowUpRight } from 'lucide-react'
 import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
 import { sortTasksChronologically } from '@/lib/data/resolveOptimalTiming'
@@ -228,18 +228,24 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
                 <div
                   key={dStr}
                   onClick={() => onSelectDate(dStr)}
-                  className={`p-1 rounded text-left flex flex-col justify-between min-h-[65px] sm:min-h-[75px] transition-all cursor-pointer border ${
+                  title={`Click to open Today view for ${format(dayObj, 'EEEE, MMMM d, yyyy')}`}
+                  className={`p-1 sm:p-1.5 rounded-xl text-left flex flex-col justify-between min-h-[68px] sm:min-h-[82px] transition-all cursor-pointer border group hover:border-cyan-400 hover:bg-slate-900 hover:shadow-[0_0_15px_rgba(6,182,212,0.25)] hover:scale-[1.02] active:scale-[0.98] ${
                     isSelected
                       ? 'bg-cyan-950/90 border-cyan-500 ring-1 ring-cyan-500/60 shadow-md'
                       : isCurrentToday
                       ? 'bg-teal-950/40 border-teal-600/70'
-                      : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+                      : 'bg-slate-900/60 border-slate-800/80'
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
-                    <span className={`text-[11px] font-extrabold leading-none ${isSelected ? 'text-cyan-300' : isCurrentToday ? 'text-teal-300' : 'text-slate-200'}`}>
-                      {format(dayObj, 'd')}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`text-[11px] sm:text-xs font-black leading-none transition-colors ${isSelected ? 'text-cyan-300' : isCurrentToday ? 'text-teal-300' : 'text-slate-200 group-hover:text-cyan-200'}`}>
+                        {format(dayObj, 'd')}
+                      </span>
+                      <span className="text-[9px] font-black text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        →
+                      </span>
+                    </div>
                     {completedCount > 0 && (
                       <span className={`text-[8px] px-1 py-0 rounded font-mono font-bold leading-none border ${
                         adherencePct >= 80 
@@ -251,24 +257,17 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
                     )}
                   </div>
 
-                  {/* Event Blocks */}
-                  <div className="space-y-0.5 w-full overflow-hidden mt-0.5">
+                  {/* Event Blocks - pointer-events-none ensures ANY click anywhere on the day opens Today view */}
+                  <div className="space-y-0.5 w-full overflow-hidden mt-0.5 pointer-events-none">
                     {dedupedTasks.slice(0, 3).map((t, idx) => {
                       const mod = t.protocol_step?.modality || t.loose_modality
                       const modName = mod?.name || 'Task'
                       const style = getModalityHighlightStyle(t, selectedProtocolFilter)
-                      const isExpanded = expandedTask?.id === t.id
 
                       return (
                         <div
                           key={idx}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setExpandedTask(isExpanded ? null : t)
-                          }}
-                          className={`px-1 py-0.5 rounded-r-[3px] text-[9px] font-bold truncate leading-none w-full shadow-2xs cursor-pointer ${
-                            isExpanded ? 'ring-1 ring-teal-400' : ''
-                          }`}
+                          className="px-1 py-0.5 rounded-r-[3px] text-[9px] font-bold truncate leading-none w-full shadow-2xs"
                           style={style}
                         >
                           {modName}
@@ -303,21 +302,36 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
             return (
               <div
                 key={dStr}
-                className={`p-2 rounded-xl border transition-all cursor-pointer space-y-1.5 ${
+                onClick={() => onSelectDate(dStr)}
+                title={`Click to open Today view for ${format(dayObj, 'EEEE, MMMM d, yyyy')}`}
+                className={`p-2.5 rounded-xl border transition-all cursor-pointer space-y-2 group hover:border-cyan-400/80 hover:bg-slate-900/90 hover:shadow-md ${
                   isSelected
                     ? 'bg-cyan-950/90 border-cyan-500 shadow-md'
                     : isCurrentToday
                     ? 'bg-teal-950/40 border-teal-600/70'
-                    : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+                    : 'bg-slate-900/60 border-slate-800/80'
                 }`}
               >
-                <div className="flex items-center justify-between border-b border-slate-800/60 pb-1">
-                  <span className={`text-xs font-extrabold ${isSelected ? 'text-cyan-300' : isCurrentToday ? 'text-teal-300' : 'text-white'}`}>
-                    {format(dayObj, 'EEEE, MMM d')}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {dedupedTasks.length} modalities
-                  </span>
+                <div className="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs sm:text-sm font-black ${isSelected ? 'text-cyan-300' : isCurrentToday ? 'text-teal-300' : 'text-white group-hover:text-cyan-200'}`}>
+                      {format(dayObj, 'EEEE, MMM d')}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      ({dedupedTasks.length} modalities)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectDate(dStr)
+                    }}
+                    className="px-2.5 py-1 text-[10px] font-bold text-cyan-300 hover:text-white bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 rounded-lg transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
+                  >
+                    <span>Open Today View</span>
+                    <ChevronRight size={12} />
+                  </button>
                 </div>
 
                 <div className="space-y-1">
@@ -325,18 +339,11 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
                     const mod = t.protocol_step?.modality || t.loose_modality
                     const modName = mod?.name || 'Task'
                     const style = getModalityHighlightStyle(t, selectedProtocolFilter)
-                    const isExpanded = expandedTask?.id === t.id
 
                     return (
                       <div
                         key={idx}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setExpandedTask(isExpanded ? null : t)
-                        }}
-                        className={`px-2 py-1 rounded-r-md text-xs font-bold truncate leading-tight w-full shadow-2xs ${
-                          isExpanded ? 'ring-2 ring-teal-400' : ''
-                        }`}
+                        className="px-2 py-1 rounded-r-md text-xs font-bold truncate leading-tight w-full shadow-2xs"
                         style={style}
                       >
                         {modName}

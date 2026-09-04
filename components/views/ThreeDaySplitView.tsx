@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { DailyProtocolTask, UserProfile } from '@/lib/types'
-import { Calendar, Layers, Info } from 'lucide-react'
+import { Calendar, Layers, Info, ChevronRight } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
@@ -200,6 +200,18 @@ export const ThreeDaySplitView: React.FC<ThreeDaySplitViewProps> = ({
                       {adherencePct}% ({completedCount}/{dedupedTasks.length})
                     </span>
                   )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectDate && onSelectDate(dateStr)
+                    }}
+                    className="px-2 py-0.5 text-[10px] font-bold text-teal-300 hover:text-white bg-teal-500/15 hover:bg-teal-500/30 border border-teal-500/30 rounded-md transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                    title={`Open Today view for ${dayName}, ${dayDate}`}
+                  >
+                    <span>Open Day</span>
+                    <ChevronRight size={11} />
+                  </button>
                   <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
                     isSelectedDate 
                       ? 'bg-teal-950/90 text-teal-300 border border-teal-800/80' 
