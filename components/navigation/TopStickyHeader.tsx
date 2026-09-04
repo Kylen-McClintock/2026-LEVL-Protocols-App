@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { Plus, Cloud, Sparkles, CheckCircle2, ShieldCheck, User } from 'lucide-react'
+import { Plus, Cloud, Sparkles, CheckCircle2, ShieldCheck, User, Clock, ListOrdered, CalendarDays, Activity, Columns, Calendar, LayoutGrid, ChevronDown, Check } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import QuickActionHubModal from '@/components/modals/QuickActionHubModal'
 
@@ -11,6 +11,9 @@ interface TaskStats {
   completed: number
   total: number
 }
+
+type HeaderCalendarView = 'today' | 'pulse' | '3day' | 'week' | 'month'
+type HeaderLayoutView = 'chronological' | 'protocol'
 
 export default function TopStickyHeader() {
   const router = useRouter()
@@ -20,7 +23,11 @@ export default function TopStickyHeader() {
   const [isVisible, setIsVisible] = useState(true)
   const [stats, setStats] = useState<TaskStats>({ completed: 0, total: 0 })
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false)
+  const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false)
+  const [activeCalendarView, setActiveCalendarView] = useState<HeaderCalendarView>('today')
+  const [activeLayoutView, setActiveLayoutView] = useState<HeaderLayoutView>('chronological')
   const lastScrollYRef = useRef(0)
+  const viewDropdownRef = useRef<HTMLDivElement>(null)
 
   // 1. Scroll-Direction Dynamic Visibility (Hide on Scroll Down, Reveal on Scroll Up)
   useEffect(() => {
@@ -33,6 +40,7 @@ export default function TopStickyHeader() {
       } else if (currentScrollY > lastScrollYRef.current + 10 && currentScrollY > 70) {
         // Scrolling Down -> Hide header
         setIsVisible(false)
+        setIsViewDropdownOpen(false)
       } else if (currentScrollY < lastScrollYRef.current - 8) {
         // Scrolling Up -> Reveal header
         setIsVisible(true)
@@ -45,7 +53,22 @@ export default function TopStickyHeader() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // 2. Hydrate & Listen for Task Progress Updates
+  // 2. Click outside dropdown to close
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (viewDropdownRef.current && !viewDropdownRef.current.contains(e.target as Node)) {
+        setIsViewDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [])
+
+  // 3. Hydrate & Listen for Task Progress Updates & View Mode Events
   useEffect(() => {
     const readCachedStats = () => {
       try {
@@ -55,6 +78,12 @@ export default function TopStickyHeader() {
           if (typeof parsed.completed === 'number' && typeof parsed.total === 'number') {
             setStats(parsed)
           }
+        }
+        const cachedView = localStorage.getItem('levl_active_view_modes')
+        if (cachedView) {
+          const parsedView = JSON.parse(cachedView)
+          if (parsedView.calendarViewMode) setActiveCalendarView(parsedView.calendarViewMode)
+          if (parsedView.viewMode) setActiveLayoutView(parsedView.viewMode)
         }
       } catch (e) {}
     }
@@ -70,12 +99,67 @@ export default function TopStickyHeader() {
       }
     }
 
+    const handleViewModeChange = (e: any) => {
+      if (e.detail) {
+        if (e.detail.calendarViewMode) setActiveCalendarView(e.detail.calendarViewMode)
+        if (e.detail.viewMode) setActiveLayoutView(e.detail.viewMode)
+        try {
+          localStorage.setItem('levl_active_view_modes', JSON.stringify({
+            calendarViewMode: e.detail.calendarViewMode || activeCalendarView,
+            viewMode: e.detail.viewMode || activeLayoutView
+          }))
+        } catch (err) {}
+      }
+    }
+
     window.addEventListener('levl_today_tasks_stats', handleStatsUpdate)
-    return () => window.removeEventListener('levl_today_tasks_stats', handleStatsUpdate)
-  }, [])
+    window.addEventListener('levl_view_mode_change', handleViewModeChange)
+    return () => {
+      window.removeEventListener('levl_today_tasks_stats', handleStatsUpdate)
+      window.removeEventListener('levl_view_mode_change', handleViewModeChange)
+    }
+  }, [activeCalendarView, activeLayoutView])
+
+  const handleSelectView = (calendarMode: HeaderCalendarView, layoutMode?: HeaderLayoutView) => {
+    setActiveCalendarView(calendarMode)
+    if (layoutMode) setActiveLayoutView(layoutMode)
+    setIsViewDropdownOpen(false)
+
+    if (pathname !== '/today') {
+      router.push('/today')
+    }
+
+    window.dispatchEvent(new CustomEvent('levl_set_view_mode', {
+      detail: {
+        calendarViewMode: calendarMode,
+        viewMode: layoutMode || activeLayoutView
+      }
+    }))
+  }
 
   const is100Percent = stats.total > 0 && stats.completed === stats.total
   const percentCompleted = stats.total > 0 ? Math.min(100, Math.round((stats.completed / stats.total) * 100)) : 0
+
+  // Determine current active view label and icon
+  const currentViewDetails = React.useMemo(() => {
+    if (pathname !== '/today') {
+      if (pathname.startsWith('/explore')) return { label: 'Explore', icon: <Sparkles size={12} className="text-purple-400" /> }
+      if (pathname.startsWith('/schedule')) return { label: 'Schedule', icon: <Calendar size={12} className="text-teal-400" /> }
+      if (pathname.startsWith('/tracking')) return { label: 'Insights', icon: <Activity size={12} className="text-cyan-400" /> }
+      if (pathname.startsWith('/profile') || pathname.startsWith('/settings')) return { label: 'Profile', icon: <User size={12} className="text-slate-400" /> }
+    }
+
+    if (activeCalendarView === 'pulse') return { label: 'Daily Pulse', icon: <Activity size={12} className="text-indigo-400" /> }
+    if (activeCalendarView === '3day') return { label: '3-Day View', icon: <Columns size={12} className="text-teal-400" /> }
+    if (activeCalendarView === 'week') return { label: '7-Day Week', icon: <Calendar size={12} className="text-teal-400" /> }
+    if (activeCalendarView === 'month') return { label: 'Month Matrix', icon: <LayoutGrid size={12} className="text-cyan-400" /> }
+    
+    // Today Timeline mode
+    if (activeLayoutView === 'protocol') {
+      return { label: 'Protocols', icon: <ListOrdered size={12} className="text-purple-400" /> }
+    }
+    return { label: 'Time Blocks', icon: <Clock size={12} className="text-purple-400" /> }
+  }, [pathname, activeCalendarView, activeLayoutView])
 
   return (
     <>
@@ -141,23 +225,150 @@ export default function TopStickyHeader() {
             )}
           </div>
 
-          {/* Center: Completion Counter */}
-          <div className="flex items-center justify-center">
-            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-inner transition-all duration-500 ${
-              is100Percent 
-                ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-200 shadow-[0_0_16px_rgba(16,185,129,0.35)]' 
-                : 'bg-slate-900/90 border-slate-800/90 text-white'
-            }`}>
-              <span className="text-xs font-semibold tracking-tight">
-                {stats.completed} / {stats.total}
-              </span>
-              <span className={`text-[10px] uppercase tracking-wider font-medium ${is100Percent ? 'text-emerald-300' : 'text-slate-400'}`}>
-                {is100Percent ? 'Complete' : 'Done'}
-              </span>
-              {is100Percent && (
-                <CheckCircle2 size={12} className="text-emerald-400 ml-0.5 animate-bounce" />
+          {/* Center: View Selector Dropdown & Micro Progress Badge */}
+          <div className="flex items-center justify-center relative z-50" ref={viewDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsViewDropdownOpen(!isViewDropdownOpen)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/90 border border-slate-800 hover:border-slate-700 shadow-inner text-white transition-all cursor-pointer active:scale-95"
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                {currentViewDetails.icon}
+                <span className="text-xs font-bold tracking-tight">
+                  {currentViewDetails.label}
+                </span>
+              </div>
+              <ChevronDown size={11} className={`text-slate-400 shrink-0 transition-transform ${isViewDropdownOpen ? 'rotate-180 text-purple-400' : ''}`} />
+              
+              {/* Micro Completion Counter Badge */}
+              {stats.total > 0 && (
+                <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded-full border shrink-0 ${
+                  is100Percent 
+                    ? 'bg-emerald-950/90 border-emerald-500/60 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.35)]' 
+                    : 'bg-black/60 border-white/10 text-slate-300'
+                }`}>
+                  {stats.completed}/{stats.total}
+                </span>
               )}
-            </div>
+            </button>
+
+            {/* Floating Popover Dropdown Menu */}
+            {isViewDropdownOpen && (
+              <div 
+                className="absolute top-full mt-2 w-56 p-1.5 rounded-2xl bg-slate-950/95 border border-slate-800 shadow-2xl backdrop-blur-2xl z-[100] animate-in fade-in zoom-in-95 duration-150"
+                style={{ left: '50%', transform: 'translateX(-50%)' }}
+              >
+                {/* Section 1: Daily Layout Mode */}
+                <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                  Daily Timeline Layout
+                </div>
+                <div className="space-y-0.5 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('today', 'chronological')}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCalendarView === 'today' && activeLayoutView === 'chronological'
+                        ? 'bg-purple-600 text-white shadow-sm font-extrabold'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Clock size={13} className={activeCalendarView === 'today' && activeLayoutView === 'chronological' ? 'text-white' : 'text-purple-400'} />
+                      <span>Time Blocks</span>
+                    </div>
+                    {activeCalendarView === 'today' && activeLayoutView === 'chronological' && <Check size={13} />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('today', 'protocol')}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCalendarView === 'today' && activeLayoutView === 'protocol'
+                        ? 'bg-purple-600 text-white shadow-sm font-extrabold'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ListOrdered size={13} className={activeCalendarView === 'today' && activeLayoutView === 'protocol' ? 'text-white' : 'text-purple-400'} />
+                      <span>Protocols</span>
+                    </div>
+                    {activeCalendarView === 'today' && activeLayoutView === 'protocol' && <Check size={13} />}
+                  </button>
+                </div>
+
+                <div className="h-[1px] bg-slate-800/80 my-1" />
+
+                {/* Section 2: Calendar & Multi-Day Views */}
+                <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                  Calendar & Cadence Views
+                </div>
+                <div className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('pulse')}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCalendarView === 'pulse'
+                        ? 'bg-indigo-600 text-white shadow-sm font-extrabold'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Activity size={13} className={activeCalendarView === 'pulse' ? 'text-white' : 'text-indigo-400'} />
+                      <span>Daily Pulse</span>
+                    </div>
+                    {activeCalendarView === 'pulse' && <Check size={13} />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('3day')}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCalendarView === '3day'
+                        ? 'bg-teal-600 text-white shadow-sm font-extrabold'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Columns size={13} className={activeCalendarView === '3day' ? 'text-white' : 'text-teal-400'} />
+                      <span>3-Day View</span>
+                    </div>
+                    {activeCalendarView === '3day' && <Check size={13} />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('week')}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCalendarView === 'week'
+                        ? 'bg-teal-600 text-white shadow-sm font-extrabold'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Calendar size={13} className={activeCalendarView === 'week' ? 'text-white' : 'text-teal-400'} />
+                      <span>7-Day Week</span>
+                    </div>
+                    {activeCalendarView === 'week' && <Check size={13} />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectView('month')}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCalendarView === 'month'
+                        ? 'bg-cyan-600 text-white shadow-sm font-extrabold'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid size={13} className={activeCalendarView === 'month' ? 'text-white' : 'text-cyan-400'} />
+                      <span>Month Matrix</span>
+                    </div>
+                    {activeCalendarView === 'month' && <Check size={13} />}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right: Quick Action (+) Trigger */}

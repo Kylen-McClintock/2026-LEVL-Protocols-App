@@ -43,7 +43,7 @@ import { DailyLongevityTipBanner } from '@/components/banners/DailyLongevityTipB
 import { AdaptiveRecommendationBanner } from '@/components/banners/AdaptiveRecommendationBanner'
 import { LongevityCoachInputBar } from '@/components/ai/LongevityCoachInputBar'
 import { DailyHistoricalDebriefHeader } from '@/components/cards/DailyHistoricalDebriefHeader'
-import { ViewSelectorHeader, CalendarViewMode, LayoutOrientation, MainCategory, SUB_CATEGORIES_MAP, CategoryFiltersBar } from '@/components/ui/ViewSelectorHeader'
+import { ViewSelectorHeader, CalendarViewMode, LayoutOrientation, MainCategory, SUB_CATEGORIES_MAP, CategoryFiltersBar, FilterLens } from '@/components/ui/ViewSelectorHeader'
 import { ThreeDaySplitView } from '@/components/views/ThreeDaySplitView'
 import { SevenDayWeekView } from '@/components/views/SevenDayWeekView'
 import { MonthMatrixView } from '@/components/views/MonthMatrixView'
@@ -357,6 +357,34 @@ function TodayPageContent() {
   const [selectedMainCategories, setSelectedMainCategories] = useState<MainCategory[]>(['all'])
   const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([])
   const [selectedIsolatedOutcome, setSelectedIsolatedOutcome] = useState<string | null>(null)
+
+  // Master Filter Lens (Category vs Outcomes)
+  const [filterLens, setFilterLens] = useState<FilterLens>('category')
+  const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([])
+
+  // Bidirectional View Mode sync with TopStickyHeader
+  useEffect(() => {
+    const handleSetViewMode = (e: any) => {
+      if (e.detail) {
+        if (e.detail.viewMode && (e.detail.viewMode === 'chronological' || e.detail.viewMode === 'protocol')) {
+          setViewMode(e.detail.viewMode)
+        }
+        if (e.detail.calendarViewMode) {
+          setCalendarViewMode(e.detail.calendarViewMode)
+        }
+      }
+    }
+    window.addEventListener('levl_set_view_mode', handleSetViewMode)
+    return () => window.removeEventListener('levl_set_view_mode', handleSetViewMode)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('levl_view_mode_change', {
+        detail: { viewMode, calendarViewMode }
+      }))
+    }
+  }, [viewMode, calendarViewMode])
 
   const [completedSortBy, setCompletedSortBy] = useState<'chronological' | 'completed_time'>('chronological')
   const [completedSortOrder, setCompletedSortOrder] = useState<'asc' | 'desc'>('asc')
@@ -1684,6 +1712,39 @@ function TodayPageContent() {
     })
   }
 
+  const isTaskMatchingOutcomesFilter = (task: DedupedTask): boolean => {
+    if (selectedOutcomes.length === 0) return true
+    const modality = task.loose_modality || task.protocol_step?.modality
+    if (!modality) return true
+
+    const normSelected = selectedOutcomes.map(s => s.toLowerCase().trim())
+    
+    // Check primary_outcome
+    const prim = (modality.primary_outcome || '').toLowerCase()
+    if (prim && normSelected.some(s => prim.includes(s) || s.includes(prim))) return true
+
+    // Check secondary_outcomes
+    const secondaries = (modality.secondary_outcomes || []).map(s => s.toLowerCase())
+    if (secondaries.some(sec => normSelected.some(s => sec.includes(s) || s.includes(sec)))) return true
+
+    // Check functional_outcomes_to_track
+    const functional = (modality.functional_outcomes_to_track || []).map(s => s.toLowerCase().replace(/_/g, ' '))
+    if (functional.some(func => normSelected.some(s => func.includes(s) || s.includes(func)))) return true
+
+    // Fallback: description & name
+    const combinedText = `${modality.name} ${modality.brief_description || ''}`.toLowerCase()
+    if (normSelected.some(s => combinedText.includes(s))) return true
+
+    return false
+  }
+
+  const isTaskMatchingActiveFilter = (task: DedupedTask): boolean => {
+    if (filterLens === 'outcomes') {
+      return isTaskMatchingOutcomesFilter(task)
+    }
+    return isTaskMatchingCategoryFilter(task)
+  }
+
   const filteredMultiDayTasks = useMemo(() => {
     const result: Record<string, DailyProtocolTask[]> = {}
 
@@ -1721,36 +1782,21 @@ function TodayPageContent() {
             ((task as any).user_protocol_instance?.protocol_id && (task as any).user_protocol_instance.protocol_id.toLowerCase() === target) ||
             ((task as any).user_protocol_instance?.protocol?.name && (task as any).user_protocol_instance.protocol.name.toLowerCase().includes(target))
 
-          if (!matchesProtocol) return
+          if (!matchesProtocol) {
+            return
+          }
         }
 
-        const modality = task.protocol_step?.modality || task.loose_modality
-        const benchItem = mId ? benchItems.find(b => b.modality_id?.toLowerCase().trim() === mId) : null
-        const effectiveTiming = 
-          task.execution_details?.custom_timing || 
-          task.custom_timing || 
-          benchItem?.custom_timing || 
-          task.timing_slot ||
-          modality?.default_timing_slot ||
-          modality?.timing_summary || 
-          modality?.frequency || 
-          ''
-        const effectiveDose = 
-          task.execution_details?.custom_dose || 
-          task.custom_dose || 
-          benchItem?.custom_dose || 
-          modality?.dose_or_exposure || 
-          ''
-        const isSupplement = (modality?.category || '').toLowerCase().includes('supplement') || (modality?.modality_type || '').toLowerCase() === 'supplement'
+        // Multi-dose split sessions expansion
+        const effectiveTiming = (task.execution_details?.custom_timing || task.timing_slot || task.protocol_step?.timing_slot || '').trim()
+        const multiSlots = parseMultiDoseTimingSlots(effectiveTiming)
 
-        let slots = parseMultiDoseTimingSlots(effectiveTiming, isSupplement)
-        if ((!slots || slots.length < 2) && effectiveDose) {
-          slots = parseMultiDoseTimingSlots(effectiveDose, isSupplement)
-        }
+        if (multiSlots.length > 1) {
+          const completedDoses = Array.isArray(task.execution_details?.completed_split_doses)
+            ? task.execution_details.completed_split_doses
+            : []
 
-        if (slots && slots.length >= 2) {
-          const completedDoses: number[] = task.execution_details?.completed_doses || (task.status === 'completed' ? Array.from({ length: slots.length }, (_, i) => i + 1) : [])
-          slots.forEach(s => {
+          multiSlots.forEach(s => {
             const isThisDoseDone = completedDoses.includes(s.doseNumber)
             const splitTask: DailyProtocolTask = {
               ...task,
@@ -1767,7 +1813,7 @@ function TodayPageContent() {
                 split_dose_total: s.totalDoses
               }
             }
-            if (isTaskMatchingCategoryFilter(splitTask as DedupedTask)) {
+            if (isTaskMatchingActiveFilter(splitTask as DedupedTask)) {
               activeList.push(splitTask)
             }
           })
@@ -1776,7 +1822,7 @@ function TodayPageContent() {
             ...task,
             timing_slot: task.timing_slot || task.protocol_step?.timing_slot || 'anytime'
           }
-          if (isTaskMatchingCategoryFilter(dedupedEquivalent)) {
+          if (isTaskMatchingActiveFilter(dedupedEquivalent)) {
             activeList.push(task)
           }
         }
@@ -1786,7 +1832,7 @@ function TodayPageContent() {
     })
 
     return result
-  }, [multiDayTasks, benchedOrEliminatedModalityIds, selectedProtocolFilter, selectedMainCategories, selectedSubCategories])
+  }, [multiDayTasks, benchedOrEliminatedModalityIds, selectedProtocolFilter, selectedMainCategories, selectedSubCategories, filterLens, selectedOutcomes])
 
   const allAvailableTasks = useMemo(() => {
     const list = [...tasks]
@@ -1810,7 +1856,7 @@ function TodayPageContent() {
     const infrequent: DedupedTask[] = []
 
     dedupedTasks.forEach(task => {
-      if (!isTaskMatchingCategoryFilter(task)) return
+      if (!isTaskMatchingActiveFilter(task)) return
 
       const modality = task.protocol_step?.modality || task.loose_modality
       const mId = (
@@ -1872,7 +1918,7 @@ function TodayPageContent() {
       allSkippedTasks: skippedTop,
       infrequentTasks: infrequent 
     }
-  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline])
+  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline, filterLens, selectedOutcomes])
 
   const sortedCompletedGroups = useMemo(() => {
     if (allCompletedTasks.length === 0) return []
@@ -3805,8 +3851,8 @@ function TodayPageContent() {
               </div>
             )}
 
-            {/* Modality Category Filter Row (Desktop only; on mobile it is in the top header half-width dropdown) */}
-            <div className="hidden md:block">
+            {/* Modality Category & Outcomes Filter Row (Unified across Mobile & Desktop) */}
+            <div className="w-full">
               <CategoryFiltersBar
                 selectedMainCategories={selectedMainCategories}
                 selectedSubCategories={selectedSubCategories}
@@ -3815,6 +3861,16 @@ function TodayPageContent() {
                 viewMode={calendarViewMode}
                 layoutOrientation={layoutOrientation}
                 onToggleLayoutOrientation={setLayoutOrientation}
+                filterLens={filterLens}
+                onToggleFilterLens={setFilterLens}
+                selectedOutcomes={selectedOutcomes}
+                onToggleOutcome={(outcomeName) => {
+                  setSelectedOutcomes(prev =>
+                    prev.includes(outcomeName) ? prev.filter(o => o !== outcomeName) : [...prev, outcomeName]
+                  )
+                }}
+                onClearOutcomes={() => setSelectedOutcomes([])}
+                availableOutcomes={allOutcomes.map(o => o.name)}
               />
             </div>
 

@@ -2,11 +2,12 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { CalendarDays, ChevronDown, Check, Filter, LayoutGrid, Calendar, Columns, Rows, AlignJustify, Zap, Activity, HelpCircle, Bookmark } from 'lucide-react'
+import { CalendarDays, ChevronDown, Check, Filter, LayoutGrid, Calendar, Columns, Rows, AlignJustify, Zap, Activity, HelpCircle, Bookmark, Target, X, Search, Sparkles } from 'lucide-react'
 
 export type CalendarViewMode = 'today' | 'pulse' | '3day' | 'week' | 'month'
 export type LayoutOrientation = 'columns' | 'stack'
 export type CompletionTrackingMode = 'outcome' | 'fast'
+export type FilterLens = 'category' | 'outcomes'
 
 interface ViewSelectorHeaderProps {
   viewMode: CalendarViewMode
@@ -647,6 +648,19 @@ export const SUB_CATEGORIES_MAP: Record<MainCategory, SubCategoryItem[]> = {
   ]
 }
 
+const POPULAR_OUTCOMES_FALLBACK = [
+  'Skin Clarity',
+  'Deep Sleep',
+  'Cognitive Focus',
+  'Energy & Mitochondria',
+  'Longevity & Biomarkers',
+  'Athletic Endurance',
+  'Strength & Muscle',
+  'Stress & Autonomic',
+  'Joint & Connective',
+  'Metabolic Health'
+]
+
 export const CategoryFiltersBar: React.FC<{
   selectedMainCategories: MainCategory[]
   selectedSubCategories: string[]
@@ -656,6 +670,13 @@ export const CategoryFiltersBar: React.FC<{
   layoutOrientation?: LayoutOrientation
   onToggleLayoutOrientation?: (orientation: LayoutOrientation) => void
   className?: string
+  // Master Category vs Outcomes filter toggle props:
+  filterLens?: FilterLens
+  onToggleFilterLens?: (lens: FilterLens) => void
+  selectedOutcomes?: string[]
+  onToggleOutcome?: (outcomeName: string) => void
+  onClearOutcomes?: () => void
+  availableOutcomes?: (string | { id?: string; name: string })[]
 }> = ({
   selectedMainCategories,
   selectedSubCategories,
@@ -664,8 +685,66 @@ export const CategoryFiltersBar: React.FC<{
   viewMode,
   layoutOrientation,
   onToggleLayoutOrientation,
-  className = ''
+  className = '',
+  filterLens = 'category',
+  onToggleFilterLens,
+  selectedOutcomes = [],
+  onToggleOutcome,
+  onClearOutcomes,
+  availableOutcomes = []
 }) => {
+  const [internalLens, setInternalLens] = useState<FilterLens>(filterLens)
+  const currentLens = onToggleFilterLens ? filterLens : internalLens
+
+  const handleLensChange = (newLens: FilterLens) => {
+    if (onToggleFilterLens) {
+      onToggleFilterLens(newLens)
+    } else {
+      setInternalLens(newLens)
+    }
+  }
+
+  // Outcomes Dropdown & Search state
+  const [isOutcomeDropdownOpen, setIsOutcomeDropdownOpen] = useState(false)
+  const [outcomeSearchQuery, setOutcomeSearchQuery] = useState('')
+  const outcomeDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (outcomeDropdownRef.current && !outcomeDropdownRef.current.contains(e.target as Node)) {
+        setIsOutcomeDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside, { passive: true })
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [])
+
+  // Normalize list of available outcomes
+  const normalizedOutcomes = React.useMemo(() => {
+    const names = new Set<string>()
+    availableOutcomes.forEach(item => {
+      if (typeof item === 'string') {
+        if (item.trim()) names.add(item.trim())
+      } else if (item && typeof item.name === 'string') {
+        if (item.name.trim()) names.add(item.name.trim())
+      }
+    })
+    if (names.size === 0) {
+      POPULAR_OUTCOMES_FALLBACK.forEach(name => names.add(name))
+    }
+    return Array.from(names).sort()
+  }, [availableOutcomes])
+
+  const filteredOutcomesForSearch = React.useMemo(() => {
+    if (!outcomeSearchQuery.trim()) return normalizedOutcomes
+    const q = outcomeSearchQuery.toLowerCase()
+    return normalizedOutcomes.filter(name => name.toLowerCase().includes(q))
+  }, [normalizedOutcomes, outcomeSearchQuery])
+
   const isAllActive = selectedMainCategories.includes('all') || selectedMainCategories.length === 0
 
   const activeSubItems = React.useMemo(() => {
@@ -682,35 +761,42 @@ export const CategoryFiltersBar: React.FC<{
 
   return (
     <div className={`flex flex-col gap-2 bg-slate-950/60 p-2 sm:p-2.5 rounded-2xl border border-slate-800/80 mb-3 shadow-lg backdrop-blur-md ${className}`}>
-      {/* Top Row: Main Broad Categories & Orientation Toggle */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
-          <span className="text-xs font-black text-slate-400 uppercase tracking-wider shrink-0 mr-1">
-            Category:
-          </span>
+      {/* Master Toggle Header: [ Category | Outcomes ] + Optional Multi-Day Orientation Switch */}
+      <div className="flex items-center justify-between gap-2 flex-wrap pb-1.5 border-b border-white/5">
+        <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-white/10 gap-0.5 text-xs shadow-inner">
+          <button
+            type="button"
+            onClick={() => handleLensChange('category')}
+            className={`px-3 py-1 rounded-lg font-bold text-xs tracking-tight transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              currentLens === 'category'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm font-extrabold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🏷️</span>
+            <span>Category</span>
+          </button>
 
-          {MAIN_CATEGORIES.map(cat => {
-            const isActive = cat.id === 'all' ? isAllActive : selectedMainCategories.includes(cat.id)
-
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => onToggleMainCategory(cat.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all shrink-0 border cursor-pointer ${
-                  isActive
-                    ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/60 shadow-[0_0_14px_rgba(16,185,129,0.35)] scale-[1.02]'
-                    : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
-                }`}
-              >
-                <span className="text-base sm:text-lg leading-none">{cat.icon}</span>
-                <span>{cat.label}</span>
-              </button>
-            )
-          })}
+          <button
+            type="button"
+            onClick={() => handleLensChange('outcomes')}
+            className={`px-3 py-1 rounded-lg font-bold text-xs tracking-tight transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              currentLens === 'outcomes'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm font-extrabold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🎯</span>
+            <span>Outcomes</span>
+            {selectedOutcomes.length > 0 && (
+              <span className="w-4 h-4 rounded-full bg-purple-400/30 text-purple-200 text-[10px] flex items-center justify-center font-mono font-bold ml-0.5">
+                {selectedOutcomes.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        {/* Right: Side-by-Side vs Vertical Stack Orientation Toggle */}
+        {/* Right: Side-by-Side vs Vertical Stack Orientation Toggle (for multi-day views) */}
         {viewMode && viewMode !== 'today' && onToggleLayoutOrientation && layoutOrientation && (
           <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 shrink-0 ml-auto">
             <button
@@ -741,32 +827,220 @@ export const CategoryFiltersBar: React.FC<{
         )}
       </div>
 
-      {/* Dynamic Sub-Category Filter Row */}
-      {!isAllActive && activeSubItems.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-2 border-t border-slate-800/60 animate-in fade-in slide-in-from-top-1">
-          <span className="text-xs font-black text-slate-400 uppercase tracking-wider shrink-0 mr-1">
-            Focus:
-          </span>
+      {/* LENS 1: CATEGORY FILTERING */}
+      {currentLens === 'category' && (
+        <div className="flex flex-col gap-2">
+          {/* Main Category Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
+            <span className="text-xs font-black text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+              Category:
+            </span>
 
-          {activeSubItems.map(sub => {
-            const isSubActive = selectedSubCategories.includes(sub.id)
+            {MAIN_CATEGORIES.map(cat => {
+              const isActive = cat.id === 'all' ? isAllActive : selectedMainCategories.includes(cat.id)
 
-            return (
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => onToggleMainCategory(cat.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 transition-all shrink-0 border cursor-pointer ${
+                    isActive
+                      ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/60 shadow-[0_0_14px_rgba(16,185,129,0.35)] scale-[1.02]'
+                      : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <span className="text-sm sm:text-base leading-none">{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Dynamic Sub-Category Filter Row */}
+          {!isAllActive && activeSubItems.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-2 border-t border-slate-800/60 animate-in fade-in slide-in-from-top-1">
+              <span className="text-xs font-black text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+                Focus:
+              </span>
+
+              {activeSubItems.map(sub => {
+                const isSubActive = selectedSubCategories.includes(sub.id)
+
+                return (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    onClick={() => onToggleSubCategory(sub.id)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all shrink-0 border cursor-pointer flex items-center gap-1.5 ${
+                      isSubActive
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.25)]'
+                        : 'bg-black/50 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                    }`}
+                  >
+                    <span className="font-mono">{isSubActive ? '✓' : '+'}</span>
+                    <span>{sub.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* LENS 2: OUTCOMES FILTERING */}
+      {currentLens === 'outcomes' && (
+        <div className="flex flex-col gap-2 pt-0.5 animate-in fade-in">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Outcomes Multi-Select Dropdown Button */}
+            <div className="relative" ref={outcomeDropdownRef}>
               <button
-                key={sub.id}
                 type="button"
-                onClick={() => onToggleSubCategory(sub.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border cursor-pointer flex items-center gap-1.5 ${
-                  isSubActive
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.25)]'
-                    : 'bg-black/50 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+                onClick={() => setIsOutcomeDropdownOpen(!isOutcomeDropdownOpen)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                  selectedOutcomes.length > 0
+                    ? 'bg-purple-600 text-white border-purple-400/50 shadow-[0_0_12px_rgba(147,51,234,0.35)]'
+                    : 'bg-slate-900/90 text-slate-200 border-slate-800 hover:border-slate-700 hover:text-white'
                 }`}
               >
-                <span className="font-mono">{isSubActive ? '✓' : '+'}</span>
-                <span>{sub.label}</span>
+                <Target size={13} className={selectedOutcomes.length > 0 ? 'text-amber-300' : 'text-purple-400'} />
+                <span>Select Outcomes</span>
+                {selectedOutcomes.length > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-white/20 text-white text-[10px] flex items-center justify-center font-mono font-bold">
+                    {selectedOutcomes.length}
+                  </span>
+                )}
+                <ChevronDown size={12} className={`transition-transform duration-200 ${isOutcomeDropdownOpen ? 'rotate-180 text-purple-300' : 'text-slate-400'}`} />
               </button>
-            )
-          })}
+
+              {/* Outcomes Dropdown Popover */}
+              {isOutcomeDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1.5 w-72 max-h-80 p-2 rounded-2xl bg-slate-950/95 border border-slate-800 shadow-2xl backdrop-blur-2xl z-[150] flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-150">
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search size={12} className="absolute left-2.5 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={outcomeSearchQuery}
+                      onChange={(e) => setOutcomeSearchQuery(e.target.value)}
+                      placeholder="Search functional outcomes..."
+                      className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-7 pr-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  {/* Quick Action Header */}
+                  <div className="flex items-center justify-between px-1 text-[10px] font-mono text-slate-400">
+                    <span>{selectedOutcomes.length} Selected</span>
+                    {selectedOutcomes.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => onClearOutcomes?.()}
+                        className="text-purple-400 hover:text-purple-300 cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Scrollable list of outcomes with checkboxes */}
+                  <div className="overflow-y-auto max-h-52 space-y-0.5 pr-1 scrollbar-thin">
+                    {filteredOutcomesForSearch.map(outcomeName => {
+                      const isChecked = selectedOutcomes.includes(outcomeName)
+                      return (
+                        <button
+                          key={outcomeName}
+                          type="button"
+                          onClick={() => onToggleOutcome?.(outcomeName)}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
+                            isChecked
+                              ? 'bg-purple-600/30 text-purple-200 border border-purple-500/40'
+                              : 'text-slate-300 hover:bg-white/5 hover:text-white border border-transparent'
+                          }`}
+                        >
+                          <span className="truncate">{outcomeName}</span>
+                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ml-2 ${
+                            isChecked
+                              ? 'bg-purple-600 border-purple-400 text-white'
+                              : 'border-slate-700 bg-slate-900'
+                          }`}>
+                            {isChecked && <Check size={11} strokeWidth={3} />}
+                          </div>
+                        </button>
+                      )
+                    })}
+                    {filteredOutcomesForSearch.length === 0 && (
+                      <div className="p-3 text-center text-xs text-slate-500">
+                        No matching outcomes
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Filter Reset Button */}
+            {selectedOutcomes.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => onClearOutcomes?.()}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all flex items-center gap-1 cursor-pointer"
+              >
+                <X size={12} />
+                <span>Clear</span>
+              </button>
+            ) : (
+              <span className="text-[11px] font-mono text-slate-400">
+                All Outcomes Active
+              </span>
+            )}
+
+            {/* Horizontally scrollable quick-tap chips for top outcomes */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 flex-1 min-w-0">
+              {normalizedOutcomes.slice(0, 8).map(outcomeName => {
+                const isSelected = selectedOutcomes.includes(outcomeName)
+                return (
+                  <button
+                    key={outcomeName}
+                    type="button"
+                    onClick={() => onToggleOutcome?.(outcomeName)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1 border cursor-pointer ${
+                      isSelected
+                        ? 'bg-purple-600 text-white border-purple-400/50 shadow-[0_0_10px_rgba(147,51,234,0.3)] font-extrabold'
+                        : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                    }`}
+                  >
+                    <span>{isSelected ? '✓' : '+'}</span>
+                    <span>{outcomeName}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Active outcome tags bar (if multiple selected) */}
+          {selectedOutcomes.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-1.5 border-t border-slate-800/60">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 shrink-0">
+                Filtered:
+              </span>
+              {selectedOutcomes.map(outcomeName => (
+                <span
+                  key={outcomeName}
+                  className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-purple-950/60 border border-purple-500/40 text-purple-200 flex items-center gap-1 shrink-0"
+                >
+                  <span>{outcomeName}</span>
+                  <button
+                    type="button"
+                    onClick={() => onToggleOutcome?.(outcomeName)}
+                    className="hover:text-white text-purple-400 cursor-pointer ml-0.5"
+                    aria-label={`Remove ${outcomeName}`}
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

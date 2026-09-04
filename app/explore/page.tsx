@@ -16,7 +16,7 @@ import {
   getOutcomeDimensions
 } from '@/lib/data'
 import { Modality, UserProfile, UserBenchItem, OutcomeDimension, DailyProtocolTask, Protocol } from '@/lib/types'
-import { CategoryFiltersBar, MainCategory, SUB_CATEGORIES_MAP } from '@/components/ui/ViewSelectorHeader'
+import { CategoryFiltersBar, MainCategory, SUB_CATEGORIES_MAP, FilterLens } from '@/components/ui/ViewSelectorHeader'
 import { SolarDiurnalSlider } from '@/components/ui/SolarDiurnalSlider'
 import { getMacroCategory, MACRO_CATEGORIES } from '@/lib/utils/categories'
 import { sortModalitiesByNBA } from '@/lib/ranking/nextBestAction'
@@ -159,6 +159,7 @@ export default function ExplorePage() {
   }
 
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([])
+  const [filterLens, setFilterLens] = useState<FilterLens>('category')
   const [showAllOutcomes, setShowAllOutcomes] = useState(false)
   const [visibleCount, setVisibleCount] = useState(20)
 
@@ -1163,56 +1164,20 @@ export default function ExplorePage() {
           </button>
         </div>
 
-        {/* Always Present Category Bar Underneath Sort Row */}
+        {/* Unified Category & Outcomes Filter Toggle Bar */}
         <div className="mt-2 mb-1">
           <CategoryFiltersBar 
             selectedMainCategories={selectedMainCategories}
             selectedSubCategories={selectedSubCategories}
             onToggleMainCategory={handleToggleMainCategory}
             onToggleSubCategory={handleToggleSubCategory}
+            filterLens={filterLens}
+            onToggleFilterLens={setFilterLens}
+            selectedOutcomes={selectedOutcomes}
+            onToggleOutcome={toggleOutcome}
+            onClearOutcomes={() => setSelectedOutcomes([])}
+            availableOutcomes={displayedOutcomes}
           />
-        </div>
-
-        {/* Quick Outcome Vectors Bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 mt-2.5 mb-1 scrollbar-thin">
-          <span className="text-[11px] font-mono uppercase text-slate-400 font-bold shrink-0 flex items-center gap-1 px-1">
-            <Target size={12} className="text-purple-400" />
-            <span>Outcomes:</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setSelectedOutcomes([])}
-            className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
-              selectedOutcomes.length === 0
-                ? 'bg-purple-600 text-white shadow-sm border border-purple-400/30 font-extrabold'
-                : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
-            }`}
-          >
-            All Outcomes
-          </button>
-          {displayedOutcomes.slice(0, 16).map(outcomeName => {
-            const isSelected = selectedOutcomes.includes(outcomeName)
-            return (
-              <button
-                key={outcomeName}
-                type="button"
-                onClick={() => {
-                  if (isSelected) {
-                    setSelectedOutcomes([])
-                  } else {
-                    setSelectedOutcomes([outcomeName])
-                  }
-                }}
-                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
-                  isSelected
-                    ? 'bg-purple-600 text-white shadow-sm border border-purple-400/40 font-extrabold'
-                    : 'bg-white/5 border border-white/10 text-gray-300 hover:border-white/20'
-                }`}
-              >
-                <span>{outcomeName}</span>
-              </button>
-            )
-          })}
         </div>
 
         {/* Prominent Expandable Button for Detailed Filters */}
