@@ -649,6 +649,48 @@ export const SUB_CATEGORIES_MAP: Record<MainCategory, SubCategoryItem[]> = {
   ]
 }
 
+export function getOutcomeEmoji(id: string, name: string): string {
+  const norm = `${id} ${name}`.toLowerCase()
+  if (norm.includes('skin') || norm.includes('wrinkle') || norm.includes('collagen') || norm.includes('complexion')) return '✨'
+  if (norm.includes('deep sleep') || norm.includes('slow wave') || norm.includes('sws')) return '🌌'
+  if (norm.includes('latency') || norm.includes('fall asleep') || norm.includes('onset')) return '⏱️'
+  if (norm.includes('wake') || norm.includes('restedness') || norm.includes('morning')) return '🌅'
+  if (norm.includes('sleep') || norm.includes('rem') || norm.includes('somno')) return '🌙'
+  if (norm.includes('energy') || norm.includes('atp') || norm.includes('mitochon') || norm.includes('vitality')) return '⚡'
+  if (norm.includes('brain fog')) return '💡'
+  if (norm.includes('mental clarity') || norm.includes('clarity') || norm.includes('lucidity')) return '🔮'
+  if (norm.includes('focus') || norm.includes('cognit') || norm.includes('memory') || norm.includes('attention')) return '🧠'
+  if (norm.includes('autonomic') || norm.includes('hrv') || norm.includes('vagal') || norm.includes('vagus')) return '🫀'
+  if (norm.includes('calm') || norm.includes('anxiety') || norm.includes('relax') || norm.includes('tranquil')) return '🧘'
+  if (norm.includes('stress') || norm.includes('cortisol')) return '❤️'
+  if (norm.includes('mood') || norm.includes('depress') || norm.includes('valence') || norm.includes('cheer')) return '😊'
+  if (norm.includes('resilience') || norm.includes('emotional') || norm.includes('grit')) return '🪨'
+  if (norm.includes('dna') || norm.includes('longev') || norm.includes('telomer') || norm.includes('senesc') || norm.includes('lifespan')) return '🧬'
+  if (norm.includes('metabol') || norm.includes('fat') || norm.includes('weight') || norm.includes('burn') || norm.includes('ketosis')) return '🔥'
+  if (norm.includes('glucose') || norm.includes('insulin') || norm.includes('glycem') || norm.includes('hba1c')) return '📉'
+  if (norm.includes('satiety') || norm.includes('appetite') || norm.includes('leptin') || norm.includes('ghrelin') || norm.includes('hunger')) return '⚖️'
+  if (norm.includes('gut') || norm.includes('digest') || norm.includes('microbio') || norm.includes('bloat') || norm.includes('motility')) return '🥗'
+  if (norm.includes('joint') || norm.includes('cartilage') || norm.includes('tendon') || norm.includes('synovial')) return '🩹'
+  if (norm.includes('hypertrophy') || norm.includes('muscle') || norm.includes('myofibril') || norm.includes('anabolic')) return '💪'
+  if (norm.includes('strength') || norm.includes('power') || norm.includes('force') || norm.includes('lift')) return '🏋️'
+  if (norm.includes('endurance') || norm.includes('stamina') || norm.includes('vo2') || norm.includes('aerobic') || norm.includes('cardio')) return '🏃'
+  if (norm.includes('immune') || norm.includes('infect') || norm.includes('pathogen') || norm.includes('defense')) return '🛡️'
+  if (norm.includes('libido') || norm.includes('testoster') || norm.includes('hormon') || norm.includes('sexual') || norm.includes('androgen')) return '❤️‍🔥'
+  if (norm.includes('sore') || norm.includes('doms') || norm.includes('cold') || norm.includes('ice') || norm.includes('plunge')) return '🧊'
+  if (norm.includes('fatigue') || norm.includes('exhaust') || norm.includes('burnout') || norm.includes('drain')) return '🔋'
+  if (norm.includes('productiv') || norm.includes('deep work') || norm.includes('output') || norm.includes('task')) return '📊'
+  if (norm.includes('motivat') || norm.includes('dopamin') || norm.includes('drive') || norm.includes('reward')) return '🚀'
+  if (norm.includes('pain') || norm.includes('ache') || norm.includes('inflamm') || norm.includes('crp')) return '🩺'
+  if (norm.includes('autophagy') || norm.includes('fasting') || norm.includes('clearance')) return '🔄'
+  if (norm.includes('detox') || norm.includes('liver') || norm.includes('kidney') || norm.includes('hepatic')) return '🍃'
+  if (norm.includes('bone') || norm.includes('osteo') || norm.includes('calcium') || norm.includes('density')) return '🦴'
+  if (norm.includes('hair') || norm.includes('follicle') || norm.includes('alopecia')) return '💇'
+  if (norm.includes('eye') || norm.includes('vision') || norm.includes('ocular')) return '👁️'
+  if (norm.includes('ear') || norm.includes('hearing') || norm.includes('tinnitus')) return '👂'
+  if (norm.includes('vascular') || norm.includes('blood flow') || norm.includes('arterial') || norm.includes('circulation')) return '🩸'
+  return '🎯'
+}
+
 export interface SchemaCheckinOutcome {
   id: string
   name: string
@@ -681,11 +723,11 @@ export const ALL_SCHEMA_CHECKIN_OUTCOMES: SchemaCheckinOutcome[] = [
   { id: 'libido_vitality', name: 'Libido & Hormonal Vitality', category: 'vitality', icon: '❤️‍🔥', defaultRank: 20, description: 'Hormonal vitality, androgen balance, libido & vitality signaling.' },
   { id: 'soreness', name: 'Soreness (DOMS) Recovery', category: 'recovery', icon: '🧊', defaultRank: 21, description: 'Delayed onset muscle soreness (DOMS) reduction & accelerated muscular recovery.' },
   { id: 'sleep_latency', name: 'Sleep Latency (Falling Asleep)', category: 'sleep', icon: '⏱️', defaultRank: 22, description: 'Speed of falling asleep peacefully without tossing and turning.' },
-  { id: 'emotional_resilience', name: 'Emotional Resilience', category: 'cognitive', icon: '🛡️', defaultRank: 23, description: 'Stress adaptability, heart rate variability (HRV) rebound & emotional control.' },
+  { id: 'emotional_resilience', name: 'Emotional Resilience', category: 'cognitive', icon: '🪨', defaultRank: 23, description: 'Stress adaptability, heart rate variability (HRV) rebound & emotional control.' },
   { id: 'motivation', name: 'Motivation & Drive', category: 'cognitive', icon: '🚀', defaultRank: 24, description: 'Dopamine-driven initiative, reward anticipation & productivity readiness.' },
   { id: 'physical_fatigue', name: 'Physical Fatigue Reduction', category: 'vitality', icon: '🔋', defaultRank: 25, description: 'Mitigating systemic exhaustion, muscular burnout & heavy-limb sensations.' },
   { id: 'productivity', name: 'Productivity & Deep Work', category: 'cognitive', icon: '📊', defaultRank: 26, description: 'High-leverage work output, cognitive stamina & deep work efficiency.' },
-  { id: 'pain', name: 'Musculoskeletal Pain Relief', category: 'recovery', icon: '🩹', defaultRank: 27, description: 'Systemic inflammatory relief, joint comfort & musculoskeletal ease.' }
+  { id: 'pain', name: 'Musculoskeletal Pain Relief', category: 'recovery', icon: '🩺', defaultRank: 27, description: 'Systemic inflammatory relief, joint comfort & musculoskeletal ease.' }
 ]
 
 export const CategoryFiltersBar: React.FC<{
@@ -762,7 +804,7 @@ export const CategoryFiltersBar: React.FC<{
     }
   }, [])
 
-  // Master combined outcomes catalog
+  // Master combined outcomes catalog with unique emojis for all dimensions
   const allKnownOutcomes = React.useMemo(() => {
     const map = new Map<string, SchemaCheckinOutcome>()
 
@@ -804,7 +846,7 @@ export const CategoryFiltersBar: React.FC<{
           id,
           name,
           category,
-          icon: '🎯',
+          icon: getOutcomeEmoji(id, name),
           defaultRank: 50,
           description: description || `Trackable biomarker and functional performance outcome: ${name}.`
         })
@@ -821,7 +863,7 @@ export const CategoryFiltersBar: React.FC<{
             id: cid,
             name: c.name,
             category: c.category || 'vitality',
-            icon: '✨',
+            icon: getOutcomeEmoji(cid, c.name),
             defaultRank: 1, // Custom user outcomes rank very high
             description: c.description || 'User-created custom bio-signal tracking dimension.'
           })
@@ -945,15 +987,29 @@ export const CategoryFiltersBar: React.FC<{
   const isAllActive = selectedMainCategories.includes('all') || selectedMainCategories.length === 0
   const isCategoryFiltered = !isAllActive
 
+  // If multiple categories are selected, list them with icons instead of just saying the number
   const activeCategoryLabel = React.useMemo(() => {
-    if (isAllActive) return 'Filter: ✨ All Categories'
+    if (isAllActive) return '✨ All Categories'
     const nonAll = selectedMainCategories.filter(c => c !== 'all')
-    if (nonAll.length === 1) {
-      const match = MAIN_CATEGORIES.find(c => c.id === nonAll[0])
-      return match ? `Filter: ${match.icon} ${match.label}` : 'Filter: Category'
-    }
-    return `Filter: Categories (${nonAll.length})`
+    if (nonAll.length === 0) return '✨ All Categories'
+    return nonAll.map(catId => {
+      const match = MAIN_CATEGORIES.find(c => c.id === catId)
+      return match ? `${match.icon} ${match.label}` : catId
+    }).join(', ')
   }, [isAllActive, selectedMainCategories])
+
+  // If multiple outcomes are selected, list them with emojis instead of just saying the number
+  const activeOutcomeLabel = React.useMemo(() => {
+    if (selectedOutcomes.length === 0) return '🎯 All Outcomes Active'
+    return selectedOutcomes.map(name => {
+      const match = allKnownOutcomes.find(o => 
+        o.name.toLowerCase() === name.toLowerCase() || 
+        o.id.toLowerCase() === name.toLowerCase()
+      )
+      const icon = match?.icon || getOutcomeEmoji(name, name)
+      return `${icon} ${name}`
+    }).join(', ')
+  }, [selectedOutcomes, allKnownOutcomes])
 
   const activeSubItems = React.useMemo(() => {
     if (isAllActive) return []
@@ -968,9 +1024,9 @@ export const CategoryFiltersBar: React.FC<{
   }, [selectedMainCategories, isAllActive])
 
   return (
-    <div className={`flex flex-col gap-2.5 bg-slate-950/80 p-2.5 sm:p-3 rounded-2xl border border-slate-800/80 mb-3 shadow-xl backdrop-blur-md relative z-30 ${className}`}>
+    <div className={`flex flex-col gap-1.5 bg-slate-950/90 p-2 sm:p-2.5 rounded-2xl border border-slate-800/80 mb-3 shadow-xl backdrop-blur-md relative z-30 ${className}`}>
       {/* Master Toggle Header: Filter by: [ Category | Outcomes ] (Full row width on mobile) */}
-      <div className="w-full flex items-center gap-2 pb-2 border-b border-white/5">
+      <div className="w-full flex items-center gap-2">
         <span className="text-[11px] sm:text-xs font-black text-slate-400 uppercase tracking-wider shrink-0">
           Filter by:
         </span>
@@ -1044,17 +1100,17 @@ export const CategoryFiltersBar: React.FC<{
         )}
       </div>
 
-      {/* LENS 1: CATEGORY FILTERING (Full-opacity dropdown matching mobile UI) */}
+      {/* LENS 1: CATEGORY FILTERING (DIRECTLY underneath toggle) */}
       {currentLens === 'category' && (
-        <div className="flex flex-col gap-2 relative" ref={categoryDropdownRef}>
-          {/* Full-width Trigger Button */}
+        <div className="flex flex-col gap-1.5 relative w-full pt-0.5" ref={categoryDropdownRef}>
+          {/* Full-width Trigger Button listing categories */}
           <button
             type="button"
             onClick={() => {
               setIsCategoryDropdownOpen(!isCategoryDropdownOpen)
               setIsOutcomeDropdownOpen(false)
             }}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border font-bold text-xs transition-all cursor-pointer shadow-sm ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border font-bold text-xs transition-all cursor-pointer shadow-sm ${
               isCategoryFiltered
                 ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
                 : isCategoryDropdownOpen
@@ -1062,11 +1118,13 @@ export const CategoryFiltersBar: React.FC<{
                 : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white'
             }`}
           >
-            <div className="flex items-center gap-2 min-w-0 truncate">
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2 overflow-hidden">
               <Filter className={`w-3.5 h-3.5 shrink-0 ${isCategoryFiltered ? 'text-emerald-400' : 'text-slate-400'}`} />
-              <span className="truncate">{activeCategoryLabel}</span>
+              <span className="truncate text-left text-xs font-bold">
+                {activeCategoryLabel}
+              </span>
             </div>
-            <ChevronDown className={`w-3.5 h-3.5 shrink-0 ml-1 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180 text-emerald-400' : 'text-slate-400'}`} />
+            <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180 text-emerald-400' : 'text-slate-400'}`} />
           </button>
 
           {/* Full-Opacity Category Dropdown Panel */}
@@ -1145,7 +1203,7 @@ export const CategoryFiltersBar: React.FC<{
 
           {/* Active filter summary chips if filtered */}
           {isCategoryFiltered && (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 shrink-0">
                 Active:
               </span>
@@ -1190,17 +1248,17 @@ export const CategoryFiltersBar: React.FC<{
         </div>
       )}
 
-      {/* LENS 2: OUTCOMES FILTERING (Full-opacity dropdown matching mobile UI) */}
+      {/* LENS 2: OUTCOMES FILTERING (DIRECTLY underneath toggle) */}
       {currentLens === 'outcomes' && (
-        <div className="flex flex-col gap-2 relative" ref={outcomeDropdownRef}>
-          {/* Full-width Trigger Button */}
+        <div className="flex flex-col gap-1.5 relative w-full pt-0.5" ref={outcomeDropdownRef}>
+          {/* Full-width Trigger Button listing outcomes */}
           <button
             type="button"
             onClick={() => {
               setIsOutcomeDropdownOpen(!isOutcomeDropdownOpen)
               setIsCategoryDropdownOpen(false)
             }}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border font-bold text-xs transition-all cursor-pointer shadow-sm ${
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border font-bold text-xs transition-all cursor-pointer shadow-sm ${
               selectedOutcomes.length > 0
                 ? 'bg-purple-950/60 border-purple-500/60 text-purple-200 shadow-[0_0_12px_rgba(168,85,247,0.25)]'
                 : isOutcomeDropdownOpen
@@ -1208,14 +1266,10 @@ export const CategoryFiltersBar: React.FC<{
                 : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white'
             }`}
           >
-            <div className="flex items-center gap-2 min-w-0 truncate">
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2 overflow-hidden">
               <Target className={`w-3.5 h-3.5 shrink-0 ${selectedOutcomes.length > 0 ? 'text-amber-400' : 'text-purple-400'}`} />
-              <span className="truncate">
-                {selectedOutcomes.length === 0
-                  ? 'Filter by Outcome (All Active)'
-                  : selectedOutcomes.length === 1
-                  ? `Outcome: ${selectedOutcomes[0]}`
-                  : `Outcomes: ${selectedOutcomes.length} Selected`}
+              <span className="truncate text-left text-xs font-bold">
+                {activeOutcomeLabel}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -1224,11 +1278,11 @@ export const CategoryFiltersBar: React.FC<{
                   {selectedOutcomes.length}
                 </span>
               )}
-              <ChevronDown className={`w-3.5 h-3.5 shrink-0 ml-1 transition-transform duration-200 ${isOutcomeDropdownOpen ? 'rotate-180 text-purple-400' : 'text-slate-400'}`} />
+              <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOutcomeDropdownOpen ? 'rotate-180 text-purple-400' : 'text-slate-400'}`} />
             </div>
           </button>
 
-          {/* Full-Opacity Outcomes Dropdown Panel */}
+          {/* Full-Opacity Outcomes Dropdown Panel (2-wide outcome grid) */}
           {isOutcomeDropdownOpen && (
             <div 
               onMouseDown={(e) => e.stopPropagation()}
@@ -1272,52 +1326,49 @@ export const CategoryFiltersBar: React.FC<{
                 )}
               </div>
 
-              {/* Scrollable list of ranked outcomes */}
-              <div className="overflow-y-auto max-h-64 space-y-1 pr-1 scrollbar-thin divide-y divide-slate-800/40">
-                {filteredRankedOutcomes.map(item => {
-                  const isChecked = selectedOutcomes.some(sel => 
-                    sel.toLowerCase().trim() === item.name.toLowerCase().trim() || 
-                    sel.toLowerCase().trim() === item.id.toLowerCase().trim()
-                  )
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => onToggleOutcome?.(item.name)}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
-                        isChecked
-                          ? 'bg-purple-900/30 text-purple-200 border border-purple-500/40 shadow-sm'
-                          : 'text-slate-300 hover:bg-slate-900 hover:text-white border border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-base shrink-0">{item.icon}</span>
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="truncate font-semibold">{item.name}</span>
+              {/* Scrollable list of ranked outcomes: 2-WIDE GRID with unique emojis */}
+              <div className="overflow-y-auto max-h-72 p-0.5 scrollbar-thin">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                  {filteredRankedOutcomes.map(item => {
+                    const isChecked = selectedOutcomes.some(sel => 
+                      sel.toLowerCase().trim() === item.name.toLowerCase().trim() || 
+                      sel.toLowerCase().trim() === item.id.toLowerCase().trim()
+                    )
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => onToggleOutcome?.(item.name)}
+                        className={`p-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left flex items-start justify-between gap-1.5 border ${
+                          isChecked
+                            ? 'bg-purple-900/40 text-purple-100 border-purple-500/60 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
+                            : 'bg-slate-900/90 text-slate-300 hover:bg-slate-800 hover:text-white border-slate-800/80 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                          <span className="text-base shrink-0 leading-tight">{item.icon}</span>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="font-bold text-[11px] sm:text-xs leading-snug line-clamp-2">
+                              {item.name}
+                            </span>
                             {item.badge && (
-                              <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold uppercase tracking-wider ${item.badgeClass}`}>
+                              <span className={`text-[8px] font-bold uppercase tracking-wider px-1 py-0.2 rounded mt-0.5 w-fit ${item.badgeClass}`}>
                                 {item.badge}
                               </span>
                             )}
                           </div>
-                          {item.description && (
-                            <span className="text-[10px] font-normal text-slate-400 line-clamp-1">
-                              {item.description}
-                            </span>
-                          )}
                         </div>
-                      </div>
-                      <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ml-2 ${
-                        isChecked
-                          ? 'bg-purple-600 border-purple-400 text-white'
-                          : 'border-slate-700 bg-slate-900'
-                      }`}>
-                        {isChecked && <Check size={11} strokeWidth={3} />}
-                      </div>
-                    </button>
-                  )
-                })}
+                        <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center shrink-0 mt-0.5 ${
+                          isChecked
+                            ? 'bg-purple-600 border-purple-400 text-white'
+                            : 'border-slate-700 bg-slate-950'
+                        }`}>
+                          {isChecked && <Check size={9} strokeWidth={3} />}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
                 {filteredRankedOutcomes.length === 0 && (
                   <div className="p-4 text-center text-xs text-slate-500">
                     No matching outcomes found
@@ -1329,7 +1380,7 @@ export const CategoryFiltersBar: React.FC<{
 
           {/* Active outcome tags bar */}
           {selectedOutcomes.length > 0 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 shrink-0">
                 Filtered:
               </span>
