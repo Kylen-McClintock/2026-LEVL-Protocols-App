@@ -124,7 +124,7 @@ export default function ExploreCard({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
-                  router.push(`/today?modality=${encodeURIComponent(modality.id)}`)
+                  router.push(`/today?modality=${encodeURIComponent(modality.id)}&name=${encodeURIComponent(modality.display_name || modality.name)}`)
                 }}
                 className="flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] transition-colors cursor-pointer shrink-0"
               >
@@ -472,7 +472,7 @@ export default function ExploreCard({
             onClick={(e) => {
               e.stopPropagation()
               if (isCurrentlyActiveInToday) {
-                router.push(`/today?modality=${encodeURIComponent(modality.id)}`)
+                router.push(`/today?modality=${encodeURIComponent(modality.id)}&name=${encodeURIComponent(modality.display_name || modality.name)}`)
               } else if (!isCurrentlyOnBench) {
                 setIsScheduling(true)
               }

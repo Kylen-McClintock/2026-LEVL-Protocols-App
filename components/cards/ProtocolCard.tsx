@@ -60,6 +60,10 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
 
   const handleToday = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (isCurrentlyActiveInToday) {
+      router.push(`/today?protocol=${encodeURIComponent(protocol.id || protocol.name)}&name=${encodeURIComponent(protocol.name)}`)
+      return
+    }
     setAddedToToday(true)
     setIsAddingToday(true)
     try {
@@ -140,7 +144,7 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation()
-                    router.push(`/today?protocol=${encodeURIComponent(protocol.id || protocol.name)}`)
+                    router.push(`/today?protocol=${encodeURIComponent(protocol.id || protocol.name)}&name=${encodeURIComponent(protocol.name)}`)
                   }}
                   className="flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] transition-colors cursor-pointer"
                 >
@@ -354,10 +358,10 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
       <div className="flex items-center gap-2 p-4 pt-0 border-t border-white/5 mt-2">
         <button 
           onClick={handleToday}
-          disabled={isCurrentlyActiveInToday || isAddingToday}
+          disabled={isAddingToday}
           className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
             isCurrentlyActiveInToday 
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default shadow-[0_0_12px_rgba(16,185,129,0.15)]' 
+              ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.15)] active:scale-95' 
               : 'bg-levl-accent text-white hover:bg-levl-accent/90 cursor-pointer shadow-md'
           }`}
         >

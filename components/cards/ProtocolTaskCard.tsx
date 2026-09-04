@@ -1520,8 +1520,10 @@ export default function ProtocolTaskCard({
     <div 
       id={`task-card-${task.id}`}
       data-task-id={task.id}
-      data-modality-id={modality?.id}
+      data-modality-id={modality?.id || task.modality_id || task.protocol_step?.modality_id}
       data-modality-name={(modality?.display_name || modality?.name || '').toLowerCase()}
+      data-protocol-id={task.protocol_step?.protocol_id || task.lineages?.[0]?.protocol_id || (task.protocol_step?.protocol as any)?.id}
+      data-protocol-name={(task.protocol_step?.protocol?.name || task.lineages?.[0]?.protocol_name || '').toLowerCase()}
       className={`relative overflow-hidden rounded-xl select-none transition-all duration-300 ${isSupplement ? 'ml-0.5 sm:ml-1' : ''}`}
     >
       {/* Background Underlayers revealed during swipe */}

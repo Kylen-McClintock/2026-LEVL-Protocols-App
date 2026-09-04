@@ -132,6 +132,9 @@ function TodayPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const dateParam = searchParams.get('date')
+  const modalityParam = searchParams.get('modality')
+  const protocolParam = searchParams.get('protocol')
+  const nameParam = searchParams.get('name')
 
   const { user: authUser, localUserId: authUserId, loading: authLoading } = useAuth()
   const [isMounted, setIsMounted] = useState(false)
@@ -291,13 +294,13 @@ function TodayPageContent() {
   const isFutureTimeline = isBefore(startOfDay(new Date()), startOfDay(currentDate))
   const isCurrentDay = dateStr === format(new Date(), 'yyyy-MM-dd')
 
-  // Always anchor viewport strictly at the top of the day view on load and date switch
+  // Always anchor viewport strictly at the top of the day view on load and date switch (unless navigating to a specific modality or protocol)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && !modalityParam && !protocolParam) {
       window.scrollTo({ top: 0, behavior: 'instant' })
     }
     setShouldMountNBA(false)
-  }, [dateStr])
+  }, [dateStr, modalityParam, protocolParam])
 
   // Lazy mount Next Best Action only when user scrolls near the bottom of their day
   useEffect(() => {
@@ -557,21 +560,46 @@ function TodayPageContent() {
     }
   }
 
-  const handleScrollToModality = (nameOrId: string) => {
+  const handleScrollToModality = (nameOrId: string, isProtocol = false) => {
     if (!nameOrId || typeof window === 'undefined') return
     const clean = nameOrId.toLowerCase().trim()
 
-    // 1. Uncollapse any groups that might hide the modality
+    // 1. Uncollapse any groups that might hide the target
     setCollapsedGroups({})
+    if (isProtocol) {
+      setViewMode('protocol')
+      setSelectedProtocolFilter('all')
+    } else {
+      setSelectedProtocolFilter('all')
+      setSelectedMainCategories(['all'])
+      setSelectedSubCategories([])
+      setSelectedIsolatedOutcome(null)
+      setIsCompletedSectionExpanded(true)
+      setIsSnoozedSectionExpanded(true)
+      setIsSkippedSectionExpanded(true)
+    }
 
-    // 2. Retry up to 6 times to account for React re-render & DOM hydration of the new card
+    // 2. Retry up to 15 times (1.5s total) to account for React re-render & DOM hydration
     let attempts = 0
     const tryScroll = () => {
       attempts++
-      const selector = `[data-modality-name*="${clean}"], [data-modality-id="${clean}"], [id*="${clean}"]`
-      let el = document.querySelector(selector) as HTMLElement | null
+      let el: HTMLElement | null = null
+
+      if (isProtocol) {
+        // Try finding protocol group container first
+        const protoSlug = clean.replace(/[^a-z0-9]+/g, '-')
+        const protoSelector = `[data-protocol-id="${clean}"], [data-protocol-name*="${clean}"], [id="protocol-group-${protoSlug}"], [id*="protocol-group-${clean}"]`
+        el = document.querySelector(protoSelector) as HTMLElement | null
+      }
 
       if (!el) {
+        // Find task card by data attributes
+        const selector = `[data-modality-id="${clean}"], [data-modality-name*="${clean}"], [data-protocol-id="${clean}"], [data-protocol-name*="${clean}"], [id*="${clean}"]`
+        el = document.querySelector(selector) as HTMLElement | null
+      }
+
+      if (!el) {
+        // Fallback: search task cards for text content match
         const allCards = document.querySelectorAll('[id^="task-card-"]')
         for (const card of Array.from(allCards)) {
           if (card.textContent?.toLowerCase().includes(clean)) {
@@ -583,29 +611,81 @@ function TodayPageContent() {
 
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        const ringColor = isProtocol ? 'ring-purple-400' : 'ring-emerald-400'
+        const shadowColor = isProtocol ? 'shadow-[0_0_40px_rgba(168,85,247,0.9)]' : 'shadow-[0_0_40px_rgba(52,211,153,0.9)]'
         el.classList.add(
           'ring-4',
-          'ring-purple-500',
-          'shadow-[0_0_40px_rgba(168,85,247,0.9)]',
+          ringColor,
+          shadowColor,
           'scale-[1.02]',
           'transition-all',
-          'duration-500'
+          'duration-500',
+          'z-30'
         )
         setTimeout(() => {
           el?.classList.remove(
             'ring-4',
-            'ring-purple-500',
-            'shadow-[0_0_40px_rgba(168,85,247,0.9)]',
-            'scale-[1.02]'
+            ringColor,
+            shadowColor,
+            'scale-[1.02]',
+            'z-30'
           )
         }, 3500)
-      } else if (attempts < 6) {
-        setTimeout(tryScroll, 120)
+      } else if (attempts < 15) {
+        setTimeout(tryScroll, 100)
       }
     }
 
-    setTimeout(tryScroll, 100)
+    setTimeout(tryScroll, 120)
   }
+
+  // Deep-linking: Automatically scroll to and highlight modality or protocol from URL params (e.g. from Explore or Bench "In Today's Plan")
+  useEffect(() => {
+    if (!modalityParam && !protocolParam) return
+
+    // 1. Ensure Calendar View is Today
+    if (calendarViewMode !== 'today') {
+      setCalendarViewMode('today')
+    }
+
+    // 2. If it's a protocol, set viewMode to protocol
+    if (protocolParam) {
+      setViewMode('protocol')
+      setSelectedProtocolFilter('all')
+    } else {
+      setSelectedProtocolFilter('all')
+      setSelectedMainCategories(['all'])
+      setSelectedSubCategories([])
+      setSelectedIsolatedOutcome(null)
+    }
+
+    // 3. Uncollapse all groups to ensure target card is mounted
+    setCollapsedGroups({})
+    setIsCompletedSectionExpanded(true)
+    setIsSnoozedSectionExpanded(true)
+    setIsSkippedSectionExpanded(true)
+
+    // 4. Check if target item is already present in tasks; if not (e.g. freshly added in Explore), fetch fresh
+    const target = (modalityParam || protocolParam || '').toLowerCase()
+    const nameClean = (nameParam || '').toLowerCase()
+    const itemExists = tasks.some(t => {
+      const mId = (t.modality_id || t.protocol_step?.modality_id || '').toLowerCase()
+      const mName = (t.protocol_step?.modality?.display_name || t.protocol_step?.modality?.name || t.loose_modality?.display_name || t.loose_modality?.name || '').toLowerCase()
+      const pId = (t.protocol_step?.protocol_id || t.lineages?.[0]?.protocol_id || '').toLowerCase()
+      const pName = (t.protocol_step?.protocol?.name || t.lineages?.[0]?.protocol_name || '').toLowerCase()
+      return (
+        (modalityParam && (mId === target || mName.includes(target) || (nameClean && mName.includes(nameClean)))) ||
+        (protocolParam && (pId === target || pName.includes(target) || (nameClean && pName.includes(nameClean))))
+      )
+    })
+
+    if (!itemExists) {
+      refreshTodayTasks()
+    }
+
+    // 5. Scroll and illuminate the target card/group
+    handleScrollToModality(modalityParam || protocolParam || nameParam || '', !!protocolParam)
+  }, [modalityParam, protocolParam, nameParam, dateStr])
 
   useEffect(() => {
     const handleProfileUpdate = (e: any) => {
@@ -2254,8 +2334,16 @@ function TodayPageContent() {
       const completedCount = groupTasks.filter(t => t.status === 'completed').length
 
       if (isProtocolGroup && groupName !== 'Standalone & Individual Modalities') {
+        const protoId = matchedProtocol?.id || groupTasks[0]?.protocol_step?.protocol_id || ''
+        const protoSlug = groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
         return (
-          <div key={groupName} className="p-4 sm:p-5 rounded-3xl bg-slate-950/70 border border-purple-500/30 shadow-2xl space-y-4 mb-6 relative overflow-hidden backdrop-blur-md">
+          <div 
+            key={groupName} 
+            id={`protocol-group-${protoSlug}`}
+            data-protocol-id={protoId}
+            data-protocol-name={groupName.toLowerCase()}
+            className="p-4 sm:p-5 rounded-3xl bg-slate-950/70 border border-purple-500/30 shadow-2xl space-y-4 mb-6 relative overflow-hidden backdrop-blur-md transition-all duration-500"
+          >
             {/* Ambient subtle glow */}
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { UserBenchItem, UserProfile } from '@/lib/types'
 import { Plus, Trash2, Check, Info, Activity, User, Sparkles, ExternalLink, CheckCircle2 } from 'lucide-react'
 import GeekMode from './GeekMode'
@@ -28,6 +29,7 @@ type BenchCardProps = {
 }
 
 export default function BenchCard({ item, userProfile, protocolTags = [], onAddToToday, onRemove }: BenchCardProps) {
+  const router = useRouter()
   const [addedToToday, setAddedToToday] = useState(false)
   const [removed, setRemoved] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -41,6 +43,10 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
 
   const handleToday = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (addedToToday) {
+      router.push(`/today?modality=${encodeURIComponent(modality.id)}&name=${encodeURIComponent(modality.display_name || modality.name)}`)
+      return
+    }
     setIsProcessing(true)
     await onAddToToday(modality.id)
     setIsProcessing(false)
@@ -222,10 +228,10 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
       <div className="flex items-center gap-2 p-4 pt-0 border-t border-white/5 mt-2">
         <button 
           onClick={handleToday}
-          disabled={addedToToday || isProcessing}
+          disabled={isProcessing}
           className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
             addedToToday 
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-default' 
+              ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-pointer active:scale-95' 
               : 'bg-levl-accent text-white hover:bg-levl-accent/90 shadow-md cursor-pointer'
           }`}
         >
