@@ -19,7 +19,8 @@ import {
   addModalityOrProtocolToToday,
   getModalities,
   addToBench,
-  upsertBenchItemOverride
+  upsertBenchItemOverride,
+  updateTaskExecutionDetails
 } from '@/lib/data'
 import { DailyProtocolTask, Modality, OutcomeDimension, UserProfile, UserBenchItem, DailyWellbeingCheckin as WellbeingType } from '@/lib/types'
 import { 
@@ -65,6 +66,9 @@ import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getCircadianConfig, getAdaptiveCircadianConfig, isCurrentCircadianSlot, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS } from '@/lib/utils/circadianConfig'
 import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
 import AdaptiveSleepTriageCard from '@/components/today/AdaptiveSleepTriageCard'
+import { OutcomeLensView } from '@/components/outcomes/OutcomeLensView'
+import { OutcomeOptimizationModal } from '@/components/modals/OutcomeOptimizationModal'
+import { OutcomeOptimizationState, AntagonisticClash } from '@/lib/outcomes/outcomeOptimizationEngine'
 
 function formatSlotName(str: string): string {
   if (!str) return 'Anytime'
@@ -342,8 +346,12 @@ function TodayPageContent() {
   }, [])
 
   const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewMode>('today')
-  const [viewMode, setViewMode] = useState<'chronological' | 'protocol'>('chronological')
+  const [viewMode, setViewMode] = useState<'chronological' | 'protocol' | 'outcomes'>('chronological')
   const [completionMode, setCompletionMode] = useState<'outcome' | 'fast'>('outcome')
+
+  // Outcome Vectors Lens Modal States
+  const [inspectingOutcomeState, setInspectingOutcomeState] = useState<OutcomeOptimizationState | null>(null)
+  const [isOutcomeModalOpen, setIsOutcomeModalOpen] = useState(false)
 
   const [selectedProtocolFilter, setSelectedProtocolFilter] = useState<string>('all')
   const [selectedMainCategories, setSelectedMainCategories] = useState<MainCategory[]>(['all'])
@@ -386,6 +394,29 @@ function TodayPageContent() {
     (userSubjectiveSleep != null && userSubjectiveSleep <= 4)
   )
   const [show100Celebration, setShow100Celebration] = useState<boolean>(false)
+
+  // Referral / Instant Kickstart progressive profiling banner state
+  const [isGuestBannerDismissed, setIsGuestBannerDismissed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('levl_guest_banner_dismissed') === 'true'
+      } catch (e) {}
+    }
+    return false
+  })
+
+  const guestKickstartProtocol = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const isKickstarted = localStorage.getItem('levl_guest_instant_kickstart') === 'true' || !!localStorage.getItem('levl_referral_source')
+      if (!isKickstarted) return null
+      return localStorage.getItem('levl_active_protocol') || 'Cellular Dermal Matrix Protocol'
+    } catch (e) {
+      return null
+    }
+  }, [])
+
+  const showGuestKickstartBanner = !!guestKickstartProtocol && !isGuestBannerDismissed && (typeof window !== 'undefined' ? localStorage.getItem('levl_onboarding_completed') !== 'true' : true)
 
   const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false)
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false)
@@ -893,6 +924,39 @@ function TodayPageContent() {
       effectiveCompletedAt = undefined
     }
 
+    // Optimistic UI update: If modality was eliminated, remove it immediately from today tasks
+    if (status === 'contraindicated' || reason?.toLowerCase().includes('eliminated')) {
+      const realId = id.includes('-split-') ? id.split('-split-')[0] : id
+      const eliminatedTask = tasks.find(t => t.id === id || t.id === realId || uuidSet.has(t.id))
+      const mId = (
+        eliminatedTask?.modality_id || 
+        eliminatedTask?.protocol_step?.modality_id || 
+        eliminatedTask?.protocol_step?.modality?.id || 
+        eliminatedTask?.loose_modality?.id || 
+        ''
+      ).trim().toLowerCase()
+
+      setTasks(prev => prev.filter(t => {
+        const taskMid = (
+          t.modality_id || 
+          t.protocol_step?.modality_id || 
+          t.protocol_step?.modality?.id || 
+          t.loose_modality?.id || 
+          ''
+        ).trim().toLowerCase()
+        if (mId && taskMid === mId) return false
+        if (t.id === id || t.id === realId || uuidSet.has(t.id)) return false
+        return true
+      }))
+      if (mId) {
+        setBenchItems(prev => [
+          ...prev.filter(b => b.modality_id?.toLowerCase().trim() !== mId),
+          { id: 'temp_' + mId, modality_id: mId, status: 'eliminated', local_user_id: localUserId, pinned: false, added_at: new Date().toISOString(), personal_notes: reason }
+        ])
+      }
+      return
+    }
+
     // Optimistic UI update
     setTasks(prev => prev.map(t => {
       if (t.id === id || uuidSet.has(t.id)) {
@@ -1032,6 +1096,38 @@ function TodayPageContent() {
 
   const handleOutcomesSaved = (taskId: string) => {
     setOutcomesRefreshKey(prev => prev + 1)
+  }
+
+  const handleUpdateOutcomeTarget = async (outcomeId: string, newTarget: number, newEffort: number) => {
+    if (!profile) return
+    const updatedScores = {
+      ...(profile.outcome_preference_scores || {}),
+      [outcomeId]: newTarget,
+      [`${outcomeId}_effort`]: newEffort
+    }
+    const updatedProfile = {
+      ...profile,
+      outcome_preference_scores: updatedScores
+    }
+    setProfile(updatedProfile)
+    try {
+      const { updateUserProfile } = await import('@/lib/data')
+      await updateUserProfile(profile.local_user_id, { outcome_preference_scores: updatedScores })
+    } catch (err) {
+      console.error('Failed to save outcome target preference:', err)
+    }
+  }
+
+  const handleAutoFixClash = async (clash: AntagonisticClash) => {
+    const taskToShift = tasks.find(t => {
+      const mId = t.modality_id || t.protocol_step?.modality_id
+      return mId === clash.modalityA.id || mId === clash.modalityB.id
+    })
+    if (taskToShift) {
+      const newSlot = clash.outcomeId.toLowerCase().includes('sleep') ? 'morning' : 'evening'
+      await updateTaskExecutionDetails(taskToShift.id, { timing_slot: newSlot })
+      await refreshTodayTasks()
+    }
   }
 
   const handleOpenRescheduleModal = (task: DailyProtocolTask) => {
@@ -1260,7 +1356,7 @@ function TodayPageContent() {
 
       try {
         const { eliminateModality, getBenchItems } = await import('@/lib/data')
-        await eliminateModality(localUserId, mId, task.id, reason, selectedReasons)
+        await eliminateModality(localUserId, mId, reason || 'User eliminated modality', task.id, selectedReasons || [])
         const bItems = await getBenchItems(localUserId)
         setBenchItems(bItems)
       } catch (err) {
@@ -1291,19 +1387,62 @@ function TodayPageContent() {
     )
   }
 
+  const benchedOrEliminatedModalityIds = useMemo(() => {
+    const set = new Set<string>()
+    benchItems.forEach(b => {
+      if (b.status === 'benched' || b.status === 'eliminated') {
+        if (b.modality_id) set.add(b.modality_id.toLowerCase().trim())
+      }
+    })
+    return set
+  }, [benchItems])
+
   // Multi-dose splitting and Modality Deduplication with Lineage Aggregation
   const dedupedTasks = useMemo(() => {
+    // Filter out eliminated / contraindicated tasks from active Today view
+    const activeTasks = tasks.filter(task => {
+      const modality = task.protocol_step?.modality || task.loose_modality
+      const mId = (
+        task.modality_id || 
+        task.protocol_step?.modality_id || 
+        task.protocol_step?.modality?.id || 
+        modality?.id || 
+        ''
+      ).trim().toLowerCase()
+      if (task.status === 'contraindicated') return false
+      if (task.status_reason?.toLowerCase().includes('eliminated')) return false
+      if (mId && benchedOrEliminatedModalityIds.has(mId)) return false
+      return true
+    })
+
     // 1. Expand multi-dose tasks if applicable
     const expandedTasks: DailyProtocolTask[] = []
     
-    tasks.forEach(task => {
+    activeTasks.forEach(task => {
       const modality = task.protocol_step?.modality || task.loose_modality
       const mId = modality?.id || task.modality_id || ''
       const benchItem = mId ? benchItems.find(b => b.modality_id === mId) : null
       
-      const effectiveTiming = task.execution_details?.custom_timing || benchItem?.custom_timing || modality?.timing_summary || modality?.frequency || ''
+      const effectiveTiming = 
+        task.execution_details?.custom_timing || 
+        task.custom_timing || 
+        benchItem?.custom_timing || 
+        task.timing_slot ||
+        modality?.default_timing_slot ||
+        modality?.timing_summary || 
+        modality?.frequency || 
+        ''
+      const effectiveDose = 
+        task.execution_details?.custom_dose || 
+        task.custom_dose || 
+        benchItem?.custom_dose || 
+        modality?.dose_or_exposure || 
+        ''
       const isSupplement = (modality?.category || '').toLowerCase().includes('supplement') || (modality?.modality_type || '').toLowerCase() === 'supplement'
-      const slots = parseMultiDoseTimingSlots(effectiveTiming, isSupplement)
+      let slots = parseMultiDoseTimingSlots(effectiveTiming, isSupplement)
+      if ((!slots || slots.length < 2) && effectiveDose) {
+        slots = parseMultiDoseTimingSlots(effectiveDose, isSupplement)
+      }
 
       if (slots && slots.length >= 2) {
         const completedDoses: number[] = task.execution_details?.completed_doses || (task.status === 'completed' ? Array.from({ length: slots.length }, (_, i) => i + 1) : [])
@@ -1317,7 +1456,8 @@ function TodayPageContent() {
             status: isThisDoseDone ? 'completed' : (task.status === 'completed' ? 'pending' : task.status),
             execution_details: {
               ...task.execution_details,
-              custom_timing: effectiveTiming,
+              custom_timing: s.slot,
+              original_custom_timing: effectiveTiming,
               split_dose_label: s.label,
               split_dose_info: `Dose ${s.doseNumber} of ${s.totalDoses}`,
               split_dose_number: s.doseNumber,
@@ -1363,8 +1503,11 @@ function TodayPageContent() {
         const modalityKey = modalityId || modalityName || task.id
         const splitNumber = task.execution_details?.split_dose_number || 0
         const protoKey = `${pId}_${modalityKey}_split_${splitNumber}`
+        const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
         const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
-        const resolvedSlot = resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
+        const resolvedSlot = isSplitTask && task.timing_slot && task.timing_slot !== 'anytime'
+          ? task.timing_slot
+          : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
         
         if (!protoMap.has(protoKey)) {
           protoMap.set(protoKey, {
@@ -1395,8 +1538,11 @@ function TodayPageContent() {
       const modalityName = (modality?.name || modality?.display_name || (task as any).name || '').trim().toLowerCase()
       const baseKey = modalityId || modalityName || task.id
       const dedupeKey = splitNumber > 0 ? `${baseKey}-split-${splitNumber}` : baseKey
+      const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
       const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
-      const resolvedSlot = resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
+      const resolvedSlot = isSplitTask && task.timing_slot && task.timing_slot !== 'anytime'
+        ? task.timing_slot
+        : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
 
       if (!map.has(dedupeKey)) {
         const initialLineages: Array<{ protocol_id?: string; protocol_name: string; color_hex?: string; protocol_type?: string }> = []
@@ -1456,17 +1602,7 @@ function TodayPageContent() {
     })
 
     return Array.from(map.values())
-  }, [tasks, benchItems, viewMode, profile])
-
-  const benchedOrEliminatedModalityIds = useMemo(() => {
-    const set = new Set<string>()
-    benchItems.forEach(b => {
-      if (b.status === 'benched' || b.status === 'eliminated') {
-        set.add(b.modality_id)
-      }
-    })
-    return set
-  }, [benchItems])
+  }, [tasks, benchItems, viewMode, profile, benchedOrEliminatedModalityIds])
 
   const isTaskMatchingCategoryFilter = (task: DedupedTask): boolean => {
     if (selectedMainCategories.includes('all') || selectedMainCategories.length === 0) return true
@@ -1552,14 +1688,23 @@ function TodayPageContent() {
     const result: Record<string, DailyProtocolTask[]> = {}
 
     Object.entries(multiDayTasks).forEach(([dKey, taskList]) => {
-      const filtered = taskList.filter(task => {
-        const mId = task.modality_id || task.protocol_step?.modality_id || ''
+      const activeList: DailyProtocolTask[] = []
+
+      taskList.forEach(task => {
+        const mId = (
+          task.modality_id || 
+          task.protocol_step?.modality_id || 
+          task.protocol_step?.modality?.id || 
+          task.loose_modality?.id || 
+          ''
+        ).trim().toLowerCase()
         if (
           task.status === 'contraindicated' ||
           task.status_reason === 'Moved to Bench' ||
+          task.status_reason?.toLowerCase().includes('eliminated') ||
           (mId && benchedOrEliminatedModalityIds.has(mId))
         ) {
-          return false
+          return
         }
 
         if (selectedProtocolFilter && selectedProtocolFilter !== 'all') {
@@ -1576,20 +1721,68 @@ function TodayPageContent() {
             ((task as any).user_protocol_instance?.protocol_id && (task as any).user_protocol_instance.protocol_id.toLowerCase() === target) ||
             ((task as any).user_protocol_instance?.protocol?.name && (task as any).user_protocol_instance.protocol.name.toLowerCase().includes(target))
 
-          if (!matchesProtocol) return false
+          if (!matchesProtocol) return
         }
 
-        const dedupedEquivalent: DedupedTask = {
-          ...task,
-          timing_slot: task.timing_slot || task.protocol_step?.timing_slot || 'anytime'
+        const modality = task.protocol_step?.modality || task.loose_modality
+        const benchItem = mId ? benchItems.find(b => b.modality_id?.toLowerCase().trim() === mId) : null
+        const effectiveTiming = 
+          task.execution_details?.custom_timing || 
+          task.custom_timing || 
+          benchItem?.custom_timing || 
+          task.timing_slot ||
+          modality?.default_timing_slot ||
+          modality?.timing_summary || 
+          modality?.frequency || 
+          ''
+        const effectiveDose = 
+          task.execution_details?.custom_dose || 
+          task.custom_dose || 
+          benchItem?.custom_dose || 
+          modality?.dose_or_exposure || 
+          ''
+        const isSupplement = (modality?.category || '').toLowerCase().includes('supplement') || (modality?.modality_type || '').toLowerCase() === 'supplement'
+
+        let slots = parseMultiDoseTimingSlots(effectiveTiming, isSupplement)
+        if ((!slots || slots.length < 2) && effectiveDose) {
+          slots = parseMultiDoseTimingSlots(effectiveDose, isSupplement)
         }
 
-        if (!isTaskMatchingCategoryFilter(dedupedEquivalent)) return false
-
-        return true
+        if (slots && slots.length >= 2) {
+          const completedDoses: number[] = task.execution_details?.completed_doses || (task.status === 'completed' ? Array.from({ length: slots.length }, (_, i) => i + 1) : [])
+          slots.forEach(s => {
+            const isThisDoseDone = completedDoses.includes(s.doseNumber)
+            const splitTask: DailyProtocolTask = {
+              ...task,
+              id: `${task.id}-split-${s.doseNumber}`,
+              timing_slot: s.slot,
+              status: isThisDoseDone ? 'completed' : (task.status === 'completed' ? 'pending' : task.status),
+              execution_details: {
+                ...task.execution_details,
+                custom_timing: s.slot,
+                original_custom_timing: effectiveTiming,
+                split_dose_label: s.label,
+                split_dose_info: `Dose ${s.doseNumber} of ${s.totalDoses}`,
+                split_dose_number: s.doseNumber,
+                split_dose_total: s.totalDoses
+              }
+            }
+            if (isTaskMatchingCategoryFilter(splitTask as DedupedTask)) {
+              activeList.push(splitTask)
+            }
+          })
+        } else {
+          const dedupedEquivalent: DedupedTask = {
+            ...task,
+            timing_slot: task.timing_slot || task.protocol_step?.timing_slot || 'anytime'
+          }
+          if (isTaskMatchingCategoryFilter(dedupedEquivalent)) {
+            activeList.push(task)
+          }
+        }
       })
 
-      result[dKey] = filtered
+      result[dKey] = activeList
     })
 
     return result
@@ -1620,6 +1813,17 @@ function TodayPageContent() {
       if (!isTaskMatchingCategoryFilter(task)) return
 
       const modality = task.protocol_step?.modality || task.loose_modality
+      const mId = (
+        task.modality_id || 
+        task.protocol_step?.modality_id || 
+        task.protocol_step?.modality?.id || 
+        modality?.id || 
+        ''
+      ).trim().toLowerCase()
+      if (task.status === 'contraindicated' || task.status_reason?.toLowerCase().includes('eliminated') || (mId && benchedOrEliminatedModalityIds.has(mId))) {
+        return
+      }
+
       const cat = modality ? getMacroCategory(modality.category) : 'Other'
 
       if (cat === 'Diagnostics & Tracking') {
@@ -1643,6 +1847,10 @@ function TodayPageContent() {
           routine.push(task)
         }
       } else if (isSkipped) {
+        // Never show benched or eliminated modalities in the skipped section!
+        if (task.status_reason?.toLowerCase().includes('eliminated') || (mId && benchedOrEliminatedModalityIds.has(mId))) {
+          return
+        }
         // If viewing a future date, never show benched modalities in the skipped section (only on the day it was skipped)
         const isBenchedReason = task.status_reason?.toLowerCase().includes('bench')
         if (isFutureTimeline && isBenchedReason) {
@@ -1664,7 +1872,7 @@ function TodayPageContent() {
       allSkippedTasks: skippedTop,
       infrequentTasks: infrequent 
     }
-  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds])
+  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline])
 
   const sortedCompletedGroups = useMemo(() => {
     if (allCompletedTasks.length === 0) return []
@@ -1685,7 +1893,12 @@ function TodayPageContent() {
         groupKey = task.lineages?.[0]?.protocol_name || task.protocol_step?.protocol?.name || 'Custom / Unassigned'
       } else {
         const modality = task.protocol_step?.modality || task.loose_modality
-        groupKey = resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot)
+        const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
+        groupKey = (isSplitTask && task.timing_slot && task.timing_slot !== 'anytime')
+          ? task.timing_slot
+          : (task.timing_slot && task.timing_slot !== 'anytime'
+            ? task.timing_slot
+            : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot))
       }
       if (!groups[groupKey]) groups[groupKey] = []
       groups[groupKey].push(task)
@@ -1733,9 +1946,15 @@ function TodayPageContent() {
     const groups: Record<string, DedupedTask[]> = {}
     routineTasks.forEach(task => {
       const modality = task.protocol_step?.modality || task.loose_modality
-      const mId = modality?.id
-      const customTimingStr = task.execution_details?.custom_timing || (mId ? benchItems.find(b => b.modality_id === mId)?.custom_timing : undefined)
-      const slot = resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
+      const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
+      
+      // If task is a split task, or already has a concrete assigned timing_slot, RESPECT IT!
+      // Do NOT recalculate and override it into an arbitrary block!
+      const slot = (isSplitTask && task.timing_slot && task.timing_slot !== 'anytime')
+        ? task.timing_slot
+        : (task.timing_slot && task.timing_slot !== 'anytime'
+          ? task.timing_slot
+          : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, task.execution_details?.custom_timing))
 
       if (!groups[slot]) groups[slot] = []
       groups[slot].push({
@@ -2992,6 +3211,52 @@ function TodayPageContent() {
           </div>
         ) : (
           <>
+        {/* Progressive Profiling Banner for Referral / Guest Instant Kickstart */}
+        {showGuestKickstartBanner && (
+          <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-900/90 border border-purple-500/40 shadow-xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
+                <Sparkles size={18} />
+              </div>
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black text-white">
+                    {guestKickstartProtocol ? `Tracking: ${guestKickstartProtocol}` : 'Instant Protocol Kickstart Active'}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-teal-300 bg-teal-950/60 border border-teal-500/30 px-2 py-0.5 rounded-full">
+                    Free Direct Access
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Your daily schedule is live with evidence-based skin cycling and modalities. Complete your full profile anytime to personalize circadian sleep times, fasting windows, and multi-protocol synergies.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => router.push('/onboarding')}
+                className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-md transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+              >
+                Personalize Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsGuestBannerDismissed(true)
+                  if (typeof window !== 'undefined') {
+                    try { localStorage.setItem('levl_guest_banner_dismissed', 'true') } catch (e) {}
+                  }
+                }}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                title="Dismiss banner"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 100% Protocol Completion Micro-Celebration Banner */}
         {show100Celebration && (
           <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-teal-950/70 to-slate-950/80 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.25)] flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -3555,7 +3820,7 @@ function TodayPageContent() {
 
             {/* Timeline Layout Mode & Completion Mode Toggle Bar (Single Non-Scrolling Row) */}
             <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 p-1 sm:p-2 rounded-2xl mb-3 backdrop-blur-md shadow-sm gap-1 sm:gap-2">
-              {/* Left: Timeline Layout Mode (Time Blocks vs Protocols) */}
+              {/* Left: Timeline Layout Mode (Time Blocks vs Protocols vs Outcome Lens) */}
               <div className="flex items-center">
                 <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-white/10 gap-0.5 text-[10px] sm:text-xs">
                   <button
@@ -3582,6 +3847,20 @@ function TodayPageContent() {
                   >
                     <ListOrdered size={11} className="shrink-0" />
                     <span>Protocols</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('outcomes')}
+                    className={`px-1.5 sm:px-2.5 py-1 rounded-lg font-bold text-[10px] sm:text-xs tracking-tight transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                      viewMode === 'outcomes'
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm border border-purple-400/40 font-extrabold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="View modalities grouped and scored by functional outcome vectors (Skin Clarity, Focus, Sleep, Longevity)"
+                  >
+                    <Sparkles size={11} className="shrink-0 text-amber-300" />
+                    <span>Outcome Lens</span>
                   </button>
                 </div>
               </div>
@@ -3620,8 +3899,30 @@ function TodayPageContent() {
               </div>
             </div>
 
-            {/* Main Daily Timeline / Uncompleted Modalities */}
-            {isPastDate ? (
+            {/* Main Daily Timeline / Uncompleted Modalities / Outcome Lens */}
+            {viewMode === 'outcomes' ? (
+              <OutcomeLensView
+                tasks={routineTasks}
+                activeModalities={allModalities}
+                outcomeDimensions={allOutcomes}
+                userProfile={profile}
+                benchItems={benchItems}
+                allOutcomes={allOutcomes}
+                wellbeingCheckin={wellbeingCheckin}
+                completionMode={completionMode}
+                onStatusChange={handleStatusChange}
+                onTrackOutcomes={openTracker}
+                onSaveCustomOutcomes={handleSaveCustomOutcomes}
+                onOutcomesSaved={handleOutcomesSaved}
+                onOpenRescheduleModal={handleOpenRescheduleModal}
+                outcomesRefreshKey={outcomesRefreshKey}
+                onInspectOutcome={(state) => {
+                  setInspectingOutcomeState(state)
+                  setIsOutcomeModalOpen(true)
+                }}
+                onAutoFixClash={handleAutoFixClash}
+              />
+            ) : isPastDate ? (
               routineTasks.length > 0 && (
                 <div className="mb-6 rounded-xl border border-slate-700/60 bg-slate-900/40 overflow-hidden shadow-lg transition-all duration-300">
                   <div className="w-full flex items-center justify-between p-3.5 bg-slate-800/40 border-b border-slate-700/40">
@@ -3839,6 +4140,28 @@ function TodayPageContent() {
             if (profile) {
               const bItems = await getBenchItems(profile.local_user_id)
               setBenchItems(bItems)
+            }
+          }}
+        />
+      )}
+
+      {isOutcomeModalOpen && inspectingOutcomeState && (
+        <OutcomeOptimizationModal
+          isOpen={isOutcomeModalOpen}
+          onClose={() => {
+            setIsOutcomeModalOpen(false)
+            setInspectingOutcomeState(null)
+          }}
+          outcomeState={inspectingOutcomeState}
+          userProfile={profile}
+          todayTasks={tasks}
+          onUpdateTarget={handleUpdateOutcomeTarget}
+          onAutoFixClash={async (clashId) => {
+            const clash = inspectingOutcomeState.clashes.find(c => c.id === clashId)
+            if (clash) {
+              await handleAutoFixClash(clash)
+              setIsOutcomeModalOpen(false)
+              setInspectingOutcomeState(null)
             }
           }}
         />

@@ -13,6 +13,7 @@ import { ProfileInlineEditor } from '@/components/ProfileInlineEditor'
 import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolCard from '@/components/cards/ProtocolCard'
 import CreateCustomModalityModal, { CustomModalityInitialData } from '@/components/modals/CreateCustomModalityModal'
+import ModalityInitiationCard from '@/components/ai/ModalityInitiationCard'
 import { UserProfile } from '@/lib/types'
 import { getLatestBiomarkerMeasurements, getUserLabPanels } from '@/lib/data/bloodworkData'
 import { getBiologicalMeasurements } from '@/lib/data/physiologicalAgeData'
@@ -299,22 +300,22 @@ export default function CoachPage() {
                       if (!isDone) return (
                         <div key={callId} className="mt-2 text-xs text-levl-text-secondary flex items-center gap-1.5 animate-pulse">
                            <Sparkles size={13} className="text-purple-400" /> 
-                           <span>Generating evidence-based modality, dosage, and cadence schedule...</span>
+                           <span>Drafting evidence-based biological mechanism, dosage, and cadence schedule...</span>
                         </div>
                       )
                       
-                      const modality = part.output?.modality || part.output?.data
-                      if (!modality) return null
+                      const modality = part.output?.modality || part.output?.data || part.output?.draft
+                      if (!modality && !part.output?.initialData) return null
 
                       const initialData: CustomModalityInitialData = part.output?.initialData || {
-                        id: modality.id,
-                        name: modality.name,
-                        category: modality.category,
-                        headlineBenefit: modality.headline_benefit || modality.brief_description,
-                        instructions: modality.instructions,
+                        id: modality?.id,
+                        name: modality?.name,
+                        category: modality?.category,
+                        headlineBenefit: modality?.headline_benefit || modality?.brief_description,
+                        instructions: modality?.instructions,
                         doseAmount: '',
                         doseUnit: 'mg',
-                        timingSlot: modality.default_timing_slot || 'morning_supplement_stack',
+                        timingSlot: modality?.default_timing_slot || 'morning_supplement_stack',
                         cadenceMode: 'daily',
                         selectedDays: ['Mon', 'Wed', 'Fri'],
                         scheduleToToday: true,
@@ -322,107 +323,28 @@ export default function CoachPage() {
                       }
 
                       return (
-                        <div key={callId} className="mt-4 max-w-lg w-full bg-slate-950/90 border border-purple-500/30 rounded-2xl p-4 shadow-xl backdrop-blur-md space-y-3.5">
-                          {/* Top Header Badge & Category */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300">
-                                  {modality.category || 'Supplements'}
-                                </span>
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                                  <CheckCircle2 size={11} /> Added to Today
-                                </span>
-                              </div>
-                              <h3 className="text-base font-bold text-white flex items-center gap-1.5">
-                                {modality.name}
-                              </h3>
-                            </div>
-                            <div className="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0">
-                              <Sparkles size={16} />
-                            </div>
-                          </div>
-
-                          {/* Headline Benefit */}
-                          {(modality.headline_benefit || modality.brief_description) && (
-                            <p className="text-xs text-slate-300 leading-relaxed">
-                              {modality.headline_benefit || modality.brief_description}
-                            </p>
-                          )}
-
-                          {/* 3 Parameter Badges: Dosage, Circadian Timing, Cadence */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                            {/* Dosage */}
-                            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
-                              <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                                <Pill size={11} className="text-amber-400" /> Dose
-                              </span>
-                              <span className="text-xs font-semibold text-white mt-1">
-                                {modality.dose_or_exposure || (initialData.doseAmount ? `${initialData.doseAmount} ${initialData.doseUnit}` : 'Standard dose')}
-                              </span>
-                            </div>
-
-                            {/* Circadian Timing */}
-                            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
-                              <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                                <Clock size={11} className="text-sky-400" /> Timing
-                              </span>
-                              <span className="text-xs font-semibold text-white mt-1 capitalize">
-                                {(modality.default_timing_slot || initialData.timingSlot || 'Morning').replace(/_/g, ' ')}
-                              </span>
-                            </div>
-
-                            {/* Cadence */}
-                            <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
-                              <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                                <Calendar size={11} className="text-purple-400" /> Cadence
-                              </span>
-                              <span className="text-xs font-semibold text-white mt-1">
-                                {initialData.cadenceMode === 'daily' 
-                                  ? 'Daily Anchor'
-                                  : initialData.cadenceMode === 'days_of_week' && initialData.selectedDays?.length
-                                  ? initialData.selectedDays.join(', ')
-                                  : `Every ${(initialData.restIntervalDays || 1) + 1} days`}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Instructions Note if any */}
-                          {modality.instructions && (
-                            <div className="text-[11px] text-slate-400 bg-slate-900/50 p-2 rounded-lg border border-slate-800/80 leading-snug">
-                              <span className="font-semibold text-slate-300">Instructions:</span> {modality.instructions}
-                            </div>
-                          )}
-
-                          {/* Action Buttons: Dial In Dosage & Cadence + View on Today */}
-                          <div className="pt-2 border-t border-slate-800 flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setStudioModalData({
-                                  isOpen: true,
-                                  initialData: {
-                                    ...initialData,
-                                    startTab: 'dosing'
-                                  }
-                                })
-                              }}
-                              className="flex-1 py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-900/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                            >
-                              <Sliders size={13} />
-                              <span>Dial In Dosage & Cadence</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => router.push('/today')}
-                              className="py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 hover:text-white text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
-                            >
-                              <span>Today</span>
-                              <ArrowRight size={12} />
-                            </button>
-                          </div>
-                        </div>
+                        <ModalityInitiationCard
+                          key={callId}
+                          callId={callId}
+                          modality={modality}
+                          initialData={{
+                            ...initialData,
+                            briefDescription: modality?.brief_description || modality?.headline_benefit || initialData?.headlineBenefit,
+                            doseOptions: part.output?.initialData?.doseOptions || part.output?.initialData?.dose_options || modality?.dose_options
+                          }}
+                          onInitiateSuccess={() => {
+                            // Instant notification event fired
+                          }}
+                          onOpenStudio={(data) => {
+                            setStudioModalData({
+                              isOpen: true,
+                              initialData: {
+                                ...data,
+                                startTab: 'dosing'
+                              }
+                            })
+                          }}
+                        />
                       )
                     }
 

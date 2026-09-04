@@ -71,6 +71,14 @@ const CoherentBreathingApplet = dynamic(() => import('../applets/CoherentBreathi
   ssr: false
 })
 
+const YogaNidraApplet = dynamic(() => import('../applets/YogaNidraApplet'), {
+  ssr: false
+})
+
+const RedLightMaskApplet = dynamic(() => import('../applets/RedLightMaskApplet'), {
+  ssr: false
+})
+
 export function TimePickerWithAmPmToggle({
   value,
   onChange,
@@ -497,6 +505,8 @@ export default function ProtocolTaskCard({
   const [showBoxApplet, setShowBoxApplet] = useState(false)
   const [showHyperApplet, setShowHyperApplet] = useState(false)
   const [showCoherentApplet, setShowCoherentApplet] = useState(false)
+  const [showYogaNidraApplet, setShowYogaNidraApplet] = useState(false)
+  const [showRedLightApplet, setShowRedLightApplet] = useState(false)
   const lastCheckClickTimeRef = useRef<number>(0)
   const isFastMode = completionMode === 'fast'
 
@@ -2072,6 +2082,8 @@ export default function ProtocolTaskCard({
                 <span className="text-xs font-bold uppercase tracking-wider text-levl-text-secondary">
                   {task.id.startsWith('habit_task_') 
                     ? (task.status === 'completed' ? '✓ Habit (Default)' : 'Skipped Today') 
+                    : task.status === 'contraindicated' && task.status_reason?.toLowerCase().includes('eliminated')
+                    ? 'Eliminated by User'
                     : task.status}
                 </span>
                 {task.status_reason && (
@@ -2145,7 +2157,11 @@ export default function ProtocolTaskCard({
                   {(task as any).ai_coach_reason ? 'AI Coach Derived Reason' : 'Skipped Reason'}
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 uppercase">
-                  {task.status === 'not_today' ? 'Skipped Today' : task.status}
+                  {task.status === 'not_today' 
+                    ? 'Skipped Today' 
+                    : task.status === 'contraindicated' && task.status_reason?.toLowerCase().includes('eliminated')
+                    ? 'Eliminated by User'
+                    : task.status}
                 </span>
               </div>
               <p className="text-slate-200 text-xs font-medium leading-relaxed pt-0.5">
@@ -2206,7 +2222,13 @@ export default function ProtocolTaskCard({
                   {/* Render the specialized UI */}
                   {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isNSDR && <NSDRExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isNSDR && (
+                    <NSDRExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      onOpenFullscreen={() => setShowYogaNidraApplet(true)}
+                    />
+                  )}
                   {isCardio && (
                     <CardioExecutionLog 
                       value={executionDetails} 
@@ -2428,7 +2450,13 @@ export default function ProtocolTaskCard({
                   {/* Render the specialized UI */}
                   {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isNSDR && <NSDRExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isNSDR && (
+                    <NSDRExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      onOpenFullscreen={() => setShowYogaNidraApplet(true)}
+                    />
+                  )}
                   {isCardio && (
                     <CardioExecutionLog 
                       value={executionDetails} 
@@ -2663,7 +2691,13 @@ export default function ProtocolTaskCard({
 
                   {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isNSDR && <NSDRExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isNSDR && (
+                    <NSDRExecutionLog 
+                      value={executionDetails} 
+                      onChange={setExecutionDetails} 
+                      onOpenFullscreen={() => setShowYogaNidraApplet(true)}
+                    />
+                  )}
                   {isCardio && (
                     <CardioExecutionLog 
                       value={executionDetails} 
@@ -3346,6 +3380,44 @@ export default function ProtocolTaskCard({
                 <span className="truncate sm:whitespace-normal">Start Coherent 5.5s Breathing (Max HRV) • 10 Min</span>
               </button>
             </div>
+          ) : (isNSDR || 
+             task.modality_id === 'nsdr' || 
+             task.modality_id === 'yoga_nidra' || 
+             modality?.id?.includes('nsdr') || 
+             modality?.id?.includes('nidra') || 
+             modality?.name?.toLowerCase().includes('nsdr') || 
+             modality?.name?.toLowerCase().includes('nidra')) ? (
+            <div className="mb-3.5 w-full">
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowYogaNidraApplet(true)
+                }}
+                className="w-full py-4 px-6 bg-gradient-to-r from-indigo-700 via-purple-700 to-cyan-600 hover:from-indigo-600 hover:to-cyan-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] flex items-center justify-center gap-3 cursor-pointer border border-indigo-400/40 transform hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <Sparkles size={18} fill="currentColor" className="shrink-0 text-indigo-200" />
+                <span className="truncate sm:whitespace-normal">Start Yoga Nidra / NSDR • Fullscreen Experience</span>
+              </button>
+            </div>
+          ) : (task.modality_id === 'red_light_face_mask' || 
+             task.modality_id === 'red_light' ||
+             modality?.id?.includes('red_light') ||
+             modality?.name?.toLowerCase().includes('red light') ||
+             modality?.name?.toLowerCase().includes('photobiomodulation')) ? (
+            <div className="mb-3.5 w-full">
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowRedLightApplet(true)
+                }}
+                className="w-full py-3.5 px-6 bg-gradient-to-r from-rose-700 via-red-600 to-amber-600 hover:from-rose-600 hover:to-amber-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(225,29,72,0.35)] flex items-center justify-center gap-3 cursor-pointer border border-rose-400/40 transform hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <Sparkles size={18} fill="currentColor" className="shrink-0 text-rose-200" />
+                <span className="truncate sm:whitespace-normal">Optional: Open 10m Red Light Pacer &amp; Fluence Tracker</span>
+              </button>
+            </div>
           ) : (task.modality_id === 'breathing_4_7_8' || 
              modality?.name?.toLowerCase().includes('4-7-8') || 
              modality?.id?.includes('4_7_8')) ? (
@@ -3868,6 +3940,32 @@ export default function ProtocolTaskCard({
           onComplete={() => {
             onStatusChange(task.id, 'completed')
             setShowCoherentApplet(false)
+          }}
+        />
+      )}
+      {/* Yoga Nidra / NSDR Fullscreen Interactive Applet */}
+      {showYogaNidraApplet && (
+        <YogaNidraApplet
+          isOpen={showYogaNidraApplet}
+          onClose={() => setShowYogaNidraApplet(false)}
+          modalityName={modality?.name || 'Non-Sleep Deep Rest (NSDR) / Yoga Nidra'}
+          taskId={task.id}
+          onComplete={() => {
+            onStatusChange(task.id, 'completed')
+            setShowYogaNidraApplet(false)
+          }}
+        />
+      )}
+      {/* Red Light Mask Interactive Applet */}
+      {showRedLightApplet && (
+        <RedLightMaskApplet
+          isOpen={showRedLightApplet}
+          onClose={() => setShowRedLightApplet(false)}
+          modalityName={modality?.name || 'Red & Near-Infrared LED Face Mask'}
+          taskId={task.id}
+          onComplete={() => {
+            onStatusChange(task.id, 'completed')
+            setShowRedLightApplet(false)
           }}
         />
       )}

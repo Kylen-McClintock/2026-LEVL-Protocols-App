@@ -109,6 +109,19 @@ At the very end of your response, ALWAYS include a JSON block formatted EXACTLY 
   "suggestedNotes": "Brief evidence-based note to append to user notes or null",
   "suggestedAdditions": ["Modality Name To Add"],
   "suggestedRemovals": ["Modality Name To Remove"],
+  "suggestedModalityDraft": {
+    "name": "Modality Name",
+    "category": "Supplements",
+    "headline_benefit": "Primary longevity benefit",
+    "brief_description": "1-3 sentence clinical explanation of the compound, biological mechanism, and longevity benefit",
+    "dose_amount": "10",
+    "dose_unit": "mg",
+    "dose_options": ["5 mg", "10 mg", "20 mg"],
+    "timing_slot": "morning_supplement_stack",
+    "cadence_mode": "daily",
+    "selected_days": ["Mon", "Wed", "Fri"],
+    "rest_interval_days": 1
+  } or null,
   "synergyHighlight": "One brief sentence highlight of the top synergy or biological tip",
   "scientificPushback": true | false
 }
@@ -159,6 +172,7 @@ At the very end of your response, ALWAYS include a JSON block formatted EXACTLY 
     let suggestedRestIntervalDays: number | null = null
     let suggestedAdaptationStrategy: 'roll_forward' | 'strict_fixed' | 'cascade_shift' | null = null
     let suggestedNotes: string | null = null
+    let suggestedModalityDraft: any = null
     let synergyHighlight: string | null = null
     let scientificPushback: boolean = false
 
@@ -179,6 +193,9 @@ At the very end of your response, ALWAYS include a JSON block formatted EXACTLY 
         if (typeof parsed.suggestedRestIntervalDays === 'number') suggestedRestIntervalDays = parsed.suggestedRestIntervalDays
         if (parsed.suggestedAdaptationStrategy) suggestedAdaptationStrategy = parsed.suggestedAdaptationStrategy
         if (parsed.suggestedNotes) suggestedNotes = String(parsed.suggestedNotes)
+        if (parsed.suggestedModalityDraft && typeof parsed.suggestedModalityDraft === 'object') {
+          suggestedModalityDraft = parsed.suggestedModalityDraft
+        }
         if (parsed.synergyHighlight) synergyHighlight = String(parsed.synergyHighlight)
         if (parsed.scientificPushback === true || parsed.scientificPushback === 'true') scientificPushback = true
         
@@ -201,6 +218,7 @@ At the very end of your response, ALWAYS include a JSON block formatted EXACTLY 
       suggestedRestIntervalDays,
       suggestedAdaptationStrategy,
       suggestedNotes,
+      suggestedModalityDraft,
       synergyHighlight,
       scientificPushback
     }), {

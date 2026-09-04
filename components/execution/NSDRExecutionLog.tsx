@@ -15,7 +15,8 @@ import {
   Activity, 
   ShieldCheck, 
   Zap,
-  Waves
+  Waves,
+  Maximize2
 } from 'lucide-react'
 
 export type NSDRExecutionDetails = {
@@ -35,6 +36,7 @@ export type NSDRExecutionDetails = {
 type Props = {
   value: NSDRExecutionDetails
   onChange: (val: NSDRExecutionDetails) => void
+  onOpenFullscreen?: () => void
 }
 
 const PRESETS: { key: '10m_quick' | '20m_classic' | '30m_deep'; label: string; mins: number; desc: string; badge: string }[] = [
@@ -61,45 +63,7 @@ const PRESETS: { key: '10m_quick' | '20m_classic' | '30m_deep'; label: string; m
   }
 ]
 
-// Play gentle harmonic singing bowl chime using Web Audio API
-function playTibetanBowlChime() {
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-    if (!AudioContextClass) return
-    const ctx = new AudioContextClass()
-
-    const now = ctx.currentTime
-    const osc = ctx.createOscillator()
-    const osc2 = ctx.createOscillator()
-    const gain = ctx.createGain()
-
-    // Warm resonant frequencies (432Hz fundamental + 864Hz harmonic)
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(432, now)
-
-    osc2.type = 'sine'
-    osc2.frequency.setValueAtTime(864, now)
-
-    // Soft attack, long meditative exponential decay
-    gain.gain.setValueAtTime(0.001, now)
-    gain.gain.linearRampToValueAtTime(0.25, now + 0.1)
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.8)
-
-    osc.connect(gain)
-    osc2.connect(gain)
-    gain.connect(ctx.destination)
-
-    osc.start(now)
-    osc2.start(now)
-    osc.stop(now + 4.0)
-    osc2.stop(now + 4.0)
-  } catch (err) {
-    // AudioContext blocked or not supported - silently ignore
-    console.debug('Chime audio playback skipped:', err)
-  }
-}
-
-export default function NSDRExecutionLog({ value, onChange }: Props) {
+export default function NSDRExecutionLog({ value, onChange, onOpenFullscreen }: Props) {
   const targetMinutes = typeof value.duration === 'number' && value.duration > 0 ? value.duration : 20
   const totalSeconds = targetMinutes * 60
 
@@ -109,6 +73,140 @@ export default function NSDRExecutionLog({ value, onChange }: Props) {
   const [isCompletedAlert, setIsCompletedAlert] = useState<boolean>(false)
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const masterGainRef = useRef<GainNode | null>(null)
+  const activeOscsRef = useRef<{ stop: () => void }[]>([])
+
+  // Web Audio Context Manager (Unlocks on user gesture)
+  const getAudioContext = () => {
+    try {
+      if (!audioCtxRef.current) {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+        if (!AudioContextClass) return null
+        const ctx = new AudioContextClass()
+        const masterGain = ctx.createGain()
+        masterGain.gain.setValueAtTime(soundEnabled ? 0.25 : 0, ctx.currentTime)
+        masterGain.connect(ctx.destination)
+        audioCtxRef.current = ctx
+        masterGainRef.current = masterGain
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume()
+      }
+      return audioCtxRef.current
+    } catch (err) {
+      console.warn('AudioContext init error:', err)
+      return null
+    }
+  }
+
+  // Tibetan Singing Bowl Chime
+  const playTibetanBowlChime = (baseFreq = 432) => {
+    if (!soundEnabled) return
+    const ctx = getAudioContext()
+    if (!ctx || !masterGainRef.current) return
+
+    try {
+      const now = ctx.currentTime
+      const osc = ctx.createOscillator()
+      const osc2 = ctx.createOscillator()
+      const chimeGain = ctx.createGain()
+
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(baseFreq, now)
+
+      osc2.type = 'sine'
+      osc2.frequency.setValueAtTime(baseFreq * 2, now)
+
+      chimeGain.gain.setValueAtTime(0.001, now)
+      chimeGain.gain.linearRampToValueAtTime(0.3, now + 0.1)
+      chimeGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.8)
+
+      osc.connect(chimeGain)
+      osc2.connect(chimeGain)
+      chimeGain.connect(masterGainRef.current)
+
+      osc.start(now)
+      osc2.start(now)
+      osc.stop(now + 4.0)
+      osc2.stop(now + 4.0)
+    } catch (err) {
+      console.debug('Chime audio playback skipped:', err)
+    }
+  }
+
+  // Stop ambient audio
+  const stopAmbient = () => {
+    activeOscsRef.current.forEach(node => {
+      try { node.stop() } catch (_) {}
+    })
+    activeOscsRef.current = []
+  }
+
+  // Start continuous 432 Hz grounding tone + 5.5 Hz theta binaural beat
+  const startAmbient = () => {
+    stopAmbient()
+    if (!soundEnabled) return
+    const ctx = getAudioContext()
+    if (!ctx || !masterGainRef.current) return
+
+    try {
+      const now = ctx.currentTime
+      const merger = ctx.createChannelMerger(2)
+      const oscL = ctx.createOscillator()
+      const oscR = ctx.createOscillator()
+      const ambGain = ctx.createGain()
+
+      oscL.type = 'sine'
+      oscL.frequency.setValueAtTime(432, now) // Carrier Left
+      oscR.type = 'sine'
+      oscR.frequency.setValueAtTime(437.5, now) // 5.5 Hz Theta Right
+
+      ambGain.gain.setValueAtTime(0.08, now)
+
+      oscL.connect(merger, 0, 0)
+      oscR.connect(merger, 0, 1)
+      merger.connect(ambGain)
+      ambGain.connect(masterGainRef.current)
+
+      oscL.start(now)
+      oscR.start(now)
+
+      activeOscsRef.current = [{
+        stop: () => {
+          try { oscL.stop(); oscR.stop(); } catch (_) {}
+        }
+      }]
+    } catch (err) {
+      console.warn('Ambient audio error:', err)
+    }
+  }
+
+  // Manage mute & volume
+  useEffect(() => {
+    if (masterGainRef.current && audioCtxRef.current) {
+      masterGainRef.current.gain.setTargetAtTime(
+        soundEnabled ? 0.25 : 0, 
+        audioCtxRef.current.currentTime, 
+        0.05
+      )
+    }
+    if (soundEnabled && isActive) {
+      startAmbient()
+    } else if (!soundEnabled) {
+      stopAmbient()
+    }
+  }, [soundEnabled, isActive])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopAmbient()
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {})
+      }
+    }
+  }, [])
 
   // Sync initial seconds if targetMinutes changes and timer is paused at start
   useEffect(() => {
@@ -126,7 +224,8 @@ export default function NSDRExecutionLog({ value, onChange }: Props) {
             clearInterval(timerRef.current!)
             setIsActive(false)
             setIsCompletedAlert(true)
-            if (soundEnabled) playTibetanBowlChime()
+            stopAmbient()
+            if (soundEnabled) playTibetanBowlChime(432)
 
             // Update completed metrics
             const completedSecs = totalSeconds
@@ -218,15 +317,24 @@ export default function NSDRExecutionLog({ value, onChange }: Props) {
   }
 
   const handleTogglePlay = () => {
+    getAudioContext()
     if (secondsRemaining <= 0) {
       setSecondsRemaining(totalSeconds)
       setIsCompletedAlert(false)
     }
-    setIsActive(!isActive)
+    const nextActive = !isActive
+    setIsActive(nextActive)
+    if (nextActive) {
+      playTibetanBowlChime(432)
+      startAmbient()
+    } else {
+      stopAmbient()
+    }
   }
 
   const handleResetTimer = () => {
     setIsActive(false)
+    stopAmbient()
     setIsCompletedAlert(false)
     setSecondsRemaining(totalSeconds)
   }
@@ -261,9 +369,23 @@ export default function NSDRExecutionLog({ value, onChange }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          {onOpenFullscreen && (
+            <button
+              type="button"
+              onClick={onOpenFullscreen}
+              className="p-1.5 px-2.5 rounded-lg border bg-indigo-600/30 hover:bg-indigo-600/50 border-indigo-400/50 text-indigo-200 text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_10px_rgba(99,102,241,0.3)]"
+              title="Open Fullscreen Experience"
+            >
+              <Maximize2 size={13} />
+              <span className="text-[10px] font-bold">Fullscreen</span>
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setSoundEnabled(!soundEnabled)}
+            onClick={() => {
+              getAudioContext()
+              setSoundEnabled(!soundEnabled)
+            }}
             className={`p-1.5 rounded-lg border text-xs transition-colors cursor-pointer ${
               soundEnabled 
                 ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300' 

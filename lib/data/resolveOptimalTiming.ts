@@ -38,15 +38,6 @@ export function resolveSlotFromTimingString(timingStr?: string, isSupplement: bo
   // Clean away weekly frequency prefixes like "3–4x per week • "
   const clean = lower.includes('•') ? lower.split('•').slice(1).join('•').trim() : lower
 
-  // Wind down / evening cutoffs (Checked first before generic "bed" or "night")
-  if (
-    clean.includes('wind down') || clean.includes('wind_down') || clean.includes('winddown') ||
-    clean.includes('screen cutoff') || clean.includes('digital sunset') || clean.includes('caffeine cutoff') ||
-    clean.includes('blue light') || clean.includes('dimming') || clean.includes('8:00 pm') || clean.includes('8:30 pm')
-  ) {
-    return 'wind_down'
-  }
-
   // Pre-Bed (30-60m before sleep)
   if (clean.includes('pre_bed') || clean.includes('pre-bed') || clean.includes('30m before bed') || clean.includes('60m before bed')) {
     return 'pre_bed'
@@ -61,14 +52,24 @@ export function resolveSlotFromTimingString(timingStr?: string, isSupplement: bo
     return 'bedtime'
   }
 
-  // Post-meal
-  if (clean.includes('post-meal') || clean.includes('post meal') || clean.includes('postprandial') || clean.includes('after eating')) {
-    return 'post_meal'
+  // Evening / Post-Meal / Dinner (Checked before generic 8:00 PM cutoff to avoid misrouting Evening presets to wind_down)
+  if (
+    clean.includes('evening') || clean.includes('dinner') || 
+    clean.includes('post-meal') || clean.includes('post meal') || 
+    clean.includes('postprandial') || clean.includes('after eating') ||
+    clean.includes('6:00 pm') || clean.includes('7:00 pm')
+  ) {
+    return isSupplement ? 'evening_supplement_stack' : 'evening'
   }
 
-  // Evening / Dinner
-  if (clean.includes('evening') || clean.includes('dinner') || clean.includes('6:00 pm') || clean.includes('7:00 pm') || clean.includes('8:00 pm')) {
-    return isSupplement ? 'evening_supplement_stack' : 'evening'
+  // Wind down / evening cutoffs
+  if (
+    clean.includes('wind down') || clean.includes('wind_down') || clean.includes('winddown') ||
+    clean.includes('screen cutoff') || clean.includes('digital sunset') || clean.includes('caffeine cutoff') ||
+    clean.includes('blue light') || clean.includes('dimming') || clean.includes('8:30 pm') ||
+    (clean.includes('8:00 pm') && !clean.includes('evening') && !clean.includes('post-meal'))
+  ) {
+    return 'wind_down'
   }
 
   // Late afternoon / Afternoon / Workout
@@ -104,14 +105,62 @@ export function parseMultiDoseTimingSlots(timingStr?: string, isSupplement: bool
   const raw = timingStr.trim()
   const lower = raw.toLowerCase()
 
-  // 1. Check for standard 2x / 3x daily modal serialized formats:
+  const formatSlot = (slotCandidate: string, fallbackDefault: string): string => {
+    const resolved = resolveSlotFromTimingString(slotCandidate, isSupplement)
+    if (resolved && resolved !== 'anytime') return resolved
+    return isSupplement 
+      ? (fallbackDefault === 'morning' ? 'morning_supplement_stack' : fallbackDefault === 'evening' ? 'evening_supplement_stack' : fallbackDefault === 'midday' ? 'midday_stack' : fallbackDefault)
+      : fallbackDefault
+  }
+
+  const slotToLabel = (slot: string, doseNum: number): string => {
+    const s = slot.toLowerCase()
+    if (s.includes('morning') || s.includes('wake')) return `Dose ${doseNum} (Morning)`
+    if (s.includes('midday') || s.includes('lunch') || s.includes('noon')) return `Dose ${doseNum} (Midday)`
+    if (s.includes('afternoon')) return `Dose ${doseNum} (Afternoon)`
+    if (s.includes('evening') || s.includes('dinner')) return `Dose ${doseNum} (Evening)`
+    if (s.includes('pre_bed') || s.includes('pre-bed')) return `Dose ${doseNum} (Pre-Bed)`
+    if (s.includes('bed') || s.includes('night') || s.includes('sleep')) return `Dose ${doseNum} (Bedtime)`
+    return `Dose ${doseNum}`
+  }
+
+  // 1. Check for comma-separated or semicolon-separated timing slots
+  // (e.g. "morning_supplement_stack,evening_supplement_stack", "morning,evening", "waking,bedtime")
+  if (raw.includes(',') || raw.includes(';')) {
+    // Only treat as delimited slots if not a continuous grammatical sentence without slots
+    const rawTokens = raw.split(/[,;]/).map(t => t.trim()).filter(Boolean)
+    if (rawTokens.length >= 2) {
+      const resolvedTokens = rawTokens.map(t => resolveSlotFromTimingString(t, isSupplement))
+      const validSlotsCount = resolvedTokens.filter(s => s !== 'anytime').length
+      
+      // If at least two tokens resolve to known circadian slots
+      if (validSlotsCount >= 2) {
+        return resolvedTokens.map((slot, idx) => {
+          const doseNum = idx + 1
+          const cleanSlot = slot === 'anytime' 
+            ? (idx === 0 ? (isSupplement ? 'morning_supplement_stack' : 'morning') : (isSupplement ? 'evening_supplement_stack' : 'evening'))
+            : slot
+          return {
+            doseNumber: doseNum,
+            totalDoses: resolvedTokens.length,
+            label: slotToLabel(cleanSlot, doseNum),
+            slot: cleanSlot
+          }
+        })
+      }
+    }
+  }
+
+  // 2. Check for standard 2x / 3x daily modal serialized formats:
   // "2x Daily: Dose 1 (Morning / With Breakfast (8:00 AM – 10:00 AM)) + Dose 2 (Pre-Bed / Night (9:00 PM – 11:00 PM))"
   // "3x Daily: Dose 1 (...) + Dose 2 (...) + Dose 3 (...)"
-  if (raw.includes('+ Dose 2') || raw.includes('Dose 1') && raw.includes('+') || (raw.includes('2x Daily:') || raw.includes('3x Daily:')) && raw.includes('+')) {
+  if (raw.includes('+ Dose 2') || (raw.includes('Dose 1') && raw.includes('+')) || ((raw.includes('2x Daily:') || raw.includes('3x Daily:')) && raw.includes('+'))) {
     const parts = raw.split(/\s*\+\s*/)
     const cleanPart = (str?: string) => {
       if (!str) return ''
-      return str
+      // Strip weekly prefix if present e.g. "3x/wk • " or "7x/wk • "
+      const s = str.includes('•') ? str.split('•').slice(1).join('•').trim() : str
+      return s
         .replace(/^[23]x\s*(?:daily|per week)?:\s*/i, '')
         .replace(/^Dose \d+\s*\(/i, '')
         .replace(/\)$/, '')
@@ -126,39 +175,92 @@ export function parseMultiDoseTimingSlots(timingStr?: string, isSupplement: bool
       const cleaned = cleanPart(p)
       const slot = resolveSlotFromTimingString(cleaned, isSupplement)
       const defaultLabels = ['Morning', 'Midday / PM', 'Evening / Night']
-      const labelShort = cleaned.split('/')[0].split('(')[0].trim() || defaultLabels[idx] || `Dose ${doseNum}`
+      const derivedSlot = slot === 'anytime' 
+        ? (doseNum === 1 ? (isSupplement ? 'morning_supplement_stack' : 'morning') : doseNum === 2 ? (isSupplement ? 'evening_supplement_stack' : 'evening') : 'bedtime') 
+        : slot
+      const labelShort = slotToLabel(derivedSlot, doseNum).replace(`Dose ${doseNum} (`, '').replace(')', '') || defaultLabels[idx] || `Dose ${doseNum}`
       
       slots.push({
         doseNumber: doseNum,
         totalDoses: totalDoses,
         label: `Dose ${doseNum} (${labelShort})`,
-        slot: slot === 'anytime' ? (doseNum === 1 ? 'morning' : doseNum === 2 ? 'evening' : 'bedtime') : slot
+        slot: derivedSlot
       })
     })
 
     if (slots.length >= 2) return slots
   }
 
-  // 2. Format: "Morning & Evening" or "Morning & Midday" or "Morning, Midday & Evening"
-  if (lower.includes('morning & midday') || lower.includes('morning and midday')) {
+  // 3. Format: "Morning & Bedtime", "Morning & Pre-Bed", "Morning & Night"
+  if (
+    (lower.includes('morning') || lower.includes('waking') || lower.includes('am')) && 
+    (lower.includes('bedtime') || lower.includes('pre-bed') || lower.includes('pre_bed') || lower.includes('night') || lower.includes('sleep'))
+  ) {
+    const bedSlot = lower.includes('pre-bed') || lower.includes('pre_bed') ? 'pre_bed' : 'bedtime'
+    return [
+      { doseNumber: 1, totalDoses: 2, label: 'Dose 1 (Morning)', slot: isSupplement ? 'morning_supplement_stack' : 'morning' },
+      { doseNumber: 2, totalDoses: 2, label: bedSlot === 'pre_bed' ? 'Dose 2 (Pre-Bed)' : 'Dose 2 (Bedtime)', slot: bedSlot }
+    ]
+  }
+
+  // 4. Format: "Morning & Midday", "Morning and Midday", "Morning / Midday"
+  if (lower.includes('morning & midday') || lower.includes('morning and midday') || lower.includes('morning / midday') || lower.includes('morning/midday')) {
     return [
       { doseNumber: 1, totalDoses: 2, label: 'Dose 1 (Morning)', slot: isSupplement ? 'morning_supplement_stack' : 'morning' },
       { doseNumber: 2, totalDoses: 2, label: 'Dose 2 (Midday)', slot: isSupplement ? 'midday_stack' : 'midday' }
     ]
   }
 
-  if (lower.includes('morning & evening') || lower.includes('morning and evening') || lower.includes('split am / pm') || lower.includes('split am/pm') || lower.includes('2x/day') || lower.includes('2x daily') || lower.includes('2x_day') || lower.includes('bid')) {
+  // 5. Format: "Midday & Evening", "Midday and Evening", "Midday / Evening"
+  if (lower.includes('midday & evening') || lower.includes('midday and evening') || lower.includes('midday / evening') || lower.includes('midday/evening')) {
     return [
-      { doseNumber: 1, totalDoses: 2, label: 'Dose 1 (Morning)', slot: isSupplement ? 'morning_supplement_stack' : 'morning' },
+      { doseNumber: 1, totalDoses: 2, label: 'Dose 1 (Midday)', slot: isSupplement ? 'midday_stack' : 'midday' },
       { doseNumber: 2, totalDoses: 2, label: 'Dose 2 (Evening)', slot: isSupplement ? 'evening_supplement_stack' : 'evening' }
     ]
   }
 
-  if (lower.includes('3x/day') || lower.includes('3x daily') || lower.includes('3x_day') || lower.includes('tid')) {
+  // 6. Format: 3x Daily or TID or "Morning, Midday & Evening"
+  if (
+    lower.includes('3x/day') || 
+    lower.includes('3x daily') || 
+    lower.includes('3x_day') || 
+    lower.includes('tid') || 
+    lower.includes('morning, midday & evening') || 
+    lower.includes('morning, midday and evening') ||
+    lower.includes('morning, midday, evening') ||
+    lower.includes('three times daily')
+  ) {
     return [
       { doseNumber: 1, totalDoses: 3, label: 'Dose 1 (Morning)', slot: isSupplement ? 'morning_supplement_stack' : 'morning' },
       { doseNumber: 2, totalDoses: 3, label: 'Dose 2 (Midday)', slot: isSupplement ? 'midday_stack' : 'midday' },
       { doseNumber: 3, totalDoses: 3, label: 'Dose 3 (Evening)', slot: isSupplement ? 'evening_supplement_stack' : 'evening' }
+    ]
+  }
+
+  // 7. Format: 2x Daily, AM/PM, Morning & Evening, Split Doses
+  if (
+    lower.includes('morning & evening') || 
+    lower.includes('morning and evening') || 
+    lower.includes('morning / evening') || 
+    lower.includes('morning/evening') || 
+    lower.includes('split am / pm') || 
+    lower.includes('split am/pm') || 
+    lower.includes('am/pm') || 
+    lower.includes('am / pm') || 
+    lower.includes('2x/day') || 
+    lower.includes('2x daily') || 
+    lower.includes('2x_day') || 
+    lower.includes('bid') ||
+    lower.includes('twice daily') ||
+    lower.includes('twice a day') ||
+    lower.includes('2 doses') ||
+    lower.includes('split dose') ||
+    lower.includes('split into 2') ||
+    lower.includes('divided dose')
+  ) {
+    return [
+      { doseNumber: 1, totalDoses: 2, label: 'Dose 1 (Morning)', slot: isSupplement ? 'morning_supplement_stack' : 'morning' },
+      { doseNumber: 2, totalDoses: 2, label: 'Dose 2 (Evening)', slot: isSupplement ? 'evening_supplement_stack' : 'evening' }
     ]
   }
 
@@ -175,8 +277,14 @@ export function resolveOptimalTimingSlot(
   const isSupplement = (modality?.category || '').toLowerCase().includes('supplement') || 
                        (modality?.modality_type || '').toLowerCase() === 'supplement'
 
-  // 0. If user has an explicit custom timing string override (from execution_details or bench item), resolve from it!
+  // GUARD: If customTiming represents a multi-dose schedule (multiple distinct timing slots),
+  // and fallbackSlot is ALREADY an assigned concrete single slot (e.g. s.slot from a split dose),
+  // NEVER collapse the split dose into a single arbitrary slot! Keep fallbackSlot!
   if (customTiming && customTiming.trim()) {
+    const multiSlots = parseMultiDoseTimingSlots(customTiming, isSupplement)
+    if (multiSlots.length >= 2 && fallbackSlot && fallbackSlot !== 'anytime') {
+      return normalizeSlot(fallbackSlot)
+    }
     const fromCustom = resolveSlotFromTimingString(customTiming, isSupplement)
     if (fromCustom && fromCustom !== 'anytime') {
       return normalizeSlot(fromCustom)
@@ -367,7 +475,10 @@ export function getTaskChronologicalWeight(
 
   const mod = task.protocol_step?.modality || task.loose_modality
   const customTiming = task.custom_timing || task.execution_details?.custom_timing
-  const slot = resolveOptimalTimingSlot(mod, task.protocol_step, task.timing_slot, userProfile, customTiming)
+  const isSplit = Boolean(task.execution_details?.split_dose_number || task.id?.includes('-split-'))
+  const slot = (isSplit && task.timing_slot && task.timing_slot !== 'anytime')
+    ? task.timing_slot
+    : resolveOptimalTimingSlot(mod, task.protocol_step, task.timing_slot, userProfile, customTiming)
   const order = getTimeBlockOrder(slot)
 
   switch (order) {

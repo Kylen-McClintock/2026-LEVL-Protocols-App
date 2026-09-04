@@ -56,6 +56,11 @@ import ScheduleModalityModal from '@/components/modals/ScheduleModalityModal'
 import CustomizeModalityOutcomesModal from '@/components/modals/CustomizeModalityOutcomesModal'
 import PeptideEffectivenessCard from '@/components/peptides/PeptideEffectivenessCard'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
+import { 
+  getSkinCyclePhaseForDate, 
+  SKIN_CYCLE_PHASES, 
+  SkinCyclePhase 
+} from '@/lib/calendar/skinCyclingEngine'
 
 const formatSlotName = (str: string) => {
   if (!str) return 'Daily'
@@ -147,10 +152,39 @@ export default function ProtocolFocusPage() {
   const [isSavingOutcomes, setIsSavingOutcomes] = useState<boolean>(false)
   const [completionToast, setCompletionToast] = useState<{ id: string; name: string } | null>(null)
 
+  // 4-Day Dermatological Skin Cycling & Referral Acquisition state
+  const todaySkinPhase = useMemo(() => getSkinCyclePhaseForDate(new Date()), [])
+  const [selectedSkinCycleTab, setSelectedSkinCycleTab] = useState<number>(todaySkinPhase.dayNumber)
+  const [referralSource, setReferralSource] = useState<string | null>(null)
+  const [influencerName, setInfluencerName] = useState<string | null>(null)
+
   const currentDateStr = format(new Date(), 'yyyy-MM-dd')
 
   useEffect(() => {
     setMounted(true)
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const ref = urlParams.get('ref')
+      const inf = urlParams.get('influencer')
+      if (ref) {
+        setReferralSource(ref)
+        try { localStorage.setItem('levl_referral_source', ref) } catch (e) {}
+      } else {
+        try {
+          const storedRef = localStorage.getItem('levl_referral_source')
+          if (storedRef) setReferralSource(storedRef)
+        } catch (e) {}
+      }
+      if (inf) {
+        setInfluencerName(inf)
+        try { localStorage.setItem('levl_referral_influencer', inf) } catch (e) {}
+      } else {
+        try {
+          const storedInf = localStorage.getItem('levl_referral_influencer')
+          if (storedInf) setInfluencerName(storedInf)
+        } catch (e) {}
+      }
+    }
   }, [])
 
   const reloadData = async () => {
@@ -373,6 +407,22 @@ export default function ProtocolFocusPage() {
     setIsProcessingAction(false)
   }
 
+  const handleInstantKickstart = async () => {
+    if (!protocol) return
+    setIsProcessingAction(true)
+    const localUserId = getLocalUserId()
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('levl_guest_instant_kickstart', 'true')
+        localStorage.setItem('levl_active_protocol', protocol.name || protocol.id)
+        if (referralSource) localStorage.setItem('levl_referral_source', referralSource)
+        if (influencerName) localStorage.setItem('levl_referral_influencer', influencerName)
+      } catch (e) {}
+    }
+    await addProtocolToToday(localUserId, currentDateStr, protocol.id)
+    router.push('/today')
+  }
+
   const handleConfirmProtocolAction = async () => {
     if (!protocol) return
     setIsProcessingAction(true)
@@ -515,6 +565,43 @@ export default function ProtocolFocusPage() {
       {/* Main Focus Container */}
       <main className="max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto px-4 py-5 sm:px-6 space-y-5">
 
+        {/* Inbound Referral Attribution Banner */}
+        {referralSource && (
+          <div className="bg-gradient-to-r from-purple-950/80 via-slate-900 to-indigo-950/80 border border-purple-500/40 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-lg animate-in fade-in">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-400/40 text-purple-300 flex items-center justify-center shrink-0">
+                <Sparkles size={16} />
+              </div>
+              <div className="min-w-0 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-slate-300 font-medium">Curated via</span>
+                  <strong className="text-purple-300 font-bold capitalize">
+                    {referralSource === 'longevityreviews' ? 'LongevityReviews.org' : referralSource.replace(/_/g, ' ')}
+                  </strong>
+                  {influencerName && (
+                    <>
+                      <span className="text-slate-500">•</span>
+                      <span className="text-slate-300">Shared by <strong className="text-teal-300">@{influencerName}</strong></span>
+                    </>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 truncate">
+                  Zero signup friction: Try this protocol instantly on your live calendar feed.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleInstantKickstart}
+              disabled={isProcessingAction}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-500 hover:to-teal-400 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <span>Instant Launch</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+
         {/* COMPACT HERO PROTOCOL FOCUS CARD */}
         <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/40 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden">
           <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -539,6 +626,17 @@ export default function ProtocolFocusPage() {
 
           {/* PROTOCOL-LEVEL QUICK ACTIONS BAR (Easy to Add, Bench, or Eliminate Entire Protocol) */}
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap pt-1 border-t border-white/5">
+            {/* 1-Click Instant Kickstart Button */}
+            <button
+              type="button"
+              onClick={handleInstantKickstart}
+              disabled={isProcessingAction}
+              className="px-4 py-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-teal-500 hover:from-purple-500 hover:to-teal-400 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-lg shadow-purple-900/40 cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              <Zap size={14} className="text-amber-300" />
+              <span>Start Tracking Free (1-Click)</span>
+            </button>
+
             {isEntirelyActive ? (
               <div className="px-3.5 py-2 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm">
                 <Check size={14} strokeWidth={3} />
@@ -549,10 +647,10 @@ export default function ProtocolFocusPage() {
                 type="button"
                 onClick={handleAddEntireProtocolToToday}
                 disabled={isProcessingAction}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md shadow-purple-900/30 cursor-pointer active:scale-95 disabled:opacity-50"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 <Plus size={14} strokeWidth={3} />
-                <span>Add Entire Protocol to Today</span>
+                <span>Add to Today</span>
               </button>
             )}
 
@@ -684,6 +782,139 @@ export default function ProtocolFocusPage() {
             )}
           </div>
         </div>
+
+        {/* INTERACTIVE 4-DAY DERMATOLOGICAL SKIN CYCLING MATRIX */}
+        {(protocol.id === 'cellular_dermal_matrix' || protocol.slug === 'cellular-dermal-matrix' || protocol.name?.toLowerCase().includes('dermal matrix') || protocol.name?.toLowerCase().includes('skin cycling')) && (
+          <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-purple-500/30 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5">
+            {/* Header & Dynamic Today Indicator */}
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="p-1.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold font-mono">
+                    🧬 Dynamic Rotation Engine
+                  </span>
+                  <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                    Today is Day {todaySkinPhase.dayNumber} ({todaySkinPhase.name})
+                  </span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-black text-white tracking-tight pt-1">
+                  4-Night Dermatological Skin Cycling Matrix
+                </h2>
+                <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+                  Separates potent actives across a repeating 4-night circadian cycle. Prevents chemical deactivation between low-pH acids and GHK-Cu copper peptides while accelerating cellular turnover.
+                </p>
+              </div>
+
+              <div className="text-right hidden sm:block">
+                <span className="text-[10px] uppercase font-mono text-slate-400 block font-bold">Cadence</span>
+                <span className="text-xs font-bold text-teal-300">Continuous 4-Day Loop</span>
+              </div>
+            </div>
+
+            {/* 4 Clickable Day Tabs */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+              {SKIN_CYCLE_PHASES.map((phase) => {
+                const isSelected = selectedSkinCycleTab === phase.dayNumber
+                const isToday = todaySkinPhase.dayNumber === phase.dayNumber
+                return (
+                  <button
+                    key={phase.dayNumber}
+                    type="button"
+                    onClick={() => setSelectedSkinCycleTab(phase.dayNumber)}
+                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+                      isSelected
+                        ? `bg-slate-800/90 ${phase.colorBorder} ${phase.colorGlow} ring-1 ring-white/10`
+                        : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/40 hover:border-slate-700'
+                    }`}
+                  >
+                    {isToday && (
+                      <div className="absolute top-2 right-2">
+                        <span className="bg-emerald-500 text-slate-950 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md shadow-sm">
+                          Today
+                        </span>
+                      </div>
+                    )}
+                    <div className="text-[10px] font-mono text-slate-400 uppercase font-bold">
+                      Night {phase.dayNumber}
+                    </div>
+                    <div className="text-xs sm:text-sm font-extrabold text-white truncate mt-0.5">
+                      {phase.name.replace(' Night', '')}
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate mt-1">
+                      {phase.phaseKey === 'collagen_matrix' ? 'GHK-Cu + Red Light' : phase.phaseKey === 'retinoid' ? 'Tretinoin' : phase.phaseKey === 'exfoliation' ? 'AHA / BHA' : 'Lipid Barrier'}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Active Selected Phase Details */}
+            {(() => {
+              const activePhase = SKIN_CYCLE_PHASES.find(p => p.dayNumber === selectedSkinCycleTab) || SKIN_CYCLE_PHASES[0]
+              return (
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-4 animate-in fade-in duration-200">
+                  <div className="flex items-start justify-between gap-3 flex-wrap border-b border-white/5 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2.5 py-0.5 rounded-full border text-[11px] font-bold font-mono ${activePhase.colorBadge}`}>
+                          {activePhase.badge}
+                        </span>
+                        <span className="text-xs text-slate-400 font-mono">Night {activePhase.dayNumber} of 4</span>
+                      </div>
+                      <h3 className="text-base font-extrabold text-white mt-1.5">
+                        {activePhase.eveningFocus}
+                      </h3>
+                      <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                        {activePhase.rationale}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Evening Layering Sequence */}
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Prescribed Evening Layering Sequence (Order Matters)
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                      {activePhase.layeringSequence.map((stepStr, idx) => (
+                        <div key={idx} className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-start gap-2.5">
+                          <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center font-mono text-[10px] font-bold shrink-0 mt-0.5">
+                            {idx + 1}
+                          </span>
+                          <span className="text-xs text-slate-200 font-medium leading-snug">
+                            {stepStr.replace(/^\d+\.\s*/, '')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Clinical Rules & Warnings */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-500/30 text-xs text-amber-200 space-y-1">
+                      <strong className="font-bold flex items-center gap-1.5 text-amber-300">
+                        ⚡ Bare-Skin Photobiomodulation Rule
+                      </strong>
+                      <p className="text-[11px] leading-relaxed text-amber-200/90">
+                        Always use the Red &amp; NIR LED Mask on completely clean, bare skin before applying serums or lotions. Lipids and creams refract light photons and reduce tissue fluence.
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/30 text-xs text-purple-200 space-y-1">
+                      <strong className="font-bold flex items-center gap-1.5 text-purple-300">
+                        🧪 Chemical Compatibility Rule
+                      </strong>
+                      <p className="text-[11px] leading-relaxed text-purple-200/90">
+                        GHK-Cu copper peptides are scheduled on Nights 3 &amp; 4. They are strictly separated from acidic exfoliants (Night 1) and retinoids (Night 2) to preserve copper chelation stability.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        )}
 
         {/* N-of-1 EFFECTIVENESS & LONGITUDINAL ANALYSIS (For Peptide Protocols) */}
         {(protocol.steps?.some((s: any) => s.modality?.category === 'peptide' || s.modality?.peptide_metadata?.is_peptide) || protocol.id.includes('bpc') || protocol.id.includes('cjc')) && (

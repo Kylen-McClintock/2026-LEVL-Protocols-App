@@ -70,14 +70,29 @@ export function clearModalitiesCache() {
 import { BUILT_IN_TRAINING_PROTOCOLS } from './builtInTrainingProtocols'
 import { BUILT_IN_PEPTIDE_PROTOCOLS, BUILT_IN_PEPTIDE_MODALITIES } from './builtInPeptideProtocols'
 import { BUILT_IN_LONGEVITY_MODALITIES } from './builtInLongevityModalities'
+import { BUILT_IN_SKIN_PROTOCOLS, ALL_BUILT_IN_SKIN_MODALITIES } from './builtInSkinProtocols'
+import { getSkinCyclePhaseForDate, isSkinModalityActiveOnDate } from '../calendar/skinCyclingEngine'
 
-const ALL_BUILT_IN_PROTOCOLS = [...BUILT_IN_TRAINING_PROTOCOLS, ...BUILT_IN_PEPTIDE_PROTOCOLS]
+const ALL_BUILT_IN_PROTOCOLS = [
+  ...BUILT_IN_TRAINING_PROTOCOLS, 
+  ...BUILT_IN_PEPTIDE_PROTOCOLS,
+  ...BUILT_IN_SKIN_PROTOCOLS
+]
 
 function getBuiltInModalities(): Modality[] {
   const seen = new Set<string>()
   const mods: Modality[] = []
 
-  // 1. Built-in peptide modalities list
+  // 1. Built-in skin modalities list
+  ALL_BUILT_IN_SKIN_MODALITIES.forEach(m => {
+    const key = (m.id || '').toLowerCase()
+    if (key && !seen.has(key)) {
+      seen.add(key)
+      mods.push(m)
+    }
+  })
+
+  // 2. Built-in peptide modalities list
   BUILT_IN_PEPTIDE_MODALITIES.forEach(m => {
     const key = (m.id || '').toLowerCase()
     if (key && !seen.has(key)) {
@@ -97,7 +112,7 @@ function getBuiltInModalities(): Modality[] {
 
   // 3. Modalities from built-in protocols
   ALL_BUILT_IN_PROTOCOLS.forEach(p => {
-    p.steps.forEach(s => {
+    ;(p.steps || []).forEach(s => {
       if (s.modality) {
         const key = (s.modality.id || '').toLowerCase()
         if (key && !seen.has(key)) {
@@ -162,7 +177,7 @@ function mergeBuiltInProtocols(fetched: any[]): any[] {
     const key = builtIn.id.toLowerCase()
     seenIds.add(key)
     const existing = existingMap.get(key) || existingMap.get((builtIn.name || '').toLowerCase())
-    if (existing && existing.steps && existing.steps.length >= builtIn.steps.length) {
+    if (existing && existing.steps && existing.steps.length >= (builtIn.steps?.length || 0)) {
       result.push(existing)
     } else {
       result.push(builtIn)
@@ -844,12 +859,14 @@ function hydrateTasksInMemory(
       }]
     }
 
-    // Apply bench status override if pending and merge custom personalization
-    if (resolvedModId && benchMap.has(resolvedModId)) {
-      const bInfo = benchMap.get(resolvedModId)!
-      if (bInfo.status === 'eliminated' && t.status === 'pending') {
+    // Apply bench status override if non-completed and merge custom personalization
+    const normModId = resolvedModId ? resolvedModId.toLowerCase().trim() : ''
+    const bInfo = (resolvedModId && benchMap.get(resolvedModId)) || (normModId && benchMap.get(normModId))
+
+    if (bInfo) {
+      if (bInfo.status === 'eliminated' && t.status !== 'completed') {
         t.status = 'contraindicated'
-        t.status_reason = bInfo.personal_notes || 'Eliminated modality'
+        t.status_reason = bInfo.personal_notes || 'User eliminated modality'
       } else if ((bInfo.status === 'benched' || bInfo.status === 'inactive') && t.status === 'pending') {
         t.status = 'skipped'
         t.status_reason = 'Moved to Bench'
@@ -1507,8 +1524,42 @@ export async function addProtocolToToday(localUserId: string, date: string, prot
   const localStartDate = new Date(year, month - 1, day)
 
   if (steps && steps.length > 0) {
-    // If Push / Pull / Legs protocol: schedule according to standard 2x/week rotation per muscle group starting Day 0
-    if (protocolId === 'push_pull_legs_hypertrophy_protocol') {
+    if (protocolId === 'cellular_dermal_matrix') {
+      // Cellular Dermal Matrix: 4-Night Skin Cycling rotation over 30 days
+      for (let dayOff = 0; dayOff < 30; dayOff++) {
+        const targetDate = new Date(localStartDate)
+        targetDate.setDate(localStartDate.getDate() + dayOff)
+        const targetDateStr = format(targetDate, 'yyyy-MM-dd')
+        const phase = getSkinCyclePhaseForDate(targetDateStr)
+
+        steps.forEach(step => {
+          const modId = step.modality_id || step.modality?.id
+          if (!modId) return
+
+          if (isSkinModalityActiveOnDate(modId, targetDateStr)) {
+            tasksToInsert.push({
+              local_user_id: localUserId,
+              user_protocol_instance_id: isUuidCheck(instanceId) ? instanceId : null,
+              protocol_step_id: isUuidCheck(step.id) ? step.id : null,
+              modality_id: modId,
+              scheduled_date: targetDateStr,
+              timing_slot: step.timing_slot || 'evening',
+              status: 'pending',
+              execution_details: {
+                skin_cycle_phase: phase.phaseKey,
+                skin_cycle_day: phase.dayNumber,
+                skin_cycle_title: phase.name,
+                schedule_config: {
+                  schedule_mode: 'cadence',
+                  interval_days: 1,
+                  timing_slot: step.timing_slot || 'evening'
+                }
+              }
+            })
+          }
+        })
+      }
+    } else if (protocolId === 'push_pull_legs_hypertrophy_protocol') {
       const stepOffsetMap: Record<string, number[]> = {
         // Push Day: 2x per week (Day 0 & Day 3 of each 7-day cycle)
         'ppl_push_day': [0, 3, 7, 10, 14, 17, 21, 24, 28, 31, 35, 38, 42, 45, 49, 52, 56, 59, 63, 66, 70, 73, 77, 80],
@@ -3701,12 +3752,14 @@ export async function eliminateModality(
   if (!supabase) return false
   
   // Upsert bench item to eliminated
+  const cleanModId = modalityId.trim().toLowerCase()
+
   const { data: existing } = await supabase
     .from('user_bench_items')
     .select('*')
     .eq('local_user_id', localUserId)
-    .eq('modality_id', modalityId)
-    .single()
+    .eq('modality_id', cleanModId)
+    .maybeSingle()
 
   if (existing) {
     await supabase.from('user_bench_items').update({ 
@@ -3717,7 +3770,7 @@ export async function eliminateModality(
   } else {
     await supabase.from('user_bench_items').insert([{
       local_user_id: localUserId,
-      modality_id: modalityId,
+      modality_id: cleanModId,
       status: 'eliminated',
       personal_notes: reason,
       elimination_reasons: selectedReasons,
@@ -3725,16 +3778,38 @@ export async function eliminateModality(
     }])
   }
 
-  // Update all pending daily protocol tasks for this modality
+  // 1. Find all protocol_steps that reference this modality
+  const { data: matchingSteps } = await supabase
+    .from('protocol_steps')
+    .select('id')
+    .eq('modality_id', cleanModId)
+
+  const stepIds = (matchingSteps || []).map(s => s.id)
+  const todayStr = format(new Date(), 'yyyy-MM-dd')
+
+  // 2. Update all uncompleted daily protocol tasks for this modality (by modality_id)
   await supabase
     .from('daily_protocol_tasks')
     .update({ status: 'contraindicated', status_reason: reason })
     .eq('local_user_id', localUserId)
-    .eq('modality_id', modalityId)
-    .eq('status', 'pending')
+    .eq('modality_id', cleanModId)
+    .gte('scheduled_date', todayStr)
+    .neq('status', 'completed')
+
+  // 3. Update tasks tied via protocol_step_id
+  if (stepIds.length > 0) {
+    await supabase
+      .from('daily_protocol_tasks')
+      .update({ status: 'contraindicated', status_reason: reason })
+      .eq('local_user_id', localUserId)
+      .in('protocol_step_id', stepIds)
+      .gte('scheduled_date', todayStr)
+      .neq('status', 'completed')
+  }
 
   if (currentTaskId) {
-    await supabase.from('daily_protocol_tasks').update({ status: 'contraindicated', status_reason: reason }).eq('id', currentTaskId)
+    const realId = currentTaskId.includes('-split-') ? currentTaskId.split('-split-')[0] : currentTaskId
+    await supabase.from('daily_protocol_tasks').update({ status: 'contraindicated', status_reason: reason }).eq('id', realId)
   }
 
   return true
@@ -4599,8 +4674,19 @@ export async function reconcileModalityScheduleAndFutureTasks(
     await upsertBenchItemOverride(localUserId, modalityId, customDose || '', customTiming || '', notes)
   }
 
-  // 2. Resolve primary timing slot from customTiming
-  const resolvedSlot = customTiming ? resolveSlotFromTimingString(customTiming) : (scheduleConfig?.timing_slot || 'anytime')
+  // 2. Resolve primary timing slot from customTiming (if split multi-dose, anchor to the first dose slot)
+  let resolvedSlot = scheduleConfig?.timing_slot || 'anytime'
+  if (customTiming) {
+    const multiSlots = parseMultiDoseTimingSlots(customTiming)
+    if (multiSlots.length >= 1) {
+      resolvedSlot = multiSlots[0].slot
+    } else {
+      const singleCandidate = resolveSlotFromTimingString(customTiming)
+      if (singleCandidate && singleCandidate !== 'anytime') {
+        resolvedSlot = singleCandidate
+      }
+    }
+  }
 
   // 3. Compute active dates for the next 30 days based on scheduleConfig or cadence in customTiming
   const [y, m, d] = fromDateStr.split('-').map(Number)

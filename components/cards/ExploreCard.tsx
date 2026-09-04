@@ -24,6 +24,11 @@ type ExploreCardProps = {
   todayModalities?: Modality[]
   benchModalities?: Modality[]
   stackFitResult?: StackFitResult
+  marginalImpact?: {
+    deltaDialedIn: number
+    deltaEffort: number
+    outcomeName: string
+  }
   onAddToBench: (modalityId: string) => Promise<void>
   onAddToToday: (modalityId: string) => Promise<void>
   onCompare?: (exploring: Modality, active: Modality, source: 'today' | 'bench') => void
@@ -43,6 +48,7 @@ export default function ExploreCard({
   todayModalities = [],
   benchModalities = [],
   stackFitResult,
+  marginalImpact,
   onAddToBench, 
   onAddToToday,
   onCompare,
@@ -191,6 +197,17 @@ export default function ExploreCard({
               <div className="flex items-center gap-1 bg-levl-accent/10 border border-levl-accent/30 text-levl-accent px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">
                 <Sparkles size={10} />
                 {modality.nba_result.matchPercentage}% Match
+              </div>
+            )}
+
+            {marginalImpact && (
+              <div 
+                className="flex items-center gap-1.5 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-500/40 text-purple-200 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 shadow-sm"
+                title={`Projected marginal impact to ${marginalImpact.outcomeName}: +${marginalImpact.deltaDialedIn} pts Dialed-In Coverage with +${marginalImpact.deltaEffort} pts Effort`}
+              >
+                <Sparkles size={10} className="text-amber-300" />
+                <span>+{marginalImpact.deltaDialedIn} pts {marginalImpact.outcomeName}</span>
+                <span className="text-slate-400 font-normal">• +{marginalImpact.deltaEffort} Effort</span>
               </div>
             )}
           </div>

@@ -25,7 +25,9 @@ function dedupeTasksForColumn(tasks: DailyProtocolTask[]) {
   const map = new Map<string, DailyProtocolTask>()
   tasks.forEach(t => {
     const mod = t.protocol_step?.modality || t.loose_modality
-    const key = t.modality_id || mod?.id || mod?.name || t.id
+    const splitNumber = t.execution_details?.split_dose_number || (t.id.includes('-split-') ? t.id.split('-split-')[1] : 0)
+    const baseKey = (t.modality_id || mod?.id || mod?.name || t.id).trim().toLowerCase()
+    const key = splitNumber ? `${baseKey}-split-${splitNumber}` : baseKey
 
     if (!map.has(key)) {
       map.set(key, t)

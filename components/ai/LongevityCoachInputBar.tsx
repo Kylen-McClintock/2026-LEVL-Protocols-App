@@ -18,6 +18,7 @@ import {
   MessageSquare
 } from 'lucide-react'
 import { UserProfile, DailyProtocolTask } from '@/lib/types'
+import ModalityInitiationCard from './ModalityInitiationCard'
 
 export const LONGEVITY_COACH_PROMPTS = [
   "How should I sequence today's protocol stack for maximum absorption?",
@@ -54,6 +55,7 @@ export interface CoachMessage {
   suggestedDays?: string[] | null
   suggestedScheduleMode?: 'days_of_week' | 'rest_interval' | null
   suggestedRestIntervalDays?: number | null
+  suggestedModalityDraft?: any
   timestamp: number
 }
 
@@ -224,6 +226,7 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
         suggestedDays: data.suggestedDays || null,
         suggestedScheduleMode: data.suggestedScheduleMode || null,
         suggestedRestIntervalDays: data.suggestedRestIntervalDays || null,
+        suggestedModalityDraft: data.suggestedModalityDraft || null,
         timestamp: Date.now()
       }
 
@@ -476,6 +479,44 @@ export const LongevityCoachInputBar: React.FC<LongevityCoachInputBarProps> = ({
                           <ArrowRight size={11} />
                         </button>
                       )}
+                    </div>
+                  )}
+
+                  {/* Suggested Modality Draft Initiation Card */}
+                  {msg.suggestedModalityDraft && (
+                    <div className="pt-2">
+                      <ModalityInitiationCard
+                        modality={msg.suggestedModalityDraft}
+                        initialData={{
+                          name: msg.suggestedModalityDraft.name,
+                          category: msg.suggestedModalityDraft.category,
+                          headlineBenefit: msg.suggestedModalityDraft.headline_benefit,
+                          briefDescription: msg.suggestedModalityDraft.brief_description,
+                          instructions: msg.suggestedModalityDraft.instructions,
+                          doseAmount: msg.suggestedModalityDraft.dose_amount,
+                          doseUnit: msg.suggestedModalityDraft.dose_unit,
+                          doseOptions: msg.suggestedModalityDraft.dose_options,
+                          timingSlot: msg.suggestedModalityDraft.timing_slot,
+                          cadenceMode: msg.suggestedModalityDraft.cadence_mode,
+                          selectedDays: msg.suggestedModalityDraft.selected_days,
+                          restIntervalDays: msg.suggestedModalityDraft.rest_interval_days,
+                          scheduleToToday: true,
+                          saveToBench: true
+                        }}
+                        onInitiateSuccess={(mod) => {
+                          if (mod?.name) {
+                            setAddedItems(prev => ({ ...prev, [mod.name]: true }))
+                          }
+                        }}
+                        onOpenStudio={(data) => {
+                          if (onOpenModalityStudio) {
+                            onOpenModalityStudio(data.name || '', {
+                              suggestedDose: data.doseAmount,
+                              suggestedTiming: data.timingSlot
+                            })
+                          }
+                        }}
+                      />
                     </div>
                   )}
 

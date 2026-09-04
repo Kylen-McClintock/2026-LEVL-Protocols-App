@@ -203,9 +203,11 @@ If the user asks where to find something, how to perform an action, or how featu
    - name: Precise name (e.g. "Spermidine", "Tongkat Ali", "BPC-157", "Apigenin")
    - category: Best category ("Supplements", "Peptides", "Thermal", "Fitness", "Sleep", "Nootropics", "Nutrition", "Mindfulness", "Light Therapy", "Other")
    - headline_benefit: 1-sentence primary biological or longevity benefit
+   - brief_description: MANDATORY: 1–3 sentence clinical explanation of what the compound/intervention is, its biological mechanism (e.g. cellular autophagy, mTOR modulation, mitochondrial biogenesis, heat shock proteins, nitric oxide synthesis), and its longevity benefit.
    - instructions: Clear administration and absorption instructions (e.g. "Take with high-polyphenol olive oil or fatty meal for maximal bioavailability")
    - dose_amount: Numerical amount (e.g. "10", "400", "500", "20")
    - dose_unit: Measurement unit ("mg", "g", "mcg", "IU", "mins", "ml")
+   - dose_options: 3-4 common evidence-based dose options for quick interactive selection buttons (e.g. ["5 mg", "10 mg", "20 mg"] or ["250 mg", "500 mg", "1000 mg"])
    - admin_context: E.g. "With fatty meal", "Empty stomach upon waking", "Pre-workout (30-45m)", "30m before sleep"
    - timing_slot: Circadian timing slot ("morning_supplement_stack", "waking", "first_meal", "midday", "afternoon", "evening_supplement_stack", "bedtime", "anytime")
    - cadence_mode: "daily", "days_of_week", or "interval"
@@ -263,11 +265,12 @@ ${userContextPrompt}`
             name: z.string().describe('Name of the modality (e.g. "Spermidine", "Tongkat Ali")'),
             category: z.string().optional().describe('Category: Supplements, Peptides, Thermal, Fitness, Sleep, Nootropics, Nutrition, Mindfulness, Light Therapy, Other'),
             headline_benefit: z.string().optional().describe('1-sentence primary biological or longevity benefit'),
-            brief_description: z.string().optional().describe('Summary of the modality and mechanism'),
+            brief_description: z.string().describe('MANDATORY: 1-3 sentence clinical summary explaining the biological mechanism and longevity purpose'),
             instructions: z.string().optional().describe('Actionable administration instructions (e.g. take with dietary fats)'),
             source_url: z.string().optional().describe('PubMed or clinical trial URL if available'),
             dose_amount: z.string().optional().describe('Numerical amount e.g. "500", "10", "1"'),
             dose_unit: z.string().optional().describe('Dosing unit e.g. "mg", "g", "mcg", "IU", "ml", "mins"'),
+            dose_options: z.array(z.string()).optional().describe('3-4 common evidence-based dose options for quick interactive selection buttons (e.g. ["5 mg", "10 mg", "20 mg"])'),
             admin_context: z.string().optional().describe('Context: "With fatty meal", "Empty stomach upon waking", "Pre-workout (30-45m)", etc.'),
             timing_slot: z.string().optional().describe('Timing slot: "waking", "morning_routine", "morning_supplement_stack", "first_meal", "midday", "afternoon", "evening_supplement_stack", "bedtime", "anytime"'),
             split_count: z.number().optional().describe('1 for single daily dose, 2 for AM/PM split'),
@@ -437,10 +440,17 @@ ${userContextPrompt}`
               name: modData.name,
               category: modData.category,
               headlineBenefit: modData.headline_benefit,
+              briefDescription: modData.brief_description || draftData.brief_description,
               instructions: modData.instructions || draftData.instructions,
               sourceUrl: modData.source_url || draftData.source_url,
               doseAmount: draftData.dose_amount || '',
               doseUnit: draftData.dose_unit || 'mg',
+              doseOptions: draftData.dose_options && draftData.dose_options.length > 0
+                ? draftData.dose_options
+                : [
+                    draftData.dose_amount ? `${draftData.dose_amount} ${draftData.dose_unit || 'mg'}` : '10 mg',
+                    draftData.dose_amount && !isNaN(Number(draftData.dose_amount)) ? `${Number(draftData.dose_amount) * 2} ${draftData.dose_unit || 'mg'}` : '20 mg'
+                  ],
               adminContext: draftData.admin_context || '',
               timingSlot: primaryTiming,
               splitCount: (draftData.split_count as 1 | 2 | 3) || 1,

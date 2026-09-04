@@ -12,16 +12,17 @@ import {
   createDailyTask, 
   addProtocolToToday,
   getBenchItems,
-  getDailyProtocolTasks
+  getDailyProtocolTasks,
+  getOutcomeDimensions
 } from '@/lib/data'
-import { Modality, UserProfile, UserBenchItem } from '@/lib/types'
+import { Modality, UserProfile, UserBenchItem, OutcomeDimension, DailyProtocolTask, Protocol } from '@/lib/types'
 import { CategoryFiltersBar, MainCategory, SUB_CATEGORIES_MAP } from '@/components/ui/ViewSelectorHeader'
 import { SolarDiurnalSlider } from '@/components/ui/SolarDiurnalSlider'
 import { getMacroCategory, MACRO_CATEGORIES } from '@/lib/utils/categories'
 import { sortModalitiesByNBA } from '@/lib/ranking/nextBestAction'
 import { calculateModalityPopularityScore, calculateProtocolPopularityScore } from '@/lib/ranking/popularityScore'
 import Link from 'next/link'
-import { Compass, Filter, ChevronDown, ChevronUp, X, Search, SlidersHorizontal, History, Scale, Sparkles, Trash2, ArrowRight, Info, Flame, Sun, Bookmark, HelpCircle } from 'lucide-react'
+import { Compass, Filter, ChevronDown, ChevronUp, X, Search, SlidersHorizontal, History, Scale, Sparkles, Trash2, ArrowRight, Info, Flame, Sun, Bookmark, HelpCircle, Target, Sliders, ShieldAlert, Zap, AlertTriangle } from 'lucide-react'
 import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolCard, { PROTOCOL_SYNERGY_MAP } from '@/components/cards/ProtocolCard'
 import ModalityCompareModal from '@/components/modals/ModalityCompareModal'
@@ -29,10 +30,15 @@ import ProtocolCompareModal from '@/components/modals/ProtocolCompareModal'
 import AlgorithmTransparencyModal from '@/components/modals/AlgorithmTransparencyModal'
 import StackFitInspectorModal from '@/components/modals/StackFitInspectorModal'
 import CreateCustomModalityModal from '@/components/modals/CreateCustomModalityModal'
+import { OutcomeOptimizationModal } from '@/components/modals/OutcomeOptimizationModal'
+import { 
+  getOutcomeOptimizationSummary, 
+  calculateModalityMarginalImpact, 
+  OutcomeOptimizationState 
+} from '@/lib/outcomes/outcomeOptimizationEngine'
 import { StackFitResult } from '@/lib/synergy/stackFitEngine'
 import { semanticSearchModalities, SemanticSearchResult } from '@/app/actions/search'
 import { calculateModalityRelevance, calculateProtocolRelevance } from '@/lib/search/semanticRelevance'
-import { Protocol } from '@/lib/types'
 
 export default function ExplorePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -85,6 +91,12 @@ export default function ExplorePage() {
     modality: null,
     stackFit: null
   })
+
+  // Outcome Vectors Optimization States
+  const [outcomeDimensions, setOutcomeDimensions] = useState<OutcomeDimension[]>([])
+  const [todayTasksList, setTodayTasksList] = useState<DailyProtocolTask[]>([])
+  const [inspectingOutcomeState, setInspectingOutcomeState] = useState<OutcomeOptimizationState | null>(null)
+  const [isOutcomeModalOpen, setIsOutcomeModalOpen] = useState(false)
 
   const handlePinModality = (modality: Modality) => {
     setPinnedModalities(prev => {
@@ -182,14 +194,18 @@ export default function ExplorePage() {
 
     const { getLatestBiomarkerMeasurements } = await import('@/lib/data/bloodworkData')
 
-    const [fetchedProfile, allMods, allProtos, benchItems, todayTasks, userBiomarkers] = await Promise.all([
+    const [fetchedProfile, allMods, allProtos, benchItems, todayTasks, userBiomarkers, fetchedDims] = await Promise.all([
       getOrCreateUserProfile(localUserId),
       getModalities(true),
       getProtocolsWithSteps(),
       getBenchItems(localUserId),
       getDailyProtocolTasks(localUserId, todayStr),
-      getLatestBiomarkerMeasurements(localUserId)
+      getLatestBiomarkerMeasurements(localUserId),
+      getOutcomeDimensions()
     ])
+
+    setOutcomeDimensions(fetchedDims || [])
+    setTodayTasksList(todayTasks || [])
 
     const todayIds = new Set<string>()
     const benchIds = new Set<string>()
@@ -499,6 +515,38 @@ export default function ExplorePage() {
     })
     return map
   }, [protocols, searchQuery])
+
+  // Active outcome optimization summary if a single outcome is selected
+  const activeOutcomeOptimization = useMemo<OutcomeOptimizationState | null>(() => {
+    if (selectedOutcomes.length !== 1 || outcomeDimensions.length === 0) return null
+    const selectedOutcomeName = selectedOutcomes[0].toLowerCase().trim()
+    const activeMods = Array.from(activeModalitiesMap.values()).map(v => v.modality)
+    const summaries = getOutcomeOptimizationSummary(activeMods, todayTasksList, outcomeDimensions, profile)
+    return summaries.find(s => 
+      s.outcomeName.toLowerCase().trim() === selectedOutcomeName || 
+      s.outcomeId.toLowerCase().trim() === selectedOutcomeName
+    ) || null
+  }, [selectedOutcomes, outcomeDimensions, activeModalitiesMap, todayTasksList, profile])
+
+  const handleUpdateOutcomeTarget = async (outcomeId: string, newTarget: number, newEffort: number) => {
+    if (!profile) return
+    const updatedScores = {
+      ...(profile.outcome_preference_scores || {}),
+      [outcomeId]: newTarget,
+      [`${outcomeId}_effort`]: newEffort
+    }
+    const updatedProfile = {
+      ...profile,
+      outcome_preference_scores: updatedScores
+    }
+    setProfile(updatedProfile)
+    try {
+      const { updateUserProfile } = await import('@/lib/data')
+      await updateUserProfile(profile.local_user_id, { outcome_preference_scores: updatedScores })
+    } catch (err) {
+      console.error('Failed to save outcome target preference:', err)
+    }
+  }
 
   const filteredModalities = modalities.filter(mod => {
     if (filterBenchHistoryStatus === 'tried_history' && !benchHistoryMap.has(mod.id)) return false
@@ -1042,7 +1090,7 @@ export default function ExplorePage() {
                   ? "Semantic Search (e.g. 'how do I sleep better?')"
                   : "Search protocols (e.g. 'Bryan Johnson Blueprint', 'Push Pull Legs', 'Sleep', 'FMD')"
               }
-              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-10 pr-10 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-levl-accent/50 focus:ring-1 focus:ring-levl-accent/50 transition-all"
+              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-10 pr-10 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-levl-accent/50 focus:ring-1 focus:ring-levl-accent/50 transition-all [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
             />
             {isSearching && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-levl-accent/30 border-t-levl-accent rounded-full animate-spin" />
@@ -1123,6 +1171,48 @@ export default function ExplorePage() {
             onToggleMainCategory={handleToggleMainCategory}
             onToggleSubCategory={handleToggleSubCategory}
           />
+        </div>
+
+        {/* Quick Outcome Vectors Bar */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 mt-2.5 mb-1 scrollbar-thin">
+          <span className="text-[11px] font-mono uppercase text-slate-400 font-bold shrink-0 flex items-center gap-1 px-1">
+            <Target size={12} className="text-purple-400" />
+            <span>Outcomes:</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedOutcomes([])}
+            className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              selectedOutcomes.length === 0
+                ? 'bg-purple-600 text-white shadow-sm border border-purple-400/30 font-extrabold'
+                : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white'
+            }`}
+          >
+            All Outcomes
+          </button>
+          {displayedOutcomes.slice(0, 16).map(outcomeName => {
+            const isSelected = selectedOutcomes.includes(outcomeName)
+            return (
+              <button
+                key={outcomeName}
+                type="button"
+                onClick={() => {
+                  if (isSelected) {
+                    setSelectedOutcomes([])
+                  } else {
+                    setSelectedOutcomes([outcomeName])
+                  }
+                }}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                  isSelected
+                    ? 'bg-purple-600 text-white shadow-sm border border-purple-400/40 font-extrabold'
+                    : 'bg-white/5 border border-white/10 text-gray-300 hover:border-white/20'
+                }`}
+              >
+                <span>{outcomeName}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Prominent Expandable Button for Detailed Filters */}
@@ -1274,6 +1364,80 @@ export default function ExplorePage() {
 
       {activeTab === 'modalities' ? (
         <>
+          {/* Active Outcome Optimization Status Banner */}
+          {activeOutcomeOptimization && (
+            <div className="mb-5 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-purple-950/50 via-slate-900/90 to-indigo-950/50 border border-purple-500/30 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                      <Target size={13} className="text-purple-400" />
+                      Outcome Vector Coverage
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full border text-[11px] font-bold font-mono ${activeOutcomeOptimization.badgeBg} ${activeOutcomeOptimization.badgeBorder} ${activeOutcomeOptimization.badgeText}`}>
+                      {activeOutcomeOptimization.statusLabel}
+                    </span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                    {activeOutcomeOptimization.outcomeName} Optimization
+                  </h3>
+                  <p className="text-xs text-slate-300 max-w-xl">
+                    {activeOutcomeOptimization.statusDescription}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap justify-between sm:justify-end">
+                  <div className="text-right">
+                    <div className="text-[10px] font-mono uppercase text-slate-400">Current Coverage</div>
+                    <div className="flex items-baseline gap-1 justify-end">
+                      <span className="text-xl font-black font-mono text-emerald-400">
+                        {activeOutcomeOptimization.dialedInScore}
+                      </span>
+                      <span className="text-xs font-mono text-slate-500">/ 100</span>
+                      <span className="text-[10px] text-slate-400 font-medium ml-1">
+                        ({activeOutcomeOptimization.percentileRank}th %ile)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-right border-l border-white/10 pl-3">
+                    <div className="text-[10px] font-mono uppercase text-slate-400 flex items-center gap-1 justify-end">
+                      <Zap size={10} className="text-amber-400" />
+                      <span>Effort & Cost</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 justify-end">
+                      <span className="text-xl font-black font-mono text-amber-300">
+                        {activeOutcomeOptimization.effortScore}
+                      </span>
+                      <span className="text-xs font-mono text-slate-500">/ 100</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInspectingOutcomeState(activeOutcomeOptimization)
+                      setIsOutcomeModalOpen(true)
+                    }}
+                    className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-purple-900/30 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Sliders size={13} />
+                    <span>Tune & 80/20 Curve</span>
+                  </button>
+                </div>
+              </div>
+
+              {activeOutcomeOptimization.clashes.length > 0 && (
+                <div className="mt-3 p-2.5 bg-rose-950/60 border border-rose-500/40 rounded-xl flex items-center gap-2 text-xs text-rose-200">
+                  <AlertTriangle size={14} className="text-rose-400 shrink-0" />
+                  <span>
+                    <strong>Biological Clash Alert:</strong> {activeOutcomeOptimization.clashes[0].title} — {activeOutcomeOptimization.clashes[0].recommendedFix}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5 items-start">
             {filteredModalities.length === 0 ? (
               <div className="col-span-full text-center p-8 bg-white/5 rounded-2xl text-gray-400 text-sm space-y-3">
@@ -1317,6 +1481,12 @@ export default function ExplorePage() {
                 const searchScore = searchQuery 
                   ? (searchResults.find(r => r.id === mod.id)?.similarity || (relScore ? Math.min(0.99, Number((relScore / 1200).toFixed(2))) : undefined)) 
                   : undefined
+
+                const marginalImpact = activeOutcomeOptimization ? {
+                  deltaDialedIn: calculateModalityMarginalImpact(mod, activeOutcomeOptimization.dialedInScore, activeOutcomeOptimization.effortScore).deltaDialedIn,
+                  deltaEffort: calculateModalityMarginalImpact(mod, activeOutcomeOptimization.dialedInScore, activeOutcomeOptimization.effortScore).deltaEffort,
+                  outcomeName: activeOutcomeOptimization.outcomeName
+                } : undefined
                 
                 return (
                   <div key={mod.id} ref={isLast ? lastElementRef : null} className="min-w-0 w-full">
@@ -1325,6 +1495,7 @@ export default function ExplorePage() {
                       userProfile={profile}
                       searchScore={searchScore}
                       popularityScore={sortMode === 'popularity' ? calculateModalityPopularityScore(mod) : undefined}
+                      marginalImpact={marginalImpact}
                       todayModalities={modalities.filter(m => todayModalityIds.has(m.id))}
                       benchModalities={modalities.filter(m => benchModalityIds.has(m.id))}
                       activeStatus={
@@ -1541,6 +1712,21 @@ export default function ExplorePage() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={() => loadData()}
       />
+
+      {/* Functional Outcome Optimization & 80/20 Tuning Modal */}
+      {isOutcomeModalOpen && inspectingOutcomeState && (
+        <OutcomeOptimizationModal
+          isOpen={isOutcomeModalOpen}
+          onClose={() => {
+            setIsOutcomeModalOpen(false)
+            setInspectingOutcomeState(null)
+          }}
+          outcomeState={inspectingOutcomeState}
+          userProfile={profile}
+          todayTasks={todayTasksList}
+          onUpdateTarget={handleUpdateOutcomeTarget}
+        />
+      )}
     </div>
   )
 }
