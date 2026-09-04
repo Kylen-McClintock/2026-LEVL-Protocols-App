@@ -26,6 +26,7 @@ import {
 import { Modality, UserProfile, DailyProtocolTask } from '@/lib/types'
 import ExploreCard from '@/components/cards/ExploreCard'
 import ScheduleModalityModal from '@/components/modals/ScheduleModalityModal'
+import ModalityIcon from '@/components/ui/ModalityIcon'
 import {
   evaluateUserAdherenceState,
   generateNextBestActionRecommendation,
@@ -354,6 +355,7 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
                     <div key={candMod.id || idx} className="p-3 rounded-xl bg-slate-950/80 border border-amber-500/20 space-y-2">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
+                          <ModalityIcon modality={candMod} size={16} glow={false} />
                           <span className="text-xs font-extrabold text-white">
                             {candName}
                           </span>
@@ -455,8 +457,8 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
       {/* Header Bar */}
       <div className="flex items-start justify-between gap-3 relative z-10">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold shadow-[0_0_14px_rgba(168,85,247,0.3)] shrink-0">
-            <Sparkles size={18} />
+          <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold shadow-[0_0_14px_rgba(168,85,247,0.3)] shrink-0">
+            <ModalityIcon modality={targetMod} size={22} glow={false} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">

@@ -48,6 +48,7 @@ import {
   Info
 } from 'lucide-react'
 import ScheduleModalityModal from '@/components/modals/ScheduleModalityModal'
+import ModalityIcon from '@/components/ui/ModalityIcon'
 import SwapModalityModal from '@/components/modals/SwapModalityModal'
 import FrictionBusterModal from '@/components/modals/FrictionBusterModal'
 import { KpiExplanationModal, KpiModalType } from '@/components/modals/KpiExplanationModal'
@@ -1064,11 +1065,15 @@ export default function TrackingPage() {
                       </p>
 
                       <div className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-lg flex items-center justify-between gap-3">
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h5 className="font-bold text-xs text-white truncate">
-                              {outcome.nextBestAction.display_name || outcome.nextBestAction.name}
-                            </h5>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-levl-accent/15 border border-levl-accent/30 flex items-center justify-center shrink-0">
+                            <ModalityIcon modality={outcome.nextBestAction} size={18} glow={false} />
+                          </div>
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h5 className="font-bold text-xs text-white truncate">
+                                {outcome.nextBestAction.display_name || outcome.nextBestAction.name}
+                              </h5>
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${getEffortMetadata(outcome.nextBestAction).badgeColor}`}>
                               {getEffortMetadata(outcome.nextBestAction).shortLabel}
                             </span>
@@ -1076,9 +1081,10 @@ export default function TrackingPage() {
                               Cost: {getCostMetadata(outcome.nextBestAction.cost_tier).shortLabel}
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400 line-clamp-1">
-                            {outcome.nextBestAction.brief_description}
-                          </p>
+                            <p className="text-[10px] text-slate-400 line-clamp-1">
+                              {outcome.nextBestAction.brief_description}
+                            </p>
+                          </div>
                         </div>
                         <button
                           onClick={(e) => {

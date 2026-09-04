@@ -16,6 +16,10 @@ import {
   Syringe,
   Activity,
   Heart,
+  HeartPulse,
+  Atom,
+  Shield,
+  Timer,
   Eye,
   Glasses,
   Scale,
@@ -213,24 +217,185 @@ function DetailedSaunaGlyph({ stroke, size }: { stroke: string; size: number }) 
   )
 }
 
-/** Precision Subcutaneous Peptide Pen / Micro-Injector */
-function PeptidePenGlyph({ stroke, size }: { stroke: string; size: number }) {
+/** Precision Subcutaneous Peptide Syringe & Micro-Needle (True medical insulin syringe, NOT a trumpet) */
+function PeptideSyringeGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      {/* Sleek Angled Pen Barrel Body */}
-      <path d="M10 14l6-6 2 2-6 6z" />
+      {/* Finger Grip Flange Wings at barrel top */}
+      <line x1="5.5" y1="16.5" x2="8.5" y2="19.5" />
+      {/* Plunger Shaft extended backwards */}
+      <line x1="6" y1="18" x2="3.5" y2="20.5" />
+      {/* Thumb Press Disc */}
+      <line x1="2" y1="20" x2="4.5" y2="22.5" />
+      {/* Syringe Cylindrical Barrel */}
+      <path d="M7 17l9.5-9.5 2 2L9 19z" />
       {/* Precision Dose Graduation Measurement Marks */}
-      <path d="M12 10l1 1" />
-      <path d="M13.5 11.5l1 1" />
-      {/* Top Plunger Shaft & Clickable Dosage Dial */}
-      <path d="M17 7l2-2" />
-      <path d="M18 4l3 3" />
-      {/* Subcutaneous Needle Collar Hub */}
-      <path d="M9 15l-2 2" />
+      <line x1="10" y1="13" x2="11.5" y2="11.5" />
+      <line x1="12" y1="11" x2="13.5" y2="9.5" />
+      <line x1="14" y1="9" x2="15.5" y2="7.5" />
+      {/* Needle Hub Collar */}
+      <line x1="16.5" y1="7.5" x2="18.5" y2="9.5" />
       {/* Ultra-Fine Micro-Needle Shaft */}
-      <path d="M7 17l-3.5 3.5" />
+      <line x1="17.5" y1="8.5" x2="21.5" y2="4.5" />
       {/* Active Bioactive Micro-Droplet at Tip */}
-      <circle cx="3.5" cy="20.5" r="0.75" />
+      <circle cx="22" cy="4" r="0.75" fill={stroke} />
+    </svg>
+  )
+}
+
+/** Handstand & Inversion Balance Glyph (Inverted gymnast hold, explicitly NOT a dumbbell) */
+function HandstandGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      {/* Floor / Ground Platform Line */}
+      <line x1="4" y1="21" x2="20" y2="21" />
+      {/* Left Palm & Forearm Planted */}
+      <line x1="8.5" y1="21" x2="9.5" y2="15" />
+      {/* Right Palm & Forearm Planted */}
+      <line x1="15.5" y1="21" x2="14.5" y2="15" />
+      {/* Inverted Head Tucked Between Shoulders */}
+      <circle cx="12" cy="18" r="1.5" />
+      {/* Shoulder Girdle */}
+      <path d="M9 15h6" />
+      {/* Inverted Torso Extending Vertically */}
+      <line x1="12" y1="15" x2="12" y2="9.5" />
+      {/* Pelvis / Hip Line */}
+      <path d="M10 9.5h4" />
+      {/* Extended Legs in Strict Vertical Hold */}
+      <line x1="10.5" y1="9.5" x2="10.5" y2="3.5" />
+      <line x1="13.5" y1="9.5" x2="13.5" y2="3.5" />
+      {/* Pointed Feet at Apex */}
+      <line x1="10.5" y1="3.5" x2="9" y2="3" />
+      <line x1="13.5" y1="3.5" x2="15" y2="3" />
+    </svg>
+  )
+}
+
+/** Calisthenics, Pull-Ups & Bodyweight Mastery Glyph */
+function CalisthenicsGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      {/* Overhead Pull-Up Rig / Bar */}
+      <line x1="3" y1="3.5" x2="21" y2="3.5" />
+      <line x1="5" y1="3.5" x2="5" y2="5.5" />
+      <line x1="19" y1="3.5" x2="19" y2="5.5" />
+      {/* Athlete Hands Gripping Bar */}
+      <line x1="8.5" y1="3.5" x2="8.5" y2="5" />
+      <line x1="15.5" y1="3.5" x2="15.5" y2="5" />
+      {/* Arms in Pull Flexion */}
+      <path d="M8.5 5L10 9.5" />
+      <path d="M15.5 5L14 9.5" />
+      {/* Head */}
+      <circle cx="12" cy="7.5" r="1.5" />
+      {/* Torso in Hollow-Body Form */}
+      <path d="M10 9.5h4" />
+      <line x1="12" y1="9.5" x2="12" y2="15.5" />
+      {/* Disciplined Extended Legs */}
+      <path d="M12 15.5l-1 5.5" />
+      <path d="M12 15.5l1 5.5" />
+    </svg>
+  )
+}
+
+/** Single-Leg Balance & Proprioceptive Stability Glyph */
+function BalanceGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      {/* Ground Balance Line */}
+      <line x1="4" y1="21" x2="20" y2="21" />
+      {/* Head */}
+      <circle cx="12" cy="4" r="1.75" />
+      {/* Torso */}
+      <line x1="12" y1="6" x2="12" y2="13" />
+      {/* Outstretched Balancing Arms */}
+      <path d="M4.5 9.5c2.5-.5 5-.5 7.5-.5s5 0 7.5.5" />
+      {/* Planted Standing Support Leg */}
+      <line x1="12" y1="13" x2="12" y2="21" />
+      {/* Elevated Leg in Tree/Flamingo Balance Pose */}
+      <path d="M12 14l4.5 2.5-4.5 2.5" />
+    </svg>
+  )
+}
+
+/** Continuous Glucose / Ketone Monitor (CGM) Bio-Wearable Glyph */
+function CGMGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      {/* Circular Sensor Patch Body */}
+      <circle cx="12" cy="12" r="7.5" />
+      {/* Central Biosensor Core */}
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="1" fill={stroke} />
+      {/* Wireless Signal Telemetry Arcs */}
+      <path d="M17.5 8a8.5 8.5 0 0 1 0 8" />
+      <path d="M6.5 8a8.5 8.5 0 0 0 0 8" />
+    </svg>
+  )
+}
+
+/** Hyperbaric Oxygen Therapy (HBOT) Pressurized Capsule Chamber */
+function HBOTGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      {/* Capsule Chamber Body */}
+      <rect x="2.5" y="7" width="19" height="10" rx="5" />
+      {/* Observation Window Porthole */}
+      <circle cx="12" cy="12" r="3" />
+      {/* High-Pressure Support Base Feet */}
+      <line x1="7" y1="17" x2="5.5" y2="20.5" />
+      <line x1="17" y1="17" x2="18.5" y2="20.5" />
+      {/* O2 Oxygen Purity Rings */}
+      <circle cx="18" cy="9.5" r="1" />
+      <circle cx="6" cy="9.5" r="1" />
+    </svg>
+  )
+}
+
+/** Oral Health & Longevity Glyph (Molar & Floss Protection) */
+function OralHygieneGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      {/* Anatomical Molar Crown & Roots */}
+      <path d="M7 4.5c2-.5 3 .5 5 .5s3-1 5-.5c2 .5 2.5 3 2.5 5 0 3.5-1.5 6-3 10-1 2.5-2.5 2.5-3 0l-1.5-6-1.5 6c-.5 2.5-2 2.5-3 0-1.5-4-3-6.5-3-10 0-2 .5-4.5 2.5-5z" />
+      {/* Protective Cleansing Sparkle */}
+      <path d="M16 4l1.5-2 1.5 2" />
+    </svg>
+  )
+}
+
+/** Horse Stance / Active Thermogenesis Reheating Glyph */
+function ThermogenesisGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      {/* Ground Platform Line */}
+      <line x1="3" y1="21" x2="21" y2="21" />
+      {/* Head */}
+      <circle cx="12" cy="4" r="1.5" />
+      {/* Upright Torso */}
+      <line x1="12" y1="5.5" x2="12" y2="12" />
+      {/* Deep Horse Stance Squatting Legs */}
+      <path d="M12 12l-4.5 2.5-1.5 6.5" />
+      <path d="M12 12l4.5 2.5 1.5 6.5" />
+      {/* Guarded Focus Arms */}
+      <path d="M9 9l3 1.5 3-1.5" />
+      {/* Core Metabolic Heat Flame */}
+      <path d="M12 17c-.8-1-1.2-1.5-1.2-2.2 0-1 .8-1.8 1.2-2.3.4.5 1.2 1.3 1.2 2.3 0 .7-.4 1.2-1.2 2.2z" />
+    </svg>
+  )
+}
+
+/** Therapeutic Plasma Exchange / Blood Centrifugation Glyph */
+function PlasmaExchangeGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      {/* Outer Filtration Capsule */}
+      <rect x="5" y="3" width="14" height="18" rx="4" />
+      {/* Separation Membrane Divider */}
+      <line x1="5" y1="12" x2="19" y2="12" strokeDasharray="2 2" />
+      {/* Upper Plasma Chamber */}
+      <circle cx="12" cy="7.5" r="2" />
+      {/* Lower Cellular Blood Chamber */}
+      <path d="M12 15c-1.5 1.5-2 2.5-2 3.5a2 2 0 0 0 4 0c0-1-.5-2-2-3.5z" fill={stroke} fillOpacity="0.3" />
     </svg>
   )
 }
@@ -523,18 +688,39 @@ export default function ModalityIcon({
     nameLower.includes('retatrutide') ||
     nameLower.includes('tirzepatide') ||
     nameLower.includes('semaglutide') ||
+    nameLower.includes('glp-1') ||
+    nameLower.includes('glp1') ||
     nameLower.includes('aod') ||
     nameLower.includes('tesamorelin') ||
     nameLower.includes('sermorelin') ||
     nameLower.includes('subq') ||
+    nameLower.includes('syringe') ||
+    nameLower.includes('needle') ||
     nameLower.includes('inject')
   ) {
-    return renderCustom(PeptidePenGlyph)
+    return renderCustom(PeptideSyringeGlyph)
   }
 
-  // 2. THERMAL / RECOVERY
+  // 2. SPECIALTY CLINICAL PROCEDURES & BIO-WEARABLES
+  if (nameLower.includes('hbot') || nameLower.includes('hyperbaric') || nameLower.includes('ewot') || nameLower.includes('oxygen chamber') || nameLower.includes('oxygen therapy')) {
+    return renderCustom(HBOTGlyph)
+  }
+  if (nameLower.includes('plasma exchange') || nameLower.includes('tpe') || nameLower.includes('plasmapheresis') || nameLower.includes('stem cell')) {
+    return renderCustom(PlasmaExchangeGlyph)
+  }
+  if (nameLower.includes('oral') || nameLower.includes('teeth') || nameLower.includes('tooth') || nameLower.includes('floss') || nameLower.includes('mouthwash') || nameLower.includes('dental') || nameLower.includes('brushing')) {
+    return renderCustom(OralHygieneGlyph)
+  }
+  if (nameLower.includes('cgm') || nameLower.includes('continuous glucose') || nameLower.includes('glucose monitor') || nameLower.includes('ketone monitor') || nameLower.includes('sensor')) {
+    return renderCustom(CGMGlyph)
+  }
+
+  // 3. THERMAL / RECOVERY
   if (nameLower.includes('cold plunge') || nameLower.includes('ice bath') || nameLower.includes('cold water') || nameLower.includes('cryotherapy') || nameLower.includes('cold immersion')) {
     return renderCustom(ColdPlungeGlyph)
+  }
+  if (nameLower.includes('horse stance') || nameLower.includes('reheat') || nameLower.includes('søberg') || nameLower.includes('soberg')) {
+    return renderCustom(ThermogenesisGlyph)
   }
   if (nameLower.includes('sauna') || nameLower.includes('hyperthermic') || nameLower.includes('finnish sauna') || nameLower.includes('infrared sauna')) {
     return renderCustom(DetailedSaunaGlyph)
@@ -546,8 +732,46 @@ export default function ModalityIcon({
     return renderCustom(HotBathGlyph)
   }
 
-  // 3. FITNESS & MOVEMENT (Exhaustive check so exercise NEVER defaults to sparkles)
-  if (nameLower.includes('zone 2') || nameLower.includes('aerobic base') || nameLower.includes('cardio base') || nameLower.includes('cpet') || nameLower.includes('vo2 max')) {
+  // 4. FITNESS, CALISTHENICS & MOVEMENT (Precision classification - handstand & bodyweight NEVER dumbbells)
+  if (
+    nameLower.includes('handstand') ||
+    nameLower.includes('inversion') ||
+    nameLower.includes('headstand') ||
+    nameLower.includes('feet-up-the-wall') ||
+    nameLower.includes('wall handstand')
+  ) {
+    return renderCustom(HandstandGlyph)
+  }
+  if (
+    nameLower.includes('balance') ||
+    nameLower.includes('stability') ||
+    nameLower.includes('proprioception') ||
+    nameLower.includes('single-leg') ||
+    nameLower.includes('single leg')
+  ) {
+    return renderCustom(BalanceGlyph)
+  }
+  if (
+    nameLower.includes('calisthenic') ||
+    nameLower.includes('pull-up') ||
+    nameLower.includes('pull up') ||
+    nameLower.includes('chin-up') ||
+    nameLower.includes('chin up') ||
+    nameLower.includes('dip') ||
+    nameLower.includes('push-up') ||
+    nameLower.includes('pushup') ||
+    nameLower.includes('bodyweight') ||
+    nameLower.includes('nordic') ||
+    nameLower.includes('tibialis') ||
+    nameLower.includes('slant board') ||
+    nameLower.includes('step-up') ||
+    nameLower.includes('isometric') ||
+    nameLower.includes('core hold') ||
+    nameLower.includes('plank')
+  ) {
+    return renderCustom(CalisthenicsGlyph)
+  }
+  if (nameLower.includes('zone 2') || nameLower.includes('aerobic base') || nameLower.includes('cardio base') || nameLower.includes('vo2 max')) {
     return renderCustom(Zone2Glyph)
   }
   if (nameLower.includes('vilpa') || nameLower.includes('micro-burst') || nameLower.includes('sprint') || nameLower.includes('interval')) {
@@ -555,6 +779,38 @@ export default function ModalityIcon({
   }
   if (nameLower.includes('hiit') || nameLower.includes('tabata') || nameLower.includes('anaerobic')) {
     return renderLucide(Zap)
+  }
+  if (nameLower.includes('cycling') || nameLower.includes('bike') || nameLower.includes('biking') || nameLower.includes('spin') || nameLower.includes('peloton')) {
+    return renderLucide(Bike)
+  }
+  if (
+    nameLower.includes('walk') ||
+    nameLower.includes('glucose walk') ||
+    nameLower.includes('post-meal walk') ||
+    nameLower.includes('optic flow') ||
+    nameLower.includes('ambulation') ||
+    nameLower.includes('steps') ||
+    nameLower.includes('hiking') ||
+    nameLower.includes('stride') ||
+    nameLower.includes('treadmill walk')
+  ) {
+    return renderLucide(Footprints)
+  }
+  if (nameLower.includes('run') || nameLower.includes('jog') || nameLower.includes('5k') || nameLower.includes('treadmill')) {
+    return renderCustom(VILPAGlyph)
+  }
+  if (
+    nameLower.includes('stretch') ||
+    nameLower.includes('mobility') ||
+    nameLower.includes('yoga') ||
+    nameLower.includes('flexibility') ||
+    nameLower.includes('rom') ||
+    nameLower.includes('pilates') ||
+    nameLower.includes('foam roll') ||
+    nameLower.includes('recovery day') ||
+    nameLower.includes('recovery technique')
+  ) {
+    return renderCustom(MobilityGlyph)
   }
   if (
     nameLower.includes('resistance') ||
@@ -567,39 +823,15 @@ export default function ModalityIcon({
     nameLower.includes('squat') ||
     nameLower.includes('deadlift') ||
     nameLower.includes('bench press') ||
-    nameLower.includes('pull-up') ||
-    nameLower.includes('calisthenic') ||
-    nameLower.includes('gym')
+    nameLower.includes('push day') ||
+    nameLower.includes('pull day') ||
+    nameLower.includes('leg day') ||
+    nameLower.includes('exercise routine') ||
+    nameLower.includes('structural resilience') ||
+    nameLower.includes('gym') ||
+    nameLower.includes('bfr')
   ) {
     return renderLucide(Dumbbell)
-  }
-  if (nameLower.includes('cycling') || nameLower.includes('bike') || nameLower.includes('biking') || nameLower.includes('spin') || nameLower.includes('peloton')) {
-    return renderLucide(Bike)
-  }
-  if (
-    nameLower.includes('walk') ||
-    nameLower.includes('glucose walk') ||
-    nameLower.includes('post-meal walk') ||
-    nameLower.includes('steps') ||
-    nameLower.includes('hiking') ||
-    nameLower.includes('stride') ||
-    nameLower.includes('treadmill walk')
-  ) {
-    return renderLucide(Footprints)
-  }
-  if (
-    nameLower.includes('stretch') ||
-    nameLower.includes('mobility') ||
-    nameLower.includes('yoga') ||
-    nameLower.includes('flexibility') ||
-    nameLower.includes('rom') ||
-    nameLower.includes('pilates') ||
-    nameLower.includes('foam roll')
-  ) {
-    return renderCustom(MobilityGlyph)
-  }
-  if (nameLower.includes('run') || nameLower.includes('jog') || nameLower.includes('5k') || nameLower.includes('treadmill')) {
-    return renderCustom(VILPAGlyph)
   }
   if (
     catLower.includes('fitness') ||
@@ -615,22 +847,32 @@ export default function ModalityIcon({
     return renderLucide(Dumbbell)
   }
 
-  // 4. CIRCADIAN & LIGHT
+  // 5. CIRCADIAN & LIGHT
   if (nameLower.includes('red light') || nameLower.includes('photobio') || nameLower.includes('pbm') || nameLower.includes('infrared panel')) {
     return renderCustom(RedLightGlyph)
   }
   if (nameLower.includes('morning light') || nameLower.includes('sunrise') || nameLower.includes('outdoor light') || nameLower.includes('lux') || nameLower.includes('sunlight')) {
     return renderLucide(Sunrise)
   }
-  if (nameLower.includes('blue light') || nameLower.includes('screen filter') || nameLower.includes('blocking glasses') || nameLower.includes('amber glasses')) {
+  if (nameLower.includes('blue light') || nameLower.includes('screen') || nameLower.includes('glasses') || nameLower.includes('screen filter') || nameLower.includes('amber glasses')) {
     return renderLucide(Glasses)
   }
   if (nameLower.includes('evening darkness') || nameLower.includes('dark room') || nameLower.includes('dim light') || nameLower.includes('blackout')) {
     return renderLucide(Moon)
   }
 
-  // 5. MIND & NERVOUS SYSTEM
-  if (nameLower.includes('breath') || nameLower.includes('sigh') || nameLower.includes('4-7-8') || nameLower.includes('box breath') || nameLower.includes('coherent')) {
+  // 6. MIND & NERVOUS SYSTEM
+  if (
+    nameLower.includes('breath') ||
+    nameLower.includes('sigh') ||
+    nameLower.includes('4-7-8') ||
+    nameLower.includes('box breath') ||
+    nameLower.includes('coherent') ||
+    nameLower.includes('hyperventilation') ||
+    nameLower.includes('wim hof') ||
+    nameLower.includes('exhale') ||
+    nameLower.includes('humming')
+  ) {
     return renderCustom(BreathworkGlyph)
   }
   if (nameLower.includes('nsdr') || nameLower.includes('yoga nidra') || nameLower.includes('non-sleep deep rest')) {
@@ -642,11 +884,22 @@ export default function ModalityIcon({
   if (nameLower.includes('journal') || nameLower.includes('gratitude') || nameLower.includes('writing') || nameLower.includes('reflection')) {
     return renderLucide(BookOpen)
   }
-  if (nameLower.includes('focus') || nameLower.includes('brain') || nameLower.includes('cognitive') || nameLower.includes('neuro') || nameLower.includes('nootropic')) {
+  if (
+    nameLower.includes('focus') ||
+    nameLower.includes('brain') ||
+    nameLower.includes('cognitive') ||
+    nameLower.includes('neuro') ||
+    nameLower.includes('nootropic') ||
+    nameLower.includes('mental') ||
+    nameLower.includes('fortitude')
+  ) {
     return renderLucide(Brain)
   }
+  if (nameLower.includes('time block') || nameLower.includes('timer')) {
+    return renderLucide(Timer)
+  }
 
-  // 6. NUTRITION & METABOLIC
+  // 7. NUTRITION & METABOLIC
   if (nameLower.includes('fasting') || nameLower.includes('fast') || nameLower.includes('omad') || nameLower.includes('tre') || nameLower.includes('time-restricted')) {
     return renderCustom(FastingGlyph)
   }
@@ -656,17 +909,203 @@ export default function ModalityIcon({
   if (nameLower.includes('caffeine') || nameLower.includes('coffee') || nameLower.includes('tea') || nameLower.includes('espresso') || nameLower.includes('matcha')) {
     return renderLucide(Coffee)
   }
-  if (nameLower.includes('protein') || nameLower.includes('shake') || nameLower.includes('whey') || nameLower.includes('collagen') || nameLower.includes('amino')) {
+  if (
+    nameLower.includes('protein') ||
+    nameLower.includes('shake') ||
+    nameLower.includes('whey') ||
+    nameLower.includes('collagen') ||
+    nameLower.includes('amino') ||
+    nameLower.includes('lysine') ||
+    nameLower.includes('iron') ||
+    nameLower.includes('heme')
+  ) {
     return renderLucide(Activity)
   }
-  if (nameLower.includes('meal') || nameLower.includes('food') || nameLower.includes('dinner') || nameLower.includes('lunch') || nameLower.includes('breakfast') || nameLower.includes('salad') || nameLower.includes('pudding') || nameLower.includes('olive oil')) {
+  if (
+    nameLower.includes('meal') ||
+    nameLower.includes('food') ||
+    nameLower.includes('dinner') ||
+    nameLower.includes('lunch') ||
+    nameLower.includes('breakfast') ||
+    nameLower.includes('salad') ||
+    nameLower.includes('pudding') ||
+    nameLower.includes('olive oil') ||
+    nameLower.includes('evoo') ||
+    nameLower.includes('vinegar') ||
+    nameLower.includes('acetic') ||
+    nameLower.includes('nutrition') ||
+    catLower.includes('nutrition')
+  ) {
     return renderLucide(Utensils)
   }
-  if (nameLower.includes('supplement') || nameLower.includes('stack') || nameLower.includes('capsule') || nameLower.includes('pill') || catLower.includes('supplement') || modality?.modality_type === 'supplement') {
+
+  // 8. SUPPLEMENTS & BIOACTIVES (Granular varieties)
+  // Cellular & Mitochondrial Bioenergetics (Atom)
+  if (
+    nameLower.includes('nmn') ||
+    nameLower.includes('nr ') ||
+    nameLower.includes('nicotinamide') ||
+    nameLower.includes('nad+') ||
+    nameLower.includes('nad') ||
+    nameLower.includes('coq10') ||
+    nameLower.includes('ubiquinol') ||
+    nameLower.includes('methylene blue') ||
+    nameLower.includes('alpha-ketoglutarate') ||
+    nameLower.includes('ca-akg') ||
+    nameLower.includes('akg') ||
+    nameLower.includes('urolithin') ||
+    nameLower.includes('mitochondria') ||
+    nameLower.includes('creatine') ||
+    nameLower.includes('carnosine') ||
+    nameLower.includes('l-carnosine') ||
+    nameLower.includes('alpha-lipoic') ||
+    nameLower.includes('ala')
+  ) {
+    return renderLucide(Atom)
+  }
+
+  // Senolytics & Longevity Synergies (Sparkles)
+  if (
+    nameLower.includes('fisetin') ||
+    nameLower.includes('quercetin') ||
+    nameLower.includes('senolytic') ||
+    nameLower.includes('spermidine') ||
+    nameLower.includes('glyteine') ||
+    nameLower.includes('glutathione')
+  ) {
+    return renderLucide(Sparkles)
+  }
+
+  // Nootropics & Cognitive Enhancers (Brain)
+  if (
+    nameLower.includes("lion's mane") ||
+    nameLower.includes('lions mane') ||
+    nameLower.includes('bacopa') ||
+    nameLower.includes('alpha-gpc') ||
+    nameLower.includes('phosphatidylserine') ||
+    nameLower.includes('tyrosine') ||
+    nameLower.includes('huperzine') ||
+    nameLower.includes('l-theanine') ||
+    nameLower.includes('theanine') ||
+    nameLower.includes('lithium')
+  ) {
+    return renderLucide(Brain)
+  }
+
+  // Sleep & Restorative Minerals (Moon)
+  if (
+    nameLower.includes('apigenin') ||
+    nameLower.includes('magnesium') ||
+    nameLower.includes('gaba') ||
+    nameLower.includes('glycine') ||
+    nameLower.includes('melatonin') ||
+    nameLower.includes('tart cherry')
+  ) {
+    return renderLucide(Moon)
+  }
+
+  // Cardiovascular & Circulation Longevity (HeartPulse)
+  if (
+    nameLower.includes('apob') ||
+    nameLower.includes('omega-3') ||
+    nameLower.includes('fish oil') ||
+    nameLower.includes('phytosterol') ||
+    nameLower.includes('citrulline') ||
+    nameLower.includes('nitric oxide') ||
+    nameLower.includes('garlic') ||
+    nameLower.includes('red yeast rice') ||
+    nameLower.includes('circulation') ||
+    nameLower.includes('aspirin') ||
+    nameLower.includes('cocoa') ||
+    nameLower.includes('flavanol')
+  ) {
+    return renderLucide(HeartPulse)
+  }
+
+  // Metabolic, Glucose & Insulin Regulators (Scale)
+  if (
+    nameLower.includes('berberine') ||
+    nameLower.includes('metformin') ||
+    nameLower.includes('acarbose') ||
+    nameLower.includes('inositol') ||
+    nameLower.includes('chromium') ||
+    nameLower.includes('cinnamon') ||
+    nameLower.includes('glucose control')
+  ) {
+    return renderLucide(Scale)
+  }
+
+  // Vitality, Adaptogens & Hormonal Axis (Flame)
+  if (
+    nameLower.includes('ashwagandha') ||
+    nameLower.includes('rhodiola') ||
+    nameLower.includes('shilajit') ||
+    nameLower.includes('tongkat') ||
+    nameLower.includes('fadogia') ||
+    nameLower.includes('cordyceps') ||
+    nameLower.includes('taurine')
+  ) {
+    return renderLucide(Flame)
+  }
+
+  // Cytoprotection, Detoxification & Cellular Defense (Shield)
+  if (
+    nameLower.includes('sulforaphane') ||
+    nameLower.includes('broc elite') ||
+    nameLower.includes('nac') ||
+    nameLower.includes('n-acetyl') ||
+    nameLower.includes('tudca') ||
+    nameLower.includes('milk thistle') ||
+    nameLower.includes('astaxanthin') ||
+    nameLower.includes('resveratrol') ||
+    nameLower.includes('rapamycin') ||
+    nameLower.includes('curcumin') ||
+    nameLower.includes('turmeric') ||
+    nameLower.includes('genistein') ||
+    nameLower.includes('ndga') ||
+    nameLower.includes('glucosamine') ||
+    nameLower.includes('lycopene') ||
+    nameLower.includes('ginger')
+  ) {
+    return renderLucide(Shield)
+  }
+
+  // Sunlight Vitamins, Minerals & Methylation (Sun)
+  if (
+    nameLower.includes('vitamin d') ||
+    nameLower.includes('d3') ||
+    nameLower.includes('vitamin k') ||
+    nameLower.includes('k2') ||
+    nameLower.includes('vitamin c') ||
+    nameLower.includes('ascorbic') ||
+    nameLower.includes('vitamin e') ||
+    nameLower.includes('tocopherol') ||
+    nameLower.includes('zinc') ||
+    nameLower.includes('copper') ||
+    nameLower.includes('boron') ||
+    nameLower.includes('iodine') ||
+    nameLower.includes('b-complex') ||
+    nameLower.includes('b12') ||
+    nameLower.includes('folate') ||
+    nameLower.includes('methylation') ||
+    nameLower.includes('mthfr')
+  ) {
+    return renderLucide(Sun)
+  }
+
+  // Generic Supplement / Stack Fallback
+  if (
+    nameLower.includes('supplement') ||
+    nameLower.includes('stack') ||
+    nameLower.includes('capsule') ||
+    nameLower.includes('pill') ||
+    catLower.includes('supplement') ||
+    modality?.modality_type === 'supplement'
+  ) {
     return renderLucide(Pill)
   }
 
-  // 7. SLEEP & HYGIENE (Only non-peptide sleep modalities)
+  // 9. SLEEP & HYGIENE (Only non-peptide sleep modalities)
   if (nameLower.includes('mouth tape') || nameLower.includes('airway') || nameLower.includes('nasal')) {
     return renderLucide(ShieldCheck)
   }
@@ -677,8 +1116,24 @@ export default function ModalityIcon({
     return renderLucide(BedDouble)
   }
 
-  // 8. DIAGNOSTICS & BIOMARKERS
-  if (catLower.includes('diagnostic') || catLower.includes('biomarker') || catLower.includes('tracking') || nameLower.includes('scan') || nameLower.includes('mri') || nameLower.includes('dexa') || nameLower.includes('blood') || nameLower.includes('lab') || nameLower.includes('test')) {
+  // 10. DIAGNOSTICS & BIOMARKERS
+  if (
+    catLower.includes('diagnostic') ||
+    catLower.includes('biomarker') ||
+    catLower.includes('tracking') ||
+    nameLower.includes('scan') ||
+    nameLower.includes('screen') ||
+    nameLower.includes('panel') ||
+    nameLower.includes('clock') ||
+    nameLower.includes('dunedin') ||
+    nameLower.includes('mri') ||
+    nameLower.includes('dexa') ||
+    nameLower.includes('blood') ||
+    nameLower.includes('lab') ||
+    nameLower.includes('test') ||
+    nameLower.includes('cpet') ||
+    nameLower.includes('cac')
+  ) {
     return renderLucide(ScanLine)
   }
 
