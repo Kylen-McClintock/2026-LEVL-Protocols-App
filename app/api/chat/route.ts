@@ -337,7 +337,7 @@ ${userContextPrompt}`
                 .from('daily_protocol_tasks')
                 .insert([{
                   local_user_id: localUserId,
-                  date: todayStr,
+                  scheduled_date: todayStr,
                   modality_id: id,
                   status: 'pending',
                   custom_dose: formattedDose || undefined,
@@ -378,7 +378,7 @@ ${userContextPrompt}`
                     const dStr = tDate.toISOString().split('T')[0];
                     futureTasksToInsert.push({
                       local_user_id: localUserId,
-                      date: dStr,
+                      scheduled_date: dStr,
                       modality_id: id,
                       status: 'pending',
                       custom_dose: formattedDose || undefined,
@@ -396,7 +396,7 @@ ${userContextPrompt}`
                   const dStr = tDate.toISOString().split('T')[0];
                   futureTasksToInsert.push({
                     local_user_id: localUserId,
-                    date: dStr,
+                    scheduled_date: dStr,
                     modality_id: id,
                     status: 'pending',
                     custom_dose: formattedDose || undefined,
@@ -412,7 +412,7 @@ ${userContextPrompt}`
                   const dStr = tDate.toISOString().split('T')[0];
                   futureTasksToInsert.push({
                     local_user_id: localUserId,
-                    date: dStr,
+                    scheduled_date: dStr,
                     modality_id: id,
                     status: 'pending',
                     custom_dose: formattedDose || undefined,
@@ -538,7 +538,7 @@ ${userContextPrompt}`
             const dateStr = new Date().toISOString().split('T')[0]
             try {
               if (type === 'modality') {
-                const { error } = await supabase.from('daily_protocol_tasks').insert([{ local_user_id: localUserId, date: dateStr, modality_id: id }]);
+                const { error } = await supabase.from('daily_protocol_tasks').insert([{ local_user_id: localUserId, scheduled_date: dateStr, modality_id: id }]);
                 if (error) return { success: false, error: error.message };
               } else {
                 const { data: pData, error: pError } = await supabase.from('protocols').select('*, protocol_steps(*)').eq('id', id).single();
@@ -548,7 +548,7 @@ ${userContextPrompt}`
                 for (const step of steps) {
                   await supabase.from('daily_protocol_tasks').insert({
                     local_user_id: localUserId,
-                    date: dateStr,
+                    scheduled_date: dateStr,
                     protocol_step_id: step.id
                   });
                 }

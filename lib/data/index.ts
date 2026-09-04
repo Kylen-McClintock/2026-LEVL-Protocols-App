@@ -1087,6 +1087,21 @@ export async function createDailyTask(localUserId: string, date: string, modalit
     )
   }
 
+  if (!modality) {
+    // If still not found, auto-create a custom modality so foreign key constraints pass
+    try {
+      const cleanName = modalityId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      modality = await createCustomModality(localUserId, {
+        name: cleanName,
+        category: 'Fitness',
+        brief_description: 'Custom modality added to routine',
+        default_timing_slot: 'anytime'
+      })
+    } catch (e) {
+      console.warn('Could not create fallback modality in createDailyTask:', e)
+    }
+  }
+
   let effectiveModalityId = modality?.id || modalityId
 
   // If the modality exists in built-in presets but is not in Supabase yet, upsert it so foreign keys pass
@@ -1101,17 +1116,24 @@ export async function createDailyTask(localUserId: string, date: string, modalit
       if (existingMod?.id) {
         effectiveModalityId = existingMod.id
       } else {
+        const slug = (modality.slug || modality.name || `mod_${Date.now()}`)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '')
+
         const { data: insertedMod } = await supabase
           .from('modalities')
           .insert({
+            id: modality.id || `custom_${slug}_${Math.random().toString(36).substring(2, 7)}`,
+            slug: slug || `mod_${Date.now()}`,
             name: modality.name,
             display_name: modality.display_name || modality.name,
             category: modality.category || 'Supplements',
             headline_benefit: modality.headline_benefit || 'Healthspan optimization',
-            biological_mechanism: modality.biological_mechanism || '',
+            mechanism_of_action: modality.mechanism_of_action || modality.biological_mechanism || '',
             evidence_quality: modality.evidence_quality || 4,
             overall_longevity_benefit: modality.overall_longevity_benefit || 4,
-            default_timing: modality.default_timing || 'Morning'
+            timing_summary: modality.timing_summary || modality.default_timing || 'Morning'
           })
           .select()
           .single()
@@ -1238,13 +1260,14 @@ export async function addModalityOrProtocolToToday(localUserId: string, date: st
   const directMod = await getModalityById(cleanQuery)
   if (directMod) {
     const res = await createDailyTask(localUserId, date, directMod.id)
-    return !!res
+    return { success: !!res, modalityId: directMod.id, modalityName: directMod.display_name || directMod.name }
   }
 
   // Direct fast check for protocol by ID
   const directProto = await getProtocolByIdWithSteps(cleanQuery)
   if (directProto) {
-    return await addProtocolToToday(localUserId, date, directProto.id)
+    const ok = await addProtocolToToday(localUserId, date, directProto.id)
+    return { success: !!ok, protocolId: directProto.id, protocolName: directProto.name }
   }
 
   // 1. Check if it matches an existing Protocol
@@ -1259,7 +1282,8 @@ export async function addModalityOrProtocolToToday(localUserId: string, date: st
   )
 
   if (matchedProtocol) {
-    return await addProtocolToToday(localUserId, date, matchedProtocol.id)
+    const ok = await addProtocolToToday(localUserId, date, matchedProtocol.id)
+    return { success: !!ok, protocolId: matchedProtocol.id, protocolName: matchedProtocol.name }
   }
 
   // 2. Check if it matches an existing Modality
@@ -1315,41 +1339,46 @@ export async function addModalityOrProtocolToToday(localUserId: string, date: st
 
   if (matchedModality) {
     const res = await createDailyTask(localUserId, date, matchedModality.id)
-    return !!res
+    return { success: !!res, modalityId: matchedModality.id, modalityName: matchedModality.display_name || matchedModality.name }
   }
 
   // 5. If completely new modality suggested by AI, create loose task with generated modality
-  if (supabase) {
-    try {
-      const formattedName = cleanQuery
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, c => c.toUpperCase())
+  try {
+    const formattedName = cleanQuery
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
 
-      const { data: newMod, error: modErr } = await supabase
-        .from('modalities')
-        .insert({
-          name: formattedName,
-          display_name: formattedName,
-          category: 'Supplements',
-          headline_benefit: 'Suggested by AI Longevity Coach',
-          evidence_quality: 4,
-          overall_longevity_benefit: 4,
-          default_timing: 'Morning'
-        })
-        .select()
-        .single()
-
-      if (newMod && !modErr) {
-        const res = await createDailyTask(localUserId, date, newMod.id)
-        return !!res
-      }
-    } catch (err) {
-      console.warn('Could not auto-create custom modality:', err)
+    const nLower = formattedName.toLowerCase()
+    let inferredCat = 'Fitness'
+    if (nLower.includes('mg') || nLower.includes('capsule') || nLower.includes('extract') || nLower.includes('acid') || nLower.includes('vitamin') || nLower.includes('supplement')) {
+      inferredCat = 'Supplements'
+    } else if (nLower.includes('fast') || nLower.includes('diet') || nLower.includes('meal') || nLower.includes('tea') || nLower.includes('oil')) {
+      inferredCat = 'Nutrition'
+    } else if (nLower.includes('plunge') || nLower.includes('sauna') || nLower.includes('bath') || nLower.includes('cryo')) {
+      inferredCat = 'Thermal'
+    } else if (nLower.includes('breath') || nLower.includes('meditat') || nLower.includes('nsdr')) {
+      inferredCat = 'Mindfulness'
+    } else if (nLower.includes('sleep') || nLower.includes('dark') || nLower.includes('tape')) {
+      inferredCat = 'Sleep'
     }
+
+    const createdMod = await createCustomModality(localUserId, {
+      name: formattedName,
+      category: inferredCat,
+      brief_description: 'Custom modality added via AI Longevity Coach',
+      default_timing_slot: 'anytime'
+    })
+
+    if (createdMod) {
+      const res = await createDailyTask(localUserId, date, createdMod.id)
+      return { success: !!res, modalityId: createdMod.id, modalityName: createdMod.display_name || createdMod.name }
+    }
+  } catch (err) {
+    console.warn('Could not auto-create custom modality in addModalityOrProtocolToToday:', err)
   }
 
   const res = await createDailyTask(localUserId, date, cleanQuery)
-  return !!res
+  return { success: !!res, modalityId: cleanQuery, modalityName: cleanQuery }
 }
 
 export async function addProtocolToToday(localUserId: string, date: string, protocolId: string) {
@@ -4025,7 +4054,7 @@ export async function createCustomModality(
         visibility: 'private',
         local_user_id: localUserId,
         brief_description: newMod.brief_description,
-        default_timing_slot: newMod.default_timing_slot,
+        timing_summary: newMod.default_timing_slot || 'anytime',
         dose_or_exposure: newMod.dose_or_exposure
       }])
       .select()
@@ -4039,8 +4068,10 @@ export async function createCustomModality(
   // Update in-memory catalog cache so it instantly appears in getModalities & getModalityById
   if (modalitiesCache) {
     modalitiesCache.data = [newMod, ...modalitiesCache.data]
+  } else {
+    modalitiesCache = { data: [newMod], timestamp: Date.now() }
   }
-  setPersistentCache('modalities', modalitiesCache ? modalitiesCache.data : [newMod])
+  setPersistentCache('modalities', modalitiesCache.data)
 
   // Update in-memory/localStorage catalog cache so it instantly appears
   if (typeof window !== 'undefined') {
@@ -5867,8 +5898,13 @@ export async function addSingleModalityToToday(localUserId: string, dateStr: str
   const { data: dbMod } = await supabase.from('modalities').select('id').eq('id', modality.id).maybeSingle()
   if (!dbMod) {
     try {
+      const modSlug = (modality.slug || modality.name || modality.id)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
       await supabase.from('modalities').insert([{
         id: modality.id,
+        slug: modSlug,
         name: modality.name,
         display_name: modality.display_name || modality.name,
         category: modality.category || 'general',

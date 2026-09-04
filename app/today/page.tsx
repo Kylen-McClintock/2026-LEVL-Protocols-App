@@ -553,6 +553,56 @@ function TodayPageContent() {
     }
   }
 
+  const handleScrollToModality = (nameOrId: string) => {
+    if (!nameOrId || typeof window === 'undefined') return
+    const clean = nameOrId.toLowerCase().trim()
+
+    // 1. Uncollapse any groups that might hide the modality
+    setCollapsedGroups({})
+
+    // 2. Retry up to 6 times to account for React re-render & DOM hydration of the new card
+    let attempts = 0
+    const tryScroll = () => {
+      attempts++
+      const selector = `[data-modality-name*="${clean}"], [data-modality-id="${clean}"], [id*="${clean}"]`
+      let el = document.querySelector(selector) as HTMLElement | null
+
+      if (!el) {
+        const allCards = document.querySelectorAll('[id^="task-card-"]')
+        for (const card of Array.from(allCards)) {
+          if (card.textContent?.toLowerCase().includes(clean)) {
+            el = card as HTMLElement
+            break
+          }
+        }
+      }
+
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add(
+          'ring-4',
+          'ring-purple-500',
+          'shadow-[0_0_40px_rgba(168,85,247,0.9)]',
+          'scale-[1.02]',
+          'transition-all',
+          'duration-500'
+        )
+        setTimeout(() => {
+          el?.classList.remove(
+            'ring-4',
+            'ring-purple-500',
+            'shadow-[0_0_40px_rgba(168,85,247,0.9)]',
+            'scale-[1.02]'
+          )
+        }, 3500)
+      } else if (attempts < 6) {
+        setTimeout(tryScroll, 120)
+      }
+    }
+
+    setTimeout(tryScroll, 100)
+  }
+
   useEffect(() => {
     const handleProfileUpdate = (e: any) => {
       if (e?.detail) {
@@ -2979,10 +3029,13 @@ function TodayPageContent() {
                 currentTipHeadline={!isTipActedUpon && scoredTips && scoredTips.length > 0 ? scoredTips[0].tip.headline : undefined}
                 onAddToToday={async (nameOrId: string) => {
                   if (profile) {
-                    await addModalityOrProtocolToToday(profile.local_user_id, dateStr, nameOrId)
+                    const res = await addModalityOrProtocolToToday(profile.local_user_id, dateStr, nameOrId)
                     await refreshTodayTasks()
+                    return res
                   }
+                  return { success: false }
                 }}
+                onScrollToModality={handleScrollToModality}
                 onOpenModalityStudio={(name: string, aiSuggestions?: any) => {
                   let doseAmount = ''
                   let doseUnit = 'mg'
