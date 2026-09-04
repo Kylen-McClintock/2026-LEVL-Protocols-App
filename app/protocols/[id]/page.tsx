@@ -638,10 +638,15 @@ export default function ProtocolFocusPage() {
             </button>
 
             {isEntirelyActive ? (
-              <div className="px-3.5 py-2 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm">
-                <Check size={14} strokeWidth={3} />
-                <span>All {evaluatedSteps.length} Modalities Active</span>
-              </div>
+              <button
+                type="button"
+                onClick={() => router.push(`/today?protocol=${encodeURIComponent(protocol.id || protocol.name)}&name=${encodeURIComponent(protocol.name)}`)}
+                className="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-pointer active:scale-95 transition-all"
+                title="View protocol in Today"
+              >
+                <CheckCircle2 size={14} className="text-emerald-400" />
+                <span>Added to today</span>
+              </button>
             ) : (
               <button
                 type="button"

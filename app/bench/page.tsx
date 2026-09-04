@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getBenchItems, getBenchProtocols, createDailyTask, addProtocolToToday, removeFromBench, getOrCreateUserProfile, getDraftModalities, getDraftProtocols, getProtocols, getDailyProtocolTasks } from '@/lib/data'
 import { UserBenchItem, UserProfile, Modality, Protocol } from '@/lib/types'
-import { Bookmark, Plus, Sparkles, HelpCircle } from 'lucide-react'
+import { Bookmark, Plus, Sparkles, HelpCircle, Clock } from 'lucide-react'
 import BenchCard from '@/components/cards/BenchCard'
 import ProtocolCard from '@/components/cards/ProtocolCard'
 import DraftCard from '@/components/cards/DraftCard'
@@ -28,6 +28,7 @@ export default function BenchPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'modalities' | 'protocols' | 'drafts'>('modalities')
   const [filterCategory, setFilterCategory] = useState('all')
+  const [sortMode, setSortMode] = useState<'nba' | 'recent'>('nba')
 
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorItem, setEditorItem] = useState<Modality | Protocol | null>(null)
@@ -132,13 +133,23 @@ export default function BenchPage() {
 
   if (loading) return <div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">Loading bench...</div>
 
-  const filteredItems = items.filter(item => {
-    if (filterCategory !== 'all' && getMacroCategory(item.modality?.category) !== filterCategory) return false
-    return true
-  })
+  const filteredItems = items
+    .filter(item => {
+      if (filterCategory !== 'all' && getMacroCategory(item.modality?.category) !== filterCategory) return false
+      return true
+    })
+    .sort((a, b) => {
+      if (sortMode === 'recent') {
+        const timeA = new Date(a.added_at || (a as any).created_at || 0).getTime()
+        const timeB = new Date(b.added_at || (b as any).created_at || 0).getTime()
+        return timeB - timeA
+      }
+      return (b.modality?.nba_result?.score || 0) - (a.modality?.nba_result?.score || 0)
+    })
 
-  const topBenchItem = filteredItems.length > 0 ? filteredItems[0] : null
-  const remainingBenchItems = filteredItems.length > 1 ? filteredItems.slice(1) : []
+  const isNbaMode = sortMode === 'nba'
+  const topBenchItem = (isNbaMode && filteredItems.length > 0) ? filteredItems[0] : null
+  const remainingBenchItems = isNbaMode ? (filteredItems.length > 1 ? filteredItems.slice(1) : []) : filteredItems
 
   return (
     <div className="p-4 max-w-xl lg:max-w-5xl xl:max-w-6xl mx-auto pt-8">
@@ -182,12 +193,45 @@ export default function BenchPage() {
 
       {activeTab === 'modalities' && (
         <>
-          <div className="mb-4">
-            <CategoryPills 
-              categories={[...MACRO_CATEGORIES]} 
-              selectedCategory={filterCategory} 
-              onSelect={setFilterCategory} 
-            />
+          {/* Controls Bar: Category Filter & Sort Mode Toggle */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex-1 min-w-0">
+              <CategoryPills 
+                categories={[...MACRO_CATEGORIES]} 
+                selectedCategory={filterCategory} 
+                onSelect={setFilterCategory} 
+              />
+            </div>
+
+            {/* Segmented Sort Toggle: Next Best Action vs Most Recent */}
+            <div className="flex items-center self-start sm:self-auto bg-black/60 p-1 rounded-xl border border-white/10 shrink-0 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setSortMode('nba')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  sortMode === 'nba'
+                    ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-700 text-white shadow-md shadow-purple-900/30'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Sort by Next Best Action algorithmic impact"
+              >
+                <Sparkles size={13} className={sortMode === 'nba' ? 'text-amber-300' : 'text-slate-400'} />
+                <span>Next Best Action</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortMode('recent')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  sortMode === 'recent'
+                    ? 'bg-gradient-to-r from-teal-600 via-emerald-600 to-emerald-700 text-white shadow-md shadow-emerald-900/30'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Sort chronologically by most recently added"
+              >
+                <Clock size={13} className={sortMode === 'recent' ? 'text-teal-200' : 'text-slate-400'} />
+                <span>Most Recent</span>
+              </button>
+            </div>
           </div>
           
           {topBenchItem && (

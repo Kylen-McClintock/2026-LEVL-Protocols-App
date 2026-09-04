@@ -18,6 +18,8 @@ import {
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { useAuth } from '@/contexts/AuthContext'
 import { format } from 'date-fns'
+import ModalityIcon from '@/components/ui/ModalityIcon'
+import { assessModalityOrProtocol, ICON_COLOR_PRESETS, AVAILABLE_ICONS } from '@/lib/utils/iconAssessmentEngine'
 
 export interface CustomModalityInitialData {
   id?: string
@@ -157,6 +159,29 @@ export default function CreateCustomModalityModal({
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
+  // Icon & Color Assessment State
+  const [assessedIcon, setAssessedIcon] = useState<string>('Target')
+  const [assessedColor, setAssessedColor] = useState<string>('#38BDF8')
+  const [isExistingMatch, setIsExistingMatch] = useState<boolean>(false)
+  const [matchReason, setMatchReason] = useState<string>('')
+  const [userCustomizedIcon, setUserCustomizedIcon] = useState<boolean>(false)
+
+  // Real-time assessment of icon and color
+  useEffect(() => {
+    if (userCustomizedIcon) return
+    const assessment = assessModalityOrProtocol({
+      name,
+      category,
+      description: headlineBenefit || instructions,
+      outcomes: selectedOutcomes,
+      type: 'modality'
+    })
+    setAssessedIcon(assessment.iconName)
+    setAssessedColor(assessment.colorHex)
+    setIsExistingMatch(assessment.isExistingMatch)
+    setMatchReason(assessment.matchReason)
+  }, [name, category, headlineBenefit, instructions, selectedOutcomes, userCustomizedIcon])
+
   // Hydrate fields whenever initialData changes and modal opens
   useEffect(() => {
     if (initialData && isOpen) {
@@ -256,7 +281,10 @@ export default function CreateCustomModalityModal({
           brief_description: headlineBenefit.trim() || instructions.trim() || 'Custom user-created protocol modality',
           headline_benefit: headlineBenefit.trim() || undefined,
           instructions: instructions.trim() || undefined,
-          source_url: sourceUrl.trim() || undefined
+          source_url: sourceUrl.trim() || undefined,
+          icon: assessedIcon,
+          icon_name: assessedIcon,
+          color_hex: assessedColor
         })
       }
 
@@ -267,7 +295,10 @@ export default function CreateCustomModalityModal({
           category,
           dose_or_exposure: finalDose || undefined,
           default_timing_slot: primaryTiming,
-          brief_description: headlineBenefit.trim() || instructions.trim() || 'Custom user-created protocol modality'
+          brief_description: headlineBenefit.trim() || instructions.trim() || 'Custom user-created protocol modality',
+          icon: assessedIcon,
+          icon_name: assessedIcon,
+          color_hex: assessedColor
         })
       }
 
@@ -461,6 +492,102 @@ export default function CreateCustomModalityModal({
                       </button>
                     )
                   })}
+                </div>
+              </div>
+
+              {/* Smart Icon & Visual Identity Assessment */}
+              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3 relative overflow-hidden shadow-inner">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={15} className="text-amber-400 shrink-0" />
+                    <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Icon & Color Assessment</span>
+                  </div>
+
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border flex items-center gap-1 ${
+                    isExistingMatch 
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
+                      : 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                  }`}>
+                    {isExistingMatch ? '⚡ Matched Existing Icon' : '✨ Assigned New Distinct Icon'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3.5 bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+                  {/* Glowing live icon preview */}
+                  <div className="w-12 h-12 rounded-xl bg-slate-950 flex items-center justify-center border border-white/10 shrink-0 shadow-inner">
+                    <ModalityIcon customIcon={assessedIcon} customColor={assessedColor} size={26} glow={true} isIgnited={true} />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-white truncate">{assessedIcon}</span>
+                      <span className="w-3 h-3 rounded-full border border-white/30 shrink-0 shadow-sm" style={{ backgroundColor: assessedColor }} />
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{matchReason || 'Intelligently assessed from title and physiological category.'}</p>
+                  </div>
+
+                  {userCustomizedIcon && (
+                    <button
+                      type="button"
+                      onClick={() => setUserCustomizedIcon(false)}
+                      className="text-[10px] text-sky-400 hover:text-sky-300 font-semibold underline shrink-0 cursor-pointer"
+                    >
+                      Reset Auto
+                    </button>
+                  )}
+                </div>
+
+                {/* Color Swatches */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Accent Color Theme
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {ICON_COLOR_PRESETS.map((p) => {
+                      const isSelected = assessedColor === p.hex
+                      return (
+                        <button
+                          type="button"
+                          key={p.hex}
+                          onClick={() => {
+                            setAssessedColor(p.hex)
+                            setUserCustomizedIcon(true)
+                          }}
+                          className={`w-6 h-6 rounded-lg transition-transform cursor-pointer border ${
+                            isSelected ? 'scale-125 border-white ring-2 ring-white/30 z-10' : 'border-transparent hover:scale-110 opacity-80 hover:opacity-100'
+                          }`}
+                          style={{ backgroundColor: p.hex }}
+                          title={p.label}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Change Icon Selector */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Assigned Icon
+                  </label>
+                  <select
+                    value={assessedIcon}
+                    onChange={(e) => {
+                      setAssessedIcon(e.target.value)
+                      setUserCustomizedIcon(true)
+                    }}
+                    className="w-full bg-slate-900 border border-slate-800 text-xs text-white rounded-xl px-3 py-2 outline-none focus:border-sky-500 cursor-pointer"
+                  >
+                    <optgroup label="Existing System Glyphs">
+                      {AVAILABLE_ICONS.filter(i => i.category === 'existing').map(i => (
+                        <option key={i.name} value={i.name}>{i.label} - {i.description}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="New Distinct Icons">
+                      {AVAILABLE_ICONS.filter(i => i.category === 'new').map(i => (
+                        <option key={i.name} value={i.name}>{i.label} - {i.description}</option>
+                      ))}
+                    </optgroup>
+                  </select>
                 </div>
               </div>
 

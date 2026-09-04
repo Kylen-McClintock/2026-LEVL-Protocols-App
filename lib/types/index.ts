@@ -267,6 +267,9 @@ export type Modality = {
   media_assets?: any
   review_status?: string
   source_url?: string
+  icon?: string
+  icon_name?: string
+  color_hex?: string
   version?: string
   nba_result?: {
     score: number
@@ -302,6 +305,9 @@ export type Protocol = {
   protocol_steps?: any[]
   steps?: ProtocolStep[]
   target_vectors?: string[]
+  icon?: string
+  icon_name?: string
+  color_hex?: string
 }
 
 export type ProtocolStep = {

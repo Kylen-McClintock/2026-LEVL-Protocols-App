@@ -30,7 +30,16 @@ import {
   Sun,
   ShieldCheck,
   FlaskConical,
-  ScanLine
+  ScanLine,
+  Waves,
+  Compass,
+  Target,
+  Wind,
+  ShieldAlert,
+  Sparkle,
+  Layers,
+  Radio,
+  Thermometer
 } from 'lucide-react'
 
 export interface ModalityIconProps {
@@ -41,6 +50,9 @@ export interface ModalityIconProps {
     category?: string
     modality_type?: string
     icon?: string
+    icon_name?: string
+    color_hex?: string
+    media_assets?: any
     [key: string]: any
   } | null
   modalityName?: string
@@ -50,6 +62,8 @@ export interface ModalityIconProps {
   glow?: boolean
   scrollIgnite?: boolean
   isIgnited?: boolean
+  customColor?: string
+  customIcon?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -158,7 +172,15 @@ const CATEGORY_GRADIENTS: Record<string, GradientConfig> = {
   }
 }
 
-function resolveGradient(nameLower: string, catLower: string): GradientConfig {
+function resolveGradient(nameLower: string, catLower: string, customHex?: string): GradientConfig {
+  if (customHex && customHex.startsWith('#')) {
+    return {
+      from: customHex,
+      to: customHex,
+      glow: `${customHex}B3`,
+      ambient: `${customHex}4D`
+    }
+  }
   // 1. Peptides first (prevents "CJC-1295 Bedtime" from resolving to sleep)
   if (
     catLower.includes('peptide') ||
@@ -634,7 +656,9 @@ export default function ModalityIcon({
   className = '',
   glow = true,
   scrollIgnite = true,
-  isIgnited: propIsIgnited
+  isIgnited: propIsIgnited,
+  customColor,
+  customIcon
 }: ModalityIconProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
 
@@ -692,7 +716,8 @@ export default function ModalityIcon({
       : (category || modality?.category || modality?.modality_type || '')
   ).toLowerCase().trim()
 
-  const grad = resolveGradient(nameLower, catLower)
+  const effectiveColorHex = customColor || modality?.color_hex || modality?.media_assets?.color_hex
+  const grad = resolveGradient(nameLower, catLower, effectiveColorHex)
   // Crucial: Use solid high-luminance stroke color (grad.from) instead of SVG url(#gradId).
   // SVG linearGradient with default objectBoundingBox fails to paint any zero-width or zero-height
   // lines (e.g., BedDouble mattress line, Sun cardinal rays, Utensils center fork tine/handle),
@@ -772,6 +797,106 @@ export default function ModalityIcon({
       </div>
     </div>
   )
+
+  // Check for explicit custom icon passed or stored in modality
+  const explicitIcon = (customIcon || modality?.icon || modality?.icon_name || modality?.media_assets?.icon || '').trim()
+  if (explicitIcon) {
+    switch (explicitIcon.toLowerCase()) {
+      case 'coldplunge':
+      case 'cold_plunge':
+        return renderCustom(ColdPlungeGlyph)
+      case 'sauna':
+      case 'detailedsauna':
+        return renderCustom(DetailedSaunaGlyph)
+      case 'peptidesyringe':
+      case 'peptide':
+      case 'syringe':
+        return renderCustom(PeptideSyringeGlyph)
+      case 'handstand':
+        return renderCustom(HandstandGlyph)
+      case 'balance':
+        return renderCustom(BalanceGlyph)
+      case 'calisthenics':
+        return renderCustom(CalisthenicsGlyph)
+      case 'hbot':
+        return renderCustom(HBOTGlyph)
+      case 'cgm':
+        return renderCustom(CGMGlyph)
+      case 'oralhygiene':
+      case 'dental':
+        return renderCustom(OralHygieneGlyph)
+      case 'thermogenesis':
+        return renderCustom(ThermogenesisGlyph)
+      case 'plasmaexchange':
+        return renderCustom(PlasmaExchangeGlyph)
+      case 'contrasttherapy':
+        return renderCustom(ContrastTherapyGlyph)
+      case 'hotbath':
+        return renderCustom(HotBathGlyph)
+      case 'redlight':
+        return renderCustom(RedLightGlyph)
+      case 'fasting':
+        return renderCustom(FastingGlyph)
+      case 'meditation':
+        return renderCustom(MeditationGlyph)
+      case 'breathwork':
+        return renderCustom(BreathworkGlyph)
+      case 'nsdr':
+        return renderCustom(NSDRGlyph)
+      case 'zone2':
+        return renderCustom(Zone2Glyph)
+      case 'vilpa':
+        return renderCustom(VILPAGlyph)
+      case 'mobility':
+        return renderCustom(MobilityGlyph)
+      case 'waves':
+        return renderLucide(Waves)
+      case 'compass':
+        return renderLucide(Compass)
+      case 'target':
+        return renderLucide(Target)
+      case 'wind':
+        return renderLucide(Wind)
+      case 'shieldalert':
+        return renderLucide(ShieldAlert)
+      case 'sparkle':
+        return renderLucide(Sparkle)
+      case 'layers':
+        return renderLucide(Layers)
+      case 'radio':
+        return renderLucide(Radio)
+      case 'eye':
+        return renderLucide(Eye)
+      case 'zap':
+        return renderLucide(Zap)
+      case 'thermometer':
+        return renderLucide(Thermometer)
+      case 'dumbbell':
+        return renderLucide(Dumbbell)
+      case 'brain':
+        return renderLucide(Brain)
+      case 'atom':
+        return renderLucide(Atom)
+      case 'moon':
+        return renderLucide(Moon)
+      case 'scale':
+        return renderLucide(Scale)
+      case 'heartpulse':
+        return renderLucide(HeartPulse)
+      case 'flame':
+        return renderLucide(Flame)
+      case 'shield':
+        return renderLucide(Shield)
+      case 'sun':
+        return renderLucide(Sun)
+      case 'pill':
+        return renderLucide(Pill)
+      case 'scanline':
+        return renderLucide(ScanLine)
+      default:
+        break
+    }
+  }
 
   // 1. PEPTIDES & INJECTABLE BIOACTIVES (Checked first to prevent bedtime/other overlaps)
   if (

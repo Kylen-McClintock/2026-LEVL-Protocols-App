@@ -3518,12 +3518,16 @@ export async function getDraftProtocols(localUserId: string): Promise<Protocol[]
   return data as Protocol[]
 }
 
-export async function updateModalityDraft(id: string, updates: Partial<Modality>) {
+export async function updateModalityDraft(id: string, updates: Partial<Modality> & { icon?: string; color_hex?: string }) {
   if (!supabase) return null
   clearModalitiesCache()
+  const payload: any = { ...updates, updated_at: new Date().toISOString() }
+  if (updates.icon || updates.color_hex) {
+    payload.media_assets = { icon: updates.icon, color_hex: updates.color_hex }
+  }
   const { data, error } = await supabase
     .from('modalities')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq('id', id)
     .select()
     .single()
@@ -3632,7 +3636,8 @@ export async function createManualModality(localUserId: string, data: Partial<Mo
       logging_type,
       local_user_id: localUserId,
       status: 'draft_manual',
-      visibility: 'private'
+      visibility: 'private',
+      media_assets: (data.icon || data.color_hex) ? { icon: data.icon, color_hex: data.color_hex } : undefined
     }])
     .select()
     .single()
@@ -4093,6 +4098,9 @@ export async function createCustomModality(
     brief_description?: string
     default_timing_slot?: string
     dose_or_exposure?: string
+    icon?: string
+    icon_name?: string
+    color_hex?: string
   }
 ): Promise<Modality | null> {
   const cleanName = data.name.trim()
@@ -4101,8 +4109,10 @@ export async function createCustomModality(
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
   const id = `custom_${slug}_${Math.random().toString(36).substring(2, 7)}`
+  const iconVal = data.icon || data.icon_name
+  const colorVal = data.color_hex
 
-  const newMod: Modality = {
+  const newMod: Modality & { icon?: string; color_hex?: string } = {
     id,
     slug,
     name: cleanName,
@@ -4113,7 +4123,9 @@ export async function createCustomModality(
     local_user_id: localUserId,
     brief_description: data.brief_description || 'Custom user-created modality',
     default_timing_slot: data.default_timing_slot || 'anytime',
-    dose_or_exposure: data.dose_or_exposure || undefined
+    dose_or_exposure: data.dose_or_exposure || undefined,
+    icon: iconVal,
+    color_hex: colorVal
   }
 
   if (supabase) {
@@ -4130,7 +4142,8 @@ export async function createCustomModality(
         local_user_id: localUserId,
         brief_description: newMod.brief_description,
         timing_summary: newMod.default_timing_slot || 'anytime',
-        dose_or_exposure: newMod.dose_or_exposure
+        dose_or_exposure: newMod.dose_or_exposure,
+        media_assets: { icon: iconVal, color_hex: colorVal }
       }])
       .select()
       .single()

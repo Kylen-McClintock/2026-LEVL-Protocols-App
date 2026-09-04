@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { Modality, Protocol, ProtocolStep, UserBenchItem } from '@/lib/types'
-import { X, Save, AlertTriangle, Plus, Search, Trash2 } from 'lucide-react'
+import { X, Save, AlertTriangle, Plus, Search, Trash2, Sparkles } from 'lucide-react'
 import { updateModalityDraft, updateProtocolDraft, createManualModality, createManualProtocol, getModalities, getBenchItems } from '@/lib/data'
+import ModalityIcon from '@/components/ui/ModalityIcon'
+import { assessModalityOrProtocol, ICON_COLOR_PRESETS, AVAILABLE_ICONS } from '@/lib/utils/iconAssessmentEngine'
 
 type DraftEditorModalProps = {
   isOpen: boolean
@@ -19,6 +21,27 @@ export default function DraftEditorModal({ isOpen, onClose, item, type, localUse
   const [description, setDescription] = useState('')
   const [dose, setDose] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+
+  // Icon & Color Assessment State
+  const [assessedIcon, setAssessedIcon] = useState<string>('Target')
+  const [assessedColor, setAssessedColor] = useState<string>('#38BDF8')
+  const [isExistingMatch, setIsExistingMatch] = useState<boolean>(false)
+  const [matchReason, setMatchReason] = useState<string>('')
+  const [userCustomizedIcon, setUserCustomizedIcon] = useState<boolean>(false)
+
+  // Real-time assessment of icon and color
+  useEffect(() => {
+    if (userCustomizedIcon) return
+    const assessment = assessModalityOrProtocol({
+      name,
+      description,
+      type
+    })
+    setAssessedIcon(assessment.iconName)
+    setAssessedColor(assessment.colorHex)
+    setIsExistingMatch(assessment.isExistingMatch)
+    setMatchReason(assessment.matchReason)
+  }, [name, description, type, userCustomizedIcon])
 
   // Protocol Steps State
   const [steps, setSteps] = useState<Partial<ProtocolStep>[]>([])
@@ -67,16 +90,16 @@ export default function DraftEditorModal({ isOpen, onClose, item, type, localUse
     setIsSaving(true)
     if (type === 'modality') {
       if (item) {
-        await updateModalityDraft(item.id, { name, brief_description: description, dose_or_exposure: dose })
+        await updateModalityDraft(item.id, { name, brief_description: description, dose_or_exposure: dose, icon: assessedIcon, color_hex: assessedColor })
       } else {
-        await createManualModality(localUserId, { name, brief_description: description, dose_or_exposure: dose })
+        await createManualModality(localUserId, { name, brief_description: description, dose_or_exposure: dose, icon: assessedIcon, color_hex: assessedColor })
       }
     } else {
       // Pass steps array to the backend logic (to be handled in data/index.ts)
       if (item) {
-        await updateProtocolDraft(item.id, { name, description }, steps)
+        await updateProtocolDraft(item.id, { name, description, icon: assessedIcon, color_hex: assessedColor }, steps)
       } else {
-        await createManualProtocol(localUserId, { name, description }, steps)
+        await createManualProtocol(localUserId, { name, description, icon: assessedIcon, color_hex: assessedColor }, steps)
       }
     }
     setIsSaving(false)
@@ -138,6 +161,89 @@ export default function DraftEditorModal({ isOpen, onClose, item, type, localUse
               className="w-full bg-[#1A1A1A] border border-levl-border rounded-lg px-3 py-2 text-white focus:outline-none focus:border-levl-accent"
               placeholder="e.g. Laser Eye Therapy"
             />
+          </div>
+
+          {/* Smart Icon & Color Assessment Card */}
+          <div className="p-3.5 bg-black/50 border border-white/10 rounded-xl space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <Sparkles size={14} className="text-amber-400" />
+                <span className="text-[11px] font-bold text-gray-300 uppercase tracking-wider">Icon & Color Assessment</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                isExistingMatch 
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
+                  : 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+              }`}>
+                {isExistingMatch ? '⚡ Matched Existing Icon' : '✨ Assigned New Distinct Icon'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3 bg-[#1A1A1A] p-2.5 rounded-lg border border-white/5">
+              <div className="w-10 h-10 rounded-lg bg-black/60 flex items-center justify-center border border-white/10 shrink-0">
+                <ModalityIcon customIcon={assessedIcon} customColor={assessedColor} size={22} glow={true} isIgnited={true} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white truncate">{assessedIcon}</span>
+                  <span className="w-2.5 h-2.5 rounded-full border border-white/30 shrink-0" style={{ backgroundColor: assessedColor }} />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{matchReason}</p>
+              </div>
+              {userCustomizedIcon && (
+                <button
+                  type="button"
+                  onClick={() => setUserCustomizedIcon(false)}
+                  className="text-[10px] text-cyan-400 hover:text-cyan-300 underline shrink-0 cursor-pointer"
+                >
+                  Reset Auto
+                </button>
+              )}
+            </div>
+
+            {/* Color Presets */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-gray-400 mr-1">Color:</span>
+              {ICON_COLOR_PRESETS.map((p) => {
+                const isSelected = assessedColor === p.hex
+                return (
+                  <button
+                    type="button"
+                    key={p.hex}
+                    onClick={() => {
+                      setAssessedColor(p.hex)
+                      setUserCustomizedIcon(true)
+                    }}
+                    className={`w-4 h-4 rounded-md transition-transform cursor-pointer border ${
+                      isSelected ? 'scale-125 border-white ring-1 ring-white/30' : 'border-transparent opacity-80 hover:opacity-100'
+                    }`}
+                    style={{ backgroundColor: p.hex }}
+                    title={p.label}
+                  />
+                )
+              })}
+            </div>
+
+            {/* Icon Dropdown */}
+            <select
+              value={assessedIcon}
+              onChange={(e) => {
+                setAssessedIcon(e.target.value)
+                setUserCustomizedIcon(true)
+              }}
+              className="w-full bg-[#1A1A1A] border border-white/10 text-xs text-white rounded-lg px-2.5 py-1.5 outline-none focus:border-cyan-500 cursor-pointer"
+            >
+              <optgroup label="Existing System Glyphs">
+                {AVAILABLE_ICONS.filter(i => i.category === 'existing').map(i => (
+                  <option key={i.name} value={i.name}>{i.label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="New Distinct Icons">
+                {AVAILABLE_ICONS.filter(i => i.category === 'new').map(i => (
+                  <option key={i.name} value={i.name}>{i.label}</option>
+                ))}
+              </optgroup>
+            </select>
           </div>
 
           <div>

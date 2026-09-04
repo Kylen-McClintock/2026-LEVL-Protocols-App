@@ -148,7 +148,7 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
                   }}
                   className="flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] transition-colors cursor-pointer"
                 >
-                  <CheckCircle2 size={11} className="text-emerald-400" /> In Today&apos;s Plan
+                  <CheckCircle2 size={11} className="text-emerald-400" /> Added to today
                 </button>
               )}
 
@@ -368,7 +368,7 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
           {isCurrentlyActiveInToday ? (
             <span className="flex items-center justify-center gap-1.5 truncate">
               <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
-              <span className="truncate">In Today&apos;s Plan</span>
+              <span className="truncate">Added to today</span>
             </span>
           ) : (
             <span className="flex items-center justify-center gap-1.5 truncate">
