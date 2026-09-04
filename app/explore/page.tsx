@@ -155,6 +155,7 @@ export default function ExplorePage() {
   const [searchResults, setSearchResults] = useState<SemanticSearchResult[]>([])
   const [searchSortMode, setSearchSortMode] = useState<'semantic' | 'hybrid'>('semantic')
   const [sortMode, setSortMode] = useState<'popularity' | 'nba' | 'evidence' | 'impact' | 'relevance'>('popularity')
+  const [previousSortMode, setPreviousSortMode] = useState<'popularity' | 'nba' | 'evidence' | 'impact' | 'relevance' | null>(null)
   const [transparencyModal, setTransparencyModal] = useState<{
     isOpen: boolean
     tab: 'popularity' | 'nba' | 'evidence' | 'impact' | 'relevance'
@@ -319,6 +320,32 @@ export default function ExplorePage() {
     }
 
     return null
+  }
+
+  // Search query updater: immediately switches to Direct Relevance when typing, and restores previous sort when cleared
+  const handleUpdateSearchQuery = (query: string) => {
+    setSearchQuery(query)
+    if (query.trim().length > 0) {
+      if (sortMode !== 'relevance' && !previousSortMode) {
+        setPreviousSortMode(sortMode)
+        setSortMode('relevance')
+      }
+    } else {
+      setSearchResults([])
+      if (previousSortMode) {
+        setSortMode(previousSortMode)
+        setPreviousSortMode(null)
+      }
+    }
+  }
+
+  const handleClearSearch = () => {
+    setSearchQuery('')
+    setSearchResults([])
+    if (previousSortMode) {
+      setSortMode(previousSortMode)
+      setPreviousSortMode(null)
+    }
   }
 
   // Auto-search when query changes (debounced)
@@ -679,27 +706,34 @@ export default function ExplorePage() {
     
     return true
   }).sort((a, b) => {
-    // 1. Most Popular & Proven: sorts by popularity score among the relevant search matches
+    const isSearchActive = searchQuery.trim().length > 0
+    const relA = isSearchActive ? (modalityRelevanceMap.get(a.id)?.score || 0) : 0
+    const relB = isSearchActive ? (modalityRelevanceMap.get(b.id)?.score || 0) : 0
+
+    // Direct Relevance: strictly sorts by semantic and lexical match strength
+    if (sortMode === 'relevance') {
+      if (relB !== relA) return relB - relA
+      return calculateModalityPopularityScore(b) - calculateModalityPopularityScore(a)
+    }
+
+    // When an active search query is present and the user selects a specific ranking criterion
+    // (Popularity, NBA, Scientific Evidence, Longevity Benefit):
+    // Group into Relevance Tiers so genuine strong matches (tier 2: score >= 300) rank ahead of secondary matches
+    if (isSearchActive) {
+      const tierA = relA >= 300 ? 2 : (relA >= 120 ? 1 : 0)
+      const tierB = relB >= 300 ? 2 : (relB >= 120 ? 1 : 0)
+      if (tierB !== tierA) return tierB - tierA
+    }
+
+    // 1. Most Popular & Proven: sorts by popularity score among the relevant matches
     if (sortMode === 'popularity') {
       const scoreA = calculateModalityPopularityScore(a)
       const scoreB = calculateModalityPopularityScore(b)
       if (scoreB !== scoreA) return scoreB - scoreA
-      if (searchQuery.trim().length > 0) {
-        const relA = modalityRelevanceMap.get(a.id)?.score || 0
-        const relB = modalityRelevanceMap.get(b.id)?.score || 0
-        return relB - relA
-      }
+      if (isSearchActive && relB !== relA) return relB - relA
       return 0
     }
 
-    // 2. Direct Relevance: strictly sorts by semantic match score
-    if (sortMode === 'relevance') {
-      const relA = modalityRelevanceMap.get(a.id)?.score || 0
-      const relB = modalityRelevanceMap.get(b.id)?.score || 0
-      if (relB !== relA) return relB - relA
-      return calculateModalityPopularityScore(b) - calculateModalityPopularityScore(a)
-    }
-    
     // 3. Recommended (Next Best Action)
     if (sortMode === 'nba') {
       const nbaDiff = (b.nba_result?.score || 0) - (a.nba_result?.score || 0)
@@ -718,11 +752,7 @@ export default function ExplorePage() {
       if (impDiff !== 0) return impDiff
     }
 
-    if (searchQuery.trim().length > 0) {
-      const relA = modalityRelevanceMap.get(a.id)?.score || 0
-      const relB = modalityRelevanceMap.get(b.id)?.score || 0
-      if (relB !== relA) return relB - relA
-    }
+    if (isSearchActive && relB !== relA) return relB - relA
 
     return calculateModalityPopularityScore(b) - calculateModalityPopularityScore(a)
   })
@@ -831,25 +861,34 @@ export default function ExplorePage() {
 
     return true
   }).sort((a, b) => {
-    // 1. Most Popular & Proven: sorts by popularity score among the relevant protocol matches
+    const isSearchActive = searchQuery.trim().length > 0
+    const relA = isSearchActive ? (protocolRelevanceMap.get(a.id)?.score || 0) : 0
+    const relB = isSearchActive ? (protocolRelevanceMap.get(b.id)?.score || 0) : 0
+
+    // Direct Relevance: strictly sorts by semantic and lexical match strength
+    if (sortMode === 'relevance') {
+      if (relB !== relA) return relB - relA
+      return calculateProtocolPopularityScore(b) - calculateProtocolPopularityScore(a)
+    }
+
+    // When an active search query is present and the user selects a specific ranking criterion:
+    // Group into Relevance Tiers so genuine strong matches (tier 2: score >= 300) rank ahead of secondary matches
+    if (isSearchActive) {
+      const tierA = relA >= 300 ? 2 : (relA >= 120 ? 1 : 0)
+      const tierB = relB >= 300 ? 2 : (relB >= 120 ? 1 : 0)
+      if (tierB !== tierA) return tierB - tierA
+    }
+
+    // 1. Most Popular & Proven: sorts by popularity score among the relevant matches
     if (sortMode === 'popularity') {
       const scoreA = calculateProtocolPopularityScore(a)
       const scoreB = calculateProtocolPopularityScore(b)
       if (scoreB !== scoreA) return scoreB - scoreA
-      if (searchQuery.trim().length > 0) {
-        const relA = protocolRelevanceMap.get(a.id)?.score || 0
-        const relB = protocolRelevanceMap.get(b.id)?.score || 0
-        return relB - relA
-      }
+      if (isSearchActive && relB !== relA) return relB - relA
       return 0
     }
 
-    // 2. Direct Relevance
-    if (sortMode === 'relevance' || searchQuery.trim().length > 0) {
-      const relA = protocolRelevanceMap.get(a.id)?.score || 0
-      const relB = protocolRelevanceMap.get(b.id)?.score || 0
-      if (relB !== relA) return relB - relA
-    }
+    if (isSearchActive && relB !== relA) return relB - relA
 
     return calculateProtocolPopularityScore(b) - calculateProtocolPopularityScore(a)
   })
@@ -938,7 +977,12 @@ export default function ExplorePage() {
           {/* Full-Width Sort & Count Status Row */}
           <div className="w-full flex items-center justify-between gap-2 text-xs text-levl-accent font-medium pt-0.5">
             <span className="flex items-center gap-1.5">
-              {sortMode === 'popularity' ? '🔥 Sorted by Cultural Popularity & Proven Efficacy' :
+              {searchQuery.trim().length > 0 && sortMode === 'relevance' ? '🔤 Ranked by Direct Relevance to Search' :
+               searchQuery.trim().length > 0 && sortMode === 'popularity' ? '🔥 Most Popular among Relevant Search Matches' :
+               searchQuery.trim().length > 0 && sortMode === 'evidence' ? '⭐ Highest Evidence among Relevant Search Matches' :
+               searchQuery.trim().length > 0 && sortMode === 'impact' ? '📈 Highest Impact among Relevant Search Matches' :
+               searchQuery.trim().length > 0 && sortMode === 'nba' ? '★ Next Best Action among Relevant Search Matches' :
+               sortMode === 'popularity' ? '🔥 Sorted by Cultural Popularity & Proven Efficacy' :
                sortMode === 'nba' ? '★ Sorted by Next Best Action' :
                sortMode === 'evidence' ? '⭐ Sorted by Scientific Evidence' :
                sortMode === 'impact' ? '📈 Sorted by Longevity Benefit' :
@@ -992,10 +1036,7 @@ export default function ExplorePage() {
             <input 
               type="search"
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                if (e.target.value === '') setSearchResults([])
-              }}
+              onChange={(e) => handleUpdateSearchQuery(e.target.value)}
               placeholder={
                 activeTab === 'modalities'
                   ? "Semantic Search (e.g. 'how do I sleep better?')"
@@ -1009,10 +1050,7 @@ export default function ExplorePage() {
             {searchQuery && !isSearching && (
               <button 
                 type="button" 
-                onClick={() => {
-                  setSearchQuery('');
-                  setSearchResults([]);
-                }}
+                onClick={handleClearSearch}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white cursor-pointer"
               >
                 <X size={14} />
@@ -1253,8 +1291,7 @@ export default function ExplorePage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setSearchQuery('')
-                        setSearchResults([])
+                        handleClearSearch()
                         setSelectedMainCategories(['all'])
                         setSelectedSubCategories([])
                         setDiurnalRange([0, 4])
@@ -1341,7 +1378,7 @@ export default function ExplorePage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setSearchQuery('')
+                    handleClearSearch()
                     setSelectedMainCategories(['all'])
                     setSelectedSubCategories([])
                     setFilterCost('all')

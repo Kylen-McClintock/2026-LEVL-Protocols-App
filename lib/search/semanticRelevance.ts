@@ -159,16 +159,19 @@ export function calculateModalityRelevance(
     else if (desc.includes(cleanConcept) || why.includes(cleanConcept) || cat.includes(cleanConcept)) score += 60
   })
 
-  // 4. Remote semantic search RPC match bonus
+  // 4. Remote semantic search RPC match bonus (only for meaningful similarity >= 0.45)
   const semMatch = searchResults.find(r => r.id === mod.id)
-  if (semMatch && semMatch.similarity > 0.3) {
+  if (semMatch && semMatch.similarity >= 0.45) {
     score += Math.round(semMatch.similarity * 500)
   }
 
-  // 5. Determine if modality qualifies as a relevant search match
-  // Relevant if it matched the whole phrase, or matched the majority of tokens, or scored >= 80 points
-  const hasStrongTokenMatch = tokens.length === 1 ? matchedTokensCount === 1 : matchedTokensCount >= Math.ceil(tokens.length * 0.5)
-  const isMatch = (semMatch && semMatch.similarity > 0.35) || hasStrongTokenMatch || score >= 80
+  // 5. Determine if modality qualifies as a genuine search match
+  // Eliminates weak false positives from single keyword occurrences in long descriptions
+  const hasStrongTokenMatch = tokens.length === 1 
+    ? (matchedTokensCount === 1 && score >= 120) 
+    : (matchedTokensCount >= Math.ceil(tokens.length * 0.5) && score >= 120)
+
+  const isMatch = (semMatch && semMatch.similarity >= 0.45) || hasStrongTokenMatch || score >= 150
 
   return { isMatch, score }
 }
@@ -250,8 +253,12 @@ export function calculateProtocolRelevance(
     else if (steps.includes(cleanConcept) || desc.includes(cleanConcept)) score += 60
   })
 
-  const hasStrongTokenMatch = tokens.length === 1 ? matchedTokensCount === 1 : matchedTokensCount >= Math.ceil(tokens.length * 0.5)
-  const isMatch = hasStrongTokenMatch || score >= 80
+  // Determine if protocol qualifies as a genuine search match
+  const hasStrongTokenMatch = tokens.length === 1 
+    ? (matchedTokensCount === 1 && score >= 120) 
+    : (matchedTokensCount >= Math.ceil(tokens.length * 0.5) && score >= 120)
+
+  const isMatch = hasStrongTokenMatch || score >= 150
 
   return { isMatch, score }
 }

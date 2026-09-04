@@ -177,10 +177,10 @@ export default function ExploreCard({
                 {Math.round(modality.minimum_cooldown_hours / 24)}d Cooldown
               </div>
             ) : null}
-            {searchScore ? (
+            {searchScore !== undefined ? (
               <div className="flex items-center gap-1 bg-levl-accent/20 border border-levl-accent/40 text-levl-accent px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">
                 <Search size={10} />
-                {searchScore}% Search Match
+                {searchScore <= 1 ? Math.round(searchScore * 100) : Math.round(searchScore)}% Search Match
               </div>
             ) : popularityScore !== undefined ? (
               <div className="flex items-center gap-1 bg-amber-500/15 border border-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded text-[10px] font-bold shadow-[0_0_8px_rgba(245,158,11,0.15)] shrink-0">
