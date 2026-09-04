@@ -2101,7 +2101,24 @@ function TodayPageContent() {
 
   const protocolGroups = useMemo(() => {
     const groups: Record<string, DedupedTask[]> = {}
-    routineTasks.forEach(task => {
+    dedupedTasks.forEach(task => {
+      if (!isTaskMatchingActiveFilter(task)) return
+
+      const modality = task.protocol_step?.modality || task.loose_modality
+      const mId = (
+        task.modality_id || 
+        task.protocol_step?.modality_id || 
+        task.protocol_step?.modality?.id || 
+        modality?.id || 
+        ''
+      ).trim().toLowerCase()
+      if (task.status === 'contraindicated' || task.status_reason?.toLowerCase().includes('eliminated') || (mId && benchedOrEliminatedModalityIds.has(mId))) {
+        return
+      }
+
+      const cat = modality ? getMacroCategory(modality.category) : 'Other'
+      if (cat === 'Diagnostics & Tracking') return
+
       const parentProtocolName = task.lineages?.[0]?.protocol_name || task.protocol_step?.protocol?.name || (task as any).user_protocol_instance?.protocol?.name
       const groupName = parentProtocolName || 'Standalone & Individual Modalities'
       
@@ -2109,7 +2126,7 @@ function TodayPageContent() {
       groups[groupName].push(task)
     })
     return groups
-  }, [routineTasks])
+  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, benchedOrEliminatedModalityIds, filterLens, selectedOutcomes])
 
   const getGroupTimeIndex = (groupName: string, groupTasks: DedupedTask[]) => {
     const lowerName = groupName.toLowerCase()
@@ -2659,6 +2676,21 @@ function TodayPageContent() {
       if (isProtocolGroup && groupName !== 'Standalone & Individual Modalities') {
         const protoId = matchedProtocol?.id || groupTasks[0]?.protocol_step?.protocol_id || ''
         const protoSlug = groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
+        const sortedGroupTasks = [...groupTasks].sort((a, b) => {
+          const orderA = a.protocol_step?.display_order ?? 999
+          const orderB = b.protocol_step?.display_order ?? 999
+          if (orderA !== orderB) return orderA - orderB
+
+          const slotA = getTimeBlockOrder((a.timing_slot || a.protocol_step?.timing_slot || a.loose_modality?.default_timing_slot || 'anytime').toLowerCase())
+          const slotB = getTimeBlockOrder((b.timing_slot || b.protocol_step?.timing_slot || b.loose_modality?.default_timing_slot || 'anytime').toLowerCase())
+          if (slotA !== slotB) return slotA - slotB
+
+          return (a.protocol_step?.modality?.name || a.loose_modality?.name || '').localeCompare(
+            b.protocol_step?.modality?.name || b.loose_modality?.name || ''
+          )
+        })
+
         return (
           <div 
             key={groupName} 
@@ -2775,7 +2807,7 @@ function TodayPageContent() {
                   className="bg-slate-900/60 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-3.5 space-y-3 cursor-pointer transition-all hover:bg-slate-900/80 shadow-md group"
                 >
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    {groupTasks.map((t) => {
+                    {sortedGroupTasks.map((t) => {
                       const mod = t.loose_modality || t.protocol_step?.modality
                       const name = mod?.display_name || mod?.name || 'Modality'
                       const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
@@ -2819,34 +2851,32 @@ function TodayPageContent() {
                 </div>
               ) : (
                 <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
-                  {groupTasks
-                    .sort((a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0))
-                    .map(task => {
-                      const mId = task.modality_id || task.protocol_step?.modality_id || ''
-                      const benchItem = benchItems.find(b => b.modality_id === mId)
-                      return (
-                        <ProtocolTaskCard 
-                          key={task.id} 
-                          task={task} 
-                          onStatusChange={handleStatusChange} 
-                          onTrackOutcomes={openTracker}
-                          initialBenchItem={benchItem}
-                          recentTasks={tasks}
-                          allOutcomes={allOutcomes}
-                          userProfile={profile}
-                          wellbeingCheckin={wellbeingCheckin}
-                          onSaveCustomOutcomes={handleSaveCustomOutcomes}
-                          onOutcomesSaved={handleOutcomesSaved}
-                          outcomesRefreshKey={outcomesRefreshKey}
-                          onOpenRescheduleModal={handleOpenRescheduleModal}
-                          completionMode={completionMode}
-                          isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
-                          isProtocolGroupView={true}
-                          protocolGroupName={groupName}
-                          isIgnited={true}
-                        />
-                      )
-                    })}
+                  {sortedGroupTasks.map(task => {
+                    const mId = task.modality_id || task.protocol_step?.modality_id || ''
+                    const benchItem = benchItems.find(b => b.modality_id === mId)
+                    return (
+                      <ProtocolTaskCard 
+                        key={task.id} 
+                        task={task} 
+                        onStatusChange={handleStatusChange} 
+                        onTrackOutcomes={openTracker}
+                        initialBenchItem={benchItem}
+                        recentTasks={tasks}
+                        allOutcomes={allOutcomes}
+                        userProfile={profile}
+                        wellbeingCheckin={wellbeingCheckin}
+                        onSaveCustomOutcomes={handleSaveCustomOutcomes}
+                        onOutcomesSaved={handleOutcomesSaved}
+                        outcomesRefreshKey={outcomesRefreshKey}
+                        onOpenRescheduleModal={handleOpenRescheduleModal}
+                        completionMode={completionMode}
+                        isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
+                        isProtocolGroupView={true}
+                        protocolGroupName={groupName}
+                        isIgnited={true}
+                      />
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -3182,7 +3212,7 @@ function TodayPageContent() {
           <div className="mb-4">
             <ProtocolOverviewHeaderCard 
               protocolName={availableProtocols.find((p: any) => p.id === selectedProtocolFilter)?.name || 'Protocol'}
-              groupTasks={routineTasks.filter(t => t.protocol_step?.protocol_id === selectedProtocolFilter || (t as any).user_protocol_instance?.protocol_id === selectedProtocolFilter)}
+              groupTasks={dedupedTasks.filter(t => (t.protocol_step?.protocol_id === selectedProtocolFilter || (t as any).user_protocol_instance?.protocol_id === selectedProtocolFilter) && isTaskMatchingActiveFilter(t))}
               allOutcomes={allOutcomes}
               onCompleteAll={() => {}}
               onTrackGroup={() => {}}
@@ -3642,7 +3672,7 @@ function TodayPageContent() {
             {/* Completed, Snoozed, & Skipped Modalities Group (Zero Space Between Them) */}
             {(() => {
               const activeStatusSections: ('completed' | 'snoozed' | 'skipped')[] = []
-              if (allCompletedTasks.length > 0) activeStatusSections.push('completed')
+              if (allCompletedTasks.length > 0 && viewMode !== 'protocol') activeStatusSections.push('completed')
               if (allSnoozedTasks.length > 0) activeStatusSections.push('snoozed')
               if (allSkippedTasks.length > 0) activeStatusSections.push('skipped')
 
