@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { CalendarDays, ChevronDown, Check, Filter, LayoutGrid, Calendar, Columns, Rows, AlignJustify, Zap, Activity, HelpCircle, Bookmark, Target, X, Search, Sparkles } from 'lucide-react'
+import { UserProfile, OutcomeDimension } from '@/lib/types'
 
 export type CalendarViewMode = 'today' | 'pulse' | '3day' | 'week' | 'month'
 export type LayoutOrientation = 'columns' | 'stack'
@@ -648,17 +649,43 @@ export const SUB_CATEGORIES_MAP: Record<MainCategory, SubCategoryItem[]> = {
   ]
 }
 
-const POPULAR_OUTCOMES_FALLBACK = [
-  'Skin Clarity',
-  'Deep Sleep',
-  'Cognitive Focus',
-  'Energy & Mitochondria',
-  'Longevity & Biomarkers',
-  'Athletic Endurance',
-  'Strength & Muscle',
-  'Stress & Autonomic',
-  'Joint & Connective',
-  'Metabolic Health'
+export interface SchemaCheckinOutcome {
+  id: string
+  name: string
+  category: string
+  icon: string
+  defaultRank: number // 1 is highest predicted popularity
+  description: string
+}
+
+export const ALL_SCHEMA_CHECKIN_OUTCOMES: SchemaCheckinOutcome[] = [
+  { id: 'skin_clarity', name: 'Skin Clarity & Health', category: 'vitality', icon: '✨', defaultRank: 1, description: 'Dermal barrier integrity, collagen density, elasticity & cellular turnover.' },
+  { id: 'sleep_quality', name: 'Sleep Quality', category: 'sleep', icon: '🌙', defaultRank: 2, description: 'Deep & REM sleep architecture, restorative overnight recovery & fewer awakenings.' },
+  { id: 'deep_sleep', name: 'Deep Sleep', category: 'sleep', icon: '🌌', defaultRank: 3, description: 'Stage 3 slow-wave physical cellular repair & glymphatic brain clearance.' },
+  { id: 'energy', name: 'Energy & Mitochondria', category: 'vitality', icon: '⚡', defaultRank: 4, description: 'Sustained daytime vitality, cellular ATP production & eliminating energy crashes.' },
+  { id: 'focus', name: 'Cognitive Focus & Clarity', category: 'cognitive', icon: '🧠', defaultRank: 5, description: 'Laser focus, working memory retention, mental sharpness & flow state.' },
+  { id: 'stress', name: 'Stress & Autonomic Balance', category: 'recovery', icon: '❤️', defaultRank: 6, description: 'High parasympathetic vagal tone, rapid autonomic recovery & lower cortisol.' },
+  { id: 'mood', name: 'Mood & Emotional Resilience', category: 'cognitive', icon: '😊', defaultRank: 7, description: 'Positive neurochemical valence, emotional equilibrium & psychological well-being.' },
+  { id: 'cellular_longevity', name: 'Cellular Longevity & DNA Repair', category: 'longevity', icon: '🧬', defaultRank: 8, description: 'Telomere protection, senescent cell clearance & NAD+ mitochondrial repair.' },
+  { id: 'metabolic_health', name: 'Metabolic Health & Fat Loss', category: 'metabolic', icon: '🔥', defaultRank: 9, description: 'Insulin sensitivity, stable blood glucose, fat oxidation & lipid balance.' },
+  { id: 'joint_comfort', name: 'Joint Comfort & Mobility', category: 'recovery', icon: '🩹', defaultRank: 10, description: 'Cartilage mobility, synovial lubrication, connective tissue repair & joint ease.' },
+  { id: 'muscle_hypertrophy', name: 'Muscle Hypertrophy & Growth', category: 'physical', icon: '💪', defaultRank: 11, description: 'Muscle protein synthesis, myofibrillar growth & lean mass retention.' },
+  { id: 'strength', name: 'Strength & Power', category: 'physical', icon: '🏋️', defaultRank: 12, description: 'Peak neuromuscular force output, power capacity & training output.' },
+  { id: 'athletic_endurance', name: 'Athletic & Aerobic Endurance', category: 'physical', icon: '🏃', defaultRank: 13, description: 'Cardiorespiratory stamina, VO2 max, aerobic efficiency & delayed lactate fatigue.' },
+  { id: 'digestive_comfort', name: 'Digestive Comfort & Gut Health', category: 'vitality', icon: '🥗', defaultRank: 14, description: 'Smooth gut motility, microbiome balance, intestinal barrier & reduced bloating.' },
+  { id: 'waking_restedness', name: 'Waking Restedness', category: 'sleep', icon: '🌅', defaultRank: 15, description: 'Waking alert and refreshed with optimal morning circadian cortisol response.' },
+  { id: 'calmness', name: 'Calmness & Anxiety Relief', category: 'cognitive', icon: '🧘', defaultRank: 16, description: 'Central nervous system relaxation, lower trait anxiety & inner tranquility.' },
+  { id: 'immune_resilience', name: 'Immune Resilience', category: 'recovery', icon: '🛡️', defaultRank: 17, description: 'Innate and adaptive immune defense & reduced susceptibility to infections.' },
+  { id: 'brain_fog', name: 'Brain Fog Reduction', category: 'cognitive', icon: '💡', defaultRank: 18, description: 'Fast neural processing speed, crisp mental acuity & cerebral metabolic clearance.' },
+  { id: 'satiety', name: 'Satiety & Appetite Control', category: 'metabolic', icon: '⚖️', defaultRank: 19, description: 'Optimal leptin/ghrelin signaling, prolonged fullness & craving mitigation.' },
+  { id: 'libido_vitality', name: 'Libido & Hormonal Vitality', category: 'vitality', icon: '❤️‍🔥', defaultRank: 20, description: 'Hormonal vitality, androgen balance, libido & vitality signaling.' },
+  { id: 'soreness', name: 'Soreness (DOMS) Recovery', category: 'recovery', icon: '🧊', defaultRank: 21, description: 'Delayed onset muscle soreness (DOMS) reduction & accelerated muscular recovery.' },
+  { id: 'sleep_latency', name: 'Sleep Latency (Falling Asleep)', category: 'sleep', icon: '⏱️', defaultRank: 22, description: 'Speed of falling asleep peacefully without tossing and turning.' },
+  { id: 'emotional_resilience', name: 'Emotional Resilience', category: 'cognitive', icon: '🛡️', defaultRank: 23, description: 'Stress adaptability, heart rate variability (HRV) rebound & emotional control.' },
+  { id: 'motivation', name: 'Motivation & Drive', category: 'cognitive', icon: '🚀', defaultRank: 24, description: 'Dopamine-driven initiative, reward anticipation & productivity readiness.' },
+  { id: 'physical_fatigue', name: 'Physical Fatigue Reduction', category: 'vitality', icon: '🔋', defaultRank: 25, description: 'Mitigating systemic exhaustion, muscular burnout & heavy-limb sensations.' },
+  { id: 'productivity', name: 'Productivity & Deep Work', category: 'cognitive', icon: '📊', defaultRank: 26, description: 'High-leverage work output, cognitive stamina & deep work efficiency.' },
+  { id: 'pain', name: 'Musculoskeletal Pain Relief', category: 'recovery', icon: '🩹', defaultRank: 27, description: 'Systemic inflammatory relief, joint comfort & musculoskeletal ease.' }
 ]
 
 export const CategoryFiltersBar: React.FC<{
@@ -676,7 +703,9 @@ export const CategoryFiltersBar: React.FC<{
   selectedOutcomes?: string[]
   onToggleOutcome?: (outcomeName: string) => void
   onClearOutcomes?: () => void
-  availableOutcomes?: (string | { id?: string; name: string })[]
+  availableOutcomes?: (string | { id?: string; name: string } | OutcomeDimension)[]
+  userProfile?: UserProfile | null
+  allOutcomeDimensions?: OutcomeDimension[]
 }> = ({
   selectedMainCategories,
   selectedSubCategories,
@@ -691,7 +720,9 @@ export const CategoryFiltersBar: React.FC<{
   selectedOutcomes = [],
   onToggleOutcome,
   onClearOutcomes,
-  availableOutcomes = []
+  availableOutcomes = [],
+  userProfile = null,
+  allOutcomeDimensions = []
 }) => {
   const [internalLens, setInternalLens] = useState<FilterLens>(filterLens)
   const currentLens = onToggleFilterLens ? filterLens : internalLens
@@ -704,14 +735,22 @@ export const CategoryFiltersBar: React.FC<{
     }
   }
 
-  // Outcomes Dropdown & Search state
+  // Full-opacity dropdown state for Category and Outcomes
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
   const [isOutcomeDropdownOpen, setIsOutcomeDropdownOpen] = useState(false)
   const [outcomeSearchQuery, setOutcomeSearchQuery] = useState('')
+
+  const categoryDropdownRef = useRef<HTMLDivElement>(null)
   const outcomeDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      if (outcomeDropdownRef.current && !outcomeDropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (!target) return
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(target)) {
+        setIsCategoryDropdownOpen(false)
+      }
+      if (outcomeDropdownRef.current && !outcomeDropdownRef.current.contains(target)) {
         setIsOutcomeDropdownOpen(false)
       }
     }
@@ -723,29 +762,198 @@ export const CategoryFiltersBar: React.FC<{
     }
   }, [])
 
-  // Normalize list of available outcomes
-  const normalizedOutcomes = React.useMemo(() => {
-    const names = new Set<string>()
-    availableOutcomes.forEach(item => {
+  // Master combined outcomes catalog
+  const allKnownOutcomes = React.useMemo(() => {
+    const map = new Map<string, SchemaCheckinOutcome>()
+
+    // 1. Seed with all schema check-in dimensions
+    ALL_SCHEMA_CHECKIN_OUTCOMES.forEach(item => {
+      map.set(item.id.toLowerCase(), { ...item })
+    })
+
+    // 2. Add dynamically supplied dimensions from Supabase or caller
+    const dynamicSources: any[] = [
+      ...(allOutcomeDimensions || []),
+      ...(availableOutcomes || [])
+    ]
+
+    dynamicSources.forEach((item: any) => {
+      if (!item) return
+      let id = ''
+      let name = ''
+      let category = 'vitality'
+      let description = ''
+
       if (typeof item === 'string') {
-        if (item.trim()) names.add(item.trim())
-      } else if (item && typeof item.name === 'string') {
-        if (item.name.trim()) names.add(item.name.trim())
+        name = item.trim()
+        id = name.toLowerCase().replace(/[\s-]/g, '_')
+      } else if (typeof item === 'object') {
+        name = (item.name || item.id || '').trim()
+        id = (item.id || name).toLowerCase().replace(/[\s-]/g, '_')
+        if (item.category) category = item.category
+        if (item.description) description = item.description
+      }
+
+      if (!name) return
+
+      const existing = map.get(id) || Array.from(map.values()).find(o => o.name.toLowerCase() === name.toLowerCase())
+      if (existing) {
+        if (!existing.description && description) existing.description = description
+      } else {
+        map.set(id, {
+          id,
+          name,
+          category,
+          icon: '🎯',
+          defaultRank: 50,
+          description: description || `Trackable biomarker and functional performance outcome: ${name}.`
+        })
       }
     })
-    if (names.size === 0) {
-      POPULAR_OUTCOMES_FALLBACK.forEach(name => names.add(name))
-    }
-    return Array.from(names).sort()
-  }, [availableOutcomes])
 
-  const filteredOutcomesForSearch = React.useMemo(() => {
-    if (!outcomeSearchQuery.trim()) return normalizedOutcomes
-    const q = outcomeSearchQuery.toLowerCase()
-    return normalizedOutcomes.filter(name => name.toLowerCase().includes(q))
-  }, [normalizedOutcomes, outcomeSearchQuery])
+    // 3. Add custom user-created outcomes from user profile
+    if (userProfile?.outcome_preference_scores?.custom_user_outcomes && Array.isArray(userProfile.outcome_preference_scores.custom_user_outcomes)) {
+      userProfile.outcome_preference_scores.custom_user_outcomes.forEach((c: any) => {
+        if (!c?.name) return
+        const cid = (c.id || c.name).toLowerCase().replace(/[\s-]/g, '_')
+        if (!map.has(cid)) {
+          map.set(cid, {
+            id: cid,
+            name: c.name,
+            category: c.category || 'vitality',
+            icon: '✨',
+            defaultRank: 1, // Custom user outcomes rank very high
+            description: c.description || 'User-created custom bio-signal tracking dimension.'
+          })
+        }
+      })
+    }
+
+    return Array.from(map.values())
+  }, [availableOutcomes, allOutcomeDimensions, userProfile])
+
+  // Ranked strictly by user importance, tracked prominence in checkins, then predicted popularity
+  const rankedOutcomesList = React.useMemo(() => {
+    const prefs = (userProfile?.outcome_preference_scores || {}) as Record<string, any>
+    const anytimeDims = (userProfile?.anytime_checkin_dimensions || []).map(d => d.toLowerCase())
+    const morningDims = (userProfile?.morning_checkin_dimensions || []).map(d => d.toLowerCase())
+    const eveningDims = (userProfile?.evening_checkin_dimensions || []).map(d => d.toLowerCase())
+    const targetOutcomes = (((userProfile as any)?.target_outcomes || []) as string[]).map(t => t.toLowerCase())
+    const primaryGoals = (userProfile?.primary_goals || []).map(g => g.toLowerCase())
+
+    return allKnownOutcomes.map(item => {
+      const idLower = item.id.toLowerCase()
+      const nameLower = item.name.toLowerCase()
+
+      let score = 0
+      let userScore: number | undefined = undefined
+      let isTrackedInCheckin = false
+      let isTargetGoal = false
+      let badge: string | undefined = undefined
+      let badgeClass: string | undefined = undefined
+
+      // 1. Direct user importance preference score (0-10) in outcome_preference_scores
+      if (typeof prefs[item.id] === 'number') {
+        const val = Number(prefs[item.id])
+        userScore = val
+        score += val * 100
+      } else if (typeof prefs[idLower] === 'number') {
+        const val = Number(prefs[idLower])
+        userScore = val
+        score += val * 100
+      } else if (typeof prefs[nameLower] === 'number') {
+        const val = Number(prefs[nameLower])
+        userScore = val
+        score += val * 100
+      }
+
+      // Check anytime:, morning:, nightly: checkin keys
+      const checkinKeys = [
+        `anytime:${item.id}`, `anytime:${idLower}`, `anytime:${nameLower}`,
+        `morning:${item.id}`, `morning:${idLower}`, `morning:${nameLower}`,
+        `nightly:${item.id}`, `nightly:${idLower}`, `nightly:${nameLower}`
+      ]
+      for (const k of checkinKeys) {
+        if (typeof prefs[k] === 'number') {
+          score += prefs[k] * 15
+          if (prefs[k] >= 7) isTrackedInCheckin = true
+        }
+      }
+
+      // 2. Prominence in user's tracked checkin dimensions
+      if (anytimeDims.includes(idLower) || anytimeDims.includes(nameLower) ||
+          morningDims.includes(idLower) || morningDims.includes(nameLower) ||
+          eveningDims.includes(idLower) || eveningDims.includes(nameLower)) {
+        isTrackedInCheckin = true
+        score += 250
+      }
+
+      // 3. User target outcomes and primary goals
+      if (targetOutcomes.some(t => idLower.includes(t) || t.includes(idLower) || nameLower.includes(t) || t.includes(nameLower)) ||
+          primaryGoals.some(g => idLower.includes(g) || g.includes(idLower) || nameLower.includes(g) || g.includes(nameLower))) {
+        isTargetGoal = true
+        score += 300
+      }
+
+      // Assign badges for visual feedback
+      if (isTargetGoal) {
+        badge = 'Target Goal'
+        badgeClass = 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+      } else if (userScore !== undefined && userScore >= 8) {
+        badge = `Top Priority (${userScore}/10)`
+        badgeClass = 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+      } else if (isTrackedInCheckin) {
+        badge = 'Tracked in Check-in'
+        badgeClass = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+      } else if (userScore !== undefined && userScore >= 5) {
+        badge = `Priority (${userScore}/10)`
+        badgeClass = 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+      }
+
+      // 4. Fallback: Predicted popularity
+      const defaultRank = item.defaultRank ?? 50
+      score += Math.max(0, 100 - defaultRank)
+
+      return {
+        ...item,
+        rankScore: score,
+        userScore,
+        isTrackedInCheckin,
+        isTargetGoal,
+        badge,
+        badgeClass
+      }
+    }).sort((a, b) => {
+      if (b.rankScore !== a.rankScore) {
+        return b.rankScore - a.rankScore
+      }
+      return a.name.localeCompare(b.name)
+    })
+  }, [allKnownOutcomes, userProfile])
+
+  const filteredRankedOutcomes = React.useMemo(() => {
+    if (!outcomeSearchQuery.trim()) return rankedOutcomesList
+    const q = outcomeSearchQuery.toLowerCase().trim()
+    return rankedOutcomesList.filter(o => 
+      o.name.toLowerCase().includes(q) || 
+      o.id.toLowerCase().includes(q) || 
+      (o.description && o.description.toLowerCase().includes(q)) ||
+      (o.category && o.category.toLowerCase().includes(q))
+    )
+  }, [rankedOutcomesList, outcomeSearchQuery])
 
   const isAllActive = selectedMainCategories.includes('all') || selectedMainCategories.length === 0
+  const isCategoryFiltered = !isAllActive
+
+  const activeCategoryLabel = React.useMemo(() => {
+    if (isAllActive) return 'Filter: ✨ All Categories'
+    const nonAll = selectedMainCategories.filter(c => c !== 'all')
+    if (nonAll.length === 1) {
+      const match = MAIN_CATEGORIES.find(c => c.id === nonAll[0])
+      return match ? `Filter: ${match.icon} ${match.label}` : 'Filter: Category'
+    }
+    return `Filter: Categories (${nonAll.length})`
+  }, [isAllActive, selectedMainCategories])
 
   const activeSubItems = React.useMemo(() => {
     if (isAllActive) return []
@@ -760,14 +968,20 @@ export const CategoryFiltersBar: React.FC<{
   }, [selectedMainCategories, isAllActive])
 
   return (
-    <div className={`flex flex-col gap-2 bg-slate-950/60 p-2 sm:p-2.5 rounded-2xl border border-slate-800/80 mb-3 shadow-lg backdrop-blur-md ${className}`}>
-      {/* Master Toggle Header: [ Category | Outcomes ] + Optional Multi-Day Orientation Switch */}
-      <div className="flex items-center justify-between gap-2 flex-wrap pb-1.5 border-b border-white/5">
-        <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-white/10 gap-0.5 text-xs shadow-inner">
+    <div className={`flex flex-col gap-2.5 bg-slate-950/80 p-2.5 sm:p-3 rounded-2xl border border-slate-800/80 mb-3 shadow-xl backdrop-blur-md relative z-30 ${className}`}>
+      {/* Master Toggle Header: Filter by: [ Category | Outcomes ] (Full row width on mobile) */}
+      <div className="w-full flex items-center gap-2 pb-2 border-b border-white/5">
+        <span className="text-[11px] sm:text-xs font-black text-slate-400 uppercase tracking-wider shrink-0">
+          Filter by:
+        </span>
+        <div className="flex-1 grid grid-cols-2 bg-black/60 p-0.5 rounded-xl border border-white/10 gap-0.5 text-xs shadow-inner">
           <button
             type="button"
-            onClick={() => handleLensChange('category')}
-            className={`px-3 py-1 rounded-lg font-bold text-xs tracking-tight transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+            onClick={() => {
+              handleLensChange('category')
+              setIsOutcomeDropdownOpen(false)
+            }}
+            className={`w-full py-1.5 rounded-lg font-bold text-xs tracking-tight transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               currentLens === 'category'
                 ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm font-extrabold'
                 : 'text-slate-400 hover:text-white'
@@ -779,8 +993,11 @@ export const CategoryFiltersBar: React.FC<{
 
           <button
             type="button"
-            onClick={() => handleLensChange('outcomes')}
-            className={`px-3 py-1 rounded-lg font-bold text-xs tracking-tight transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+            onClick={() => {
+              handleLensChange('outcomes')
+              setIsCategoryDropdownOpen(false)
+            }}
+            className={`w-full py-1.5 rounded-lg font-bold text-xs tracking-tight transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               currentLens === 'outcomes'
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm font-extrabold'
                 : 'text-slate-400 hover:text-white'
@@ -789,16 +1006,16 @@ export const CategoryFiltersBar: React.FC<{
             <span>🎯</span>
             <span>Outcomes</span>
             {selectedOutcomes.length > 0 && (
-              <span className="w-4 h-4 rounded-full bg-purple-400/30 text-purple-200 text-[10px] flex items-center justify-center font-mono font-bold ml-0.5">
+              <span className="w-4 h-4 rounded-full bg-purple-400/30 text-purple-200 text-[10px] flex items-center justify-center font-mono font-bold ml-1">
                 {selectedOutcomes.length}
               </span>
             )}
           </button>
         </div>
 
-        {/* Right: Side-by-Side vs Vertical Stack Orientation Toggle (for multi-day views) */}
+        {/* Multi-day orientation toggle (columns vs stack) */}
         {viewMode && viewMode !== 'today' && onToggleLayoutOrientation && layoutOrientation && (
-          <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 shrink-0 ml-auto">
+          <div className="hidden sm:flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 shrink-0 ml-auto">
             <button
               onClick={() => onToggleLayoutOrientation('columns')}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
@@ -806,7 +1023,7 @@ export const CategoryFiltersBar: React.FC<{
                   ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
-              title="Side-by-Side Columns View (Default)"
+              title="Side-by-Side Columns View"
             >
               <Columns className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Side-by-Side</span>
@@ -821,66 +1038,151 @@ export const CategoryFiltersBar: React.FC<{
               title="Vertical Stacked View"
             >
               <AlignJustify className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Vertical Stack</span>
+              <span className="hidden sm:inline">Stack</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* LENS 1: CATEGORY FILTERING */}
+      {/* LENS 1: CATEGORY FILTERING (Full-opacity dropdown matching mobile UI) */}
       {currentLens === 'category' && (
-        <div className="flex flex-col gap-2">
-          {/* Main Category Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
-            <span className="text-xs font-black text-slate-400 uppercase tracking-wider shrink-0 mr-1">
-              Category:
-            </span>
+        <div className="flex flex-col gap-2 relative" ref={categoryDropdownRef}>
+          {/* Full-width Trigger Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsCategoryDropdownOpen(!isCategoryDropdownOpen)
+              setIsOutcomeDropdownOpen(false)
+            }}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border font-bold text-xs transition-all cursor-pointer shadow-sm ${
+              isCategoryFiltered
+                ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                : isCategoryDropdownOpen
+                ? 'bg-slate-800 border-slate-600 text-white'
+                : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0 truncate">
+              <Filter className={`w-3.5 h-3.5 shrink-0 ${isCategoryFiltered ? 'text-emerald-400' : 'text-slate-400'}`} />
+              <span className="truncate">{activeCategoryLabel}</span>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 shrink-0 ml-1 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180 text-emerald-400' : 'text-slate-400'}`} />
+          </button>
 
-            {MAIN_CATEGORIES.map(cat => {
-              const isActive = cat.id === 'all' ? isAllActive : selectedMainCategories.includes(cat.id)
-
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => onToggleMainCategory(cat.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 transition-all shrink-0 border cursor-pointer ${
-                    isActive
-                      ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/60 shadow-[0_0_14px_rgba(16,185,129,0.35)] scale-[1.02]'
-                      : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
-                  }`}
-                >
-                  <span className="text-sm sm:text-base leading-none">{cat.icon}</span>
-                  <span>{cat.label}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Dynamic Sub-Category Filter Row */}
-          {!isAllActive && activeSubItems.length > 0 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-2 border-t border-slate-800/60 animate-in fade-in slide-in-from-top-1">
-              <span className="text-xs font-black text-slate-400 uppercase tracking-wider shrink-0 mr-1">
-                Focus:
-              </span>
-
-              {activeSubItems.map(sub => {
-                const isSubActive = selectedSubCategories.includes(sub.id)
-
-                return (
+          {/* Full-Opacity Category Dropdown Panel */}
+          {isCategoryDropdownOpen && (
+            <div 
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="w-full bg-slate-950 p-3.5 rounded-2xl border border-slate-800 shadow-2xl space-y-3 z-30 animate-in fade-in slide-in-from-top-2"
+            >
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-emerald-400" /> Filter by Category
+                </span>
+                {isCategoryFiltered && (
                   <button
-                    key={sub.id}
                     type="button"
-                    onClick={() => onToggleSubCategory(sub.id)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all shrink-0 border cursor-pointer flex items-center gap-1.5 ${
-                      isSubActive
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.25)]'
-                        : 'bg-black/50 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
-                    }`}
+                    onClick={() => onToggleMainCategory('all')}
+                    className="text-xs font-bold text-orange-400 hover:text-orange-300 underline cursor-pointer"
                   >
-                    <span className="font-mono">{isSubActive ? '✓' : '+'}</span>
-                    <span>{sub.label}</span>
+                    Reset to All
                   </button>
+                )}
+              </div>
+
+              {/* 3-Col Categories Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {MAIN_CATEGORIES.map(cat => {
+                  const isActive = cat.id === 'all' ? isAllActive : selectedMainCategories?.includes(cat.id)
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => onToggleMainCategory(cat.id)}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all border cursor-pointer ${
+                        isActive
+                          ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.3)] scale-[1.02]'
+                          : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                      }`}
+                    >
+                      <span className="text-base leading-none">{cat.icon}</span>
+                      <span className="truncate">{cat.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Subcategories if any */}
+              {activeSubItems.length > 0 && onToggleSubCategory && (
+                <div className="pt-2.5 border-t border-slate-800/80 space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block px-1">
+                    Subcategories:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeSubItems.map(sub => {
+                      const isSubActive = selectedSubCategories?.includes(sub.id)
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => onToggleSubCategory(sub.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                            isSubActive
+                              ? 'bg-teal-500/20 text-teal-200 border-teal-500/50 shadow-sm'
+                              : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                          }`}
+                        >
+                          {sub.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Active filter summary chips if filtered */}
+          {isCategoryFiltered && (
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-1">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 shrink-0">
+                Active:
+              </span>
+              {selectedMainCategories.filter(c => c !== 'all').map(catId => {
+                const match = MAIN_CATEGORIES.find(c => c.id === catId)
+                return (
+                  <span
+                    key={catId}
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 flex items-center gap-1 shrink-0"
+                  >
+                    <span>{match ? `${match.icon} ${match.label}` : catId}</span>
+                    <button
+                      type="button"
+                      onClick={() => onToggleMainCategory(catId)}
+                      className="hover:text-white text-emerald-400 cursor-pointer ml-0.5"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                )
+              })}
+              {selectedSubCategories.map(subId => {
+                const subMatch = activeSubItems.find(s => s.id === subId)
+                return (
+                  <span
+                    key={subId}
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-teal-950/60 border border-teal-500/40 text-teal-200 flex items-center gap-1 shrink-0"
+                  >
+                    <span>{subMatch?.label || subId}</span>
+                    <button
+                      type="button"
+                      onClick={() => onToggleSubCategory(subId)}
+                      className="hover:text-white text-teal-400 cursor-pointer ml-0.5"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
                 )
               })}
             </div>
@@ -888,138 +1190,146 @@ export const CategoryFiltersBar: React.FC<{
         </div>
       )}
 
-      {/* LENS 2: OUTCOMES FILTERING */}
+      {/* LENS 2: OUTCOMES FILTERING (Full-opacity dropdown matching mobile UI) */}
       {currentLens === 'outcomes' && (
-        <div className="flex flex-col gap-2 pt-0.5 animate-in fade-in">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Outcomes Multi-Select Dropdown Button */}
-            <div className="relative" ref={outcomeDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsOutcomeDropdownOpen(!isOutcomeDropdownOpen)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
-                  selectedOutcomes.length > 0
-                    ? 'bg-purple-600 text-white border-purple-400/50 shadow-[0_0_12px_rgba(147,51,234,0.35)]'
-                    : 'bg-slate-900/90 text-slate-200 border-slate-800 hover:border-slate-700 hover:text-white'
-                }`}
-              >
-                <Target size={13} className={selectedOutcomes.length > 0 ? 'text-amber-300' : 'text-purple-400'} />
-                <span>Select Outcomes</span>
-                {selectedOutcomes.length > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-white/20 text-white text-[10px] flex items-center justify-center font-mono font-bold">
-                    {selectedOutcomes.length}
-                  </span>
-                )}
-                <ChevronDown size={12} className={`transition-transform duration-200 ${isOutcomeDropdownOpen ? 'rotate-180 text-purple-300' : 'text-slate-400'}`} />
-              </button>
-
-              {/* Outcomes Dropdown Popover */}
-              {isOutcomeDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1.5 w-72 max-h-80 p-2 rounded-2xl bg-slate-950/95 border border-slate-800 shadow-2xl backdrop-blur-2xl z-[150] flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-150">
-                  {/* Search input */}
-                  <div className="relative">
-                    <Search size={12} className="absolute left-2.5 top-2.5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={outcomeSearchQuery}
-                      onChange={(e) => setOutcomeSearchQuery(e.target.value)}
-                      placeholder="Search functional outcomes..."
-                      className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-7 pr-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-
-                  {/* Quick Action Header */}
-                  <div className="flex items-center justify-between px-1 text-[10px] font-mono text-slate-400">
-                    <span>{selectedOutcomes.length} Selected</span>
-                    {selectedOutcomes.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => onClearOutcomes?.()}
-                        className="text-purple-400 hover:text-purple-300 cursor-pointer"
-                      >
-                        Clear All
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Scrollable list of outcomes with checkboxes */}
-                  <div className="overflow-y-auto max-h-52 space-y-0.5 pr-1 scrollbar-thin">
-                    {filteredOutcomesForSearch.map(outcomeName => {
-                      const isChecked = selectedOutcomes.includes(outcomeName)
-                      return (
-                        <button
-                          key={outcomeName}
-                          type="button"
-                          onClick={() => onToggleOutcome?.(outcomeName)}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
-                            isChecked
-                              ? 'bg-purple-600/30 text-purple-200 border border-purple-500/40'
-                              : 'text-slate-300 hover:bg-white/5 hover:text-white border border-transparent'
-                          }`}
-                        >
-                          <span className="truncate">{outcomeName}</span>
-                          <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ml-2 ${
-                            isChecked
-                              ? 'bg-purple-600 border-purple-400 text-white'
-                              : 'border-slate-700 bg-slate-900'
-                          }`}>
-                            {isChecked && <Check size={11} strokeWidth={3} />}
-                          </div>
-                        </button>
-                      )
-                    })}
-                    {filteredOutcomesForSearch.length === 0 && (
-                      <div className="p-3 text-center text-xs text-slate-500">
-                        No matching outcomes
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Quick Filter Reset Button */}
-            {selectedOutcomes.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => onClearOutcomes?.()}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all flex items-center gap-1 cursor-pointer"
-              >
-                <X size={12} />
-                <span>Clear</span>
-              </button>
-            ) : (
-              <span className="text-[11px] font-mono text-slate-400">
-                All Outcomes Active
+        <div className="flex flex-col gap-2 relative" ref={outcomeDropdownRef}>
+          {/* Full-width Trigger Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsOutcomeDropdownOpen(!isOutcomeDropdownOpen)
+              setIsCategoryDropdownOpen(false)
+            }}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border font-bold text-xs transition-all cursor-pointer shadow-sm ${
+              selectedOutcomes.length > 0
+                ? 'bg-purple-950/60 border-purple-500/60 text-purple-200 shadow-[0_0_12px_rgba(168,85,247,0.25)]'
+                : isOutcomeDropdownOpen
+                ? 'bg-slate-800 border-slate-600 text-white'
+                : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2 min-w-0 truncate">
+              <Target className={`w-3.5 h-3.5 shrink-0 ${selectedOutcomes.length > 0 ? 'text-amber-400' : 'text-purple-400'}`} />
+              <span className="truncate">
+                {selectedOutcomes.length === 0
+                  ? 'Filter by Outcome (All Active)'
+                  : selectedOutcomes.length === 1
+                  ? `Outcome: ${selectedOutcomes[0]}`
+                  : `Outcomes: ${selectedOutcomes.length} Selected`}
               </span>
-            )}
-
-            {/* Horizontally scrollable quick-tap chips for top outcomes */}
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 flex-1 min-w-0">
-              {normalizedOutcomes.slice(0, 8).map(outcomeName => {
-                const isSelected = selectedOutcomes.includes(outcomeName)
-                return (
-                  <button
-                    key={outcomeName}
-                    type="button"
-                    onClick={() => onToggleOutcome?.(outcomeName)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1 border cursor-pointer ${
-                      isSelected
-                        ? 'bg-purple-600 text-white border-purple-400/50 shadow-[0_0_10px_rgba(147,51,234,0.3)] font-extrabold'
-                        : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
-                    }`}
-                  >
-                    <span>{isSelected ? '✓' : '+'}</span>
-                    <span>{outcomeName}</span>
-                  </button>
-                )
-              })}
             </div>
-          </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {selectedOutcomes.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-200 text-[10px] font-mono font-bold">
+                  {selectedOutcomes.length}
+                </span>
+              )}
+              <ChevronDown className={`w-3.5 h-3.5 shrink-0 ml-1 transition-transform duration-200 ${isOutcomeDropdownOpen ? 'rotate-180 text-purple-400' : 'text-slate-400'}`} />
+            </div>
+          </button>
 
-          {/* Active outcome tags bar (if multiple selected) */}
+          {/* Full-Opacity Outcomes Dropdown Panel */}
+          {isOutcomeDropdownOpen && (
+            <div 
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="w-full bg-slate-950 p-3.5 rounded-2xl border border-slate-800 shadow-2xl space-y-3 z-30 animate-in fade-in slide-in-from-top-2"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-purple-400" /> Filter by Functional Outcomes
+                </span>
+                {selectedOutcomes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onClearOutcomes?.()}
+                    className="text-xs font-bold text-orange-400 hover:text-orange-300 underline cursor-pointer"
+                  >
+                    Clear All ({selectedOutcomes.length})
+                  </button>
+                )}
+              </div>
+
+              {/* Search Input */}
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={outcomeSearchQuery}
+                  onChange={(e) => setOutcomeSearchQuery(e.target.value)}
+                  placeholder="Search trackable outcomes..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                />
+                {outcomeSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setOutcomeSearchQuery('')}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Scrollable list of ranked outcomes */}
+              <div className="overflow-y-auto max-h-64 space-y-1 pr-1 scrollbar-thin divide-y divide-slate-800/40">
+                {filteredRankedOutcomes.map(item => {
+                  const isChecked = selectedOutcomes.some(sel => 
+                    sel.toLowerCase().trim() === item.name.toLowerCase().trim() || 
+                    sel.toLowerCase().trim() === item.id.toLowerCase().trim()
+                  )
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => onToggleOutcome?.(item.name)}
+                      className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
+                        isChecked
+                          ? 'bg-purple-900/30 text-purple-200 border border-purple-500/40 shadow-sm'
+                          : 'text-slate-300 hover:bg-slate-900 hover:text-white border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-base shrink-0">{item.icon}</span>
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="truncate font-semibold">{item.name}</span>
+                            {item.badge && (
+                              <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold uppercase tracking-wider ${item.badgeClass}`}>
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                          {item.description && (
+                            <span className="text-[10px] font-normal text-slate-400 line-clamp-1">
+                              {item.description}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ml-2 ${
+                        isChecked
+                          ? 'bg-purple-600 border-purple-400 text-white'
+                          : 'border-slate-700 bg-slate-900'
+                      }`}>
+                        {isChecked && <Check size={11} strokeWidth={3} />}
+                      </div>
+                    </button>
+                  )
+                })}
+                {filteredRankedOutcomes.length === 0 && (
+                  <div className="p-4 text-center text-xs text-slate-500">
+                    No matching outcomes found
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Active outcome tags bar */}
           {selectedOutcomes.length > 0 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-1.5 border-t border-slate-800/60">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-1">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 shrink-0">
                 Filtered:
               </span>

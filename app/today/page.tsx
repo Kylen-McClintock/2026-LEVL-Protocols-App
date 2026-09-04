@@ -3871,6 +3871,8 @@ function TodayPageContent() {
                 }}
                 onClearOutcomes={() => setSelectedOutcomes([])}
                 availableOutcomes={allOutcomes.map(o => o.name)}
+                userProfile={profile}
+                allOutcomeDimensions={allOutcomes}
               />
             </div>
 

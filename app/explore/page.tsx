@@ -1177,6 +1177,8 @@ export default function ExplorePage() {
             onToggleOutcome={toggleOutcome}
             onClearOutcomes={() => setSelectedOutcomes([])}
             availableOutcomes={displayedOutcomes}
+            userProfile={profile}
+            allOutcomeDimensions={outcomeDimensions}
           />
         </div>
 
