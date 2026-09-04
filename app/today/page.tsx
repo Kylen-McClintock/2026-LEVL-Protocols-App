@@ -2236,6 +2236,7 @@ function TodayPageContent() {
                         <ProtocolTaskCard 
                           key={task.id} 
                           task={task} 
+                          isIgnited={true}
                           onStatusChange={handleStatusChange} 
                           onTrackOutcomes={openTracker}
                           initialBenchItem={benchItem}
@@ -2494,6 +2495,7 @@ function TodayPageContent() {
                     <ProtocolTaskCard 
                       key={task.id} 
                       task={task} 
+                      isIgnited={isIgnited}
                       onStatusChange={handleStatusChange} 
                       onTrackOutcomes={openTracker}
                       initialBenchItem={benchItem}

@@ -111,11 +111,12 @@ export default function ExploreCard({
         onClick={() => setExpanded(!expanded)}
       >
         <div className="w-full min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-bold text-lg text-white break-words flex items-center gap-2">
-              <ModalityIcon modality={modality} size={20} className="shrink-0" />
-              <span>{modality.display_name || modality.name}</span>
-            </h3>
+          <div className="flex items-start gap-2.5 min-w-0">
+            <ModalityIcon modality={modality} size={20} className="shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
+              <h3 className="font-bold text-lg text-white break-words">
+                {modality.display_name || modality.name}
+              </h3>
             
             {/* Active Today / Bench / Conflict / Eliminated History Status Badges */}
             {isCurrentlyActiveInToday && (
@@ -160,6 +161,7 @@ export default function ExploreCard({
               <span className="text-[9px] uppercase bg-red-900/40 text-red-300 px-2 py-0.5 rounded border border-red-900/50 whitespace-nowrap shrink-0">Prescription Rx</span>
             )}
           </div>
+        </div>
 
           <div className="flex flex-wrap items-center gap-2 mt-1.5">
             <p className="text-[10px] font-bold text-levl-text-secondary uppercase tracking-wider shrink-0">{modality.category}</p>

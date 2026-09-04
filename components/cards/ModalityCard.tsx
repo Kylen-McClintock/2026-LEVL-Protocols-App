@@ -80,10 +80,12 @@ export default function ModalityCard({ session, userProfile, onComplete, onSkip,
                 </span>
               )}
             </div>
-            <h3 className="font-bold text-lg leading-tight flex items-center gap-2">
-              <ModalityIcon modality={modality} size={20} className="shrink-0" />
-              <span>{modality.display_name || modality.name}</span>
-            </h3>
+            <div className="flex items-start gap-2.5 min-w-0">
+              <ModalityIcon modality={modality} size={20} className="shrink-0 mt-0.5" />
+              <h3 className="font-bold text-lg leading-tight flex-1 min-w-0">
+                {modality.display_name || modality.name}
+              </h3>
+            </div>
             
             {/* Dosing Details */}
             <div className="flex flex-wrap items-center gap-1.5 mt-2">

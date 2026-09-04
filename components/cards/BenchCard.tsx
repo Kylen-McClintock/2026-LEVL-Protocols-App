@@ -97,14 +97,18 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
 
         <div className="flex justify-between items-start">
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <ModalityIcon modality={modality} size={20} className="shrink-0" />
-                <span>{modality.display_name || modality.name}</span>
-              </h3>
-              {modality.modality_type === 'prescription_supported' && (
-                <span className="text-[9px] uppercase bg-red-900/40 text-red-300 px-2 py-0.5 rounded border border-red-900/50 whitespace-nowrap">Prescription Rx</span>
-              )}
+            <div className="flex items-start gap-2.5 min-w-0">
+              <ModalityIcon modality={modality} size={20} className="shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-lg leading-tight">
+                    {modality.display_name || modality.name}
+                  </h3>
+                  {modality.modality_type === 'prescription_supported' && (
+                    <span className="text-[9px] uppercase bg-red-900/40 text-red-300 px-2 py-0.5 rounded border border-red-900/50 whitespace-nowrap">Prescription Rx</span>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-2 mt-1">
               <p className="text-xs text-levl-text-secondary uppercase">{modality.category}</p>
