@@ -624,11 +624,20 @@ function TodayPageContent() {
     const clean = nameOrId.toLowerCase().trim()
 
     // 1. Uncollapse any groups that might hide the target
-    setCollapsedGroups({})
     if (isProtocol) {
       setViewMode('protocol')
       setSelectedProtocolFilter('all')
+      const targetGroup = Object.keys(protocolGroups).find(g => {
+        const gLow = g.toLowerCase()
+        return gLow.includes(clean) || clean.includes(gLow)
+      })
+      if (targetGroup) {
+        setCollapsedGroups({ [targetGroup]: false })
+      } else {
+        setCollapsedGroups({})
+      }
     } else {
+      setCollapsedGroups({})
       setSelectedProtocolFilter('all')
       setSelectedMainCategories(['all'])
       setSelectedSubCategories([])
@@ -707,19 +716,29 @@ function TodayPageContent() {
       setCalendarViewMode('today')
     }
 
-    // 2. If it's a protocol, set viewMode to protocol
+    // 2. If it's a protocol, set viewMode to protocol and uncollapse it
     if (protocolParam) {
       setViewMode('protocol')
       setSelectedProtocolFilter('all')
+      const pClean = protocolParam.toLowerCase().trim()
+      const targetGroup = Object.keys(protocolGroups).find(g => {
+        const gLow = g.toLowerCase()
+        return gLow.includes(pClean) || pClean.includes(gLow)
+      })
+      if (targetGroup) {
+        setCollapsedGroups({ [targetGroup]: false })
+      } else {
+        setCollapsedGroups({})
+      }
     } else {
       setSelectedProtocolFilter('all')
       setSelectedMainCategories(['all'])
       setSelectedSubCategories([])
       setSelectedIsolatedOutcome(null)
+      setCollapsedGroups({})
     }
 
-    // 3. Uncollapse all groups to ensure target card is mounted
-    setCollapsedGroups({})
+    // 3. Expand status sections
     setIsCompletedSectionExpanded(true)
     setIsSnoozedSectionExpanded(true)
     setIsSkippedSectionExpanded(true)
@@ -2572,9 +2591,35 @@ function TodayPageContent() {
     return gTasks.length > 0 && suppCount === gTasks.length
   }
 
+  // Distinct protocols belonging to the user scheduled for Today (routine + completed)
+  const userProtocolsInToday = useMemo(() => {
+    const map = new Map<string, string>()
+    tasks.forEach(t => {
+      const pName = t.lineages?.[0]?.protocol_name || t.protocol_step?.protocol?.name || (t as any).user_protocol_instance?.protocol?.name
+      const pId = t.lineages?.[0]?.protocol_id || t.protocol_step?.protocol_id || (t as any).user_protocol_instance?.protocol_id
+      if (pName && pName !== 'Standalone & Individual Modalities') {
+        map.set(pName.toLowerCase(), pName)
+      } else if (pId && pId !== 'standalone') {
+        map.set(pId.toLowerCase(), pId)
+      }
+    })
+    return Array.from(map.values())
+  }, [tasks])
+
+  const totalUserProtocolCount = useMemo(() => {
+    const activeGroupCount = sortedProtocolGroups.filter(([name]) => name !== 'Standalone & Individual Modalities').length
+    return Math.max(userProtocolsInToday.length, activeGroupCount)
+  }, [userProtocolsInToday.length, sortedProtocolGroups])
+
   const isGroupCollapsed = (groupName: string, groupTasks: DailyProtocolTask[]) => {
     if (collapsedGroups[groupName] !== undefined) {
       return collapsedGroups[groupName]
+    }
+    // In Today view, if user has more than 3 protocols, collapse by default when viewing by protocol
+    if (viewMode === 'protocol') {
+      if (totalUserProtocolCount > 3) {
+        return true
+      }
     }
     // Default to collapsed if it's a supplement stack with 3+ modalities
     const isSupp = isSupplementGroup(groupName, groupTasks)
@@ -2587,6 +2632,19 @@ function TodayPageContent() {
       ...prev,
       [groupName]: !current
     }))
+  }
+
+  const areAnyProtocolsExpanded = useMemo(() => {
+    return sortedProtocolGroups.some(([name, gTasks]) => !isGroupCollapsed(name, gTasks))
+  }, [sortedProtocolGroups, isGroupCollapsed])
+
+  const handleToggleAllProtocolCollapse = () => {
+    const shouldCollapse = areAnyProtocolsExpanded
+    const nextState: Record<string, boolean> = {}
+    sortedProtocolGroups.forEach(([name]) => {
+      nextState[name] = shouldCollapse
+    })
+    setCollapsedGroups(nextState)
   }
 
   const renderTimelineBlocks = () => {
@@ -3891,6 +3949,17 @@ function TodayPageContent() {
                     <span>Protocols</span>
                   </button>
                 </div>
+
+                {viewMode === 'protocol' && sortedProtocolGroups.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleToggleAllProtocolCollapse}
+                    className="ml-1.5 sm:ml-2 text-[10px] font-bold text-purple-300 hover:text-white px-2 py-1 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 border border-purple-800/40 transition-all cursor-pointer shadow-sm shrink-0"
+                    title={areAnyProtocolsExpanded ? 'Collapse all protocol cards' : 'Expand all protocol cards'}
+                  >
+                    {areAnyProtocolsExpanded ? 'Collapse All' : 'Expand All'}
+                  </button>
+                )}
               </div>
 
               {/* Right: Completion Mode (Track Outcomes vs Fast Mode) */}
