@@ -2681,7 +2681,7 @@ function TodayPageContent() {
               <div 
                 className="absolute w-44 h-44 rounded-full blur-2xl opacity-40 animate-pulse pointer-events-none"
                 style={{
-                  background: 'radial-gradient(circle, #F59E0B 0%, #38BDF8 40%, #A52D6A 80%, transparent 100%)'
+                  background: 'radial-gradient(circle, #F59E0B 0%, #38BDF8 25%, #A52D6A 70%, transparent 100%)'
                 }}
               />
               
@@ -2689,7 +2689,7 @@ function TodayPageContent() {
               <div 
                 className="w-32 h-32 sm:w-36 sm:h-36 rounded-full p-[5px] animate-[spin_4s_linear_infinite] shadow-[0_0_35px_rgba(245,158,11,0.25)]"
                 style={{
-                  background: 'conic-gradient(from 0deg, #D97706 0%, #F59E0B 10%, #FBBF24 20%, #38BDF8 32%, #0284C7 45%, #5B9BD5 55%, #F87E38 68%, #DF5558 78%, #A52D6A 85%, #50236B 90%, #231A45 94%, #0B132B 97%, #D97706 100%)'
+                  background: 'conic-gradient(from 0deg, #D97706 0%, #F59E0B 3%, #FBBF24 6%, #38BDF8 10%, #0284C7 30%, #5B9BD5 52%, #F87E38 66%, #DF5558 76%, #A52D6A 84%, #50236B 90%, #231A45 94%, #0B132B 98%, #D97706 100%)'
                 }}
               >
                 {/* Inner Cutout Disc */}

@@ -797,10 +797,18 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
                       >
                         <button
                           onClick={openFastingModal}
-                          className="w-full text-[7.5px] font-extrabold text-emerald-200 bg-[#042417] border-2 border-emerald-400 px-1 py-1 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.95)] tracking-tight uppercase truncate hover:scale-105 transition-all flex items-center justify-center gap-1 cursor-pointer border-solid"
+                          className="w-full text-emerald-200 bg-[#042417] border-2 border-emerald-400 px-0.5 py-1 sm:px-1 sm:py-1 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.95)] hover:scale-105 transition-all flex items-center justify-center cursor-pointer border-solid"
                           title="Click to inspect Fasted State & Autophagy evidence"
                         >
-                          🟢 FASTED START
+                          {/* Desktop / Tablet single line with icon */}
+                          <span className="hidden sm:inline-flex items-center gap-1 text-[7.5px] font-extrabold tracking-tight uppercase whitespace-nowrap">
+                            🟢 FASTED START
+                          </span>
+                          {/* Mobile compact 2-line stacked badge that never gets clipped */}
+                          <span className="flex sm:hidden flex-col items-center justify-center leading-[1.0] text-[6.5px] font-black tracking-tight uppercase text-center">
+                            <span>FASTED</span>
+                            <span>START</span>
+                          </span>
                         </button>
                       </div>
 
@@ -811,10 +819,18 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
                       >
                         <button
                           onClick={openFastingModal}
-                          className="w-full text-[7.5px] font-extrabold text-indigo-200 bg-[#0f0c33] border-2 border-indigo-400 px-1 py-1 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.95)] tracking-tight uppercase truncate hover:scale-105 transition-all flex items-center justify-center gap-1 cursor-pointer border-solid"
+                          className="w-full text-indigo-200 bg-[#0f0c33] border-2 border-indigo-400 px-0.5 py-1 sm:px-1 sm:py-1 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.95)] hover:scale-105 transition-all flex items-center justify-center cursor-pointer border-solid"
                           title="Click to inspect Fasted State & Autophagy evidence"
                         >
-                          🍽️ FAST ENDS
+                          {/* Desktop / Tablet single line with icon */}
+                          <span className="hidden sm:inline-flex items-center gap-1 text-[7.5px] font-extrabold tracking-tight uppercase whitespace-nowrap">
+                            🍽️ FAST ENDS
+                          </span>
+                          {/* Mobile compact 2-line stacked badge that never gets clipped */}
+                          <span className="flex sm:hidden flex-col items-center justify-center leading-[1.0] text-[6.5px] font-black tracking-tight uppercase text-center">
+                            <span>FAST</span>
+                            <span>ENDS</span>
+                          </span>
                         </button>
                       </div>
                     </div>

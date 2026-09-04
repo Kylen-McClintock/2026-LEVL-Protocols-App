@@ -198,18 +198,18 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Late Afternoon',
     timeRange: '3:30 PM – 5:30 PM',
     circadianPhase: 'Late Afternoon Sky',
-    skyColorHex: '#9D9EC9',
-    startColorHex: '#5B9BD5',
-    endColorHex: '#9D9EC9',
-    gradientCSS: 'linear-gradient(to bottom, #5B9BD5, #9D9EC9)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(91,155,213,0.35), rgba(157,158,201,0.3))',
-    accentGradient: 'from-blue-500/20 via-indigo-400/10 to-transparent',
+    skyColorHex: '#5B9BD5',
+    startColorHex: '#3B82F6',
+    endColorHex: '#5B9BD5',
+    gradientCSS: 'linear-gradient(to bottom, #3B82F6, #5B9BD5)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(59,130,246,0.35), rgba(91,155,213,0.3))',
+    accentGradient: 'from-blue-500/20 via-sky-400/10 to-transparent',
     icon: Sun,
-    badgeBg: 'bg-indigo-500/15',
-    badgeBorder: 'border-indigo-400/40',
-    badgeText: 'text-indigo-200',
-    glowShadow: 'shadow-[0_0_16px_rgba(157,158,201,0.45)]',
-    activeRing: 'ring-2 ring-indigo-300 ring-offset-2 ring-offset-slate-950',
+    badgeBg: 'bg-sky-500/15',
+    badgeBorder: 'border-sky-400/40',
+    badgeText: 'text-sky-200',
+    glowShadow: 'shadow-[0_0_16px_rgba(91,155,213,0.45)]',
+    activeRing: 'ring-2 ring-sky-300 ring-offset-2 ring-offset-slate-950',
     startHour: 15,
     endHour: 18
   },
@@ -219,9 +219,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     timeRange: '5:00 PM – 7:30 PM',
     circadianPhase: 'Post-Meal Window',
     skyColorHex: '#F87E38',
-    startColorHex: '#9D9EC9',
+    startColorHex: '#F87E38',
     endColorHex: '#F87E38',
-    gradientCSS: 'linear-gradient(to bottom, #9D9EC9, #F87E38)',
+    gradientCSS: 'linear-gradient(to bottom, #F87E38, #F87E38)',
     badgeGradientCSS: 'linear-gradient(135deg, rgba(248,126,56,0.35), rgba(240,106,66,0.3))',
     accentGradient: 'from-orange-500/20 via-amber-400/10 to-transparent',
     icon: Sunset,
@@ -517,7 +517,7 @@ export const CHRONOLOGICAL_CIRCADIAN_SLOTS: string[] = [
  */
 export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   if (!slotKeys || slotKeys.length === 0) {
-    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 8%, #FBBF24 16%, #38BDF8 26%, #0284C7 38%, #5B9BD5 50%, #9D9EC9 60%, #F87E38 70%, #DF5558 78%, #A52D6A 86%, #50236B 92%, #231A45 96%, #1B1536 98%, #0B132B 100%)'
+    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 8%, #FBBF24 16%, #38BDF8 26%, #0284C7 38%, #5B9BD5 52%, #F87E38 68%, #DF5558 78%, #A52D6A 86%, #50236B 92%, #231A45 96%, #1B1536 98%, #0B132B 100%)'
   }
   if (slotKeys.length === 1) {
     return getCircadianConfig(slotKeys[0]).gradientCSS
