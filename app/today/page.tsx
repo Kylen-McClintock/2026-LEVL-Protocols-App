@@ -1794,8 +1794,11 @@ function TodayPageContent() {
         colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
       }
 
-      // Gap-bridging for skipped intermediate time blocks
-      if (nextCfg) {
+      // Atmospheric golden sunset bridge between daytime blue and sunset orange/coral
+      if (nextPrimary && isBlueFamily(primary) && (isOrangeFamily(nextPrimary) || nextGroupName === 'pre_meal' || nextGroupName === 'post_meal' || nextGroupName === 'evening')) {
+        colorStops.push({ color: '#F59E0B', pct: Number(bottomPct.toFixed(1)) })
+      } else if (nextCfg) {
+        // Gap-bridging for skipped intermediate time blocks
         const currIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
         const nextIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(nextCfg.key)
 
@@ -1811,8 +1814,8 @@ function TodayPageContent() {
 
           if (distinctSkippedColors.length > 0) {
             const seamCenter = bottomPct
-            const windowStart = Math.max(topPct + 1, seamCenter - 3.5)
-            const windowEnd = Math.min(100, seamCenter + 3.5)
+            const windowStart = Math.max(topPct + 1, seamCenter - 3.0)
+            const windowEnd = seamCenter // Never bleed into next block
             const count = distinctSkippedColors.length
             distinctSkippedColors.forEach((color, sIdx) => {
               const pct = windowStart + ((sIdx + 1) / (count + 1)) * (windowEnd - windowStart)
@@ -2689,7 +2692,7 @@ function TodayPageContent() {
               <div 
                 className="w-32 h-32 sm:w-36 sm:h-36 rounded-full p-[5px] animate-[spin_4s_linear_infinite] shadow-[0_0_35px_rgba(245,158,11,0.25)]"
                 style={{
-                  background: 'conic-gradient(from 0deg, #D97706 0%, #F59E0B 3%, #FBBF24 6%, #38BDF8 10%, #0284C7 30%, #5B9BD5 52%, #F87E38 66%, #DF5558 76%, #A52D6A 84%, #50236B 90%, #231A45 94%, #0B132B 98%, #D97706 100%)'
+                  background: 'conic-gradient(from 0deg, #D97706 0%, #F59E0B 3%, #FBBF24 6%, #38BDF8 10%, #0284C7 30%, #2563EB 48%, #F59E0B 58%, #F87E38 66%, #DF5558 76%, #A52D6A 84%, #50236B 90%, #231A45 94%, #0B132B 98%, #D97706 100%)'
                 }}
               >
                 {/* Inner Cutout Disc */}
@@ -3411,7 +3414,7 @@ function TodayPageContent() {
 
                     {/* Revealing Circadian Sky Gradient Spine (Masks true vertical gradient matching each block as user scrolls) */}
                     <div 
-                      className="absolute -left-1.5 sm:-left-2 top-2 w-[3px] rounded-full overflow-hidden transition-[height] duration-75 ease-out pointer-events-none shadow-[0_0_12px_rgba(168,85,247,0.55)]"
+                      className="absolute -left-1.5 sm:-left-2 top-2 w-[3px] rounded-full overflow-hidden transition-[height] duration-75 ease-out pointer-events-none"
                       style={{ height: `${spineHeight}px` }}
                     >
                       {/* Inner Full-Height Gradient Line (Pinned to timeline height, masked by outer overflow-hidden) */}

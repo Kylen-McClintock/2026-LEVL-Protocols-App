@@ -178,18 +178,18 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Afternoon / Workout',
     timeRange: '2:00 PM – 5:30 PM',
     circadianPhase: 'Deep Daylight Sky',
-    skyColorHex: '#5B9BD5',
-    startColorHex: '#3B82F6',
-    endColorHex: '#5B9BD5',
-    gradientCSS: 'linear-gradient(to bottom, #3B82F6, #5B9BD5)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(91,155,213,0.25))',
+    skyColorHex: '#2563EB',
+    startColorHex: '#0284C7',
+    endColorHex: '#2563EB',
+    gradientCSS: 'linear-gradient(to bottom, #0284C7, #2563EB)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.3), rgba(37,99,235,0.25))',
     accentGradient: 'from-blue-600/20 via-sky-500/10 to-transparent',
     icon: Sun,
     badgeBg: 'bg-blue-500/15',
     badgeBorder: 'border-blue-400/40',
     badgeText: 'text-sky-300',
-    glowShadow: 'shadow-[0_0_16px_rgba(91,155,213,0.45)]',
-    activeRing: 'ring-2 ring-sky-400 ring-offset-2 ring-offset-slate-950',
+    glowShadow: 'shadow-[0_0_16px_rgba(37,99,235,0.45)]',
+    activeRing: 'ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950',
     startHour: 14,
     endHour: 17
   },
@@ -198,18 +198,18 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Late Afternoon',
     timeRange: '3:30 PM – 5:30 PM',
     circadianPhase: 'Late Afternoon Sky',
-    skyColorHex: '#5B9BD5',
-    startColorHex: '#3B82F6',
-    endColorHex: '#5B9BD5',
-    gradientCSS: 'linear-gradient(to bottom, #3B82F6, #5B9BD5)',
-    badgeGradientCSS: 'linear-gradient(135deg, rgba(59,130,246,0.35), rgba(91,155,213,0.3))',
+    skyColorHex: '#1D4ED8',
+    startColorHex: '#2563EB',
+    endColorHex: '#1D4ED8',
+    gradientCSS: 'linear-gradient(to bottom, #2563EB, #1D4ED8)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(37,99,235,0.35), rgba(29,78,216,0.3))',
     accentGradient: 'from-blue-500/20 via-sky-400/10 to-transparent',
     icon: Sun,
-    badgeBg: 'bg-sky-500/15',
-    badgeBorder: 'border-sky-400/40',
-    badgeText: 'text-sky-200',
-    glowShadow: 'shadow-[0_0_16px_rgba(91,155,213,0.45)]',
-    activeRing: 'ring-2 ring-sky-300 ring-offset-2 ring-offset-slate-950',
+    badgeBg: 'bg-blue-600/15',
+    badgeBorder: 'border-blue-500/40',
+    badgeText: 'text-blue-200',
+    glowShadow: 'shadow-[0_0_16px_rgba(29,78,216,0.45)]',
+    activeRing: 'ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-950',
     startHour: 15,
     endHour: 18
   },
@@ -219,9 +219,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     timeRange: '4:30 PM – 6:30 PM',
     circadianPhase: 'Pre-Meal Window • Glycemic Buffer',
     skyColorHex: '#F87E38',
-    startColorHex: '#5B9BD5',
+    startColorHex: '#F59E0B',
     endColorHex: '#F87E38',
-    gradientCSS: 'linear-gradient(to bottom, #5B9BD5, #F87E38)',
+    gradientCSS: 'linear-gradient(to bottom, #F59E0B, #F87E38)',
     badgeGradientCSS: 'linear-gradient(135deg, rgba(248,126,56,0.35), rgba(240,106,66,0.3))',
     accentGradient: 'from-orange-500/20 via-amber-400/10 to-transparent',
     icon: Sunset,
@@ -541,7 +541,7 @@ export const CHRONOLOGICAL_CIRCADIAN_SLOTS: string[] = [
  */
 export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   if (!slotKeys || slotKeys.length === 0) {
-    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 8%, #FBBF24 16%, #38BDF8 26%, #0284C7 38%, #5B9BD5 52%, #F87E38 68%, #DF5558 78%, #A52D6A 86%, #50236B 92%, #231A45 96%, #1B1536 98%, #0B132B 100%)'
+    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 8%, #FBBF24 16%, #38BDF8 26%, #0284C7 38%, #3B82F6 50%, #F59E0B 60%, #F87E38 68%, #DF5558 78%, #A52D6A 86%, #50236B 92%, #231A45 96%, #1B1536 98%, #0B132B 100%)'
   }
   if (slotKeys.length === 1) {
     return getCircadianConfig(slotKeys[0]).gradientCSS
@@ -610,7 +610,13 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
       colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.0).toFixed(1))) })
     }
 
-    if (nextCfg) {
+    const isBlueFamily = (hex: string) => ['#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#2563eb', '#3b82f6', '#5b9bd5'].includes(hex.toLowerCase())
+    const isSunsetFamily = (hex: string) => ['#f87e38', '#df5558', '#f97316', '#ea580c'].includes(hex.toLowerCase())
+
+    if (nextCfg && isBlueFamily(primary) && (isSunsetFamily(nextCfg.skyColorHex) || nextCfg.key === 'pre_meal' || nextCfg.key === 'post_meal' || nextCfg.key === 'evening')) {
+      // Natural golden hour bridge from daytime blue into sunset orange
+      colorStops.push({ color: '#F59E0B', pct: Number(endPct.toFixed(1)) })
+    } else if (nextCfg) {
       const currIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
       const nextIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(nextCfg.key)
 
@@ -625,7 +631,7 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
         })
 
         if (distinctSkippedColors.length > 0) {
-          const windowStart = Math.max(startPct + 1, endPct - 5)
+          const windowStart = Math.max(startPct + 1, endPct - 3)
           const windowEnd = endPct
           const count = distinctSkippedColors.length
           distinctSkippedColors.forEach((color, sIdx) => {
