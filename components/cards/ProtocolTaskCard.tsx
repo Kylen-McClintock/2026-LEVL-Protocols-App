@@ -23,6 +23,7 @@ import StrengthExecutionLog from '../execution/StrengthExecutionLog'
 import FastingExecutionLog from '../execution/FastingExecutionLog'
 import ThermalExecutionLog from '../execution/ThermalExecutionLog'
 import BreathworkExecutionLog from '../execution/BreathworkExecutionLog'
+import NSDRExecutionLog from '../execution/NSDRExecutionLog'
 import { triggerHaptic } from '@/lib/utils/haptics'
 import CardioExecutionLog from '../execution/CardioExecutionLog'
 import SupplementExecutionLog from '../execution/SupplementExecutionLog'
@@ -791,6 +792,7 @@ export default function ProtocolTaskCard({
 
   const isThermal = archetype === 'thermal'
   const isBreathwork = archetype === 'breathwork'
+  const isNSDR = archetype === 'nsdr'
   const isCardio = archetype === 'cardio'
   const isStrength = archetype === 'strength'
   const isFasting = archetype === 'fasting'
@@ -826,6 +828,7 @@ export default function ProtocolTaskCard({
       isThermal ||
       isPeptide ||
       isBreathwork ||
+      isNSDR ||
       isFasting ||
       isNutritionMacro ||
       isPhlebotomy
@@ -850,6 +853,7 @@ export default function ProtocolTaskCard({
     isThermal,
     isPeptide,
     isBreathwork,
+    isNSDR,
     isFasting,
     isNutritionMacro,
     isPhlebotomy
@@ -1391,6 +1395,13 @@ export default function ProtocolTaskCard({
       // Fasting
       if (d.duration && d.fast_type) return `${d.duration}h Fast (${d.fast_type})`
       if (d.duration && (isFasting || (modality.modality_type || '').includes('fast'))) return `${d.duration} Hours Fasted`
+
+      // NSDR / Yoga Nidra
+      if (d.brainwave_state_reached || d.preset_type || (d.duration && (isNSDR || (modality.name || '').toLowerCase().includes('nsdr') || (modality.name || '').toLowerCase().includes('nidra')))) {
+        const stateStr = d.brainwave_state_reached === 'theta' ? 'Theta State' : d.brainwave_state_reached === 'alpha' ? 'Alpha State' : 'Deep Rest'
+        const boostStr = d.post_restoration_score && d.pre_fatigue_score && d.post_restoration_score > d.pre_fatigue_score ? ` • +${d.post_restoration_score - d.pre_fatigue_score} Boost` : ''
+        return `${d.duration || 20}m NSDR (${stateStr}${boostStr})`
+      }
 
       // Breathwork
       if (d.duration && d.protocol_type) return `${d.duration}m • ${d.protocol_type}`
@@ -2193,6 +2204,7 @@ export default function ProtocolTaskCard({
                   {/* Render the specialized UI */}
                   {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isNSDR && <NSDRExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isCardio && (
                     <CardioExecutionLog 
                       value={executionDetails} 
@@ -2414,6 +2426,7 @@ export default function ProtocolTaskCard({
                   {/* Render the specialized UI */}
                   {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isNSDR && <NSDRExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isCardio && (
                     <CardioExecutionLog 
                       value={executionDetails} 
@@ -2648,6 +2661,7 @@ export default function ProtocolTaskCard({
 
                   {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isNSDR && <NSDRExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isCardio && (
                     <CardioExecutionLog 
                       value={executionDetails} 

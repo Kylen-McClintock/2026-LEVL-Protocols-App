@@ -160,7 +160,7 @@ export default function AdaptiveSleepTriageCard({
 
       // 3. 20-min NSDR at 1:30 PM
       if (selectedIds.nsdr) {
-        await addModalityOrProtocolToToday(localUserId, dateStr, '4-7-8 Relaxing Breathwork')
+        await addModalityOrProtocolToToday(localUserId, dateStr, 'Non-Sleep Deep Rest (NSDR / Yoga Nidra)')
       }
 
       // 4. Cold Plunge Downgrade

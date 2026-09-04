@@ -185,6 +185,46 @@ export default function CompletedExecutionSummary({ modalityType, loggingType, d
     )
   }
 
+  // --- NSDR & YOGA NIDRA SUMMARY ---
+  if (loggingType === 'nsdr' || details.brainwave_state_reached || details.preset_type || (details.duration && (details.eye_mask_used !== undefined || details.accidental_sleep !== undefined))) {
+    const delta = typeof details.pre_fatigue_score === 'number' && typeof details.post_restoration_score === 'number'
+      ? details.post_restoration_score - details.pre_fatigue_score
+      : null
+
+    return (
+      <div className="w-full mt-3 p-3 bg-indigo-950/20 rounded-lg border border-indigo-500/20 relative group">
+        <div className="text-[10px] text-indigo-300 uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
+          <span>NSDR / Yoga Nidra Execution Summary</span>
+          {onEdit && (
+            <button onClick={onEdit} className="text-gray-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer">
+              <Edit2 size={10} /> Edit
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-300">
+          {details.duration && <span className="font-bold text-indigo-300">{details.duration} mins</span>}
+          {details.brainwave_state_reached && (
+            <span className="text-purple-300 font-semibold">
+              State: {details.brainwave_state_reached === 'theta' ? 'Theta Twilight (4–7 Hz)' : details.brainwave_state_reached === 'alpha' ? 'Alpha Somatic (8–12 Hz)' : 'Beta Conscious'}
+            </span>
+          )}
+          {details.accidental_sleep !== undefined && (
+            <span className={details.accidental_sleep ? 'text-amber-300' : 'text-emerald-300'}>
+              {details.accidental_sleep ? 'Fell Asleep' : 'Conscious Twilight'}
+            </span>
+          )}
+          {details.post_restoration_score && (
+            <span className="text-emerald-300">
+              Restoration: {details.post_restoration_score}/10 {delta !== null && delta > 0 ? `(+${delta} Alertness Boost)` : ''}
+            </span>
+          )}
+          {details.eye_mask_used && <span className="text-slate-400">Eye Mask ✓</span>}
+          {details.feet_elevated && <span className="text-slate-400">Feet Elevated ✓</span>}
+        </div>
+      </div>
+    )
+  }
+
   // --- BREATHWORK & MEDITATION SUMMARY ---
   if (loggingType === 'breathwork' || loggingType === 'mindfulness' || details.protocol_type || details.max_retention_sec || details.subjective_depth || details.include_breathwork !== undefined) {
     return (

@@ -5,6 +5,7 @@ export type ModalityArchetype =
   | 'cardio'
   | 'thermal'
   | 'breathwork'
+  | 'nsdr'
   | 'fasting'
   | 'nutrition_macro'
   | 'blue_light_dimming'
@@ -122,7 +123,21 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     }
   }
 
-  // 3. BREATHWORK & MINDFULNESS
+  // 3. NSDR & YOGA NIDRA (Non-Sleep Deep Rest, prioritized before generic breathwork)
+  if (
+    logType === 'nsdr' ||
+    name.includes('nsdr') ||
+    name.includes('yoga nidra') ||
+    name.includes('non-sleep deep rest')
+  ) {
+    return {
+      archetype: 'nsdr',
+      isSpecialized: true,
+      specializedTraits
+    }
+  }
+
+  // 4. BREATHWORK & MINDFULNESS
   if (
     logType === 'breathwork' || 
     logType === 'mindfulness' || 
@@ -134,9 +149,7 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     name.includes('physiological sigh') || 
     name.includes('box breath') || 
     name.includes('wim hof') || 
-    name.includes('pranayama') || 
-    name.includes('nsdr') || 
-    name.includes('yoga nidra')
+    name.includes('pranayama')
   ) {
     return {
       archetype: 'breathwork',
