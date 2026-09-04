@@ -277,15 +277,13 @@ export const CategoryFiltersBar: React.FC<{
     }
   }
 
-  // Full-opacity dropdown state for Category, Outcomes, and Protocols
+  // Full-opacity dropdown state for Category and Outcomes
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
   const [isOutcomeDropdownOpen, setIsOutcomeDropdownOpen] = useState(false)
-  const [isProtocolDropdownOpen, setIsProtocolDropdownOpen] = useState(false)
   const [outcomeSearchQuery, setOutcomeSearchQuery] = useState('')
 
   const categoryDropdownRef = useRef<HTMLDivElement>(null)
   const outcomeDropdownRef = useRef<HTMLDivElement>(null)
-  const protocolDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
@@ -297,9 +295,6 @@ export const CategoryFiltersBar: React.FC<{
       if (outcomeDropdownRef.current && !outcomeDropdownRef.current.contains(target)) {
         setIsOutcomeDropdownOpen(false)
       }
-      if (protocolDropdownRef.current && !protocolDropdownRef.current.contains(target)) {
-        setIsProtocolDropdownOpen(false)
-      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     document.addEventListener('touchstart', handleClickOutside, { passive: true })
@@ -308,10 +303,6 @@ export const CategoryFiltersBar: React.FC<{
       document.removeEventListener('touchstart', handleClickOutside)
     }
   }, [])
-
-  const currentProtocolLabel = selectedProtocolFilter === 'all' 
-    ? 'All Active Protocols' 
-    : availableProtocols.find(p => p.id === selectedProtocolFilter)?.name || 'Filtered Protocol'
 
   // Master combined outcomes catalog with unique emojis for all dimensions
   const allKnownOutcomes = React.useMemo(() => {
@@ -546,7 +537,6 @@ export const CategoryFiltersBar: React.FC<{
               onClick={() => {
                 handleLensChange('category')
                 setIsOutcomeDropdownOpen(false)
-                setIsProtocolDropdownOpen(false)
               }}
               className={`w-full py-1.5 rounded-lg font-bold text-xs tracking-tight transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 currentLens === 'category'
@@ -563,7 +553,6 @@ export const CategoryFiltersBar: React.FC<{
               onClick={() => {
                 handleLensChange('outcomes')
                 setIsCategoryDropdownOpen(false)
-                setIsProtocolDropdownOpen(false)
               }}
               className={`w-full py-1.5 rounded-lg font-bold text-xs tracking-tight transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 currentLens === 'outcomes'
@@ -580,129 +569,46 @@ export const CategoryFiltersBar: React.FC<{
               )}
             </button>
           </div>
-        </div>
 
-        {/* Right Controls: Protocol filter & Multi-day orientation toggle & Guide */}
-        <div className="flex items-center gap-2 shrink-0 ml-auto">
-          {/* Protocol Filter Dropdown */}
-          {availableProtocols && availableProtocols.length > 0 && onProtocolFilterChange && (
-            <div className="relative z-20" ref={protocolDropdownRef}>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProtocolDropdownOpen(!isProtocolDropdownOpen)
-                  setIsCategoryDropdownOpen(false)
-                  setIsOutcomeDropdownOpen(false)
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-950/40 border border-purple-800/40 hover:border-purple-700/60 text-purple-200 font-bold text-xs transition-all cursor-pointer shadow-sm max-w-[150px] sm:max-w-[190px] truncate"
-              >
-                <Filter className="w-3 h-3 text-purple-400 shrink-0" />
-                <span className="truncate">{currentProtocolLabel}</span>
-                <ChevronDown className="w-3 h-3 text-purple-400 ml-0.5 shrink-0" />
-              </button>
-
-              {isProtocolDropdownOpen && (
-                <div 
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-purple-500/40 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-2 z-[999] backdrop-blur-2xl animate-in fade-in slide-in-from-top-2"
-                >
-                  <div className="text-[10px] uppercase font-bold text-purple-400/90 px-3 py-1.5 tracking-wider">
-                    Filter by Protocol
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onProtocolFilterChange('all')
-                      setIsProtocolDropdownOpen(false)
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
-                      selectedProtocolFilter === 'all'
-                        ? 'bg-purple-950/80 text-purple-300 border border-purple-800/60 font-semibold'
-                        : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
-                    }`}
-                  >
-                    <span>All Active Protocols</span>
-                    {selectedProtocolFilter === 'all' && <Check className="w-3.5 h-3.5 text-purple-400" />}
-                  </button>
-
-                  {availableProtocols.map(proto => (
-                    <button
-                      key={proto.id}
-                      type="button"
-                      onClick={() => {
-                        onProtocolFilterChange(proto.id)
-                        setIsProtocolDropdownOpen(false)
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-colors truncate cursor-pointer ${
-                        selectedProtocolFilter === proto.id
-                          ? 'bg-purple-950/80 text-purple-300 border border-purple-800/60 font-semibold'
-                          : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
-                      }`}
-                    >
-                      <span className="truncate">{proto.name}</span>
-                      {selectedProtocolFilter === proto.id && <Check className="w-3.5 h-3.5 text-purple-400 shrink-0 ml-2" />}
-                    </button>
-                  ))}
-
-                  {onEnrollClick && (
-                    <div className="pt-1.5 mt-1.5 border-t border-white/10">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsProtocolDropdownOpen(false)
-                          onEnrollClick()
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-emerald-400 hover:bg-emerald-950/40 transition-colors cursor-pointer"
-                      >
-                        <span>+ Enroll in New Protocol</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Multi-day orientation toggle (columns vs stack) */}
-          {viewMode && viewMode !== 'today' && onToggleLayoutOrientation && layoutOrientation && (
-            <div className="hidden sm:flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 shrink-0">
-              <button
-                onClick={() => onToggleLayoutOrientation('columns')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                  layoutOrientation === 'columns'
-                    ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Side-by-Side Columns View"
-              >
-                <Columns className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Side-by-Side</span>
-              </button>
-              <button
-                onClick={() => onToggleLayoutOrientation('stack')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                  layoutOrientation === 'stack'
-                    ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Vertical Stacked View"
-              >
-                <AlignJustify className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Stack</span>
-              </button>
-            </div>
-          )}
-
-          {/* Guide Icon */}
+          {/* Guide Icon with buffer space next to toggle */}
           <Link
             href="/guide#today"
-            className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-purple-500/50 text-slate-400 hover:text-purple-300 transition-colors cursor-pointer shadow-sm shrink-0"
+            className="ml-3 sm:ml-4 p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-purple-500/50 text-slate-400 hover:text-purple-300 transition-colors cursor-pointer shadow-sm shrink-0 flex items-center justify-center"
             title="View Guide"
           >
             <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
           </Link>
         </div>
+
+        {/* Right Controls: Multi-day orientation toggle (columns vs stack) */}
+        {viewMode && viewMode !== 'today' && onToggleLayoutOrientation && layoutOrientation && (
+          <div className="hidden sm:flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 shrink-0 ml-auto">
+            <button
+              onClick={() => onToggleLayoutOrientation('columns')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                layoutOrientation === 'columns'
+                  ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Side-by-Side Columns View"
+            >
+              <Columns className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Side-by-Side</span>
+            </button>
+            <button
+              onClick={() => onToggleLayoutOrientation('stack')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                layoutOrientation === 'stack'
+                  ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Vertical Stacked View"
+            >
+              <AlignJustify className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Stack</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* LENS 1: CATEGORY FILTERING (DIRECTLY underneath toggle) */}
