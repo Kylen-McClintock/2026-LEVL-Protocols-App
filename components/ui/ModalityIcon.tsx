@@ -403,18 +403,30 @@ export default function ModalityIcon({
     const checkIgnition = () => {
       if (!containerRef.current) return
       const rect = containerRef.current.getBoundingClientRect()
+      // Guard against zero-size or unrendered/collapsed elements
+      if (rect.width === 0 && rect.height === 0) return
       // Lights up only after scrolled past (trigger horizon at 45% of viewport, matching circadian time-block engine)
       const horizon = window.innerHeight * 0.45
       const isPast = (rect.top + rect.height / 2) <= horizon + 12
       setInternalIgnited(isPast)
     }
 
+    let rafId: number | null = null
+    const handleScrollOrResize = () => {
+      if (rafId !== null) return
+      rafId = requestAnimationFrame(() => {
+        rafId = null
+        checkIgnition()
+      })
+    }
+
     checkIgnition()
-    window.addEventListener('scroll', checkIgnition, { passive: true })
-    window.addEventListener('resize', checkIgnition, { passive: true })
+    window.addEventListener('scroll', handleScrollOrResize, { passive: true })
+    window.addEventListener('resize', handleScrollOrResize, { passive: true })
     return () => {
-      window.removeEventListener('scroll', checkIgnition)
-      window.removeEventListener('resize', checkIgnition)
+      window.removeEventListener('scroll', handleScrollOrResize)
+      window.removeEventListener('resize', handleScrollOrResize)
+      if (rafId !== null) cancelAnimationFrame(rafId)
     }
   }, [scrollIgnite])
 

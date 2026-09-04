@@ -439,6 +439,8 @@ function TodayPageContent() {
       Object.entries(beaconRefs.current).forEach(([key, el]) => {
         if (!el) return
         const rect = el.getBoundingClientRect()
+        // Guard against zero-size or unrendered/collapsed beacons
+        if (rect.width === 0 && rect.height === 0) return
         const beaconCenterY = rect.top + rect.height / 2
         if (beaconCenterY <= triggerHorizon + 12) {
           newlyIgnited.add(key)
@@ -2265,7 +2267,6 @@ function TodayPageContent() {
                         <ProtocolTaskCard 
                           key={task.id} 
                           task={task} 
-                          isIgnited={true}
                           onStatusChange={handleStatusChange} 
                           onTrackOutcomes={openTracker}
                           initialBenchItem={benchItem}
@@ -2524,7 +2525,6 @@ function TodayPageContent() {
                     <ProtocolTaskCard 
                       key={task.id} 
                       task={task} 
-                      isIgnited={isIgnited}
                       onStatusChange={handleStatusChange} 
                       onTrackOutcomes={openTracker}
                       initialBenchItem={benchItem}
