@@ -623,3 +623,57 @@ export function triggerFileDownload(content: string, filename: string, mimeType:
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
+
+/**
+ * Test whether the browser/device supports native file sharing (Web Share API with file payloads)
+ * Supported on iOS Safari, iPadOS, Android Chrome, and macOS Safari.
+ */
+export function canShareFiles(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false
+  if (!navigator.share || !navigator.canShare) return false
+  try {
+    const testFile = new File(['test'], 'test.txt', { type: 'text/plain' })
+    return navigator.canShare({ files: [testFile] })
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Trigger native OS "Open In..." / Share Sheet for the given file
+ */
+export async function shareFileWithNativeApp(
+  content: string, 
+  filename: string, 
+  mimeType: string, 
+  title?: string
+): Promise<boolean> {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined' || !navigator.share) return false
+  try {
+    const file = new File([content], filename, { type: `${mimeType};charset=utf-8` })
+    if (navigator.canShare && !navigator.canShare({ files: [file] })) {
+      return false
+    }
+    await navigator.share({
+      files: [file],
+      title: title || filename,
+      text: `Exported from LEVL Protocols: ${filename}`
+    })
+    return true
+  } catch (err: any) {
+    if (err?.name === 'AbortError') return false
+    console.warn('Native file share failed:', err)
+    return false
+  }
+}
+
+/**
+ * Open file content in a new browser tab
+ */
+export function openFileInNewTab(content: string, mimeType: string): void {
+  if (typeof window === 'undefined') return
+  const blob = new Blob([content], { type: `${mimeType};charset=utf-8` })
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank')
+  setTimeout(() => URL.revokeObjectURL(url), 60000)
+}
