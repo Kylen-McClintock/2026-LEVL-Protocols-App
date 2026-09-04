@@ -31,7 +31,7 @@ import {
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
-  Columns, Rows
+  Columns, Rows, ChevronsUpDown
 } from 'lucide-react'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
@@ -2636,8 +2636,21 @@ function TodayPageContent() {
 
   const handleToggleAllProtocolCollapse = () => {
     const shouldCollapse = areAnyProtocolsExpanded
-    const nextState: Record<string, boolean> = {}
+    const nextState: Record<string, boolean> = { ...collapsedGroups }
     sortedProtocolGroups.forEach(([name]) => {
+      nextState[name] = shouldCollapse
+    })
+    setCollapsedGroups(nextState)
+  }
+
+  const areAnyTimeBlocksExpanded = useMemo(() => {
+    return activeGroups.some(([name, gTasks]) => !isGroupCollapsed(name, gTasks))
+  }, [activeGroups, isGroupCollapsed])
+
+  const handleToggleAllTimeBlocksCollapse = () => {
+    const shouldCollapse = areAnyTimeBlocksExpanded
+    const nextState: Record<string, boolean> = { ...collapsedGroups }
+    activeGroups.forEach(([name]) => {
       nextState[name] = shouldCollapse
     })
     setCollapsedGroups(nextState)
@@ -3993,81 +4006,128 @@ function TodayPageContent() {
             )}
 
             {/* Timeline Layout Mode & Completion Mode Toggle Bar (Single Non-Scrolling Row) */}
-            <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 p-1 sm:p-2 rounded-2xl mb-3 backdrop-blur-md shadow-sm gap-1 sm:gap-2">
+            <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 p-1 sm:p-1.5 md:p-2.5 rounded-2xl mb-2 sm:mb-3 backdrop-blur-md shadow-sm gap-1 sm:gap-2 md:gap-4">
               {/* Left: Timeline Layout Mode (Time Blocks vs Protocols) */}
               <div className="flex items-center">
-                <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-white/10 gap-0.5 text-[10px] sm:text-xs">
+                <div className="flex items-center bg-black/60 p-0.5 md:p-1 rounded-xl border border-white/10 gap-0.5 text-[10px] sm:text-xs md:text-sm">
                   <button
                     type="button"
                     onClick={() => setViewMode('chronological')}
-                    className={`px-1.5 sm:px-2.5 py-1 rounded-lg font-bold text-[10px] sm:text-xs tracking-tight transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                    className={`px-1.5 sm:px-2.5 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl font-bold text-[10px] sm:text-xs md:text-sm tracking-tight transition-all flex items-center gap-1 md:gap-2 cursor-pointer shrink-0 ${
                       viewMode === 'chronological'
                         ? 'bg-purple-600 text-white shadow-sm border border-purple-400/30 font-extrabold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <Clock size={11} className="shrink-0" />
+                    <Clock size={12} className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 shrink-0" />
                     <span>Time<span className="hidden min-[380px]:inline"> Blocks</span></span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setViewMode('protocol')}
-                    className={`px-1.5 sm:px-2.5 py-1 rounded-lg font-bold text-[10px] sm:text-xs tracking-tight transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                    className={`px-1.5 sm:px-2.5 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl font-bold text-[10px] sm:text-xs md:text-sm tracking-tight transition-all flex items-center gap-1 md:gap-2 cursor-pointer shrink-0 ${
                       viewMode === 'protocol'
                         ? 'bg-purple-600 text-white shadow-sm border border-purple-400/30 font-extrabold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    <ListOrdered size={11} className="shrink-0" />
+                    <ListOrdered size={12} className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 shrink-0" />
                     <span>Protocols</span>
                   </button>
                 </div>
 
+                {/* Desktop-Only Expand/Collapse for Protocol View */}
                 {viewMode === 'protocol' && sortedProtocolGroups.length > 1 && (
                   <button
                     type="button"
                     onClick={handleToggleAllProtocolCollapse}
-                    className="ml-1.5 sm:ml-2 text-[10px] font-bold text-purple-300 hover:text-white px-2 py-1 rounded-lg bg-purple-950/40 hover:bg-purple-900/50 border border-purple-800/40 transition-all cursor-pointer shadow-sm shrink-0"
+                    className="hidden sm:inline-flex ml-1.5 sm:ml-2 md:ml-3 text-xs md:text-sm font-bold md:font-extrabold text-purple-300 hover:text-white px-2.5 md:px-3.5 py-1 md:py-2 rounded-lg md:rounded-xl bg-purple-950/50 hover:bg-purple-900/60 border border-purple-700/50 transition-all cursor-pointer shadow-sm shrink-0 items-center gap-1.5 active:scale-95"
                     title={areAnyProtocolsExpanded ? 'Collapse all protocol cards' : 'Expand all protocol cards'}
                   >
-                    {areAnyProtocolsExpanded ? 'Collapse All' : 'Expand All'}
+                    <ChevronsUpDown size={14} className="text-purple-400" />
+                    <span>{areAnyProtocolsExpanded ? 'Collapse All' : 'Expand All'}</span>
+                  </button>
+                )}
+
+                {/* Desktop-Only Expand/Collapse for Time Block View */}
+                {viewMode === 'chronological' && activeGroups.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleToggleAllTimeBlocksCollapse}
+                    className="hidden sm:inline-flex ml-1.5 sm:ml-2 md:ml-3 text-xs md:text-sm font-bold md:font-extrabold text-purple-300 hover:text-white px-2.5 md:px-3.5 py-1 md:py-2 rounded-lg md:rounded-xl bg-purple-950/50 hover:bg-purple-900/60 border border-purple-700/50 transition-all cursor-pointer shadow-sm shrink-0 items-center gap-1.5 active:scale-95"
+                    title={areAnyTimeBlocksExpanded ? 'Collapse all time blocks' : 'Expand all time blocks'}
+                  >
+                    <ChevronsUpDown size={14} className="text-purple-400" />
+                    <span>{areAnyTimeBlocksExpanded ? 'Collapse All' : 'Expand All'}</span>
                   </button>
                 )}
               </div>
 
               {/* Right: Completion Mode (Track Outcomes vs Fast Mode) */}
               <div className="flex items-center">
-                <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-white/10 gap-0.5 text-[10px] sm:text-xs shadow-inner">
+                <div className="flex items-center bg-black/60 p-0.5 md:p-1 rounded-xl border border-white/10 gap-0.5 text-[10px] sm:text-xs md:text-sm shadow-inner">
                   <button
                     type="button"
                     onClick={() => handleCompletionModeChange('outcome')}
-                    className={`px-1.5 sm:px-2.5 py-1 rounded-lg font-bold text-[10px] sm:text-xs tracking-tight transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                    className={`px-1.5 sm:px-2.5 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl font-bold text-[10px] sm:text-xs md:text-sm tracking-tight transition-all flex items-center gap-1 md:gap-2 cursor-pointer shrink-0 ${
                       completionMode === 'outcome'
                         ? 'bg-purple-600 text-white shadow-sm border border-purple-400/30 font-extrabold'
                         : 'text-slate-400 hover:text-white'
                     }`}
                     title="Track Outcomes: deep metric tracking with sliders"
                   >
-                    <Activity size={11} className={`shrink-0 ${completionMode === 'outcome' ? 'text-purple-200' : 'text-slate-400'}`} />
+                    <Activity size={12} className={`w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 shrink-0 ${completionMode === 'outcome' ? 'text-purple-200' : 'text-slate-400'}`} />
                     <span><span className="hidden min-[400px]:inline">Track </span>Outcomes</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleCompletionModeChange('fast')}
-                    className={`px-1.5 sm:px-2.5 py-1 rounded-lg font-bold text-[10px] sm:text-xs tracking-tight transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                    className={`px-1.5 sm:px-2.5 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl font-bold text-[10px] sm:text-xs md:text-sm tracking-tight transition-all flex items-center gap-1 md:gap-2 cursor-pointer shrink-0 ${
                       completionMode === 'fast'
                         ? 'bg-amber-500 text-slate-950 shadow-sm font-black'
                         : 'text-slate-400 hover:text-white'
                     }`}
                     title="Fast Mode: 1-click instant completion"
                   >
-                    <Zap size={11} className={`shrink-0 ${completionMode === 'fast' ? 'text-slate-950 fill-slate-950' : 'text-amber-400'}`} />
+                    <Zap size={12} className={`w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 shrink-0 ${completionMode === 'fast' ? 'text-slate-950 fill-slate-950' : 'text-amber-400'}`} />
                     <span>Fast<span className="hidden min-[380px]:inline"> Mode</span></span>
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Mobile-Only Secondary Sub-Header: Context Count & Clean Expand/Collapse Toggle */}
+            <div className="sm:hidden flex items-center justify-between px-1.5 py-1 mb-2.5 text-xs text-slate-400">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                <span className="font-extrabold uppercase tracking-wider text-[11px] text-slate-300">
+                  {viewMode === 'protocol' ? `${sortedProtocolGroups.length} Protocols` : `${activeGroups.length} Circadian Windows`}
+                </span>
+              </div>
+
+              {viewMode === 'protocol' && sortedProtocolGroups.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleToggleAllProtocolCollapse}
+                  className="text-[11px] font-bold text-purple-300 hover:text-white px-2.5 py-1 rounded-lg bg-purple-950/40 hover:bg-purple-900/60 border border-purple-800/40 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                >
+                  <ChevronsUpDown size={12} className="text-purple-400" />
+                  <span>{areAnyProtocolsExpanded ? 'Collapse All' : 'Expand All'}</span>
+                </button>
+              )}
+
+              {viewMode === 'chronological' && activeGroups.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleToggleAllTimeBlocksCollapse}
+                  className="text-[11px] font-bold text-purple-300 hover:text-white px-2.5 py-1 rounded-lg bg-purple-950/40 hover:bg-purple-900/60 border border-purple-800/40 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                >
+                  <ChevronsUpDown size={12} className="text-purple-400" />
+                  <span>{areAnyTimeBlocksExpanded ? 'Collapse All' : 'Expand All'}</span>
+                </button>
+              )}
             </div>
 
             {/* Main Daily Timeline / Uncompleted Modalities / Outcome Lens */}
