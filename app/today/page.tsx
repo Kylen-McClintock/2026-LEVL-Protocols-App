@@ -45,6 +45,7 @@ import { AdaptiveRecommendationBanner } from '@/components/banners/AdaptiveRecom
 import { LongevityCoachInputBar } from '@/components/ai/LongevityCoachInputBar'
 import { DailyHistoricalDebriefHeader } from '@/components/cards/DailyHistoricalDebriefHeader'
 import { ViewSelectorHeader, CalendarViewMode, LayoutOrientation, MainCategory, SUB_CATEGORIES_MAP, CategoryFiltersBar, FilterLens } from '@/components/ui/ViewSelectorHeader'
+import ModalityIcon from '@/components/ui/ModalityIcon'
 import { ThreeDaySplitView } from '@/components/views/ThreeDaySplitView'
 import { SevenDayWeekView } from '@/components/views/SevenDayWeekView'
 import { MonthMatrixView } from '@/components/views/MonthMatrixView'
@@ -2550,22 +2551,6 @@ function TodayPageContent() {
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
-  const getModalityIcon = (mod: any) => {
-    if (!mod) return '✨'
-    const cat = (mod.category || '').toLowerCase()
-    const type = (mod.modality_type || '').toLowerCase()
-    const name = (mod.display_name || mod.name || '').toLowerCase()
-
-    if (cat.includes('breath') || type.includes('breath') || name.includes('breath') || name.includes('sigh') || name.includes('4-7-8')) return '🫁'
-    if (cat.includes('sleep') || name.includes('mouth tape') || name.includes('mouth tap') || name.includes('sleep') || name.includes('bed') || name.includes('dark & cool') || name.includes('blue light') || name.includes('screen')) return '🌙'
-    if (cat.includes('fast') || type.includes('fast') || name.includes('fast')) return '⏱️'
-    if (cat.includes('sauna') || cat.includes('cold') || cat.includes('thermal') || type.includes('heat') || type.includes('cold')) return '❄️'
-    if (cat.includes('exercise') || cat.includes('physical') || cat.includes('strength') || cat.includes('cardio') || type.includes('exercise')) return '⚡'
-    if (cat.includes('peptide') || type.includes('peptide') || name.includes('bpc') || name.includes('cjc') || name.includes('ipamorelin')) return '💉'
-    if (cat.includes('supplement') || cat.includes('nutraceutical') || type === 'supplement') return '💊'
-    return '✨'
-  }
-
   const isSupplementGroup = (gName: string, gTasks: DailyProtocolTask[]) => {
     const gLower = gName.toLowerCase()
     // Explicit supplement stack groups
@@ -2807,7 +2792,6 @@ function TodayPageContent() {
                       const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
                       const dose = t.execution_details?.custom_dose || bench?.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount}${t.protocol_step.dose_unit || ''}` : '') || mod?.dose_or_exposure || ''
                       const isDone = t.status === 'completed'
-                      const icon = getModalityIcon(mod)
 
                       return (
                         <span 
@@ -2820,9 +2804,8 @@ function TodayPageContent() {
                         >
                           {isDone ? (
                             <Check size={11} className="text-emerald-400 stroke-[3] shrink-0" />
-                          ) : (
-                            <span className="text-[10px] opacity-70">{icon}</span>
-                          )}
+                          ) : null}
+                          <ModalityIcon modality={mod} modalityName={name} size={13} className={`shrink-0 ${isDone ? 'opacity-70' : 'opacity-90'}`} glow={false} />
                           <span className={isDone ? 'line-through opacity-80' : 'text-white'}>{name}</span>
                           {dose && (
                             <span className={`text-[10px] font-mono font-normal ${isDone ? 'text-emerald-400/80' : 'text-purple-300/90'}`}>
@@ -3063,7 +3046,6 @@ function TodayPageContent() {
                   const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
                   const dose = t.execution_details?.custom_dose || bench?.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount}${t.protocol_step.dose_unit || ''}` : '') || mod?.dose_or_exposure || ''
                   const isDone = t.status === 'completed'
-                  const icon = getModalityIcon(mod)
 
                   return (
                     <span 
@@ -3076,9 +3058,8 @@ function TodayPageContent() {
                     >
                       {isDone ? (
                         <Check size={11} className="text-emerald-400 stroke-[3] shrink-0" />
-                      ) : (
-                        <span className="text-[10px] opacity-70">{icon}</span>
-                      )}
+                      ) : null}
+                      <ModalityIcon modality={mod} modalityName={name} size={13} className={`shrink-0 ${isDone ? 'opacity-70' : 'opacity-90'}`} glow={false} />
                       <span className={isDone ? 'line-through opacity-80' : 'text-white'}>{name}</span>
                       {dose && (
                         <span className={`text-[10px] font-mono font-normal ${isDone ? 'text-emerald-400/80' : 'text-purple-300/90'}`}>
