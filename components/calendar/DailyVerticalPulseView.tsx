@@ -53,6 +53,7 @@ import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import PulsingPhilosophyGuide from './PulsingPhilosophyGuide'
 import ModalityMechanismModal from '@/components/modals/ModalityMechanismModal'
 import ProtocolOptimizationModal from '@/components/modals/ProtocolOptimizationModal'
+import ModalityIcon from '@/components/ui/ModalityIcon'
 
 interface DailyVerticalPulseViewProps {
   tasks: DailyProtocolTask[]
@@ -84,6 +85,22 @@ export default function DailyVerticalPulseView({
   const [isMechanismModalOpen, setIsMechanismModalOpen] = useState(false)
   const [isOptimizationModalOpen, setIsOptimizationModalOpen] = useState(false)
   const [verticalModeFilter, setVerticalModeFilter] = useState<'all' | 'growth' | 'recovery' | 'transitions'>('all')
+
+  // Concise Timeline Expansion State (collapsed by default)
+  const [expandedTimelineKeys, setExpandedTimelineKeys] = useState<Set<string>>(new Set())
+
+  const toggleTimelineKey = (key: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setExpandedTimelineKeys(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }
 
   // 1. Calculate Daily Pulse Balance & Timing Optimizations
   const pulseBalance = useMemo(() => {
@@ -954,11 +971,12 @@ export default function DailyVerticalPulseView({
                 const isRecoveryOnset = marker.type === 'recovery_onset'
                 const isPostLift = marker.type === 'post_strain_window'
                 const isMorning = marker.type === 'morning_activation'
+                const isExpanded = expandedTimelineKeys.has(marker.id)
 
                 return (
-                  <div key={marker.id} className="relative group pt-1 pb-1">
+                  <div key={marker.id} className="relative group pt-0.5 pb-0.5">
                     {/* Glowing Circular Anchor on the Vertical Rail */}
-                    <div className={`absolute -left-[23px] sm:-left-[35px] top-4 w-5 h-5 rounded-full border-2 border-slate-950 flex items-center justify-center shadow-lg z-10 ${
+                    <div className={`absolute -left-[23px] sm:-left-[35px] top-3.5 w-5 h-5 rounded-full border-2 border-slate-950 flex items-center justify-center shadow-lg z-10 ${
                       isGrowthOnset
                         ? 'bg-purple-500 text-slate-950 shadow-[0_0_15px_#a855f7]'
                         : isRecoveryOnset
@@ -974,99 +992,126 @@ export default function DailyVerticalPulseView({
                       </span>
                     </div>
 
-                    {/* Transition Card - Interactive click handler to explore kickoff mechanism */}
+                    {/* Transition Card - Concise by default, interactive inspect button to toggle details */}
                     <div 
-                      onClick={() => handleOpenTransitionMechanism(marker)}
-                      className={`p-4 sm:p-5 rounded-2xl border transition-all space-y-3 relative overflow-hidden cursor-pointer hover:scale-[1.008] active:scale-[0.995] group/card ${
+                      onClick={() => toggleTimelineKey(marker.id)}
+                      className={`p-3.5 sm:p-4 rounded-2xl border transition-all relative overflow-hidden cursor-pointer hover:scale-[1.006] active:scale-[0.995] group/card ${
                       isGrowthOnset
-                        ? 'bg-gradient-to-br from-purple-950/60 via-slate-900 to-indigo-950/40 border-purple-500/50 hover:border-purple-400 shadow-[0_0_25px_rgba(168,85,247,0.2)]'
+                        ? 'bg-gradient-to-br from-purple-950/60 via-slate-900 to-indigo-950/40 border-purple-500/50 hover:border-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.15)]'
                         : isRecoveryOnset
-                        ? 'bg-gradient-to-br from-emerald-950/60 via-slate-900 to-teal-950/40 border-emerald-500/50 hover:border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.2)]'
+                        ? 'bg-gradient-to-br from-emerald-950/60 via-slate-900 to-teal-950/40 border-emerald-500/50 hover:border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
                         : isPostLift
                         ? 'bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border-indigo-500/40 hover:border-indigo-400'
                         : isMorning
                         ? 'bg-gradient-to-br from-amber-950/35 via-slate-900 to-slate-900 border-amber-500/30 hover:border-amber-400'
                         : 'bg-gradient-to-br from-teal-950/30 via-slate-900 to-slate-900 border-teal-500/30 hover:border-teal-400'
                     }`}>
-                      {/* Top Header */}
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs sm:text-sm font-black tracking-wide uppercase ${
+                      {/* Top Header Row - Compact & Concise */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                          <span className={`text-xs sm:text-sm font-black tracking-wide uppercase truncate ${
                             isGrowthOnset ? 'text-purple-100' : isRecoveryOnset ? 'text-emerald-100' : 'text-white'
                           }`}>
                             {marker.title}
                           </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-mono font-extrabold px-2.5 py-0.5 rounded-full border ${marker.badgeColor}`}>
+                          <span className={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${marker.badgeColor}`}>
                             {marker.badgeText}
                           </span>
-                          <span className="text-xs font-mono font-black text-cyan-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                          <span className="text-xs font-mono font-black text-cyan-300 bg-white/5 px-2 py-0.5 rounded border border-white/10 shrink-0">
                             {marker.timeFormatted}
                           </span>
                         </div>
-                      </div>
 
-                      {/* Trigger Context Pill */}
-                      <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                        <span className="text-slate-400 font-mono text-[11px]">Trigger:</span>
-                        <strong className="text-white bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                          {marker.triggerText}
-                        </strong>
-                      </div>
-
-                      {/* Biological Mechanism Description */}
-                      <p className="text-xs text-slate-300 leading-relaxed">
-                        {marker.biologicalMechanism}
-                      </p>
-
-                      {/* Key Actions Checklist */}
-                      <div className="space-y-1.5 pt-1 border-t border-white/5">
-                        <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block">
-                          Phase Optimization Directives:
-                        </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[11px]">
-                          {marker.keyActions.map((action, aIdx) => (
-                            <div key={aIdx} className="p-1.5 rounded-lg bg-black/40 border border-white/5 flex items-start gap-1.5">
-                              <span className={`font-bold text-xs ${
-                                isGrowthOnset ? 'text-purple-400' : isRecoveryOnset ? 'text-emerald-400' : 'text-amber-400'
-                              }`}>✓</span>
-                              <span className="text-slate-300">{action}</span>
-                            </div>
-                          ))}
+                        {/* Inspect & Expand Chevron Button */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => toggleTimelineKey(marker.id, e)}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-mono font-bold transition-all cursor-pointer ${
+                              isExpanded
+                                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm'
+                                : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            <span>Inspect</span>
+                            <ChevronDown 
+                              size={13} 
+                              className={`transition-transform duration-200 ${isExpanded ? 'rotate-180 text-cyan-300' : 'text-slate-400'}`} 
+                            />
+                          </button>
                         </div>
                       </div>
 
-                      {/* Critical Modalities to Consider Badges */}
-                      <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                        <span className="text-[10px] font-mono text-slate-400">Critical Modalities:</span>
-                        {marker.criticalModalitiesToConsider.map((cm, cIdx) => (
-                          <span 
-                            key={cIdx}
-                            className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded border ${
-                              isGrowthOnset
-                                ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                                : isRecoveryOnset
-                                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                                : 'bg-white/5 text-slate-300 border-white/10'
-                            }`}
-                          >
-                            {cm}
-                          </span>
-                        ))}
-                      </div>
+                      {/* Expanded Rich Detail Body */}
+                      {isExpanded && (
+                        <div className="mt-3 pt-3 border-t border-white/10 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                          {/* Trigger Context Pill */}
+                          <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                            <span className="text-slate-400 font-mono text-[11px]">Trigger:</span>
+                            <strong className="text-white bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                              {marker.triggerText}
+                            </strong>
+                          </div>
 
-                      {/* Interactive Trigger Callout Footer */}
-                      <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
-                        <span className="text-[11px] text-cyan-300 font-bold flex items-center gap-1.5 group-hover/card:text-cyan-200 transition-colors">
-                          <Sparkles size={12} className="text-cyan-400" />
-                          <span>Click to explore kickoff & mode-shift mechanism ➔</span>
-                        </span>
-                        <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                          {isGrowthOnset ? 'mTOR / Hypertrophy' : isRecoveryOnset ? 'AMPK / Autophagy' : 'Circadian Rhythm'}
-                        </span>
-                      </div>
+                          {/* Biological Mechanism Description */}
+                          <p className="text-xs text-slate-300 leading-relaxed">
+                            {marker.biologicalMechanism}
+                          </p>
+
+                          {/* Key Actions Checklist */}
+                          <div className="space-y-1.5 pt-1 border-t border-white/5">
+                            <span className="text-[10px] font-mono uppercase font-bold text-slate-400 block">
+                              Phase Optimization Directives:
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[11px]">
+                              {marker.keyActions.map((action, aIdx) => (
+                                <div key={aIdx} className="p-1.5 rounded-lg bg-black/40 border border-white/5 flex items-start gap-1.5">
+                                  <span className={`font-bold text-xs ${
+                                    isGrowthOnset ? 'text-purple-400' : isRecoveryOnset ? 'text-emerald-400' : 'text-amber-400'
+                                  }`}>✓</span>
+                                  <span className="text-slate-300">{action}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Critical Modalities to Consider Badges */}
+                          <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                            <span className="text-[10px] font-mono text-slate-400">Critical Modalities:</span>
+                            {marker.criticalModalitiesToConsider.map((cm, cIdx) => (
+                              <span 
+                                key={cIdx}
+                                className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded border ${
+                                  isGrowthOnset
+                                    ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                                    : isRecoveryOnset
+                                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                    : 'bg-white/5 text-slate-300 border-white/10'
+                                }`}
+                              >
+                                {cm}
+                              </span>
+                            ))}
+                          </div>
+
+                          {/* Interactive Deep-Dive Modal Trigger */}
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleOpenTransitionMechanism(marker)
+                            }}
+                            className="pt-2 border-t border-white/10 flex items-center justify-between text-xs hover:opacity-90 cursor-pointer"
+                          >
+                            <span className="text-[11px] text-cyan-300 font-bold flex items-center gap-1.5 group-hover/card:text-cyan-200 transition-colors">
+                              <Sparkles size={12} className="text-cyan-400" />
+                              <span>Open kickoff mechanism & mode-shift modal ➔</span>
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                              {isGrowthOnset ? 'mTOR / Hypertrophy' : isRecoveryOnset ? 'AMPK / Autophagy' : 'Circadian Rhythm'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -1076,10 +1121,12 @@ export default function DailyVerticalPulseView({
               // CASE B: PROTOCOL TASK ON THE VERTICAL TIMELINE
               // -------------------------------------------------------------
               const task = entry.task
-              const name = (task.protocol_step?.modality?.name || task.loose_modality?.name || (task as any).modality?.name || 'Protocol Task')
-              const dose = task.execution_details?.custom_dose || task.protocol_step?.dose_text || (task.protocol_step?.modality as any)?.dose_or_exposure || 'Standard Dose'
+              const modalityObj = task.protocol_step?.modality || task.loose_modality || (task as any).modality
+              const name = (modalityObj?.name || 'Protocol Task')
+              const dose = task.execution_details?.custom_dose || task.protocol_step?.dose_text || (modalityObj as any)?.dose_or_exposure || 'Standard Dose'
               const slot = task.timing_slot || 'anytime'
               const timeStr = task.scheduled_time || formatHourToTimeStr(entry.hour)
+              const isExpanded = expandedTimelineKeys.has(task.id)
 
               const lowerName = name.toLowerCase()
               const isGrowth = lowerName.includes('lift') || lowerName.includes('resistance') || lowerName.includes('strength') || lowerName.includes('creatine') || lowerName.includes('protein') || lowerName.includes('hiit') || lowerName.includes('push') || lowerName.includes('pull') || lowerName.includes('legs')
@@ -1098,72 +1145,109 @@ export default function DailyVerticalPulseView({
                       : 'bg-cyan-400'
                   }`} />
 
-                  {/* Modality Card - Clickable to inspect mechanism */}
+                  {/* Modality Card - Concise by default, Inspect button to expand */}
                   <div 
-                    onClick={() => handleOpenTaskMechanism(task)}
-                    className={`p-4 rounded-xl border transition-all cursor-pointer hover:scale-[1.008] active:scale-[0.995] group/taskcard ${
+                    onClick={() => toggleTimelineKey(task.id)}
+                    className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer hover:scale-[1.006] active:scale-[0.995] group/taskcard ${
                     isGrowth 
                       ? 'bg-purple-950/20 border-purple-500/30 hover:border-purple-400 hover:bg-purple-950/30 shadow-sm' 
                       : isRecovery 
                       ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-950/30 shadow-sm' 
                       : 'bg-slate-900/60 border-white/10 hover:border-white/25 hover:bg-slate-900/80'
                   }`}>
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-black text-white">{name}</span>
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                    {/* Header Row: Concise By Default */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                        {modalityObj && (
+                          <ModalityIcon modality={modalityObj} size={18} className="shrink-0" />
+                        )}
+                        <span className="text-xs font-black text-white truncate">{name}</span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0 ${
                           isGrowth 
                             ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' 
                             : isRecovery 
                             ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
                             : 'bg-white/10 text-slate-300 border-white/15'
                         }`}>
-                          {isGrowth ? '🟣 Growth Mode (mTOR)' : isRecovery ? '🟢 Recovery Mode (AMPK)' : 'Baseline Support'}
+                          {isGrowth ? '🟣 Growth' : isRecovery ? '🟢 Recovery' : 'Baseline'}
                         </span>
 
                         {criticalMatch && (
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
-                            <Sparkles size={10} />
-                            <span>Critical Modality</span>
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1 shrink-0">
+                            <Sparkles size={9} />
+                            <span>Critical</span>
                           </span>
                         )}
-                      </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-cyan-300">
+                        <span className="text-xs font-mono font-bold text-cyan-300 shrink-0">
                           {timeStr}
                         </span>
-                        <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                        <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10 shrink-0">
                           {slot.replace(/_/g, ' ').toUpperCase()}
                         </span>
                       </div>
+
+                      {/* Inspect & Expand Chevron Button */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {task.status === 'completed' && !isExpanded && (
+                          <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 mr-1 shrink-0">
+                            <CheckCircle2 size={11} /> Done
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleTimelineKey(task.id, e)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-mono font-bold transition-all cursor-pointer ${
+                            isExpanded
+                              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm'
+                              : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <span>Inspect</span>
+                          <ChevronDown 
+                            size={13} 
+                            className={`transition-transform duration-200 ${isExpanded ? 'rotate-180 text-cyan-300' : 'text-slate-400'}`} 
+                          />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="mt-2 text-xs text-slate-300 flex items-center justify-between flex-wrap gap-2">
-                      <span>Dose / Protocol: <strong className="text-white">{dose}</strong></span>
-                      {task.status === 'completed' && (
-                        <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                          <CheckCircle2 size={12} /> Completed
-                        </span>
-                      )}
-                    </div>
+                    {/* Expanded Details Section */}
+                    {isExpanded && (
+                      <div className="mt-2.5 pt-2.5 border-t border-white/5 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="text-xs text-slate-300 flex items-center justify-between flex-wrap gap-2">
+                          <span>Dose / Protocol: <strong className="text-white">{dose}</strong></span>
+                          {task.status === 'completed' && (
+                            <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                              <CheckCircle2 size={12} /> Completed
+                            </span>
+                          )}
+                        </div>
 
-                    {/* Interactive Click prompt */}
-                    <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-xs">
-                      <span className={`text-[11px] font-bold flex items-center gap-1.5 transition-colors ${
-                        isGrowth 
-                          ? 'text-purple-300 group-hover/taskcard:text-purple-200' 
-                          : isRecovery 
-                          ? 'text-emerald-300 group-hover/taskcard:text-emerald-200' 
-                          : 'text-cyan-300 group-hover/taskcard:text-cyan-200'
-                      }`}>
-                        <Info size={12} />
-                        <span>Click to inspect {isGrowth ? 'Growth' : isRecovery ? 'Recovery' : 'Cellular'} mechanism & circadian timing ➔</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-400">
-                        Evidence & Molecular Rationale
-                      </span>
-                    </div>
+                        {/* Interactive Click prompt for Mechanism Modal */}
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenTaskMechanism(task)
+                          }}
+                          className="pt-2 border-t border-white/5 flex items-center justify-between text-xs hover:opacity-90 cursor-pointer"
+                        >
+                          <span className={`text-[11px] font-bold flex items-center gap-1.5 transition-colors ${
+                            isGrowth 
+                              ? 'text-purple-300 group-hover/taskcard:text-purple-200' 
+                              : isRecovery 
+                              ? 'text-emerald-300 group-hover/taskcard:text-emerald-200' 
+                              : 'text-cyan-300 group-hover/taskcard:text-cyan-200'
+                          }`}>
+                            <Info size={12} />
+                            <span>Open deep-dive {isGrowth ? 'Growth' : isRecovery ? 'Recovery' : 'Cellular'} mechanism modal ➔</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            Molecular Rationale
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )

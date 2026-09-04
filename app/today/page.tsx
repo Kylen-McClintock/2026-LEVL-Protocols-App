@@ -18,7 +18,8 @@ import {
   saveOutcomeObservation,
   addModalityOrProtocolToToday,
   getModalities,
-  addToBench
+  addToBench,
+  upsertBenchItemOverride
 } from '@/lib/data'
 import { DailyProtocolTask, Modality, OutcomeDimension, UserProfile, UserBenchItem, DailyWellbeingCheckin as WellbeingType } from '@/lib/types'
 import { format, parseISO, addDays, subDays, isBefore, startOfDay, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns'
@@ -945,8 +946,9 @@ function TodayPageContent() {
     let updatedSlot = rescheduleTask.timing_slot
 
     if (action === 'snooze_later_today') {
-      updatedStatus = 'snoozed'
-      updatedReason = `Snoozed to ${cleanSlotName}`
+      // Keep task active/pending in the newly selected time slot so it appears in that time block immediately
+      updatedStatus = 'pending'
+      updatedReason = `Moved to ${cleanSlotName}`
       updatedSlot = slotToUse
     } else if (action === 'skip_session') {
       updatedStatus = 'skipped'
@@ -968,7 +970,11 @@ function TodayPageContent() {
           ...t,
           status: updatedStatus,
           status_reason: updatedReason,
-          timing_slot: updatedSlot
+          timing_slot: updatedSlot,
+          execution_details: {
+            ...(t.execution_details || {}),
+            custom_timing: action === 'snooze_later_today' ? cleanSlotName : (t.execution_details?.custom_timing)
+          }
         }
       }
       return t
@@ -988,14 +994,30 @@ function TodayPageContent() {
         if (action === 'snooze_later_today') {
           await updateDailyTaskStatus(
             targetTaskId, 
-            'snoozed', 
-            `Snoozed to ${cleanSlotName}`, 
+            'pending', 
+            `Moved to ${cleanSlotName}`, 
             undefined, 
             undefined, 
             undefined, 
-            undefined, 
+            {
+              ...(rescheduleTask.execution_details || {}),
+              custom_timing: cleanSlotName
+            }, 
             slotToUse
           )
+          if (modalityId) {
+            await upsertBenchItemOverride(
+              localUserId,
+              modalityId,
+              rescheduleTask.execution_details?.custom_dose || '',
+              cleanSlotName,
+              rescheduleTask.execution_details?.notes
+            )
+          }
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+            window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+          }
         } else if (action === 'skip_session') {
           await updateDailyTaskStatus(targetTaskId, 'skipped', 'Skipped')
         } else if (action === 'slide_forward') {
@@ -1205,7 +1227,8 @@ function TodayPageContent() {
         const modalityKey = modalityId || modalityName || task.id
         const splitNumber = task.execution_details?.split_dose_number || 0
         const protoKey = `${pId}_${modalityKey}_split_${splitNumber}`
-        const resolvedSlot = resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot)
+        const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
+        const resolvedSlot = resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
         
         if (!protoMap.has(protoKey)) {
           protoMap.set(protoKey, {
@@ -1236,7 +1259,8 @@ function TodayPageContent() {
       const modalityName = (modality?.name || modality?.display_name || (task as any).name || '').trim().toLowerCase()
       const baseKey = modalityId || modalityName || task.id
       const dedupeKey = splitNumber > 0 ? `${baseKey}-split-${splitNumber}` : baseKey
-      const resolvedSlot = resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot)
+      const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
+      const resolvedSlot = resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
 
       if (!map.has(dedupeKey)) {
         const initialLineages: Array<{ protocol_id?: string; protocol_name: string; color_hex?: string; protocol_type?: string }> = []
@@ -1296,7 +1320,7 @@ function TodayPageContent() {
     })
 
     return Array.from(map.values())
-  }, [tasks, benchItems, viewMode])
+  }, [tasks, benchItems, viewMode, profile])
 
   const benchedOrEliminatedModalityIds = useMemo(() => {
     const set = new Set<string>()
@@ -1479,7 +1503,7 @@ function TodayPageContent() {
         }
       } else if (isSnoozed) {
         snoozedTop.push(task)
-        if (showSnoozedInline) {
+        if (showSnoozedInline || (task.timing_slot && task.timing_slot !== 'anytime')) {
           routine.push(task)
         }
       } else if (isSkipped) {
@@ -1548,13 +1572,16 @@ function TodayPageContent() {
     return entries
   }, [allCompletedTasks, completedSortBy, completedSortOrder, viewMode])
 
-  // Synchronize daily completion stats to global top sticky header
+  // Sync completion stats into localStorage and dispatch event
   useEffect(() => {
-    if (isCurrentDay) {
-      const totalCount = dedupedTasks.length
+    if (dedupedTasks.length > 0) {
       const completedCount = allCompletedTasks.length
-      const statsPayload = { completed: completedCount, total: totalCount }
-      if (typeof window !== 'undefined') {
+      const totalCount = dedupedTasks.length
+      const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+
+      const statsPayload = { completed: completedCount, total: totalCount, percentage }
+
+      if (isCurrentDay) {
         try {
           localStorage.setItem('levl_today_stats', JSON.stringify(statsPayload))
         } catch (e) {}
@@ -1570,7 +1597,9 @@ function TodayPageContent() {
     const groups: Record<string, DedupedTask[]> = {}
     routineTasks.forEach(task => {
       const modality = task.protocol_step?.modality || task.loose_modality
-      const slot = resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot)
+      const mId = modality?.id
+      const customTimingStr = task.execution_details?.custom_timing || (mId ? benchItems.find(b => b.modality_id === mId)?.custom_timing : undefined)
+      const slot = resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
 
       if (!groups[slot]) groups[slot] = []
       groups[slot].push({
@@ -1580,7 +1609,7 @@ function TodayPageContent() {
     })
 
     return groups
-  }, [routineTasks])
+  }, [routineTasks, profile, benchItems])
 
   const sortedChronologicalGroups = useMemo(() => {
     const rawEntries = Object.entries(chronologicalGroups)

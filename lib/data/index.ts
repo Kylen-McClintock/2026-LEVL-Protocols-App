@@ -2995,8 +2995,27 @@ export async function updateDailyTaskStatus(
   if (adherenceValue !== undefined) updateData.adherence_value = adherenceValue
   if (completedAt !== undefined) updateData.completed_at = completedAt
   if (executionMetrics !== undefined) updateData.execution_metrics = executionMetrics
-  if (executionDetails !== undefined) updateData.execution_details = executionDetails
   if (timingSlot !== undefined) updateData.timing_slot = timingSlot
+
+  if (executionDetails !== undefined) {
+    try {
+      const { data: existingTask } = await supabase
+        .from('daily_protocol_tasks')
+        .select('execution_details')
+        .eq('id', taskId)
+        .maybeSingle()
+      if (existingTask?.execution_details) {
+        updateData.execution_details = {
+          ...existingTask.execution_details,
+          ...executionDetails
+        }
+      } else {
+        updateData.execution_details = executionDetails
+      }
+    } catch {
+      updateData.execution_details = executionDetails
+    }
+  }
   
   const { data, error } = await supabase
     .from('daily_protocol_tasks')
@@ -3581,9 +3600,11 @@ export async function createManualProtocol(localUserId: string, data: Partial<Pr
   return newProt as Protocol
 }
 
-export async function updateBenchItemOverride(id: string, customDose: string, customTiming: string, notes?: string) {
+export async function updateBenchItemOverride(id: string, customDose?: string, customTiming?: string, notes?: string) {
   if (!supabase) return null
-  const updatePayload: any = { custom_dose: customDose, custom_timing: customTiming }
+  const updatePayload: any = {}
+  if (customDose !== undefined && customDose !== '') updatePayload.custom_dose = customDose
+  if (customTiming !== undefined && customTiming !== '') updatePayload.custom_timing = customTiming
   if (notes !== undefined) updatePayload.notes = notes
 
   const { data, error } = await supabase
@@ -3600,18 +3621,23 @@ export async function updateBenchItemOverride(id: string, customDose: string, cu
   return data
 }
 
-export async function upsertBenchItemOverride(localUserId: string, modalityId: string, customDose: string, customTiming: string, notes?: string) {
+export async function upsertBenchItemOverride(localUserId: string, modalityId: string, customDose?: string, customTiming?: string, notes?: string) {
   if (!supabase) return null
   // Check if exists using maybeSingle
   const { data: existing } = await supabase
     .from('user_bench_items')
-    .select('id')
+    .select('id, custom_dose, custom_timing, notes')
     .eq('local_user_id', localUserId)
     .eq('modality_id', modalityId)
     .maybeSingle()
 
   if (existing) {
-    return updateBenchItemOverride(existing.id, customDose, customTiming, notes)
+    return updateBenchItemOverride(
+      existing.id, 
+      customDose !== undefined && customDose !== '' ? customDose : existing.custom_dose, 
+      customTiming !== undefined && customTiming !== '' ? customTiming : existing.custom_timing, 
+      notes !== undefined ? notes : existing.notes
+    )
   } else {
     // Create new
     const { data, error } = await supabase
@@ -3619,8 +3645,8 @@ export async function upsertBenchItemOverride(localUserId: string, modalityId: s
       .insert([{
         local_user_id: localUserId,
         modality_id: modalityId,
-        custom_dose: customDose,
-        custom_timing: customTiming,
+        custom_dose: customDose || '',
+        custom_timing: customTiming || '',
         notes: notes || '',
         pinned: false,
         created_at: new Date().toISOString()
@@ -4634,7 +4660,9 @@ export async function reconcileModalityScheduleAndFutureTasks(
     .gte('scheduled_date', fromDateStr)
     .lte('scheduled_date', endDateStr)
 
-  if (options.protocolStepId) {
+  if (options.protocolStepId && modalityId) {
+    taskQuery.or(`protocol_step_id.eq.${options.protocolStepId},modality_id.eq.${modalityId}`)
+  } else if (options.protocolStepId) {
     taskQuery.eq('protocol_step_id', options.protocolStepId)
   } else {
     taskQuery.eq('modality_id', modalityId)
@@ -4693,32 +4721,35 @@ export async function reconcileModalityScheduleAndFutureTasks(
     }
   })
 
-  // Update existing pending tasks on active days
+  // Update existing pending tasks on active days concurrently via Promise.all
   if (tasksToUpdateList.length > 0) {
     const updatePayload: any = {}
-    if (resolvedSlot && resolvedSlot !== 'anytime') updatePayload.timing_slot = resolvedSlot
+    if (resolvedSlot) updatePayload.timing_slot = resolvedSlot
     
     const { data: currentTaskData } = await supabase
       .from('daily_protocol_tasks')
       .select('id, execution_details')
       .in('id', tasksToUpdateList)
 
-    if (currentTaskData) {
-      for (const t of currentTaskData) {
-        const mergedDetails = {
-          ...(t.execution_details || {}),
-          ...(customDose !== undefined ? { custom_dose: customDose } : {}),
-          ...(customTiming !== undefined ? { custom_timing: customTiming } : {}),
-          ...(notes !== undefined ? { notes: notes } : {}),
-          ...(scheduleConfig !== undefined ? { schedule_config: scheduleConfig } : {})
-        }
-        await supabase
-          .from('daily_protocol_tasks')
-          .update({
-            ...updatePayload,
-            execution_details: mergedDetails
-          })
-          .eq('id', t.id)
+    if (currentTaskData && currentTaskData.length > 0) {
+      const client = supabase
+      if (client) {
+        await Promise.all(currentTaskData.map(async (t) => {
+          const mergedDetails = {
+            ...(t.execution_details || {}),
+            ...(customDose !== undefined ? { custom_dose: customDose } : {}),
+            ...(customTiming !== undefined ? { custom_timing: customTiming } : {}),
+            ...(notes !== undefined ? { notes: notes } : {}),
+            ...(scheduleConfig !== undefined ? { schedule_config: scheduleConfig } : {})
+          }
+          return client
+            .from('daily_protocol_tasks')
+            .update({
+              ...updatePayload,
+              execution_details: mergedDetails
+            })
+            .eq('id', t.id)
+        }))
       }
     }
   }
@@ -4729,6 +4760,10 @@ export async function reconcileModalityScheduleAndFutureTasks(
   }
 
   clearUserHistoryCache()
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+    window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+  }
   return true
 }
 
@@ -4840,6 +4875,8 @@ export async function updateTaskExecutionDetails(taskId: string, detailsPatch: a
     if (slot && slot !== 'anytime') {
       updatePayload.timing_slot = slot
     }
+  } else if (detailsPatch.schedule_config?.timing_slot) {
+    updatePayload.timing_slot = detailsPatch.schedule_config.timing_slot
   }
 
   const { error } = await supabase
@@ -4849,6 +4886,10 @@ export async function updateTaskExecutionDetails(taskId: string, detailsPatch: a
 
   if (!error) {
     clearUserHistoryCache()
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+      window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+    }
     return true
   }
   return false
