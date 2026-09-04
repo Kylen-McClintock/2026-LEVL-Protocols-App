@@ -19,6 +19,7 @@ import BloodworkProfileCard from '@/components/profile/BloodworkProfileCard'
 import NegativeLongevityFactorsCard from '@/components/profile/NegativeLongevityFactorsCard'
 import MedicalHistoryPrescriptionsCard from '@/components/profile/MedicalHistoryPrescriptionsCard'
 import TemperatureUnitSettingsCard from '@/components/profile/TemperatureUnitSettingsCard'
+import DataSovereigntyCard from '@/components/profile/DataSovereigntyCard'
 import SupplementScannerModal from '@/components/modals/SupplementScannerModal'
 import { linkGuestDataToAuthUser } from '@/lib/auth/linkGuestData'
 
@@ -387,6 +388,10 @@ export default function SettingsPage() {
         )}
 
         <TemperatureUnitSettingsCard />
+
+        <DataSovereigntyCard 
+          localUserId={authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()} 
+        />
 
         <div className="glass-card p-4 rounded-xl border-red-900/30 mt-8">
           <h3 className="font-bold text-red-400 mb-2">Danger Zone</h3>

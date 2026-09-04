@@ -213,6 +213,26 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     startHour: 15,
     endHour: 18
   },
+  pre_meal: {
+    key: 'pre_meal',
+    label: 'Pre-Meal',
+    timeRange: '4:30 PM – 6:30 PM',
+    circadianPhase: 'Pre-Meal Window • Glycemic Buffer',
+    skyColorHex: '#F87E38',
+    startColorHex: '#5B9BD5',
+    endColorHex: '#F87E38',
+    gradientCSS: 'linear-gradient(to bottom, #5B9BD5, #F87E38)',
+    badgeGradientCSS: 'linear-gradient(135deg, rgba(248,126,56,0.35), rgba(240,106,66,0.3))',
+    accentGradient: 'from-orange-500/20 via-amber-400/10 to-transparent',
+    icon: Sunset,
+    badgeBg: 'bg-orange-500/15',
+    badgeBorder: 'border-orange-400/40',
+    badgeText: 'text-orange-200',
+    glowShadow: 'shadow-[0_0_16px_rgba(248,126,56,0.5)]',
+    activeRing: 'ring-2 ring-orange-300 ring-offset-2 ring-offset-slate-950',
+    startHour: 16,
+    endHour: 19
+  },
   post_meal: {
     key: 'post_meal',
     label: 'Post-Meal',
@@ -394,6 +414,9 @@ export function getCircadianConfig(slotName: string): CircadianSlotConfig {
   if (normalized.includes('afternoon') || normalized.includes('workout') || normalized.includes('training')) {
     return CIRCADIAN_SLOTS.afternoon
   }
+  if (normalized.includes('pre_meal') || normalized.includes('pre-meal') || normalized.includes('pre meal')) {
+    return CIRCADIAN_SLOTS.pre_meal
+  }
   if (normalized.includes('post_meal') || normalized.includes('post meal') || normalized.includes('postprandial')) {
     return CIRCADIAN_SLOTS.post_meal
   }
@@ -440,7 +463,7 @@ export function getAdaptiveCircadianConfig(
   // Evening and night slots should remain anchored to bedtime to protect sleep architecture
   const isMorningOrDaytime = [
     'waking', 'morning_routine', 'morning', 'morning_supplement_stack', 
-    'first_meal', 'midday', 'midday_stack', 'afternoon', 'late_afternoon', 'post_meal'
+    'first_meal', 'midday', 'midday_stack', 'afternoon', 'late_afternoon', 'pre_meal', 'post_meal'
   ].includes(baseConfig.key)
 
   if (!isMorningOrDaytime) {
@@ -500,6 +523,7 @@ export const CHRONOLOGICAL_CIRCADIAN_SLOTS: string[] = [
   'midday_stack',
   'afternoon',
   'late_afternoon',
+  'pre_meal',
   'post_meal',
   'evening',
   'evening_supplement_stack',
@@ -550,7 +574,7 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
         colorStops.push({ color: cfg.startColorHex || primary, pct: 0 })
       }
       colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
-    } else if (cfg.key === 'post_meal') {
+    } else if (cfg.key === 'pre_meal' || cfg.key === 'post_meal') {
       colorStops.push({ color: '#F87E38', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
       colorStops.push({ color: '#F87E38', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
     } else if (cfg.key === 'evening') {

@@ -1740,7 +1740,7 @@ function TodayPageContent() {
 
       const isTransitioningToSunset = nextPrimary && (
         (isBlueFamily(primary) && isOrangeFamily(nextPrimary)) ||
-        (isBlueFamily(primary) && (nextGroupName === 'post_meal' || nextGroupName === 'evening' || nextGroupName === 'late_afternoon'))
+        (isBlueFamily(primary) && (nextGroupName === 'pre_meal' || nextGroupName === 'post_meal' || nextGroupName === 'evening' || nextGroupName === 'late_afternoon'))
       )
 
       if (i === 0) {
@@ -1758,7 +1758,7 @@ function TodayPageContent() {
           colorStops.push({ color: startCol, pct: 0 })
         }
         colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
-      } else if (cfg.key === 'post_meal') {
+      } else if (cfg.key === 'pre_meal' || cfg.key === 'post_meal') {
         colorStops.push({ color: '#F87E38', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
         colorStops.push({ color: '#F87E38', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
       } else if (cfg.key === 'evening') {
