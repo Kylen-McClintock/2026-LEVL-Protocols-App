@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useId, useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Dumbbell,
   Bike,
@@ -636,9 +636,6 @@ export default function ModalityIcon({
   scrollIgnite = true,
   isIgnited: propIsIgnited
 }: ModalityIconProps) {
-  const rawId = useId()
-  const cleanId = rawId.replace(/[^a-zA-Z0-9_-]/g, '')
-  const gradId = `mod-grad-${cleanId}`
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   // Scroll-driven ignition state
@@ -696,7 +693,11 @@ export default function ModalityIcon({
   ).toLowerCase().trim()
 
   const grad = resolveGradient(nameLower, catLower)
-  const effectiveStroke = activeIgnited ? `url(#${gradId})` : '#94A3B8'
+  // Crucial: Use solid high-luminance stroke color (grad.from) instead of SVG url(#gradId).
+  // SVG linearGradient with default objectBoundingBox fails to paint any zero-width or zero-height
+  // lines (e.g., BedDouble mattress line, Sun cardinal rays, Utensils center fork tine/handle),
+  // causing parts of icons to disappear when lit up. Solid hex stroke guarantees 100% of every line is drawn.
+  const effectiveStroke = activeIgnited ? grad.from : '#94A3B8'
 
   // Micro-precise edge definition for crisp lines:
   // We use a deep dark shadow (NO color blur!) that casts behind the stroke,
@@ -720,21 +721,11 @@ export default function ModalityIcon({
           style={{
             background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || 'transparent'} 40%, transparent 70%)`,
             filter: 'blur(6px)',
-            opacity: 0.28,
+            opacity: 0.32,
             transform: 'scale(1.2)'
           }}
         />
       )}
-
-      {/* SVG Linear Gradient Definition */}
-      <svg width={0} height={0} style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
-        <defs>
-          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={grad.from} />
-            <stop offset="100%" stopColor={grad.to} />
-          </linearGradient>
-        </defs>
-      </svg>
 
       {/* Layer 2: Foreground Razor-Sharp Vector Icon */}
       <div 
@@ -744,7 +735,7 @@ export default function ModalityIcon({
         <IconComponent 
           size={size} 
           stroke={effectiveStroke} 
-          strokeWidth={1.55} 
+          strokeWidth={1.65} 
           className="shrink-0 transition-all duration-500"
         />
       </div>
@@ -766,21 +757,11 @@ export default function ModalityIcon({
           style={{
             background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || 'transparent'} 40%, transparent 70%)`,
             filter: 'blur(6px)',
-            opacity: 0.28,
+            opacity: 0.32,
             transform: 'scale(1.2)'
           }}
         />
       )}
-
-      {/* SVG Linear Gradient Definition */}
-      <svg width={0} height={0} style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
-        <defs>
-          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={grad.from} />
-            <stop offset="100%" stopColor={grad.to} />
-          </linearGradient>
-        </defs>
-      </svg>
 
       {/* Layer 2: Foreground Razor-Sharp Vector Icon */}
       <div 
