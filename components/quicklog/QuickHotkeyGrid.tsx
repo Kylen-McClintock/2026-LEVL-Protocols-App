@@ -221,11 +221,6 @@ export default function QuickHotkeyGrid({
           <span className="text-xs font-black text-white uppercase tracking-wider">
             Daily Quick-Log Hotkeys
           </span>
-          {isCollapsed && (
-            <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
-              Hidden ({visibleHotkeys.length})
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
@@ -266,14 +261,16 @@ export default function QuickHotkeyGrid({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => setIsManageModalOpen(true)}
-            className="text-[11px] font-bold text-slate-400 hover:text-orange-300 flex items-center gap-1 transition-all cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-xl border border-white/5 active:scale-95"
-          >
-            <Sliders size={12} />
-            <span>Customize Tray</span>
-          </button>
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={() => setIsManageModalOpen(true)}
+              className="text-[11px] font-bold text-slate-400 hover:text-orange-300 flex items-center gap-1 transition-all cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-xl border border-white/5 active:scale-95"
+            >
+              <Sliders size={12} />
+              <span>Customize Tray</span>
+            </button>
+          )}
         </div>
       </div>
 

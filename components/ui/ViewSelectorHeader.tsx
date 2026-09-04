@@ -629,9 +629,9 @@ export const CategoryFiltersBar: React.FC<{
                 : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white'
             }`}
           >
-            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2 overflow-hidden">
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
               <Filter className={`w-3.5 h-3.5 shrink-0 ${isCategoryFiltered ? 'text-emerald-400' : 'text-slate-400'}`} />
-              <span className="truncate text-left text-xs font-bold">
+              <span className="text-left text-xs font-bold leading-snug break-words">
                 {activeCategoryLabel}
               </span>
             </div>
@@ -714,7 +714,7 @@ export const CategoryFiltersBar: React.FC<{
 
           {/* Active filter summary chips if filtered */}
           {isCategoryFiltered && (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
+            <div className="flex items-center flex-wrap gap-1.5 pt-1">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 shrink-0">
                 Active:
               </span>
@@ -777,9 +777,9 @@ export const CategoryFiltersBar: React.FC<{
                 : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white'
             }`}
           >
-            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2 overflow-hidden">
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
               <Target className={`w-3.5 h-3.5 shrink-0 ${selectedOutcomes.length > 0 ? 'text-amber-400' : 'text-purple-400'}`} />
-              <span className="truncate text-left text-xs font-bold">
+              <span className="text-left text-xs font-bold leading-snug break-words">
                 {activeOutcomeLabel}
               </span>
             </div>
@@ -891,7 +891,7 @@ export const CategoryFiltersBar: React.FC<{
 
           {/* Active outcome tags bar */}
           {selectedOutcomes.length > 0 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pt-0.5">
+            <div className="flex items-center flex-wrap gap-1.5 pt-1">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 shrink-0">
                 Filtered:
               </span>
