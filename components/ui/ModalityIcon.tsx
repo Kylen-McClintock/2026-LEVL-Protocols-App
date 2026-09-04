@@ -59,37 +59,103 @@ interface GradientConfig {
   from: string
   to: string
   glow: string
+  ambient: string
 }
 
 const CATEGORY_GRADIENTS: Record<string, GradientConfig> = {
   // Thermal & Environmental
-  thermal_cold: { from: '#38BDF8', to: '#10B981', glow: 'rgba(56, 189, 248, 0.45)' }, // Ice Cyan -> Mint
-  thermal_heat: { from: '#F97316', to: '#EF4444', glow: 'rgba(249, 115, 22, 0.45)' }, // Warm Orange -> Crimson
-  thermal_contrast: { from: '#06B6D4', to: '#F97316', glow: 'rgba(6, 182, 212, 0.45)' }, // Cold Cyan -> Hot Coral
+  thermal_cold: { 
+    from: '#38BDF8', // Luminous Ice Cyan
+    to: '#34D399',   // Radiant Mint
+    glow: 'rgba(56, 189, 248, 0.75)', 
+    ambient: 'rgba(52, 211, 153, 0.35)' 
+  },
+  thermal_heat: { 
+    from: '#FB923C', // Luminous Ember Orange
+    to: '#F87171',   // Infrared Coral (High luminance, never dark crimson)
+    glow: 'rgba(251, 146, 60, 0.75)', 
+    ambient: 'rgba(248, 113, 113, 0.35)' 
+  },
+  thermal_contrast: { 
+    from: '#22D3EE', // Vivid Cyan
+    to: '#FB923C',   // Radiant Coral
+    glow: 'rgba(34, 211, 238, 0.75)', 
+    ambient: 'rgba(251, 146, 60, 0.35)' 
+  },
   
   // Fitness & Movement
-  fitness: { from: '#10B981', to: '#06B6D4', glow: 'rgba(16, 185, 129, 0.45)' }, // Vital Emerald -> Cyan
-  fitness_intense: { from: '#F59E0B', to: '#EF4444', glow: 'rgba(245, 158, 11, 0.45)' }, // Amber -> Red
+  fitness: { 
+    from: '#34D399', // Vital Emerald
+    to: '#22D3EE',   // Electric Cyan
+    glow: 'rgba(52, 211, 153, 0.75)', 
+    ambient: 'rgba(34, 211, 238, 0.35)' 
+  },
+  fitness_intense: { 
+    from: '#FBBF24', // Luminous Solar Amber
+    to: '#FB7185',   // Vivid Neon Coral
+    glow: 'rgba(251, 191, 36, 0.75)', 
+    ambient: 'rgba(251, 113, 133, 0.35)' 
+  },
   
   // Mind & Nervous System
-  mind: { from: '#A855F7', to: '#6366F1', glow: 'rgba(168, 85, 247, 0.45)' }, // Vivid Purple -> Indigo
+  mind: { 
+    from: '#C084FC', // Electric Violet
+    to: '#818CF8',   // Luminous Periwinkle
+    glow: 'rgba(192, 132, 252, 0.75)', 
+    ambient: 'rgba(129, 140, 248, 0.35)' 
+  },
   
-  // Sleep & Circadian
-  sleep: { from: '#818CF8', to: '#312E81', glow: 'rgba(129, 140, 248, 0.45)' }, // Indigo -> Deep Midnight
-  circadian: { from: '#F59E0B', to: '#38BDF8', glow: 'rgba(245, 158, 11, 0.45)' }, // Sunrise Amber -> Sky Blue
+  // Sleep & Circadian - Upgraded to luminous periwinkle and ice moonlight (NO dark #312E81!)
+  sleep: { 
+    from: '#A5B4FC', // Soft Radiant Lavender
+    to: '#C7D2FE',   // Ice Moonlight
+    glow: 'rgba(165, 180, 252, 0.75)', 
+    ambient: 'rgba(199, 210, 254, 0.35)' 
+  },
+  circadian: { 
+    from: '#FDE047', // Radiant Solar Gold
+    to: '#38BDF8',   // Daylight Sky Blue
+    glow: 'rgba(253, 224, 71, 0.75)', 
+    ambient: 'rgba(56, 189, 248, 0.35)' 
+  },
   
   // Nutrition & Metabolic
-  nutrition: { from: '#10B981', to: '#F59E0B', glow: 'rgba(16, 185, 129, 0.45)' }, // Emerald -> Golden Amber
-  fasting: { from: '#F59E0B', to: '#D97706', glow: 'rgba(245, 158, 11, 0.45)' }, // Golden Amber -> Deep Gold
+  nutrition: { 
+    from: '#34D399', // Radiant Mint
+    to: '#FBBF24',   // Golden Bio-Amber
+    glow: 'rgba(52, 211, 153, 0.75)', 
+    ambient: 'rgba(251, 191, 36, 0.35)' 
+  },
+  fasting: { 
+    from: '#FDE047', // Solar Gold (High luminance, never muddy dark gold)
+    to: '#F59E0B',   // Radiant Amber Core
+    glow: 'rgba(253, 224, 71, 0.75)', 
+    ambient: 'rgba(245, 158, 11, 0.35)' 
+  },
   
   // Peptides & Bioactives
-  peptides: { from: '#C084FC', to: '#EC4899', glow: 'rgba(192, 132, 252, 0.45)' }, // Violet -> Fuchsia Pink
+  peptides: { 
+    from: '#E879F9', // Neon Bioactive Fuchsia
+    to: '#F472B6',   // Radiant Bioactive Rose
+    glow: 'rgba(232, 121, 249, 0.75)', 
+    ambient: 'rgba(244, 114, 182, 0.35)' 
+  },
   
   // Diagnostics & Biomarkers
-  diagnostics: { from: '#06B6D4', to: '#3B82F6', glow: 'rgba(6, 182, 212, 0.45)' }, // Cyan -> Royal Blue
+  diagnostics: { 
+    from: '#22D3EE', // High-Tech Cyan
+    to: '#60A5FA',   // Biomarker Cobalt Blue
+    glow: 'rgba(34, 211, 238, 0.75)', 
+    ambient: 'rgba(96, 165, 250, 0.35)' 
+  },
   
   // Fallback / General Longevity
-  default: { from: '#10B981', to: '#06B6D4', glow: 'rgba(16, 185, 129, 0.4)' }
+  default: { 
+    from: '#34D399', 
+    to: '#22D3EE', 
+    glow: 'rgba(52, 211, 153, 0.7)', 
+    ambient: 'rgba(34, 211, 238, 0.35)' 
+  }
 }
 
 function resolveGradient(nameLower: string, catLower: string): GradientConfig {
@@ -178,7 +244,7 @@ function resolveGradient(nameLower: string, catLower: string): GradientConfig {
 /** Cold Plunge / Cold Water Immersion: Deep plunge tub with waterline and floating ice crystal */
 function ColdPlungeGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Plunge Tub Rim & Base */}
       <path d="M3 11h18" />
       <path d="M4 11v6a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-6" />
@@ -196,7 +262,7 @@ function ColdPlungeGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Detailed Sauna: Finnish volcanic stone stove (kiuas) with rising löyly steam & cedar bucket with ladle */
 function DetailedSaunaGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Finnish Sauna Stove (Kiuas) Body with Front Heat Grates */}
       <rect x="2.5" y="11" width="8" height="10" rx="1" />
       <line x1="5" y1="14.5" x2="5" y2="18.5" />
@@ -220,7 +286,7 @@ function DetailedSaunaGlyph({ stroke, size }: { stroke: string; size: number }) 
 /** Precision Subcutaneous Peptide Syringe & Micro-Needle (True medical insulin syringe, NOT a trumpet) */
 function PeptideSyringeGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Finger Grip Flange Wings at barrel top */}
       <line x1="5.5" y1="16.5" x2="8.5" y2="19.5" />
       {/* Plunger Shaft extended backwards */}
@@ -246,7 +312,7 @@ function PeptideSyringeGlyph({ stroke, size }: { stroke: string; size: number })
 /** Handstand & Inversion Balance Glyph (Inverted gymnast hold, explicitly NOT a dumbbell) */
 function HandstandGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Floor / Ground Platform Line */}
       <line x1="4" y1="21" x2="20" y2="21" />
       {/* Left Palm & Forearm Planted */}
@@ -274,7 +340,7 @@ function HandstandGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Calisthenics, Pull-Ups & Bodyweight Mastery Glyph */
 function CalisthenicsGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Overhead Pull-Up Rig / Bar */}
       <line x1="3" y1="3.5" x2="21" y2="3.5" />
       <line x1="5" y1="3.5" x2="5" y2="5.5" />
@@ -300,7 +366,7 @@ function CalisthenicsGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Single-Leg Balance & Proprioceptive Stability Glyph */
 function BalanceGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Ground Balance Line */}
       <line x1="4" y1="21" x2="20" y2="21" />
       {/* Head */}
@@ -320,7 +386,7 @@ function BalanceGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Continuous Glucose / Ketone Monitor (CGM) Bio-Wearable Glyph */
 function CGMGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Circular Sensor Patch Body */}
       <circle cx="12" cy="12" r="7.5" />
       {/* Central Biosensor Core */}
@@ -336,7 +402,7 @@ function CGMGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Hyperbaric Oxygen Therapy (HBOT) Pressurized Capsule Chamber */
 function HBOTGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Capsule Chamber Body */}
       <rect x="2.5" y="7" width="19" height="10" rx="5" />
       {/* Observation Window Porthole */}
@@ -354,7 +420,7 @@ function HBOTGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Oral Health & Longevity Glyph (Molar & Floss Protection) */
 function OralHygieneGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Anatomical Molar Crown & Roots */}
       <path d="M7 4.5c2-.5 3 .5 5 .5s3-1 5-.5c2 .5 2.5 3 2.5 5 0 3.5-1.5 6-3 10-1 2.5-2.5 2.5-3 0l-1.5-6-1.5 6c-.5 2.5-2 2.5-3 0-1.5-4-3-6.5-3-10 0-2 .5-4.5 2.5-5z" />
       {/* Protective Cleansing Sparkle */}
@@ -366,7 +432,7 @@ function OralHygieneGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Horse Stance / Active Thermogenesis Reheating Glyph */
 function ThermogenesisGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Ground Platform Line */}
       <line x1="3" y1="21" x2="21" y2="21" />
       {/* Head */}
@@ -387,7 +453,7 @@ function ThermogenesisGlyph({ stroke, size }: { stroke: string; size: number }) 
 /** Therapeutic Plasma Exchange / Blood Centrifugation Glyph */
 function PlasmaExchangeGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Outer Filtration Capsule */}
       <rect x="5" y="3" width="14" height="18" rx="4" />
       {/* Separation Membrane Divider */}
@@ -403,7 +469,7 @@ function PlasmaExchangeGlyph({ stroke, size }: { stroke: string; size: number })
 /** Contrast Therapy: Dual circulating hot & cold thermodynamic cycle */
 function ContrastTherapyGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Left Cold Wave Arc */}
       <path d="M12 3a9 9 0 0 0-9 9c0 2.8 1.3 5.3 3.3 6.9" />
       <path d="M6 19l.5-3.5-3.5.5" />
@@ -420,7 +486,7 @@ function ContrastTherapyGlyph({ stroke, size }: { stroke: string; size: number }
 /** Hot Bath: Soaking tub with warm rising steam ripples */
 function HotBathGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 12h18" />
       <path d="M4 12v5a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-5" />
       <path d="M6 21v1" />
@@ -434,7 +500,7 @@ function HotBathGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Red Light Therapy / Photobiomodulation: Focused LED panel emitting rays onto a human silhouette */
 function RedLightGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       {/* Vertical LED Light Panel */}
       <rect x="3" y="4" width="4" height="16" rx="1" />
       <line x1="5" y1="8" x2="5.01" y2="8" strokeWidth="2.5" />
@@ -454,7 +520,7 @@ function RedLightGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** 16:8 Fasting / Time-Restricted Eating: Plate with distinct 16:8 fasting partition clock arc */
 function FastingGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="9" />
       <circle cx="12" cy="12" r="5.5" strokeDasharray="2 2" />
       <path d="M12 8v4l3 2" />
@@ -465,7 +531,7 @@ function FastingGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Seated Meditation: Zen lotus meditation figure with focused spinal alignment */
 function MeditationGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="5.5" r="2.2" />
       <path d="M12 8v6" />
       <path d="M6 14l3-3 3 2 3-2 3 3" />
@@ -478,7 +544,7 @@ function MeditationGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Breathwork: Anatomical lungs with directional airflow vectors */
 function BreathworkGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 3v6" />
       <path d="M12 9l-2 2" />
       <path d="M12 9l2 2" />
@@ -491,7 +557,7 @@ function BreathworkGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** NSDR / Yoga Nidra: Reclined figure in deep somatic relaxation with soft alpha/theta wave */
 function NSDRGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 18h18" />
       <circle cx="7" cy="13" r="2" />
       <path d="M9 15h11" />
@@ -503,7 +569,7 @@ function NSDRGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Zone 2 Cardio: Heart coupled with continuous steady metabolic rhythm wave */
 function Zone2Glyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 20.5l-7-6.5A5 5 0 0 1 12 7.5a5 5 0 0 1 7 6.5l-7 6.5z" />
       <path d="M8 14h2l1.2-2.5 1.6 5 1.2-2.5H16" />
     </svg>
@@ -513,7 +579,7 @@ function Zone2Glyph({ stroke, size }: { stroke: string; size: number }) {
 /** VILPA: Sprinting silhouette with burst acceleration cues */
 function VILPAGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="15" cy="5" r="2" />
       <path d="M13 7l-2 5 4 2" />
       <path d="M11 12l-3 4-4-1" />
@@ -527,7 +593,7 @@ function VILPAGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Mobility & Dynamic Stretching: Full-range flexibility extension silhouette */
 function MobilityGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="4.5" r="2" />
       <path d="M12 7v5" />
       <path d="M6 8l6-1 6 1" />
@@ -611,18 +677,37 @@ export default function ModalityIcon({
   ).toLowerCase().trim()
 
   const grad = resolveGradient(nameLower, catLower)
-  const effectiveStroke = activeIgnited ? `url(#${gradId})` : '#64748B'
-  const glowStyle = (glow && activeIgnited) ? { filter: `drop-shadow(0 0 5px ${grad.glow})` } : undefined
+  const effectiveStroke = activeIgnited ? `url(#${gradId})` : '#94A3B8'
 
-  // Helper renderer for Lucide icons using the gradient stroke
+  // Micro-precise edge definition for crisp lines:
+  // Instead of a 5px blur that bleeds across adjacent lines, we use a 1px intense luminous rim
+  // plus an ultra-subtle shadow for razor-sharp edge contrast against any background.
+  const foregroundFilter = (glow && activeIgnited)
+    ? `drop-shadow(0 0 1.2px ${grad.glow}) drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45))`
+    : undefined
+
+  // Helper renderer for Lucide icons using the gradient stroke & dual-layer lighting
   const renderLucide = (IconComponent: React.ComponentType<any>) => (
     <div 
       ref={containerRef}
-      className={`inline-flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${
-        activeIgnited ? 'opacity-100 scale-100' : 'opacity-35 scale-95'
+      className={`relative inline-flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${
+        activeIgnited ? 'opacity-100 scale-100' : 'opacity-60 scale-95'
       } ${className}`}
-      style={glowStyle}
     >
+      {/* Layer 1: Ambient Background Lighting Aura (Radiates softly behind the icon without blurring strokes) */}
+      {glow && activeIgnited && (
+        <div 
+          className="absolute inset-0 -m-1.5 rounded-full pointer-events-none transition-all duration-700 ease-out"
+          style={{
+            background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || 'transparent'} 50%, transparent 80%)`,
+            filter: 'blur(5px)',
+            opacity: 0.75,
+            transform: 'scale(1.2)'
+          }}
+        />
+      )}
+
+      {/* SVG Linear Gradient Definition */}
       <svg width={0} height={0} className="absolute pointer-events-none">
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -631,24 +716,44 @@ export default function ModalityIcon({
           </linearGradient>
         </defs>
       </svg>
-      <IconComponent 
-        size={size} 
-        stroke={effectiveStroke} 
-        strokeWidth={1.8} 
-        className="shrink-0 transition-all duration-500"
-      />
+
+      {/* Layer 2: Foreground Razor-Sharp Vector Icon */}
+      <div 
+        className="relative z-10 inline-flex items-center justify-center transition-all duration-500"
+        style={{ filter: foregroundFilter }}
+      >
+        <IconComponent 
+          size={size} 
+          stroke={effectiveStroke} 
+          strokeWidth={1.85} 
+          className="shrink-0 transition-all duration-500"
+        />
+      </div>
     </div>
   )
 
-  // Helper renderer for custom SVG glyphs
+  // Helper renderer for custom SVG glyphs using the gradient stroke & dual-layer lighting
   const renderCustom = (GlyphComponent: React.ComponentType<{ stroke: string; size: number }>) => (
     <div 
       ref={containerRef}
-      className={`inline-flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${
-        activeIgnited ? 'opacity-100 scale-100' : 'opacity-35 scale-95'
+      className={`relative inline-flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${
+        activeIgnited ? 'opacity-100 scale-100' : 'opacity-60 scale-95'
       } ${className}`}
-      style={glowStyle}
     >
+      {/* Layer 1: Ambient Background Lighting Aura (Radiates softly behind the icon without blurring strokes) */}
+      {glow && activeIgnited && (
+        <div 
+          className="absolute inset-0 -m-1.5 rounded-full pointer-events-none transition-all duration-700 ease-out"
+          style={{
+            background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || 'transparent'} 50%, transparent 80%)`,
+            filter: 'blur(5px)',
+            opacity: 0.75,
+            transform: 'scale(1.2)'
+          }}
+        />
+      )}
+
+      {/* SVG Linear Gradient Definition */}
       <svg width={0} height={0} className="absolute pointer-events-none">
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -657,7 +762,14 @@ export default function ModalityIcon({
           </linearGradient>
         </defs>
       </svg>
-      <GlyphComponent stroke={effectiveStroke} size={size} />
+
+      {/* Layer 2: Foreground Razor-Sharp Vector Icon */}
+      <div 
+        className="relative z-10 inline-flex items-center justify-center transition-all duration-500"
+        style={{ filter: foregroundFilter }}
+      >
+        <GlyphComponent stroke={effectiveStroke} size={size} />
+      </div>
     </div>
   )
 
@@ -753,6 +865,10 @@ export default function ModalityIcon({
   }
   if (
     nameLower.includes('calisthenic') ||
+    nameLower.includes('murph') ||
+    nameLower.includes('hero wod') ||
+    nameLower.includes('crossfit') ||
+    nameLower.includes('cindy') ||
     nameLower.includes('pull-up') ||
     nameLower.includes('pull up') ||
     nameLower.includes('chin-up') ||
