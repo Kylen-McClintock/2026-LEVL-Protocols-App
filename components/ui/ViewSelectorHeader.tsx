@@ -83,7 +83,7 @@ export const ViewSelectorHeader: React.FC<ViewSelectorHeaderProps> = ({
   )
 }
 
-export type MainCategory = 'all' | 'peptides' | 'fitness' | 'nutrition' | 'sleep' | 'mind' | 'other'
+export type MainCategory = 'all' | 'supplements' | 'peptides' | 'fitness' | 'nutrition' | 'sleep' | 'mind' | 'other'
 
 export interface SubCategoryItem {
   id: string
@@ -92,6 +92,7 @@ export interface SubCategoryItem {
 
 export const MAIN_CATEGORIES: Array<{ id: MainCategory; label: string; icon: string }> = [
   { id: 'all', label: 'All', icon: '✨' },
+  { id: 'supplements', label: 'Supplements', icon: '💊' },
   { id: 'peptides', label: 'Peptides', icon: '💉' },
   { id: 'fitness', label: 'Fitness', icon: '🏋️' },
   { id: 'nutrition', label: 'Nutrition', icon: '🥗' },
@@ -102,6 +103,12 @@ export const MAIN_CATEGORIES: Array<{ id: MainCategory; label: string; icon: str
 
 export const SUB_CATEGORIES_MAP: Record<MainCategory, SubCategoryItem[]> = {
   all: [],
+  supplements: [
+    { id: 'longevity_nad', label: 'Longevity & Cellular' },
+    { id: 'nootropics', label: 'Cognitive & Nootropics' },
+    { id: 'mitochondrial', label: 'Mitochondrial & Energy' },
+    { id: 'vitamins_minerals', label: 'Vitamins & Minerals' }
+  ],
   peptides: [
     { id: 'injury_joint_repair', label: '🩹 Injury & Joint Repair' },
     { id: 'fat_loss_metabolism', label: '🔥 Fat Loss & Metabolism' },
@@ -119,9 +126,9 @@ export const SUB_CATEGORIES_MAP: Record<MainCategory, SubCategoryItem[]> = {
     { id: 'thermal', label: 'Thermal & Recovery' }
   ],
   nutrition: [
-    { id: 'supplements', label: 'Supplements' },
     { id: 'fasting', label: 'Fasting' },
-    { id: 'whole_foods', label: 'Whole Foods & Diet' }
+    { id: 'whole_foods', label: 'Whole Foods & Diet' },
+    { id: 'hydration', label: 'Hydration & Electrolytes' }
   ],
   sleep: [
     { id: 'hygiene', label: 'Sleep Hygiene' },

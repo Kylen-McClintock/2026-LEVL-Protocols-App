@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react'
 import { DailyProtocolTask, UserProfile } from '@/lib/types'
-import { Calendar } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
-import { sortTasksChronologically } from '@/lib/data/resolveOptimalTiming'
+import { groupTasksByTimeBlock, groupTasksByProtocol } from '@/lib/data/resolveOptimalTiming'
+import { getModalityTheme } from '@/lib/utils/modalityColors'
 
 interface SevenDayWeekViewProps {
   tasksByDate: Record<string, DailyProtocolTask[]>
@@ -15,6 +15,7 @@ interface SevenDayWeekViewProps {
   selectedProtocolFilter?: string
   selectedIsolatedOutcome?: string | null
   layoutOrientation?: LayoutOrientation
+  viewMode?: 'chronological' | 'protocol'
   userProfile?: UserProfile | null
   onSelectDate?: (dateStr: string) => void
   onTaskStatusChange?: (taskId: string, newStatus: string) => void
@@ -50,147 +51,21 @@ function dedupeTasksForColumn(tasks: DailyProtocolTask[]) {
   return Array.from(map.values())
 }
 
-function matchesProtocol(task: DailyProtocolTask, filterIdOrName?: string): boolean {
-  if (!filterIdOrName || filterIdOrName === 'all') return true
-  const target = filterIdOrName.toLowerCase()
-
-  const inLineage = (task.lineages || []).some(l => {
-    const pid = (l.protocol_id || '').toLowerCase()
-    const pname = (l.protocol_name || '').toLowerCase()
-    return pid === target || pname === target || pname.includes(target) || target.includes(pname)
-  })
-  if (inLineage) return true
-
-  const stepProtoId = (task.protocol_step?.protocol_id || '').toLowerCase()
-  const stepProtoName = (task.protocol_step?.protocol?.name || '').toLowerCase()
-  if (stepProtoId === target || (stepProtoName && stepProtoName.includes(target))) return true
-
-  const instProtoId = ((task as any).user_protocol_instance?.protocol_id || '').toLowerCase()
-  const instProtoName = ((task as any).user_protocol_instance?.protocol?.name || '').toLowerCase()
-  if (instProtoId === target || (instProtoName && instProtoName.includes(target))) return true
-
-  return false
-}
-
-function getModalityHighlightStyle(t: DailyProtocolTask, selectedProtocolFilter?: string) {
-  const matchingLineage = selectedProtocolFilter && selectedProtocolFilter !== 'all'
-    ? t.lineages?.find(l => {
-        const pid = (l.protocol_id || '').toLowerCase()
-        const pname = (l.protocol_name || '').toLowerCase()
-        const target = selectedProtocolFilter.toLowerCase()
-        return pid === target || pname === target || pname.includes(target)
-      })
-    : t.lineages?.[0]
-
-  const protoColorHex = matchingLineage?.color_hex || t.lineages?.[0]?.color_hex
-  if (protoColorHex && protoColorHex !== '#A855F7') {
-    return {
-      backgroundColor: `${protoColorHex}28`,
-      borderLeft: `2.5px solid ${protoColorHex}`,
-      color: '#FFFFFF'
-    }
-  }
-
-  const mod = t.protocol_step?.modality || t.loose_modality
-  const cat = (mod?.category || '').toLowerCase()
-  const nameId = ((mod?.name || '') + ' ' + (mod?.id || '')).toLowerCase()
-  const isPulsed = (mod as any)?.is_pulsed || 
-                   ['weekly', 'biweekly', 'monthly', 'quarterly', 'pulsed', 'cyclical', 'infrequent'].includes((mod?.cadence_layer || '').toLowerCase())
-
-  const isExercise = cat.includes('fitness') || cat.includes('physical') || nameId.includes('workout') || nameId.includes('training') || nameId.includes('cardio')
-  const isFasting = cat.includes('fasting') || nameId.includes('fast')
-  const isPulsedSupp = isPulsed || nameId.includes('glp') || nameId.includes('fisetin') || nameId.includes('rapamycin')
-
-  if (isExercise) {
-    return {
-      backgroundColor: 'rgba(245, 158, 11, 0.22)',
-      borderLeft: '2.5px solid #F59E0B',
-      color: '#FDE68A'
-    }
-  }
-  if (isFasting) {
-    return {
-      backgroundColor: 'rgba(59, 130, 246, 0.22)',
-      borderLeft: '2.5px solid #3B82F6',
-      color: '#BFDBFE'
-    }
-  }
-  if (isPulsedSupp) {
-    return {
-      backgroundColor: 'rgba(168, 85, 247, 0.22)',
-      borderLeft: '2.5px solid #A855F7',
-      color: '#E9D5FF'
-    }
-  }
-
-  return {
-    backgroundColor: 'rgba(20, 184, 166, 0.22)',
-    borderLeft: '2.5px solid #14B8A6',
-    color: '#99F6E4'
-  }
-}
-
 export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
   tasksByDate,
   weekDates,
   currentDateStr,
-  selectedProtocolFilter,
-  selectedIsolatedOutcome,
   layoutOrientation = 'columns',
+  viewMode = 'chronological',
   userProfile,
   onSelectDate,
   onTaskStatusChange,
   onOpenDosageModal,
   onOpenRescheduleModal,
   onMoveToBench,
-  onEliminateEntirely,
-  activeCategoryFilters
+  onEliminateEntirely
 }) => {
   const [expandedTask, setExpandedTask] = useState<DailyProtocolTask | null>(null)
-
-  const filterTask = (task: DailyProtocolTask) => {
-    if (!matchesProtocol(task, selectedProtocolFilter)) return false
-
-    const mod = task.protocol_step?.modality || task.loose_modality
-    if (!mod) return true
-
-    if (selectedIsolatedOutcome) {
-      const target = selectedIsolatedOutcome.toLowerCase().trim()
-      const outcomes = task.execution_details?.outcomes || []
-      const hasLogged = outcomes.some((o: any) => {
-        const oId = String(o.outcomeId || o.id || '').toLowerCase()
-        const oName = String(o.outcomeName || o.name || '').toLowerCase()
-        return oId === target || oName === target || oId.includes(target) || target.includes(oId)
-      })
-      if (hasLogged) return true
-
-      const pOut = String(mod.primary_outcome || '').toLowerCase()
-      const sOuts = (mod.secondary_outcomes || []).map((s: any) => String(typeof s === 'string' ? s : s.name || s.id || '').toLowerCase())
-      const allOutcomes = [pOut, ...sOuts]
-      if (!allOutcomes.some(o => o === target || o.includes(target) || target.includes(o))) {
-        return false
-      }
-    }
-
-    const cat = (mod.category || '').toLowerCase()
-    const nameId = ((mod.name || '') + ' ' + (mod.id || '')).toLowerCase()
-    const isPulsed = (mod as any).is_pulsed || 
-                     ['weekly', 'biweekly', 'monthly', 'quarterly', 'pulsed', 'cyclical', 'infrequent'].includes((mod.cadence_layer || '').toLowerCase())
-
-    const isExercise = cat.includes('fitness') || cat.includes('physical') || nameId.includes('workout') || nameId.includes('training') || nameId.includes('cardio')
-    const isFasting = cat.includes('fasting') || nameId.includes('fast')
-    const isPulsedSupp = isPulsed || nameId.includes('glp') || nameId.includes('fisetin') || nameId.includes('rapamycin')
-    const isDailyBaseline = !isPulsed && !isExercise && !isFasting
-
-    if (activeCategoryFilters) {
-      if (isExercise && !activeCategoryFilters.exercise) return false
-      if (isFasting && !activeCategoryFilters.fasting) return false
-      if (isPulsedSupp && !activeCategoryFilters.pulsed) return false
-      if (isDailyBaseline && !activeCategoryFilters.daily) return false
-    }
-
-    return true
-  }
 
   const isStacked = layoutOrientation === 'stack'
   const todayStr = format(new Date(), 'yyyy-MM-dd')
@@ -211,7 +86,7 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
       )}
 
       <div className="w-full overflow-x-auto pb-1 scrollbar-none">
-        <div className={isStacked ? 'flex flex-col space-y-2 w-full' : 'grid grid-cols-[repeat(7,minmax(120px,1fr))] sm:grid-cols-7 gap-0.5 min-w-[840px] sm:min-w-0'}>
+        <div className={isStacked ? 'flex flex-col space-y-2 w-full' : 'grid grid-cols-[repeat(7,minmax(120px,1fr))] sm:grid-cols-7 gap-1 min-w-[840px] sm:min-w-0'}>
           {weekDates.map((dateStr) => {
             const isSelected = dateStr === currentDateStr
             const dateObj = parseISO(dateStr + 'T00:00:00')
@@ -221,16 +96,22 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
             const isPastDay = dateStr < todayStr
 
             const rawTasks = tasksByDate[dateStr] || []
-            const filteredTasks = rawTasks.filter(filterTask)
-            const dedupedTasks = sortTasksChronologically(dedupeTasksForColumn(filteredTasks), userProfile)
+            const dedupedTasks = dedupeTasksForColumn(rawTasks)
             const completedCount = dedupedTasks.filter(t => t.status === 'completed').length
             const adherencePct = dedupedTasks.length > 0 ? Math.round((completedCount / dedupedTasks.length) * 100) : 0
+
+            const timeBlocks = viewMode === 'chronological'
+              ? groupTasksByTimeBlock(dedupedTasks, userProfile)
+              : []
+            const protocolBlocks = viewMode === 'protocol'
+              ? groupTasksByProtocol(dedupedTasks, userProfile)
+              : []
 
             return (
               <div
                 key={dateStr}
                 className={`rounded-lg border p-1 flex flex-col ${
-                  isStacked ? 'space-y-1.5' : 'space-y-0.5 min-h-[360px]'
+                  isStacked ? 'space-y-2' : 'space-y-1 min-h-[380px]'
                 } ${
                   isSelected
                     ? 'bg-slate-950/95 border-teal-500/90 ring-1 ring-teal-500/50 shadow-md'
@@ -281,50 +162,49 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
 
                 {/* Swimlane Task Items */}
                 <div 
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget) {
-                      onSelectDate && onSelectDate(dateStr)
-                    }
-                  }}
-                  className={`space-y-0.5 flex-1 ${isStacked ? '' : 'overflow-y-auto max-h-[64vh]'}`}
+                  className={`space-y-1.5 flex-1 ${isStacked ? '' : 'overflow-y-auto max-h-[64vh]'}`}
                 >
                   {dedupedTasks.length === 0 ? (
-                    <div className="text-center py-4 text-slate-500 text-[9px]">Rest / Empty</div>
-                  ) : (
-                    dedupedTasks.map((t) => {
-                      const mod = t.protocol_step?.modality || t.loose_modality
-                      const modName = mod?.name || 'Protocol Task'
-                      const protoName = t.lineages?.map(l => l.protocol_name).join(' + ') || t.protocol_step?.protocol?.name || ''
-                      const style = getModalityHighlightStyle(t, selectedProtocolFilter)
-                      const isExpanded = expandedTask?.id === t.id
-
-                      return (
-                        <div
-                          key={t.id}
-                          onClick={() => setExpandedTask(isExpanded ? null : t)}
-                          className={`pl-1.5 pr-0.5 py-0.5 rounded-r-[3px] text-left flex flex-col justify-center transition-all cursor-pointer group shadow-2xs w-full ${
-                            isExpanded ? 'ring-2 ring-teal-400 shadow-teal-500/20' : ''
-                          }`}
-                          style={style}
-                        >
-                          {protoName && (selectedProtocolFilter === 'all' || isStacked) && (
-                            <span className="text-[7.5px] sm:text-[8px] font-extrabold uppercase tracking-wider truncate block opacity-85 leading-tight">
-                              {protoName}
-                            </span>
-                          )}
-
-                          <div className="text-[9.5px] sm:text-[10px] font-extrabold leading-tight truncate">
-                            {modName}
-                          </div>
-
-                          {mod?.dose_or_exposure && (
-                            <div className="text-[7.5px] sm:text-[8px] opacity-80 font-mono truncate leading-tight">
-                              {mod.dose_or_exposure}
-                            </div>
-                          )}
+                    <div className="text-center py-6 text-slate-500 text-[9.5px]">Rest / Empty</div>
+                  ) : viewMode === 'protocol' ? (
+                    /* Protocol Groups */
+                    protocolBlocks.map((pBlock) => (
+                      <div key={pBlock.protocolName} className="space-y-0.5">
+                        {/* Protocol Section Header Break */}
+                        <div className="flex items-center gap-1 px-1 py-0.5 border-b border-white/5">
+                          <span 
+                            className="w-1.5 h-1.5 rounded-full shrink-0" 
+                            style={{ backgroundColor: pBlock.protocolColorHex || '#A855F7' }} 
+                          />
+                          <span className="text-[8px] sm:text-[8.5px] font-black uppercase tracking-wider text-slate-300 truncate">
+                            {pBlock.protocolName}
+                          </span>
                         </div>
-                      )
-                    })
+
+                        {/* Modality Pills (NO icons) */}
+                        <div className="space-y-0.5">
+                          {pBlock.tasks.map((t) => renderPill(t))}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    /* Time Block Groups */
+                    timeBlocks.map((tBlock) => (
+                      <div key={tBlock.block.id} className="space-y-0.5">
+                        {/* Time Block Section Header Break */}
+                        <div className="flex items-center gap-1 px-1 py-0.5 border-b border-slate-800/80">
+                          <span className="text-[9px] shrink-0">{tBlock.block.icon}</span>
+                          <span className="text-[8px] sm:text-[8.5px] font-black uppercase tracking-wider text-slate-300 truncate">
+                            {isStacked ? tBlock.block.label : tBlock.block.id.toUpperCase()}
+                          </span>
+                        </div>
+
+                        {/* Modality Pills (NO icons) */}
+                        <div className="space-y-0.5">
+                          {tBlock.tasks.map((t) => renderPill(t))}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
@@ -334,4 +214,54 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
       </div>
     </div>
   )
+
+  function renderPill(t: DailyProtocolTask) {
+    const theme = getModalityTheme(t)
+    const mod = t.protocol_step?.modality || t.loose_modality
+    const modName = mod?.name || (t as any).name || 'Protocol Task'
+    const doseStr = t.execution_details?.custom_dose || mod?.dose_or_exposure || ''
+    const isExpanded = expandedTask?.id === t.id
+    const isCompleted = t.status === 'completed'
+
+    return (
+      <div
+        key={t.id}
+        onClick={() => setExpandedTask(isExpanded ? null : t)}
+        className={`pl-1.5 pr-1 py-1 rounded-r-[4px] border-l-[3px] text-left flex flex-col justify-center transition-all cursor-pointer group shadow-2xs w-full ${
+          isExpanded ? 'ring-2 ring-teal-400 shadow-teal-500/20' : ''
+        } ${isCompleted ? 'opacity-70' : 'opacity-100 hover:opacity-100'}`}
+        style={{
+          borderLeftColor: theme.borderHex,
+          backgroundColor: theme.bgTint
+        }}
+      >
+        <div className="flex items-center justify-between gap-0.5">
+          <span 
+            className="text-[7.5px] font-black uppercase tracking-wider truncate"
+            style={{ color: theme.colorHex }}
+          >
+            {theme.label}
+          </span>
+          {isCompleted && (
+            <span className="text-[7.5px] font-mono font-bold text-emerald-400 shrink-0">
+              ✓
+            </span>
+          )}
+        </div>
+
+        <div 
+          className="text-[9px] sm:text-[9.5px] font-black leading-tight truncate group-hover:brightness-125 transition-all"
+          style={{ color: theme.textHex }}
+        >
+          {modName}
+        </div>
+
+        {doseStr && (
+          <div className="text-[7.5px] sm:text-[8px] text-slate-300/80 font-mono truncate leading-tight">
+            {doseStr}
+          </div>
+        )}
+      </div>
+    )
+  }
 }

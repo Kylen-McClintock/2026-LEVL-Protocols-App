@@ -533,3 +533,115 @@ export function sortTasksChronologically(
   })
 }
 
+export type MacroTimeBlockId = 'morning' | 'afternoon' | 'evening' | 'bedtime' | 'anytime'
+
+export interface MacroTimeBlockInfo {
+  id: MacroTimeBlockId
+  label: string
+  icon: string
+  order: number
+}
+
+export const MACRO_TIME_BLOCK_METAS: Record<MacroTimeBlockId, MacroTimeBlockInfo> = {
+  morning: { id: 'morning', label: 'Morning', icon: '🌅', order: 1 },
+  afternoon: { id: 'afternoon', label: 'Afternoon', icon: '☀️', order: 2 },
+  evening: { id: 'evening', label: 'Evening', icon: '🌆', order: 3 },
+  bedtime: { id: 'bedtime', label: 'Bedtime', icon: '🌙', order: 4 },
+  anytime: { id: 'anytime', label: 'Flexible / Anytime', icon: '⚡', order: 5 }
+}
+
+export function getMacroTimeBlock(
+  task: DailyProtocolTask,
+  userProfile?: UserProfile | null
+): MacroTimeBlockInfo {
+  const mod = task.protocol_step?.modality || task.loose_modality
+  const customTiming = task.custom_timing || task.execution_details?.custom_timing
+  const isSplit = Boolean(task.execution_details?.split_dose_number || task.id?.includes('-split-'))
+  const slot = (isSplit && task.timing_slot && task.timing_slot !== 'anytime')
+    ? task.timing_slot
+    : resolveOptimalTimingSlot(mod, task.protocol_step, task.timing_slot, userProfile, customTiming)
+  
+  const order = getTimeBlockOrder(slot)
+
+  if (order <= 4) {
+    return MACRO_TIME_BLOCK_METAS.morning
+  } else if (order <= 8) {
+    return MACRO_TIME_BLOCK_METAS.afternoon
+  } else if (order <= 12) {
+    return MACRO_TIME_BLOCK_METAS.evening
+  } else if (order <= 15) {
+    return MACRO_TIME_BLOCK_METAS.bedtime
+  } else {
+    return MACRO_TIME_BLOCK_METAS.anytime
+  }
+}
+
+export interface GroupedTimeBlock {
+  block: MacroTimeBlockInfo
+  tasks: DailyProtocolTask[]
+}
+
+export function groupTasksByTimeBlock(
+  tasks: DailyProtocolTask[],
+  userProfile?: UserProfile | null
+): GroupedTimeBlock[] {
+  const sorted = sortTasksChronologically(tasks, userProfile)
+  const map: Record<MacroTimeBlockId, DailyProtocolTask[]> = {
+    morning: [],
+    afternoon: [],
+    evening: [],
+    bedtime: [],
+    anytime: []
+  }
+
+  sorted.forEach(t => {
+    const block = getMacroTimeBlock(t, userProfile)
+    map[block.id].push(t)
+  })
+
+  const blockIds: MacroTimeBlockId[] = ['morning', 'afternoon', 'evening', 'bedtime', 'anytime']
+  const result: GroupedTimeBlock[] = []
+
+  blockIds.forEach(id => {
+    if (map[id].length > 0) {
+      result.push({
+        block: MACRO_TIME_BLOCK_METAS[id],
+        tasks: map[id]
+      })
+    }
+  })
+
+  return result
+}
+
+export interface GroupedProtocolBlock {
+  protocolName: string
+  protocolColorHex?: string
+  tasks: DailyProtocolTask[]
+}
+
+export function groupTasksByProtocol(
+  tasks: DailyProtocolTask[],
+  userProfile?: UserProfile | null
+): GroupedProtocolBlock[] {
+  const sorted = sortTasksChronologically(tasks, userProfile)
+  const map = new Map<string, { protocolName: string; protocolColorHex?: string; tasks: DailyProtocolTask[] }>()
+
+  sorted.forEach(t => {
+    const protoName = t.lineages?.[0]?.protocol_name || t.protocol_step?.protocol?.name || (t as any).user_protocol_instance?.protocol?.name || 'Standalone Modalities'
+    const protoColorHex = t.lineages?.[0]?.color_hex || t.protocol_step?.protocol?.color_hex || '#A855F7'
+
+    if (!map.has(protoName)) {
+      map.set(protoName, {
+        protocolName: protoName,
+        protocolColorHex: protoColorHex,
+        tasks: [t]
+      })
+    } else {
+      map.get(protoName)!.tasks.push(t)
+    }
+  })
+
+  return Array.from(map.values())
+}
+

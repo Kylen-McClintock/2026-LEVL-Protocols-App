@@ -30,7 +30,8 @@ import {
 } from 'date-fns'
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
-  ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw 
+  ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
+  Columns, Rows
 } from 'lucide-react'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
@@ -63,6 +64,7 @@ import { calculateDailyEfficacySummary } from '@/lib/data/historicalAnalysis'
 import { getScoredLongevityTips } from '@/lib/ranking/tipPersonalization'
 import { getMacroCategory } from '@/lib/utils/categories'
 import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
+import { getModalityMacroType } from '@/lib/utils/modalityColors'
 import { getCircadianConfig, getAdaptiveCircadianConfig, isCurrentCircadianSlot, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS } from '@/lib/utils/circadianConfig'
 import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
 import AdaptiveSleepTriageCard from '@/components/today/AdaptiveSleepTriageCard'
@@ -1665,8 +1667,11 @@ function TodayPageContent() {
       const activeSubIds = selectedSubCategories.filter(id => subItems.some(sub => sub.id === id))
 
       if (activeSubIds.length === 0) {
-        if (cat === 'peptides') return combinedText.includes('peptide') || combinedText.includes('bpc') || combinedText.includes('tb500') || combinedText.includes('tb-500') || combinedText.includes('cjc') || combinedText.includes('ipamorelin') || combinedText.includes('semax') || combinedText.includes('selank') || combinedText.includes('tirzepatide') || combinedText.includes('subq')
-        if (cat === 'fitness') return combinedText.includes('fitness') || combinedText.includes('exercise') || combinedText.includes('workout') || combinedText.includes('cardio') || combinedText.includes('strength') || combinedText.includes('sauna') || combinedText.includes('cold') || combinedText.includes('physical') || combinedText.includes('training')
+        if (cat === 'supplements') {
+          return getModalityMacroType(task) === 'supplements' || combinedText.includes('supplement') || combinedText.includes('pill') || combinedText.includes('capsule') || combinedText.includes('tablet') || combinedText.includes('vitamin') || combinedText.includes('mineral')
+        }
+        if (cat === 'peptides') return getModalityMacroType(task) === 'peptides' || combinedText.includes('peptide') || combinedText.includes('bpc') || combinedText.includes('tb500') || combinedText.includes('tb-500') || combinedText.includes('cjc') || combinedText.includes('ipamorelin') || combinedText.includes('semax') || combinedText.includes('selank') || combinedText.includes('tirzepatide') || combinedText.includes('subq')
+        if (cat === 'fitness') return getModalityMacroType(task) === 'fitness' || combinedText.includes('fitness') || combinedText.includes('exercise') || combinedText.includes('workout') || combinedText.includes('cardio') || combinedText.includes('strength') || combinedText.includes('physical') || combinedText.includes('training')
         if (cat === 'nutrition') {
           if (
             modalityCat.includes('sleep') || 
@@ -1676,15 +1681,21 @@ function TodayPageContent() {
             modalityName.includes('4-7-8') ||
             modalityName.includes('dark & cool')
           ) return false
-          return combinedText.includes('nutrition') || combinedText.includes('supplement') || combinedText.includes('fast') || combinedText.includes('food') || combinedText.includes('diet') || combinedText.includes('meal') || combinedText.includes('protein') || combinedText.includes('vitamin') || combinedText.includes('biochemistry')
+          // Exclude dedicated supplements since Supplements is now its own top-level category!
+          if (getModalityMacroType(task) === 'supplements') return false
+          return combinedText.includes('nutrition') || combinedText.includes('fast') || combinedText.includes('food') || combinedText.includes('diet') || combinedText.includes('meal') || combinedText.includes('protein') || combinedText.includes('biochemistry')
         }
-        if (cat === 'sleep') return combinedText.includes('sleep') || combinedText.includes('circadian') || combinedText.includes('light') || combinedText.includes('wind down') || combinedText.includes('bed') || combinedText.includes('night')
-        if (cat === 'mind') return combinedText.includes('mind') || combinedText.includes('nervous') || combinedText.includes('breath') || combinedText.includes('meditat') || combinedText.includes('nsdr') || combinedText.includes('vagal') || combinedText.includes('neurology') || combinedText.includes('autonomic')
-        if (cat === 'other') return combinedText.includes('skin') || combinedText.includes('hair') || combinedText.includes('biomarker') || combinedText.includes('lab') || combinedText.includes('diagnostics') || combinedText.includes('hygiene') || combinedText.includes('dental')
+        if (cat === 'sleep') return getModalityMacroType(task) === 'sleep' || combinedText.includes('sleep') || combinedText.includes('circadian') || combinedText.includes('light') || combinedText.includes('wind down') || combinedText.includes('bed') || combinedText.includes('night')
+        if (cat === 'mind') return getModalityMacroType(task) === 'mind' || combinedText.includes('mind') || combinedText.includes('nervous') || combinedText.includes('breath') || combinedText.includes('meditat') || combinedText.includes('nsdr') || combinedText.includes('vagal') || combinedText.includes('neurology') || combinedText.includes('autonomic')
+        if (cat === 'other') return getModalityMacroType(task) === 'thermal' || getModalityMacroType(task) === 'diagnostics' || combinedText.includes('skin') || combinedText.includes('hair') || combinedText.includes('biomarker') || combinedText.includes('lab') || combinedText.includes('diagnostics') || combinedText.includes('hygiene') || combinedText.includes('dental')
         return true
       }
 
       return activeSubIds.some(subId => {
+        if (subId === 'longevity_nad') return combinedText.includes('nmn') || combinedText.includes('nad') || combinedText.includes('fisetin') || combinedText.includes('quercetin') || combinedText.includes('resveratrol') || combinedText.includes('spermidine') || combinedText.includes('metformin') || combinedText.includes('rapamycin')
+        if (subId === 'nootropics') return combinedText.includes('theanine') || combinedText.includes('caffeine') || combinedText.includes('lion') || combinedText.includes('bacopa') || combinedText.includes('tyrosine') || combinedText.includes('ashwagandha') || combinedText.includes('apigenin')
+        if (subId === 'mitochondrial') return combinedText.includes('coq10') || combinedText.includes('creatine') || combinedText.includes('carnitine') || combinedText.includes('alpha lipoic') || combinedText.includes('pqq')
+        if (subId === 'vitamins_minerals') return combinedText.includes('vitamin') || combinedText.includes('mineral') || combinedText.includes('magnesium') || combinedText.includes('zinc') || combinedText.includes('omega') || combinedText.includes('d3') || combinedText.includes('k2')
         if (subId === 'injury_joint_repair' || subId === 'tissue_repair') return combinedText.includes('bpc') || combinedText.includes('tb-500') || combinedText.includes('tb500') || combinedText.includes('wolverine') || combinedText.includes('tissue') || combinedText.includes('repair') || combinedText.includes('joint') || combinedText.includes('tendon') || combinedText.includes('ligament') || combinedText.includes('kpv')
         if (subId === 'fat_loss_metabolism' || subId === 'metabolic_glp1') return combinedText.includes('tirzepatide') || combinedText.includes('semaglutide') || combinedText.includes('retatrutide') || combinedText.includes('glp') || combinedText.includes('aod') || combinedText.includes('mots') || combinedText.includes('tesamorelin') || combinedText.includes('lipolysis')
         if (subId === 'muscle_recovery' || subId === 'gh_secretagogues') return combinedText.includes('cjc') || combinedText.includes('ipamorelin') || combinedText.includes('sermorelin') || combinedText.includes('igf') || combinedText.includes('ghrp') || combinedText.includes('growth hormone') || combinedText.includes('secretagogue') || combinedText.includes('muscle') || combinedText.includes('strength')
@@ -1697,26 +1708,9 @@ function TodayPageContent() {
         if (subId === 'strength') return combinedText.includes('strength') || combinedText.includes('lift') || combinedText.includes('resistance') || combinedText.includes('pushup') || combinedText.includes('squat')
         if (subId === 'flexibility') return combinedText.includes('stretch') || combinedText.includes('flexibility') || combinedText.includes('yoga') || combinedText.includes('mobility')
         if (subId === 'thermal') return combinedText.includes('sauna') || combinedText.includes('cold') || combinedText.includes('plunge') || combinedText.includes('thermal') || combinedText.includes('ice')
-        if (subId === 'supplements') {
-          if (
-            modalityCat.includes('sleep') || 
-            modalityCat.includes('breath') || 
-            modalityCat.includes('circadian') || 
-            modalityCat.includes('exercise') || 
-            modalityCat.includes('physical') ||
-            modalityCat.includes('habit') || 
-            modalityName.includes('mouth tape') || 
-            modalityName.includes('mouth tap') || 
-            modalityName.includes('dark & cool') || 
-            modalityName.includes('4-7-8') || 
-            modalityName.includes('screen') ||
-            modalityName.includes('floss') ||
-            modalityName.includes('gargl')
-          ) return false
-          return combinedText.includes('supplement') || combinedText.includes('pill') || combinedText.includes('magnesium') || combinedText.includes('creatine') || combinedText.includes('omega') || combinedText.includes('vitamin')
-        }
         if (subId === 'fasting') return combinedText.includes('fast')
         if (subId === 'whole_foods') return combinedText.includes('food') || combinedText.includes('diet') || combinedText.includes('meal') || combinedText.includes('protein') || combinedText.includes('glucose')
+        if (subId === 'hydration') return combinedText.includes('hydration') || combinedText.includes('water') || combinedText.includes('electrolyte') || combinedText.includes('salt')
         if (subId === 'hygiene') return combinedText.includes('hygiene') || combinedText.includes('cool bedroom') || combinedText.includes('darkness')
         if (subId === 'circadian') return combinedText.includes('circadian') || combinedText.includes('sunlight') || combinedText.includes('light') || combinedText.includes('blue light')
         if (subId === 'wind_down') return combinedText.includes('wind down') || combinedText.includes('evening') || combinedText.includes('journal')
@@ -3483,6 +3477,72 @@ function TodayPageContent() {
           </div>
         )}
 
+        {/* Multi-Day Timeline Layout Mode Toggle Bar (Time Blocks vs Protocols + Side-by-Side vs Stack) */}
+        {(calendarViewMode === '3day' || calendarViewMode === 'week' || calendarViewMode === 'month') && (
+          <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 p-1 sm:p-2 rounded-2xl mb-3 backdrop-blur-md shadow-sm gap-1 sm:gap-2">
+            {/* Left: Timeline Layout Mode (Time Blocks vs Protocols) */}
+            <div className="flex items-center">
+              <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-white/10 gap-0.5 text-[10px] sm:text-xs">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('chronological')}
+                  className={`px-2 sm:px-3 py-1 rounded-lg font-bold text-[10px] sm:text-xs tracking-tight transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                    viewMode === 'chronological'
+                      ? 'bg-purple-600 text-white shadow-sm border border-purple-400/30 font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Clock size={11} className="shrink-0" />
+                  <span>Time Blocks</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setViewMode('protocol')}
+                  className={`px-2 sm:px-3 py-1 rounded-lg font-bold text-[10px] sm:text-xs tracking-tight transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                    viewMode === 'protocol'
+                      ? 'bg-purple-600 text-white shadow-sm border border-purple-400/30 font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <ListOrdered size={11} className="shrink-0" />
+                  <span>Protocols</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Layout Orientation (Side-by-Side vs Stack) */}
+            <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-white/10 gap-0.5 text-[10px] sm:text-xs">
+              <button
+                type="button"
+                onClick={() => setLayoutOrientation('columns')}
+                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[10px] sm:text-xs transition-all flex items-center gap-1 cursor-pointer ${
+                  layoutOrientation === 'columns'
+                    ? 'bg-teal-600 text-white shadow-sm border border-teal-400/30 font-extrabold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Side-by-Side View"
+              >
+                <Columns size={11} className="shrink-0" />
+                <span className="hidden sm:inline">Side-by-Side</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutOrientation('stack')}
+                className={`px-2 sm:px-2.5 py-1 rounded-lg font-bold text-[10px] sm:text-xs transition-all flex items-center gap-1 cursor-pointer ${
+                  layoutOrientation === 'stack'
+                    ? 'bg-teal-600 text-white shadow-sm border border-teal-400/30 font-extrabold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Vertical Stacked View"
+              >
+                <Rows size={11} className="shrink-0" />
+                <span className="hidden sm:inline">Stack</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Multi-Day Calendar View Renders */}
         {calendarViewMode === '3day' && (
           <ThreeDaySplitView
@@ -3492,6 +3552,7 @@ function TodayPageContent() {
             selectedProtocolFilter={selectedProtocolFilter}
             selectedIsolatedOutcome={selectedIsolatedOutcome}
             layoutOrientation={layoutOrientation}
+            viewMode={viewMode === 'protocol' ? 'protocol' : 'chronological'}
             userProfile={profile}
             onSelectDate={(dStr: string) => {
               navigateToDate(parseLocalDate(dStr))
@@ -3513,6 +3574,7 @@ function TodayPageContent() {
             selectedProtocolFilter={selectedProtocolFilter}
             selectedIsolatedOutcome={selectedIsolatedOutcome}
             layoutOrientation={layoutOrientation}
+            viewMode={viewMode === 'protocol' ? 'protocol' : 'chronological'}
             userProfile={profile}
             onSelectDate={(dStr: string) => {
               navigateToDate(parseLocalDate(dStr))
@@ -3533,6 +3595,7 @@ function TodayPageContent() {
             selectedProtocolFilter={selectedProtocolFilter}
             selectedIsolatedOutcome={selectedIsolatedOutcome}
             layoutOrientation={layoutOrientation}
+            viewMode={viewMode === 'protocol' ? 'protocol' : 'chronological'}
             userProfile={profile}
             onSelectDate={(dStr: string) => {
               navigateToDate(parseLocalDate(dStr))

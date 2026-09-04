@@ -79,52 +79,60 @@ interface GradientConfig {
 const CATEGORY_GRADIENTS: Record<string, GradientConfig> = {
   // Thermal & Environmental
   thermal_cold: { 
-    from: '#38BDF8', // Luminous Ice Cyan
-    to: '#34D399',   // Radiant Mint
-    glow: 'rgba(56, 189, 248, 0.75)', 
-    ambient: 'rgba(52, 211, 153, 0.35)' 
+    from: '#06B6D4', // Ice Cyan
+    to: '#38BDF8',   // Luminous Sky Blue
+    glow: 'rgba(6, 182, 212, 0.75)', 
+    ambient: 'rgba(56, 189, 248, 0.35)' 
   },
   thermal_heat: { 
     from: '#FB923C', // Luminous Ember Orange
-    to: '#F87171',   // Infrared Coral (High luminance, never dark crimson)
+    to: '#F87171',   // Infrared Coral
     glow: 'rgba(251, 146, 60, 0.75)', 
     ambient: 'rgba(248, 113, 113, 0.35)' 
   },
   thermal_contrast: { 
-    from: '#22D3EE', // Vivid Cyan
+    from: '#06B6D4', // Vivid Cyan
     to: '#FB923C',   // Radiant Coral
-    glow: 'rgba(34, 211, 238, 0.75)', 
+    glow: 'rgba(6, 182, 212, 0.75)', 
     ambient: 'rgba(251, 146, 60, 0.35)' 
   },
   
-  // Fitness & Movement
+  // Supplements & Nutraceuticals (Dedicated Solar Amber Theme)
+  supplements: {
+    from: '#F59E0B', // Solar Amber
+    to: '#FBBF24',   // Luminous Gold
+    glow: 'rgba(245, 158, 11, 0.75)', 
+    ambient: 'rgba(251, 191, 36, 0.35)' 
+  },
+
+  // Fitness & Movement (Electric Coral / Orange)
   fitness: { 
-    from: '#34D399', // Vital Emerald
-    to: '#22D3EE',   // Electric Cyan
-    glow: 'rgba(52, 211, 153, 0.75)', 
-    ambient: 'rgba(34, 211, 238, 0.35)' 
+    from: '#F97316', // Electric Coral / Orange
+    to: '#FB923C',   // Luminous Ember
+    glow: 'rgba(249, 115, 22, 0.75)', 
+    ambient: 'rgba(251, 146, 60, 0.35)' 
   },
   fitness_intense: { 
-    from: '#FBBF24', // Luminous Solar Amber
-    to: '#FB7185',   // Vivid Neon Coral
-    glow: 'rgba(251, 191, 36, 0.75)', 
-    ambient: 'rgba(251, 113, 133, 0.35)' 
+    from: '#F97316', // Luminous Coral
+    to: '#EF4444',   // Neon Red / Burst
+    glow: 'rgba(249, 115, 22, 0.75)', 
+    ambient: 'rgba(239, 68, 68, 0.35)' 
   },
   
-  // Mind & Nervous System
+  // Mind & Nervous System (Electric Violet / Purple)
   mind: { 
-    from: '#C084FC', // Electric Violet
-    to: '#818CF8',   // Luminous Periwinkle
-    glow: 'rgba(192, 132, 252, 0.75)', 
-    ambient: 'rgba(129, 140, 248, 0.35)' 
+    from: '#A855F7', // Electric Violet
+    to: '#C084FC',   // Vivid Purple
+    glow: 'rgba(168, 85, 247, 0.75)', 
+    ambient: 'rgba(192, 132, 252, 0.35)' 
   },
   
-  // Sleep & Circadian - Upgraded to luminous periwinkle and ice moonlight (NO dark #312E81!)
+  // Sleep & Circadian (Moonlight Indigo)
   sleep: { 
-    from: '#A5B4FC', // Soft Radiant Lavender
-    to: '#C7D2FE',   // Ice Moonlight
-    glow: 'rgba(165, 180, 252, 0.75)', 
-    ambient: 'rgba(199, 210, 254, 0.35)' 
+    from: '#6366F1', // Moonlight Indigo
+    to: '#818CF8',   // Luminous Periwinkle
+    glow: 'rgba(99, 102, 241, 0.75)', 
+    ambient: 'rgba(129, 140, 248, 0.35)' 
   },
   circadian: { 
     from: '#FDE047', // Radiant Solar Gold
@@ -133,21 +141,21 @@ const CATEGORY_GRADIENTS: Record<string, GradientConfig> = {
     ambient: 'rgba(56, 189, 248, 0.35)' 
   },
   
-  // Nutrition & Metabolic
+  // Nutrition & Fasting (Radiant Emerald)
   nutrition: { 
-    from: '#34D399', // Radiant Mint
-    to: '#FBBF24',   // Golden Bio-Amber
-    glow: 'rgba(52, 211, 153, 0.75)', 
-    ambient: 'rgba(251, 191, 36, 0.35)' 
+    from: '#10B981', // Radiant Emerald
+    to: '#34D399',   // Vital Mint
+    glow: 'rgba(16, 185, 129, 0.75)', 
+    ambient: 'rgba(52, 211, 153, 0.35)' 
   },
   fasting: { 
-    from: '#FDE047', // Solar Gold (High luminance, never muddy dark gold)
-    to: '#F59E0B',   // Radiant Amber Core
-    glow: 'rgba(253, 224, 71, 0.75)', 
-    ambient: 'rgba(245, 158, 11, 0.35)' 
+    from: '#10B981', // Radiant Emerald
+    to: '#059669',   // Deep Autophagy Emerald
+    glow: 'rgba(16, 185, 129, 0.75)', 
+    ambient: 'rgba(5, 150, 105, 0.35)' 
   },
   
-  // Peptides & Bioactives
+  // Peptides & Bioactives (Bioactive Fuchsia)
   peptides: { 
     from: '#E879F9', // Neon Bioactive Fuchsia
     to: '#F472B6',   // Radiant Bioactive Rose
@@ -155,19 +163,19 @@ const CATEGORY_GRADIENTS: Record<string, GradientConfig> = {
     ambient: 'rgba(244, 114, 182, 0.35)' 
   },
   
-  // Diagnostics & Biomarkers
+  // Diagnostics & Biomarkers (High-Tech Cobalt)
   diagnostics: { 
-    from: '#22D3EE', // High-Tech Cyan
-    to: '#60A5FA',   // Biomarker Cobalt Blue
-    glow: 'rgba(34, 211, 238, 0.75)', 
+    from: '#3B82F6', // Cobalt Blue
+    to: '#60A5FA',   // High-Tech Blue
+    glow: 'rgba(59, 130, 246, 0.75)', 
     ambient: 'rgba(96, 165, 250, 0.35)' 
   },
   
   // Fallback / General Longevity
   default: { 
-    from: '#34D399', 
+    from: '#14B8A6', 
     to: '#22D3EE', 
-    glow: 'rgba(52, 211, 153, 0.7)', 
+    glow: 'rgba(20, 184, 166, 0.7)', 
     ambient: 'rgba(34, 211, 238, 0.35)' 
   }
 }
@@ -216,7 +224,7 @@ function resolveGradient(nameLower: string, catLower: string, customHex?: string
     return CATEGORY_GRADIENTS.peptides
   }
 
-  // Specific modality-level thermal overrides
+  // 2. Specific modality-level thermal overrides
   if (nameLower.includes('cold') || nameLower.includes('plunge') || nameLower.includes('ice bath') || nameLower.includes('cryo')) {
     return CATEGORY_GRADIENTS.thermal_cold
   }
@@ -226,6 +234,35 @@ function resolveGradient(nameLower: string, catLower: string, customHex?: string
   if (nameLower.includes('contrast')) {
     return CATEGORY_GRADIENTS.thermal_contrast
   }
+
+  // 3. Supplements (oral delivery, vitamins, minerals, NAD, stacks)
+  if (
+    catLower.includes('supplement') ||
+    nameLower.includes('supplement') ||
+    nameLower.includes('pill') ||
+    nameLower.includes('capsule') ||
+    nameLower.includes('tablet') ||
+    nameLower.includes('magnesium') ||
+    nameLower.includes('creatine') ||
+    nameLower.includes('omega') ||
+    nameLower.includes('vitamin') ||
+    nameLower.includes('nmn') ||
+    nameLower.includes('nad+') ||
+    nameLower.includes('nad ') ||
+    nameLower.includes('coq10') ||
+    nameLower.includes('fisetin') ||
+    nameLower.includes('quercetin') ||
+    nameLower.includes('zinc') ||
+    nameLower.includes('ashwagandha') ||
+    nameLower.includes('theanine') ||
+    nameLower.includes('apigenin') ||
+    nameLower.includes('glycine') ||
+    nameLower.includes('taurine') ||
+    nameLower.includes('stack')
+  ) {
+    return CATEGORY_GRADIENTS.supplements
+  }
+
   if (nameLower.includes('fast') || nameLower.includes('omad') || nameLower.includes('tre') || nameLower.includes('autophagy')) {
     return CATEGORY_GRADIENTS.fasting
   }
@@ -249,7 +286,7 @@ function resolveGradient(nameLower: string, catLower: string, customHex?: string
   if (catLower.includes('sleep') || catLower.includes('circadian') || catLower.includes('wind_down') || catLower.includes('night') || catLower.includes('bed')) {
     return CATEGORY_GRADIENTS.sleep
   }
-  if (catLower.includes('nutrition') || catLower.includes('supplement') || catLower.includes('diet') || catLower.includes('food') || catLower.includes('fasting')) {
+  if (catLower.includes('nutrition') || catLower.includes('diet') || catLower.includes('food') || catLower.includes('fasting')) {
     return CATEGORY_GRADIENTS.nutrition
   }
   if (catLower.includes('diagnostic') || catLower.includes('biomarker') || catLower.includes('tracking') || catLower.includes('lab') || catLower.includes('scan')) {

@@ -3,10 +3,11 @@
 import React, { useState } from 'react'
 import { DailyProtocolTask, UserProfile } from '@/lib/types'
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns'
-import { Calendar, ChevronRight, ArrowUpRight } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
-import { sortTasksChronologically } from '@/lib/data/resolveOptimalTiming'
+import { groupTasksByTimeBlock, groupTasksByProtocol, sortTasksChronologically } from '@/lib/data/resolveOptimalTiming'
+import { getModalityTheme } from '@/lib/utils/modalityColors'
 
 interface MonthMatrixViewProps {
   tasksByDate: Record<string, DailyProtocolTask[]>
@@ -14,6 +15,7 @@ interface MonthMatrixViewProps {
   selectedProtocolFilter?: string
   selectedIsolatedOutcome?: string | null
   layoutOrientation?: LayoutOrientation
+  viewMode?: 'chronological' | 'protocol'
   userProfile?: UserProfile | null
   onSelectDate: (dateStr: string) => void
   onMoveToBench?: (task: DailyProtocolTask) => void
@@ -36,97 +38,15 @@ function dedupeTasksForColumn(tasks: DailyProtocolTask[]) {
   return Array.from(map.values())
 }
 
-function matchesProtocol(task: DailyProtocolTask, filterIdOrName?: string): boolean {
-  if (!filterIdOrName || filterIdOrName === 'all') return true
-  const target = filterIdOrName.toLowerCase()
-
-  const inLineage = (task.lineages || []).some(l => {
-    const pid = (l.protocol_id || '').toLowerCase()
-    const pname = (l.protocol_name || '').toLowerCase()
-    return pid === target || pname === target || pname.includes(target) || target.includes(pname)
-  })
-  if (inLineage) return true
-
-  const stepProtoId = (task.protocol_step?.protocol_id || '').toLowerCase()
-  const stepProtoName = (task.protocol_step?.protocol?.name || '').toLowerCase()
-  if (stepProtoId === target || (stepProtoName && stepProtoName.includes(target))) return true
-
-  const instProtoId = ((task as any).user_protocol_instance?.protocol_id || '').toLowerCase()
-  const instProtoName = ((task as any).user_protocol_instance?.protocol?.name || '').toLowerCase()
-  if (instProtoId === target || (instProtoName && instProtoName.includes(target))) return true
-
-  return false
-}
-
-function getModalityHighlightStyle(t: DailyProtocolTask, selectedProtocolFilter?: string) {
-  const matchingLineage = selectedProtocolFilter && selectedProtocolFilter !== 'all'
-    ? t.lineages?.find(l => {
-        const pid = (l.protocol_id || '').toLowerCase()
-        const pname = (l.protocol_name || '').toLowerCase()
-        const target = selectedProtocolFilter.toLowerCase()
-        return pid === target || pname === target || pname.includes(target)
-      })
-    : t.lineages?.[0]
-
-  const protoColorHex = matchingLineage?.color_hex || t.lineages?.[0]?.color_hex
-  if (protoColorHex && protoColorHex !== '#A855F7') {
-    return {
-      backgroundColor: `${protoColorHex}28`,
-      borderLeft: `2px solid ${protoColorHex}`,
-      color: '#FFFFFF'
-    }
-  }
-
-  const mod = t.protocol_step?.modality || t.loose_modality
-  const cat = (mod?.category || '').toLowerCase()
-  const nameId = ((mod?.name || '') + ' ' + (mod?.id || '')).toLowerCase()
-  const isPulsed = (mod as any)?.is_pulsed || 
-                   ['weekly', 'biweekly', 'monthly', 'quarterly', 'pulsed', 'cyclical', 'infrequent'].includes((mod?.cadence_layer || '').toLowerCase())
-
-  const isExercise = cat.includes('fitness') || cat.includes('physical') || nameId.includes('workout') || nameId.includes('training') || nameId.includes('cardio')
-  const isFasting = cat.includes('fasting') || nameId.includes('fast')
-  const isPulsedSupp = isPulsed || nameId.includes('glp') || nameId.includes('fisetin') || nameId.includes('rapamycin')
-
-  if (isExercise) {
-    return {
-      backgroundColor: 'rgba(245, 158, 11, 0.22)',
-      borderLeft: '2px solid #F59E0B',
-      color: '#FDE68A'
-    }
-  }
-  if (isFasting) {
-    return {
-      backgroundColor: 'rgba(59, 130, 246, 0.22)',
-      borderLeft: '2px solid #3B82F6',
-      color: '#BFDBFE'
-    }
-  }
-  if (isPulsedSupp) {
-    return {
-      backgroundColor: 'rgba(168, 85, 247, 0.22)',
-      borderLeft: '2px solid #A855F7',
-      color: '#E9D5FF'
-    }
-  }
-
-  return {
-    backgroundColor: 'rgba(20, 184, 166, 0.22)',
-    borderLeft: '2px solid #14B8A6',
-    color: '#99F6E4'
-  }
-}
-
 export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
   tasksByDate,
   currentDateStr,
-  selectedProtocolFilter,
-  selectedIsolatedOutcome,
   layoutOrientation = 'columns',
+  viewMode = 'chronological',
   userProfile,
   onSelectDate,
   onMoveToBench,
-  onEliminateEntirely,
-  activeCategoryFilters
+  onEliminateEntirely
 }) => {
   const [expandedTask, setExpandedTask] = useState<DailyProtocolTask | null>(null)
 
@@ -134,51 +54,6 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
   const monthStart = startOfMonth(currentObj)
   const monthEnd = endOfMonth(currentObj)
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
-  const todayStr = format(new Date(), 'yyyy-MM-dd')
-
-  const filterTask = (task: DailyProtocolTask) => {
-    if (!matchesProtocol(task, selectedProtocolFilter)) return false
-
-    const mod = task.protocol_step?.modality || task.loose_modality
-    if (!mod) return true
-
-    if (selectedIsolatedOutcome) {
-      const target = selectedIsolatedOutcome.toLowerCase().trim()
-      const outcomes = task.execution_details?.outcomes || []
-      const hasLogged = outcomes.some((o: any) => {
-        const oId = String(o.outcomeId || o.id || '').toLowerCase()
-        const oName = String(o.outcomeName || o.name || '').toLowerCase()
-        return oId === target || oName === target || oId.includes(target) || target.includes(oId)
-      })
-      if (hasLogged) return true
-
-      const pOut = String(mod.primary_outcome || '').toLowerCase()
-      const sOuts = (mod.secondary_outcomes || []).map((s: any) => String(typeof s === 'string' ? s : s.name || s.id || '').toLowerCase())
-      const allOutcomes = [pOut, ...sOuts]
-      if (!allOutcomes.some(o => o === target || o.includes(target) || target.includes(o))) {
-        return false
-      }
-    }
-
-    const cat = (mod.category || '').toLowerCase()
-    const nameId = ((mod.name || '') + ' ' + (mod.id || '')).toLowerCase()
-    const isPulsed = (mod as any).is_pulsed || 
-                     ['weekly', 'biweekly', 'monthly', 'quarterly', 'pulsed', 'cyclical', 'infrequent'].includes((mod.cadence_layer || '').toLowerCase())
-
-    const isExercise = cat.includes('fitness') || cat.includes('physical') || nameId.includes('workout') || nameId.includes('training') || nameId.includes('cardio')
-    const isFasting = cat.includes('fasting') || nameId.includes('fast')
-    const isPulsedSupp = isPulsed || nameId.includes('glp') || nameId.includes('fisetin') || nameId.includes('rapamycin')
-    const isDailyBaseline = !isPulsed && !isExercise && !isFasting
-
-    if (activeCategoryFilters) {
-      if (isExercise && !activeCategoryFilters.exercise) return false
-      if (isFasting && !activeCategoryFilters.fasting) return false
-      if (isPulsedSupp && !activeCategoryFilters.pulsed) return false
-      if (isDailyBaseline && !activeCategoryFilters.daily) return false
-    }
-
-    return true
-  }
 
   const isStacked = layoutOrientation === 'stack'
 
@@ -192,7 +67,9 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
             {format(currentObj, 'MMMM yyyy')} Pulse Matrix
           </h2>
         </div>
-        <span className="text-[10px] text-slate-400">High-level pulse overview</span>
+        <span className="text-[10px] text-slate-400">
+          Viewing by {viewMode === 'protocol' ? 'Protocols' : 'Time Blocks'}
+        </span>
       </div>
 
       {/* Full-Width Modality Expansion Banner */}
@@ -221,8 +98,7 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
               const isCurrentToday = isToday(dayObj)
 
               const rawTasks = tasksByDate[dStr] || []
-              const filteredTasks = rawTasks.filter(filterTask)
-              const dedupedTasks = sortTasksChronologically(dedupeTasksForColumn(filteredTasks), userProfile)
+              const dedupedTasks = sortTasksChronologically(dedupeTasksForColumn(rawTasks), userProfile)
               const completedCount = dedupedTasks.filter(t => t.status === 'completed').length
               const adherencePct = dedupedTasks.length > 0 ? Math.round((completedCount / dedupedTasks.length) * 100) : 0
 
@@ -231,7 +107,7 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
                   key={dStr}
                   onClick={() => onSelectDate(dStr)}
                   title={`Click to open Today view for ${format(dayObj, 'EEEE, MMMM d, yyyy')}`}
-                  className={`p-1 sm:p-1.5 rounded-xl text-left flex flex-col justify-between min-h-[68px] sm:min-h-[82px] transition-all cursor-pointer border group hover:border-cyan-400 hover:bg-slate-900 hover:shadow-[0_0_15px_rgba(6,182,212,0.25)] hover:scale-[1.02] active:scale-[0.98] ${
+                  className={`p-1 sm:p-1.5 rounded-xl text-left flex flex-col justify-between min-h-[68px] sm:min-h-[84px] transition-all cursor-pointer border group hover:border-cyan-400 hover:bg-slate-900 hover:shadow-[0_0_15px_rgba(6,182,212,0.25)] hover:scale-[1.02] active:scale-[0.98] ${
                     isSelected
                       ? 'bg-cyan-950/90 border-cyan-500 ring-1 ring-cyan-500/60 shadow-md'
                       : isCurrentToday
@@ -259,18 +135,22 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
                     )}
                   </div>
 
-                  {/* Event Blocks - pointer-events-none ensures ANY click anywhere on the day opens Today view */}
+                  {/* Event Blocks - NO icons */}
                   <div className="space-y-0.5 w-full overflow-hidden mt-0.5 pointer-events-none">
                     {dedupedTasks.slice(0, 3).map((t, idx) => {
                       const mod = t.protocol_step?.modality || t.loose_modality
-                      const modName = mod?.name || 'Task'
-                      const style = getModalityHighlightStyle(t, selectedProtocolFilter)
+                      const modName = mod?.name || (t as any).name || 'Task'
+                      const theme = getModalityTheme(t)
 
                       return (
                         <div
                           key={idx}
-                          className="px-1 py-0.5 rounded-r-[3px] text-[9px] font-bold truncate leading-none w-full shadow-2xs"
-                          style={style}
+                          className="px-1 py-0.5 rounded-r-[3px] text-[8.5px] font-black truncate leading-none w-full shadow-2xs border-l-[2.5px]"
+                          style={{
+                            borderLeftColor: theme.borderHex,
+                            backgroundColor: theme.bgTint,
+                            color: theme.textHex
+                          }}
                         >
                           {modName}
                         </div>
@@ -296,17 +176,24 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
             const isCurrentToday = isToday(dayObj)
 
             const rawTasks = tasksByDate[dStr] || []
-            const filteredTasks = rawTasks.filter(filterTask)
-            const dedupedTasks = sortTasksChronologically(dedupeTasksForColumn(filteredTasks), userProfile)
+            const dedupedTasks = dedupeTasksForColumn(rawTasks)
 
             if (dedupedTasks.length === 0) return null
+
+            const completedCount = dedupedTasks.filter(t => t.status === 'completed').length
+            const adherencePct = Math.round((completedCount / dedupedTasks.length) * 100)
+
+            const timeBlocks = viewMode === 'chronological'
+              ? groupTasksByTimeBlock(dedupedTasks, userProfile)
+              : []
+            const protocolBlocks = viewMode === 'protocol'
+              ? groupTasksByProtocol(dedupedTasks, userProfile)
+              : []
 
             return (
               <div
                 key={dStr}
-                onClick={() => onSelectDate(dStr)}
-                title={`Click to open Today view for ${format(dayObj, 'EEEE, MMMM d, yyyy')}`}
-                className={`p-2.5 rounded-xl border transition-all cursor-pointer space-y-2 group hover:border-cyan-400/80 hover:bg-slate-900/90 hover:shadow-md ${
+                className={`p-2.5 rounded-xl border transition-all space-y-2 group hover:border-cyan-400/80 hover:bg-slate-900/90 hover:shadow-md ${
                   isSelected
                     ? 'bg-cyan-950/90 border-cyan-500 shadow-md'
                     : isCurrentToday
@@ -314,44 +201,64 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
                     : 'bg-slate-900/60 border-slate-800/80'
                 }`}
               >
-                <div className="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+                <div 
+                  onClick={() => onSelectDate(dStr)}
+                  title={`Click to open Today view for ${format(dayObj, 'EEEE, MMMM d, yyyy')}`}
+                  className="flex items-center justify-between border-b border-slate-800/60 pb-1.5 cursor-pointer"
+                >
                   <div className="flex items-center gap-2">
                     <span className={`text-xs sm:text-sm font-black ${isSelected ? 'text-cyan-300' : isCurrentToday ? 'text-teal-300' : 'text-white group-hover:text-cyan-200'}`}>
                       {format(dayObj, 'EEEE, MMM d')}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      ({dedupedTasks.length} modalities)
+                    <span className="text-[9px] text-teal-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                      Open Day →
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onSelectDate(dStr)
-                    }}
-                    className="px-2.5 py-1 text-[10px] font-bold text-cyan-300 hover:text-white bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 rounded-lg transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
-                  >
-                    <span>Open Today View</span>
-                    <ChevronRight size={12} />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[8.5px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                      adherencePct >= 80 
+                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60' 
+                        : 'bg-slate-900 text-slate-400 border border-slate-700'
+                    }`}>
+                      {adherencePct}% ({completedCount}/{dedupedTasks.length})
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  {dedupedTasks.map((t, idx) => {
-                    const mod = t.protocol_step?.modality || t.loose_modality
-                    const modName = mod?.name || 'Task'
-                    const style = getModalityHighlightStyle(t, selectedProtocolFilter)
-
-                    return (
-                      <div
-                        key={idx}
-                        className="px-2 py-1 rounded-r-md text-xs font-bold truncate leading-tight w-full shadow-2xs"
-                        style={style}
-                      >
-                        {modName}
+                {/* Grouped Tasks (Time Blocks or Protocols) */}
+                <div className="space-y-2">
+                  {viewMode === 'protocol' ? (
+                    protocolBlocks.map((pBlock) => (
+                      <div key={pBlock.protocolName} className="space-y-1">
+                        <div className="flex items-center gap-1.5 px-1 py-0.5 border-b border-white/5">
+                          <span 
+                            className="w-1.5 h-1.5 rounded-full" 
+                            style={{ backgroundColor: pBlock.protocolColorHex || '#A855F7' }} 
+                          />
+                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">
+                            {pBlock.protocolName}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
+                          {pBlock.tasks.map((t) => renderStackedCard(t))}
+                        </div>
                       </div>
-                    )
-                  })}
+                    ))
+                  ) : (
+                    timeBlocks.map((tBlock) => (
+                      <div key={tBlock.block.id} className="space-y-1">
+                        <div className="flex items-center gap-1.5 px-1 py-0.5 border-b border-slate-800/80">
+                          <span className="text-xs">{tBlock.block.icon}</span>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-300">
+                            {tBlock.block.label}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
+                          {tBlock.tasks.map((t) => renderStackedCard(t))}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )
@@ -360,4 +267,53 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
       )}
     </div>
   )
+
+  function renderStackedCard(t: DailyProtocolTask) {
+    const theme = getModalityTheme(t)
+    const mod = t.protocol_step?.modality || t.loose_modality
+    const modName = mod?.name || (t as any).name || 'Task'
+    const doseStr = t.execution_details?.custom_dose || mod?.dose_or_exposure || ''
+    const isCompleted = t.status === 'completed'
+
+    return (
+      <div
+        key={t.id}
+        onClick={() => setExpandedTask(t)}
+        className={`p-2 rounded-lg border-l-[3.5px] transition-all cursor-pointer group shadow-2xs ${
+          isCompleted ? 'opacity-70' : 'opacity-100 hover:opacity-100'
+        }`}
+        style={{
+          borderLeftColor: theme.borderHex,
+          backgroundColor: theme.bgTint
+        }}
+      >
+        <div className="flex items-center justify-between gap-1">
+          <span 
+            className="text-[8px] font-black uppercase tracking-wider"
+            style={{ color: theme.colorHex }}
+          >
+            {theme.label}
+          </span>
+          {isCompleted && (
+            <span className="text-[8px] font-mono font-bold text-emerald-400">
+              ✓
+            </span>
+          )}
+        </div>
+
+        <div 
+          className="text-[10px] font-black leading-tight truncate group-hover:brightness-125 transition-all"
+          style={{ color: theme.textHex }}
+        >
+          {modName}
+        </div>
+
+        {doseStr && (
+          <div className="text-[8.5px] text-slate-300/80 font-mono truncate">
+            {doseStr}
+          </div>
+        )}
+      </div>
+    )
+  }
 }
