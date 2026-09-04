@@ -1653,7 +1653,7 @@ export default function ProtocolTaskCard({
           <div className="flex items-center justify-between gap-2.5">
             {/* Left: Modality Name & Clickable Dynamic Dosage */}
             <div className="min-w-0 flex-1 flex items-start gap-2 overflow-hidden">
-              <ModalityIcon modality={modality} size={18} className="shrink-0 mt-0.5" />
+              <ModalityIcon modality={modality} size={18} className="shrink-0 mt-0.5" isIgnited={isIgnited || isCompleted || isRecentlyCompleted} />
               <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <h3 className="font-extrabold text-sm sm:text-base text-white leading-snug hover:text-purple-300 transition-colors">
                   {modality.display_name || modality.name}
@@ -1845,7 +1845,7 @@ export default function ProtocolTaskCard({
         {/* Line 1: Full-Width Modality Name & Top-Right Expand Chevron */}
         <div className={`${isSupplement ? 'mb-1' : 'mb-2.5'} flex items-start justify-between gap-2.5`}>
           <div className="flex items-start gap-2.5 min-w-0 flex-1">
-            <ModalityIcon modality={modality} size={20} className="shrink-0 mt-0.5" />
+            <ModalityIcon modality={modality} size={20} className="shrink-0 mt-0.5" isIgnited={isIgnited || isCompleted || isRecentlyCompleted} />
             <div className="min-w-0 flex-1">
               <h3 className="font-extrabold text-base sm:text-lg leading-tight text-white inline-flex flex-wrap items-center gap-2">
                 <span>{modality.display_name || modality.name}</span>

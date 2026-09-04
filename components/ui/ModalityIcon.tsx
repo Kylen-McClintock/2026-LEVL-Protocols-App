@@ -238,23 +238,24 @@ function resolveGradient(nameLower: string, catLower: string): GradientConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Bespoke Monoline SVG Glyphs (24x24 viewBox, stroke-only, 1.75px stroke)
+// Bespoke Monoline SVG Glyphs (24x24 viewBox, stroke-only, 1.55px stroke)
+// Precision geometric clearances ensure zero detail loss when illuminated.
 // ---------------------------------------------------------------------------
 
-/** Cold Plunge / Cold Water Immersion: Deep plunge tub with waterline and floating ice crystal */
+/** Cold Plunge / Cold Water Immersion: Deep plunge tub with waterline ripple and floating snowflake ice crystal */
 function ColdPlungeGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Plunge Tub Rim & Base */}
-      <path d="M3 11h18" />
-      <path d="M4 11v6a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-6" />
+      <path d="M2.5 10.5h19" />
+      <path d="M4 10.5v6a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-6" />
       {/* Waterline Ripple */}
-      <path d="M7 15c1.5-.7 2.5-.7 4 0s2.5.7 4 0" />
-      {/* Floating Ice / Cold Crystal Indicator */}
-      <path d="M12 4v4" />
-      <path d="M10 6l4 0" />
-      <path d="M10.5 4.5l3 3" />
-      <path d="M13.5 4.5l-3 3" />
+      <path d="M6.5 15c1.8-.8 3.5-.8 5.5 0s3.5.8 5.5 0" />
+      {/* Floating Ice Crystal (Clear radiating snowflake geometry) */}
+      <line x1="12" y1="2" x2="12" y2="8" />
+      <line x1="9" y1="5" x2="15" y2="5" />
+      <line x1="9.8" y1="2.8" x2="14.2" y2="7.2" />
+      <line x1="14.2" y1="2.8" x2="9.8" y2="7.2" />
     </svg>
   )
 }
@@ -262,77 +263,79 @@ function ColdPlungeGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Detailed Sauna: Finnish volcanic stone stove (kiuas) with rising löyly steam & cedar bucket with ladle */
 function DetailedSaunaGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Finnish Sauna Stove (Kiuas) Body with Front Heat Grates */}
-      <rect x="2.5" y="11" width="8" height="10" rx="1" />
-      <line x1="5" y1="14.5" x2="5" y2="18.5" />
-      <line x1="8" y1="14.5" x2="8" y2="18.5" />
-      {/* Volcanic Heating Stones Piled on Top */}
-      <path d="M3 11c0-1.8 1.5-2.8 3.5-2.8s3.5 1 3.5 2.8" />
-      <path d="M5 8.2c0-1.2 1-2 2.2-2s2.2.8 2.2 2" />
+      <rect x="3" y="10.5" width="10" height="10.5" rx="1.5" />
+      <line x1="6.5" y1="14" x2="6.5" y2="18.5" />
+      <line x1="9.5" y1="14" x2="9.5" y2="18.5" />
+      {/* Volcanic Heating Stones Piled on Top with clear clearance */}
+      <path d="M4 10.5c0-1.8 1.8-2.8 4-2.8s4 1 4 2.8" />
+      <path d="M6 7.7c0-1.2 1-2 2-2s2 .8 2 2" />
       {/* Convective Rising Löyly Steam Waves */}
-      <path d="M4.5 2c-.6.8-.6 1.6 0 2.4s.6 1.6 0 2.4" />
-      <path d="M8 1.5c-.6.9-.6 1.8 0 2.7s.6 1.8 0 2.7" />
+      <path d="M5.5 1.5c-.7.8-.7 1.6 0 2.4s.7 1.6 0 2.4" />
+      <path d="M9 1.5c-.7.8-.7 1.6 0 2.4s.7 1.6 0 2.4" />
       {/* Traditional Cedar Sauna Bucket (Kiulu) */}
-      <path d="M14 13.5h7.5l-1 7.5h-5.5z" />
-      <line x1="14.5" y1="17" x2="20" y2="17" />
+      <path d="M15 13.5h6l-1 7.5h-4z" />
+      <line x1="15.5" y1="17.5" x2="20.5" y2="17.5" />
       {/* Wooden Sauna Ladle (Kauha) resting in bucket */}
-      <path d="M16 7.5l4 7" />
-      <path d="M15 6.5l2 2" />
+      <path d="M17 7l3 7.5" />
+      <path d="M16 6.5l2 1.5" />
     </svg>
   )
 }
 
-/** Precision Subcutaneous Peptide Syringe & Micro-Needle (True medical insulin syringe, NOT a trumpet) */
+/** Precision Subcutaneous Peptide Syringe & Micro-Needle (True medical insulin syringe with open barrel negative space) */
 function PeptideSyringeGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      {/* Syringe Cylindrical Barrel with generous 4.5px clearance */}
+      <line x1="7.5" y1="14.5" x2="16.5" y2="5.5" />
+      <line x1="11" y1="18" x2="20" y2="9" />
+      <line x1="16.5" y1="5.5" x2="20" y2="9" />
       {/* Finger Grip Flange Wings at barrel top */}
-      <line x1="5.5" y1="16.5" x2="8.5" y2="19.5" />
+      <line x1="5.5" y1="12.5" x2="13" y2="20" />
       {/* Plunger Shaft extended backwards */}
-      <line x1="6" y1="18" x2="3.5" y2="20.5" />
+      <line x1="8" y1="17.5" x2="4.5" y2="21" />
       {/* Thumb Press Disc */}
-      <line x1="2" y1="20" x2="4.5" y2="22.5" />
-      {/* Syringe Cylindrical Barrel */}
-      <path d="M7 17l9.5-9.5 2 2L9 19z" />
-      {/* Precision Dose Graduation Measurement Marks */}
-      <line x1="10" y1="13" x2="11.5" y2="11.5" />
-      <line x1="12" y1="11" x2="13.5" y2="9.5" />
-      <line x1="14" y1="9" x2="15.5" y2="7.5" />
+      <line x1="3" y1="19.5" x2="6" y2="22.5" />
+      {/* Precision Dose Graduation Measurement Marks (Leaves clear dark interior space) */}
+      <line x1="10" y1="12" x2="11.5" y2="13.5" />
+      <line x1="12" y1="10" x2="13.5" y2="11.5" />
+      <line x1="14" y1="8" x2="15.5" y2="9.5" />
       {/* Needle Hub Collar */}
-      <line x1="16.5" y1="7.5" x2="18.5" y2="9.5" />
+      <line x1="17.5" y1="6.5" x2="19" y2="8" />
       {/* Ultra-Fine Micro-Needle Shaft */}
-      <line x1="17.5" y1="8.5" x2="21.5" y2="4.5" />
+      <line x1="18.25" y1="7.25" x2="22.5" y2="3" />
       {/* Active Bioactive Micro-Droplet at Tip */}
-      <circle cx="22" cy="4" r="0.75" fill={stroke} />
+      <circle cx="22.5" cy="3" r="0.75" fill={stroke} />
     </svg>
   )
 }
 
-/** Handstand & Inversion Balance Glyph (Inverted gymnast hold, explicitly NOT a dumbbell) */
+/** Handstand & Inversion Balance Glyph (Inverted gymnast hold, open spacing) */
 function HandstandGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Floor / Ground Platform Line */}
-      <line x1="4" y1="21" x2="20" y2="21" />
+      <line x1="3" y1="21" x2="21" y2="21" />
       {/* Left Palm & Forearm Planted */}
-      <line x1="8.5" y1="21" x2="9.5" y2="15" />
+      <line x1="8" y1="21" x2="9.5" y2="14.5" />
       {/* Right Palm & Forearm Planted */}
-      <line x1="15.5" y1="21" x2="14.5" y2="15" />
+      <line x1="16" y1="21" x2="14.5" y2="14.5" />
       {/* Inverted Head Tucked Between Shoulders */}
-      <circle cx="12" cy="18" r="1.5" />
+      <circle cx="12" cy="17" r="1.5" />
       {/* Shoulder Girdle */}
-      <path d="M9 15h6" />
+      <line x1="9.5" y1="14.5" x2="14.5" y2="14.5" />
       {/* Inverted Torso Extending Vertically */}
-      <line x1="12" y1="15" x2="12" y2="9.5" />
+      <line x1="12" y1="14.5" x2="12" y2="9" />
       {/* Pelvis / Hip Line */}
-      <path d="M10 9.5h4" />
+      <line x1="10" y1="9" x2="14" y2="9" />
       {/* Extended Legs in Strict Vertical Hold */}
-      <line x1="10.5" y1="9.5" x2="10.5" y2="3.5" />
-      <line x1="13.5" y1="9.5" x2="13.5" y2="3.5" />
+      <line x1="10.5" y1="9" x2="10.5" y2="3" />
+      <line x1="13.5" y1="9" x2="13.5" y2="3" />
       {/* Pointed Feet at Apex */}
-      <line x1="10.5" y1="3.5" x2="9" y2="3" />
-      <line x1="13.5" y1="3.5" x2="15" y2="3" />
+      <line x1="10.5" y1="3" x2="9" y2="2.5" />
+      <line x1="13.5" y1="3" x2="15" y2="2.5" />
     </svg>
   )
 }
@@ -340,25 +343,25 @@ function HandstandGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Calisthenics, Pull-Ups & Bodyweight Mastery Glyph */
 function CalisthenicsGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Overhead Pull-Up Rig / Bar */}
-      <line x1="3" y1="3.5" x2="21" y2="3.5" />
-      <line x1="5" y1="3.5" x2="5" y2="5.5" />
-      <line x1="19" y1="3.5" x2="19" y2="5.5" />
+      <line x1="2" y1="3.5" x2="22" y2="3.5" />
+      <line x1="4" y1="2" x2="4" y2="5" />
+      <line x1="20" y1="2" x2="20" y2="5" />
       {/* Athlete Hands Gripping Bar */}
-      <line x1="8.5" y1="3.5" x2="8.5" y2="5" />
-      <line x1="15.5" y1="3.5" x2="15.5" y2="5" />
+      <circle cx="8.5" cy="3.5" r="0.9" fill={stroke} />
+      <circle cx="15.5" cy="3.5" r="0.9" fill={stroke} />
       {/* Arms in Pull Flexion */}
-      <path d="M8.5 5L10 9.5" />
-      <path d="M15.5 5L14 9.5" />
+      <path d="M8.5 4.5L10 8.5" />
+      <path d="M15.5 4.5L14 8.5" />
       {/* Head */}
-      <circle cx="12" cy="7.5" r="1.5" />
+      <circle cx="12" cy="6.5" r="1.5" />
       {/* Torso in Hollow-Body Form */}
-      <path d="M10 9.5h4" />
-      <line x1="12" y1="9.5" x2="12" y2="15.5" />
+      <path d="M10 8.5h4" />
+      <line x1="12" y1="8.5" x2="12" y2="14.5" />
       {/* Disciplined Extended Legs */}
-      <path d="M12 15.5l-1 5.5" />
-      <path d="M12 15.5l1 5.5" />
+      <line x1="12" y1="14.5" x2="11" y2="20.5" />
+      <line x1="12" y1="14.5" x2="13" y2="20.5" />
     </svg>
   )
 }
@@ -366,13 +369,13 @@ function CalisthenicsGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Single-Leg Balance & Proprioceptive Stability Glyph */
 function BalanceGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Ground Balance Line */}
       <line x1="4" y1="21" x2="20" y2="21" />
       {/* Head */}
-      <circle cx="12" cy="4" r="1.75" />
+      <circle cx="12" cy="4" r="1.8" />
       {/* Torso */}
-      <line x1="12" y1="6" x2="12" y2="13" />
+      <line x1="12" y1="5.8" x2="12" y2="13" />
       {/* Outstretched Balancing Arms */}
       <path d="M4.5 9.5c2.5-.5 5-.5 7.5-.5s5 0 7.5.5" />
       {/* Planted Standing Support Leg */}
@@ -386,15 +389,15 @@ function BalanceGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Continuous Glucose / Ketone Monitor (CGM) Bio-Wearable Glyph */
 function CGMGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Circular Sensor Patch Body */}
-      <circle cx="12" cy="12" r="7.5" />
+      <circle cx="12" cy="12" r="8" />
       {/* Central Biosensor Core */}
-      <circle cx="12" cy="12" r="3" />
-      <circle cx="12" cy="12" r="1" fill={stroke} />
+      <circle cx="12" cy="12" r="3.5" />
+      <circle cx="12" cy="12" r="1.2" fill={stroke} />
       {/* Wireless Signal Telemetry Arcs */}
-      <path d="M17.5 8a8.5 8.5 0 0 1 0 8" />
-      <path d="M6.5 8a8.5 8.5 0 0 0 0 8" />
+      <path d="M17 7.5a6.5 6.5 0 0 1 0 9" />
+      <path d="M7 7.5a6.5 6.5 0 0 0 0 9" />
     </svg>
   )
 }
@@ -402,14 +405,14 @@ function CGMGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Hyperbaric Oxygen Therapy (HBOT) Pressurized Capsule Chamber */
 function HBOTGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Capsule Chamber Body */}
-      <rect x="2.5" y="7" width="19" height="10" rx="5" />
+      <rect x="2.5" y="6.5" width="19" height="11" rx="5.5" />
       {/* Observation Window Porthole */}
-      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="3.2" />
       {/* High-Pressure Support Base Feet */}
-      <line x1="7" y1="17" x2="5.5" y2="20.5" />
-      <line x1="17" y1="17" x2="18.5" y2="20.5" />
+      <line x1="7" y1="17.5" x2="5.5" y2="20.5" />
+      <line x1="17" y1="17.5" x2="18.5" y2="20.5" />
       {/* O2 Oxygen Purity Rings */}
       <circle cx="18" cy="9.5" r="1" />
       <circle cx="6" cy="9.5" r="1" />
@@ -420,9 +423,9 @@ function HBOTGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Oral Health & Longevity Glyph (Molar & Floss Protection) */
 function OralHygieneGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Anatomical Molar Crown & Roots */}
-      <path d="M7 4.5c2-.5 3 .5 5 .5s3-1 5-.5c2 .5 2.5 3 2.5 5 0 3.5-1.5 6-3 10-1 2.5-2.5 2.5-3 0l-1.5-6-1.5 6c-.5 2.5-2 2.5-3 0-1.5-4-3-6.5-3-10 0-2 .5-4.5 2.5-5z" />
+      <path d="M7 5c2-.5 3 .5 5 .5s3-1 5-.5c2 .5 2.5 3 2.5 5 0 3.5-1.5 6-3 9.5-1 2-2.2 2-2.7 0l-1.8-5.5-1.8 5.5c-.5 2-1.7 2-2.7 0-1.5-3.5-3-6-3-9.5 0-2 .5-4.5 2.5-5z" />
       {/* Protective Cleansing Sparkle */}
       <path d="M16 4l1.5-2 1.5 2" />
     </svg>
@@ -432,20 +435,20 @@ function OralHygieneGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Horse Stance / Active Thermogenesis Reheating Glyph */
 function ThermogenesisGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Ground Platform Line */}
       <line x1="3" y1="21" x2="21" y2="21" />
       {/* Head */}
-      <circle cx="12" cy="4" r="1.5" />
+      <circle cx="12" cy="4" r="1.6" />
       {/* Upright Torso */}
-      <line x1="12" y1="5.5" x2="12" y2="12" />
+      <line x1="12" y1="5.6" x2="12" y2="12" />
       {/* Deep Horse Stance Squatting Legs */}
       <path d="M12 12l-4.5 2.5-1.5 6.5" />
       <path d="M12 12l4.5 2.5 1.5 6.5" />
       {/* Guarded Focus Arms */}
-      <path d="M9 9l3 1.5 3-1.5" />
+      <path d="M9 9.5l3 1.5 3-1.5" />
       {/* Core Metabolic Heat Flame */}
-      <path d="M12 17c-.8-1-1.2-1.5-1.2-2.2 0-1 .8-1.8 1.2-2.3.4.5 1.2 1.3 1.2 2.3 0 .7-.4 1.2-1.2 2.2z" />
+      <path d="M12 17.5c-1-1.2-1.5-1.8-1.5-2.5 0-1.2 1-2 1.5-2.5.5.5 1.5 1.3 1.5 2.5 0 .7-.5 1.3-1.5 2.5z" />
     </svg>
   )
 }
@@ -453,15 +456,15 @@ function ThermogenesisGlyph({ stroke, size }: { stroke: string; size: number }) 
 /** Therapeutic Plasma Exchange / Blood Centrifugation Glyph */
 function PlasmaExchangeGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Outer Filtration Capsule */}
-      <rect x="5" y="3" width="14" height="18" rx="4" />
+      <rect x="5.5" y="3" width="13" height="18" rx="3.5" />
       {/* Separation Membrane Divider */}
-      <line x1="5" y1="12" x2="19" y2="12" strokeDasharray="2 2" />
+      <line x1="5.5" y1="12" x2="18.5" y2="12" strokeDasharray="2 2" />
       {/* Upper Plasma Chamber */}
       <circle cx="12" cy="7.5" r="2" />
       {/* Lower Cellular Blood Chamber */}
-      <path d="M12 15c-1.5 1.5-2 2.5-2 3.5a2 2 0 0 0 4 0c0-1-.5-2-2-3.5z" fill={stroke} fillOpacity="0.3" />
+      <path d="M12 14.5c-1.5 1.5-2 2.5-2 3.5a2 2 0 0 0 4 0c0-1-.5-2-2-3.5z" fill={stroke} fillOpacity="0.2" />
     </svg>
   )
 }
@@ -469,16 +472,16 @@ function PlasmaExchangeGlyph({ stroke, size }: { stroke: string; size: number })
 /** Contrast Therapy: Dual circulating hot & cold thermodynamic cycle */
 function ContrastTherapyGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Left Cold Wave Arc */}
-      <path d="M12 3a9 9 0 0 0-9 9c0 2.8 1.3 5.3 3.3 6.9" />
-      <path d="M6 19l.5-3.5-3.5.5" />
+      <path d="M12 3a9 9 0 0 0-8.5 6" />
+      <path d="M3 5.5v3.5h3.5" />
       {/* Right Hot Wave Arc */}
-      <path d="M12 21a9 9 0 0 0 9-9c0-2.8-1.3-5.3-3.3-6.9" />
-      <path d="M18 5l-.5 3.5 3.5-.5" />
+      <path d="M12 21a9 9 0 0 0 8.5-6" />
+      <path d="M21 18.5v-3.5h-3.5" />
       {/* Center Dual Thermal Indicator */}
-      <path d="M10 12h4" />
-      <path d="M12 10v4" />
+      <path d="M9 12c1.5-1.5 2.5-1.5 4 0s2.5 1.5 4 0" />
+      <path d="M12 9.5v5" />
     </svg>
   )
 }
@@ -486,13 +489,13 @@ function ContrastTherapyGlyph({ stroke, size }: { stroke: string; size: number }
 /** Hot Bath: Soaking tub with warm rising steam ripples */
 function HotBathGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12h18" />
-      <path d="M4 12v5a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-5" />
-      <path d="M6 21v1" />
-      <path d="M18 21v1" />
-      <path d="M9 5c-.5.8-.5 1.5 0 2.2s.5 1.5 0 2.2" />
-      <path d="M15 5c-.5.8-.5 1.5 0 2.2s.5 1.5 0 2.2" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 11.5h18" />
+      <path d="M4 11.5v5.5a4 4 0 0 0 4 4h8a4 4 0 0 0 4-4v-5.5" />
+      <line x1="6" y1="21" x2="5.5" y2="22.5" />
+      <line x1="18" y1="21" x2="18.5" y2="22.5" />
+      <path d="M8.5 4.5c-.6.8-.6 1.6 0 2.4s.6 1.6 0 2.4" />
+      <path d="M15.5 4.5c-.6.8-.6 1.6 0 2.4s.6 1.6 0 2.4" />
     </svg>
   )
 }
@@ -500,19 +503,19 @@ function HotBathGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Red Light Therapy / Photobiomodulation: Focused LED panel emitting rays onto a human silhouette */
 function RedLightGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
       {/* Vertical LED Light Panel */}
-      <rect x="3" y="4" width="4" height="16" rx="1" />
-      <line x1="5" y1="8" x2="5.01" y2="8" strokeWidth="2.5" />
-      <line x1="5" y1="12" x2="5.01" y2="12" strokeWidth="2.5" />
-      <line x1="5" y1="16" x2="5.01" y2="16" strokeWidth="2.5" />
+      <rect x="3" y="3.5" width="4.5" height="17" rx="1.5" />
+      <circle cx="5.25" cy="7.5" r="0.75" fill={stroke} />
+      <circle cx="5.25" cy="12" r="0.75" fill={stroke} />
+      <circle cx="5.25" cy="16.5" r="0.75" fill={stroke} />
       {/* Directed Light Emission Rays */}
-      <line x1="10" y1="7" x2="14" y2="7" strokeDasharray="1 1" />
-      <line x1="10" y1="12" x2="15" y2="12" />
-      <line x1="10" y1="17" x2="14" y2="17" strokeDasharray="1 1" />
+      <line x1="10.5" y1="7.5" x2="15" y2="7.5" />
+      <line x1="10.5" y1="12" x2="16" y2="12" />
+      <line x1="10.5" y1="16.5" x2="15" y2="16.5" />
       {/* Recipient Profile / Body Line */}
-      <circle cx="19" cy="8" r="2" />
-      <path d="M17 19v-4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v4" />
+      <circle cx="19.5" cy="7.5" r="2" />
+      <path d="M17.5 19v-4a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v4" />
     </svg>
   )
 }
@@ -520,10 +523,17 @@ function RedLightGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** 16:8 Fasting / Time-Restricted Eating: Plate with distinct 16:8 fasting partition clock arc */
 function FastingGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      {/* Outer Dining Plate Rim */}
       <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5.5" strokeDasharray="2 2" />
-      <path d="M12 8v4l3 2" />
+      {/* Inner Dining Plate Well */}
+      <circle cx="12" cy="12" r="6.5" />
+      {/* Fasting Window Arc (Highlights 16:8 split with open space) */}
+      <path d="M8.5 15.5A6.5 6.5 0 1 1 12 5.5" strokeWidth="2.2" />
+      {/* Clock Hands indicating Dinner-to-Noon (8PM to 12PM) */}
+      <line x1="12" y1="12" x2="12" y2="7.5" />
+      <line x1="12" y1="12" x2="9" y2="14.5" />
+      <circle cx="12" cy="12" r="1" fill={stroke} />
     </svg>
   )
 }
@@ -531,25 +541,31 @@ function FastingGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Seated Meditation: Zen lotus meditation figure with focused spinal alignment */
 function MeditationGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="5.5" r="2.2" />
-      <path d="M12 8v6" />
-      <path d="M6 14l3-3 3 2 3-2 3 3" />
-      <path d="M5 19.5c1.5-1.8 3.8-2 7-2s5.5.2 7 2" />
-      <path d="M4 20h16" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="5" r="2" />
+      <line x1="12" y1="7" x2="12" y2="13" />
+      <path d="M6 13.5l3-2.5 3 2 3-2 3 2.5" />
+      <path d="M4.5 18.5c2-1.5 4.5-1.5 7.5-1.5s5.5 0 7.5 1.5" />
+      <line x1="4" y1="19.5" x2="20" y2="19.5" />
     </svg>
   )
 }
 
-/** Breathwork: Anatomical lungs with directional airflow vectors */
+/** Breathwork: Anatomical lungs with open bronchial airflow corridors */
 function BreathworkGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3v6" />
-      <path d="M12 9l-2 2" />
-      <path d="M12 9l2 2" />
-      <path d="M10 11c-2.5 0-4.5 2-4.5 5 0 3.5 2.5 5 4.5 5h1v-10z" />
-      <path d="M14 11c2.5 0 4.5 2 4.5 5 0 3.5-2.5 5-4.5 5h-1v-10z" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      {/* Trachea & Airway */}
+      <line x1="12" y1="3" x2="12" y2="7.5" />
+      <path d="M12 7.5l-2.5 2" />
+      <path d="M12 7.5l2.5 2" />
+      {/* Left Anatomical Lung Lobe with generous dark interior space */}
+      <path d="M9.5 9.5c-2.8 0-5 2.2-5 5.5 0 3.8 2.5 5.5 4.5 5.5h1.5v-11z" />
+      {/* Right Anatomical Lung Lobe */}
+      <path d="M14.5 9.5c2.8 0 5 2.2 5 5.5 0 3.8-2.5 5.5-4.5 5.5h-1.5v-11z" />
+      {/* Internal Bronchial Airway Branches */}
+      <path d="M8.5 13l-1.5 1.5" />
+      <path d="M15.5 13l1.5 1.5" />
     </svg>
   )
 }
@@ -557,11 +573,12 @@ function BreathworkGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** NSDR / Yoga Nidra: Reclined figure in deep somatic relaxation with soft alpha/theta wave */
 function NSDRGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 18h18" />
-      <circle cx="7" cy="13" r="2" />
-      <path d="M9 15h11" />
-      <path d="M9 8c1.5-.8 3-.8 4.5 0s3 .8 4.5 0" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="19" x2="21" y2="19" />
+      <circle cx="6.5" cy="14.5" r="1.8" />
+      <path d="M8.5 16h11.5" />
+      <path d="M8 9c2-1 4-1 6 0s4 1 6 0" />
+      <path d="M10 6c1.5-.8 3-.8 4.5 0s3 .8 4.5 0" />
     </svg>
   )
 }
@@ -569,9 +586,9 @@ function NSDRGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Zone 2 Cardio: Heart coupled with continuous steady metabolic rhythm wave */
 function Zone2Glyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 20.5l-7-6.5A5 5 0 0 1 12 7.5a5 5 0 0 1 7 6.5l-7 6.5z" />
-      <path d="M8 14h2l1.2-2.5 1.6 5 1.2-2.5H16" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20.5l-6.5-6a4.8 4.8 0 0 1 0-6.8 4.8 4.8 0 0 1 6.8 0l-.3.3.3-.3a4.8 4.8 0 0 1 6.8 0 4.8 4.8 0 0 1 0 6.8z" />
+      <path d="M6.5 13.5h3l1.5-3 2 6 1.5-3h3" />
     </svg>
   )
 }
@@ -579,13 +596,15 @@ function Zone2Glyph({ stroke, size }: { stroke: string; size: number }) {
 /** VILPA: Sprinting silhouette with burst acceleration cues */
 function VILPAGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="15" cy="5" r="2" />
-      <path d="M13 7l-2 5 4 2" />
-      <path d="M11 12l-3 4-4-1" />
-      <path d="M15 14l2 4 4 1" />
-      <path d="M4 8h3" />
-      <path d="M3 11h2" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="16" cy="5" r="1.8" />
+      <line x1="14" y1="7" x2="11" y2="12" />
+      <path d="M13 8.5l-3 2 1 3.5" />
+      <path d="M13 8.5l3 2 2-1" />
+      <path d="M11 12l2 3.5 3.5 1" />
+      <path d="M11 12l-3.5 2-3.5-1" />
+      <line x1="3" y1="7" x2="6.5" y2="7" />
+      <line x1="2" y1="10" x2="5" y2="10" />
     </svg>
   )
 }
@@ -593,13 +612,13 @@ function VILPAGlyph({ stroke, size }: { stroke: string; size: number }) {
 /** Mobility & Dynamic Stretching: Full-range flexibility extension silhouette */
 function MobilityGlyph({ stroke, size }: { stroke: string; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.85" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="4.5" r="2" />
-      <path d="M12 7v5" />
-      <path d="M6 8l6-1 6 1" />
-      <path d="M12 12l-4 8" />
-      <path d="M12 12l4 8" />
-      <path d="M5 21h14" strokeDasharray="1 2" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="4" r="1.8" />
+      <path d="M12 6c0 2 1 4 2 6" />
+      <path d="M7 7.5c2.5-1 7.5-1 10 0" />
+      <path d="M14 12l-4.5 8.5" />
+      <path d="M14 12l5 8.5" />
+      <line x1="4" y1="21" x2="20" y2="21" strokeDasharray="2 2" />
     </svg>
   )
 }
@@ -680,10 +699,10 @@ export default function ModalityIcon({
   const effectiveStroke = activeIgnited ? `url(#${gradId})` : '#94A3B8'
 
   // Micro-precise edge definition for crisp lines:
-  // Instead of a 5px blur that bleeds across adjacent lines, we use a 1px intense luminous rim
-  // plus an ultra-subtle shadow for razor-sharp edge contrast against any background.
+  // We use a deep dark shadow (NO color blur!) that casts behind the stroke,
+  // making high-luminance lines pop with crisp, high-contrast separation.
   const foregroundFilter = (glow && activeIgnited)
-    ? `drop-shadow(0 0 1.2px ${grad.glow}) drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45))`
+    ? 'drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.85))'
     : undefined
 
   // Helper renderer for Lucide icons using the gradient stroke & dual-layer lighting
@@ -694,21 +713,21 @@ export default function ModalityIcon({
         activeIgnited ? 'opacity-100 scale-100' : 'opacity-60 scale-95'
       } ${className}`}
     >
-      {/* Layer 1: Ambient Background Lighting Aura (Radiates softly behind the icon without blurring strokes) */}
+      {/* Layer 1: Ambient Background Lighting Halo (Soft, delicate aura that leaves negative space pitch-dark) */}
       {glow && activeIgnited && (
         <div 
-          className="absolute inset-0 -m-1.5 rounded-full pointer-events-none transition-all duration-700 ease-out"
+          className="absolute inset-0 -m-1 rounded-full pointer-events-none transition-all duration-700 ease-out"
           style={{
-            background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || 'transparent'} 50%, transparent 80%)`,
-            filter: 'blur(5px)',
-            opacity: 0.75,
+            background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || 'transparent'} 40%, transparent 70%)`,
+            filter: 'blur(6px)',
+            opacity: 0.28,
             transform: 'scale(1.2)'
           }}
         />
       )}
 
       {/* SVG Linear Gradient Definition */}
-      <svg width={0} height={0} className="absolute pointer-events-none">
+      <svg width={0} height={0} style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={grad.from} />
@@ -725,7 +744,7 @@ export default function ModalityIcon({
         <IconComponent 
           size={size} 
           stroke={effectiveStroke} 
-          strokeWidth={1.85} 
+          strokeWidth={1.55} 
           className="shrink-0 transition-all duration-500"
         />
       </div>
@@ -740,21 +759,21 @@ export default function ModalityIcon({
         activeIgnited ? 'opacity-100 scale-100' : 'opacity-60 scale-95'
       } ${className}`}
     >
-      {/* Layer 1: Ambient Background Lighting Aura (Radiates softly behind the icon without blurring strokes) */}
+      {/* Layer 1: Ambient Background Lighting Halo (Soft, delicate aura that leaves negative space pitch-dark) */}
       {glow && activeIgnited && (
         <div 
-          className="absolute inset-0 -m-1.5 rounded-full pointer-events-none transition-all duration-700 ease-out"
+          className="absolute inset-0 -m-1 rounded-full pointer-events-none transition-all duration-700 ease-out"
           style={{
-            background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || 'transparent'} 50%, transparent 80%)`,
-            filter: 'blur(5px)',
-            opacity: 0.75,
+            background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || 'transparent'} 40%, transparent 70%)`,
+            filter: 'blur(6px)',
+            opacity: 0.28,
             transform: 'scale(1.2)'
           }}
         />
       )}
 
       {/* SVG Linear Gradient Definition */}
-      <svg width={0} height={0} className="absolute pointer-events-none">
+      <svg width={0} height={0} style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={grad.from} />

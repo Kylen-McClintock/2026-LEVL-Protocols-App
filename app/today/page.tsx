@@ -2332,6 +2332,7 @@ function TodayPageContent() {
                           isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
                           isProtocolGroupView={true}
                           protocolGroupName={groupName}
+                          isIgnited={true}
                         />
                       )
                     })}
@@ -2590,6 +2591,7 @@ function TodayPageContent() {
                       isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
                       isProtocolGroupView={viewMode === 'protocol'}
                       protocolGroupName={viewMode === 'protocol' ? groupName : undefined}
+                      isIgnited={isIgnited}
                     />
                   )
                 })}
@@ -3159,6 +3161,7 @@ function TodayPageContent() {
                                       completionMode={completionMode}
                                       isProtocolGroupView={viewMode === 'protocol'}
                                       protocolGroupName={viewMode === 'protocol' ? groupKey : undefined}
+                                      isIgnited={true}
                                     />
                                   )
                                 })}
