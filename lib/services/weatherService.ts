@@ -1,3 +1,12 @@
+export interface WeatherPeriod {
+  label: 'Morning' | 'Afternoon' | 'Evening'
+  time: string
+  temp_f: number
+  weather_code: number
+  condition: string
+  icon: string
+}
+
 export interface LocalWeatherData {
   temp_f: number
   temp_c: number
@@ -10,9 +19,16 @@ export interface LocalWeatherData {
   icon: string
   city?: string
   fetched_at: string
+  // Day-wide contextual weather metrics
+  temp_max_f?: number
+  temp_min_f?: number
+  day_condition_summary?: string
+  precipitation_sum?: number
+  precipitation_probability_max?: number
+  day_periods?: WeatherPeriod[]
 }
 
-function getWeatherConditionDetails(code: number): { condition: string; icon: string } {
+export function getWeatherConditionDetails(code: number): { condition: string; icon: string } {
   if (code === 0) return { condition: 'Clear Sky', icon: '☀️' }
   if (code === 1) return { condition: 'Mainly Clear', icon: '🌤️' }
   if (code === 2) return { condition: 'Partly Cloudy', icon: '⛅' }
@@ -95,8 +111,8 @@ export async function fetchCurrentWeather(forceRefresh = false): Promise<LocalWe
       city = 'Estimated Location'
     }
 
-    // 3. Query Open-Meteo free API
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,surface_pressure,weather_code,uv_index&temperature_unit=fahrenheit&wind_speed_unit=mph`
+    // 3. Query Open-Meteo free API for current + daily + hourly context
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,surface_pressure,weather_code,uv_index&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=1&timezone=auto`
     const res = await fetch(weatherUrl)
     if (!res.ok) return null
 
@@ -112,6 +128,66 @@ export async function fetchCurrentWeather(forceRefresh = false): Promise<LocalWe
     const pressureHpa = Math.round(current.surface_pressure ?? 1013)
     const uvIndex = current.uv_index ?? 0
 
+    // Extract daily metrics
+    const daily = data.daily
+    const tempMaxF = daily?.temperature_2m_max?.[0] != null ? Math.round(daily.temperature_2m_max[0]) : tempF
+    const tempMinF = daily?.temperature_2m_min?.[0] != null ? Math.round(daily.temperature_2m_min[0]) : tempF
+    const precipitationSum = daily?.precipitation_sum?.[0] != null ? Number(daily.precipitation_sum[0]) : 0
+    const precipitationProbMax = daily?.precipitation_probability_max?.[0] != null ? Math.round(daily.precipitation_probability_max[0]) : 0
+
+    // Extract hourly progression across 3 key daily phases
+    const hourly = data.hourly
+    const dayPeriods: WeatherPeriod[] = []
+    if (hourly && Array.isArray(hourly.weather_code) && hourly.weather_code.length >= 20) {
+      const morningCode = hourly.weather_code[9] ?? weatherCode
+      const morningTemp = Math.round(hourly.temperature_2m[9] ?? tempF)
+      const mDetails = getWeatherConditionDetails(morningCode)
+      dayPeriods.push({
+        label: 'Morning',
+        time: '9:00 AM',
+        temp_f: morningTemp,
+        weather_code: morningCode,
+        condition: mDetails.condition,
+        icon: mDetails.icon
+      })
+
+      const afternoonCode = hourly.weather_code[14] ?? weatherCode
+      const afternoonTemp = Math.round(hourly.temperature_2m[14] ?? tempF)
+      const aDetails = getWeatherConditionDetails(afternoonCode)
+      dayPeriods.push({
+        label: 'Afternoon',
+        time: '2:00 PM',
+        temp_f: afternoonTemp,
+        weather_code: afternoonCode,
+        condition: aDetails.condition,
+        icon: aDetails.icon
+      })
+
+      const eveningCode = hourly.weather_code[19] ?? weatherCode
+      const eveningTemp = Math.round(hourly.temperature_2m[19] ?? tempF)
+      const eDetails = getWeatherConditionDetails(eveningCode)
+      dayPeriods.push({
+        label: 'Evening',
+        time: '7:00 PM',
+        temp_f: eveningTemp,
+        weather_code: eveningCode,
+        condition: eDetails.condition,
+        icon: eDetails.icon
+      })
+    }
+
+    // Formulate a natural day-wide summary of conditions
+    let dayConditionSummary = condition
+    if (precipitationSum > 0.1) {
+      dayConditionSummary = precipitationSum >= 0.5 ? `Rainy (${precipitationSum}" rain)` : `Showers (${precipitationSum}" rain)`
+    } else if (dayPeriods.length === 3) {
+      if (dayPeriods[0].condition !== dayPeriods[1].condition) {
+        dayConditionSummary = `${dayPeriods[0].condition} morning ➔ ${dayPeriods[1].condition} afternoon`
+      } else {
+        dayConditionSummary = `${dayPeriods[1].condition} throughout the day`
+      }
+    }
+
     const weatherData: LocalWeatherData = {
       temp_f: tempF,
       temp_c: tempC,
@@ -123,7 +199,13 @@ export async function fetchCurrentWeather(forceRefresh = false): Promise<LocalWe
       condition,
       icon,
       city,
-      fetched_at: new Date().toISOString()
+      fetched_at: new Date().toISOString(),
+      temp_max_f: tempMaxF,
+      temp_min_f: tempMinF,
+      day_condition_summary: dayConditionSummary,
+      precipitation_sum: precipitationSum,
+      precipitation_probability_max: precipitationProbMax,
+      day_periods: dayPeriods.length > 0 ? dayPeriods : undefined
     }
 
     try {
@@ -137,3 +219,4 @@ export async function fetchCurrentWeather(forceRefresh = false): Promise<LocalWe
     return null
   }
 }
+

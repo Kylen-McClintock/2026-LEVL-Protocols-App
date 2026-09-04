@@ -440,13 +440,25 @@ export interface ExternalConfounderData {
     condition: string
     icon: string
     city?: string
+    temp_max_f?: number
+    temp_min_f?: number
+    day_condition_summary?: string
+    precipitation_sum?: number
+    day_periods?: Array<{
+      label: 'Morning' | 'Afternoon' | 'Evening'
+      time: string
+      temp_f: number
+      weather_code: number
+      condition: string
+      icon: string
+    }>
   }
   day_busyness_score?: number // 0 - 10
   busyness_tags?: string[] // e.g. ['meetings', 'commute', 'deadlines', 'admin']
   external_stress_score?: number // 0 - 10
   stressor_domain?: string // 'work' | 'relationship' | 'financial' | 'health' | 'family_logistics' | 'other'
   stressor_notes?: string
-  social_cohort?: string // 'solo' | 'loved_ones' | 'professional' | 'draining'
+  social_cohort?: string // 'solo' | 'partner' | 'friends' | 'loved_ones' | 'family' | 'professional' | 'draining' (or comma-separated)
   social_energy_delta?: number // -5 to +5 (net recharge vs drainage)
   productivity_score?: number // 0 - 10
   productivity_depth?: string // 'deep_flow' | 'shallow_admin' | 'distracted' | 'rest_day'

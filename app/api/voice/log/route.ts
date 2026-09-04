@@ -52,7 +52,7 @@ const voiceLogSchema = z.object({
     external_stress_score: z.number().min(0).max(10).optional().describe('0 to 10 external life stress score if acute stressors mentioned'),
     stressor_domain: z.enum(['work', 'relationship', 'financial', 'health', 'family_logistics', 'other']).optional().describe('Primary domain of external stress'),
     stressor_notes: z.string().optional().describe('Specific cause or trigger of the stress mentioned'),
-    social_cohort: z.enum(['solo', 'loved_ones', 'professional', 'draining']).optional().describe('Who the user spent social time with today'),
+    social_cohort: z.enum(['solo', 'partner', 'friends', 'loved_ones', 'family', 'professional', 'draining']).optional().describe('Who the user spent social time with today: partner, friends, family, loved_ones, professional, solo, draining'),
     social_energy_delta: z.number().min(-5).max(5).optional().describe('Net social impact score: -5 (severely draining) to +5 (rejuvenating/uplifting)'),
     productivity_score: z.number().min(0).max(10).optional().describe('0 to 10 subjective productivity or goal accomplishment score'),
     productivity_depth: z.enum(['deep_flow', 'shallow_admin', 'distracted', 'rest_day']).optional().describe('Depth of focus today'),
