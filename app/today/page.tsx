@@ -3820,7 +3820,7 @@ function TodayPageContent() {
 
             {/* Timeline Layout Mode & Completion Mode Toggle Bar (Single Non-Scrolling Row) */}
             <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 p-1 sm:p-2 rounded-2xl mb-3 backdrop-blur-md shadow-sm gap-1 sm:gap-2">
-              {/* Left: Timeline Layout Mode (Time Blocks vs Protocols vs Outcome Lens) */}
+              {/* Left: Timeline Layout Mode (Time Blocks vs Protocols) */}
               <div className="flex items-center">
                 <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-white/10 gap-0.5 text-[10px] sm:text-xs">
                   <button
@@ -3847,20 +3847,6 @@ function TodayPageContent() {
                   >
                     <ListOrdered size={11} className="shrink-0" />
                     <span>Protocols</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('outcomes')}
-                    className={`px-1.5 sm:px-2.5 py-1 rounded-lg font-bold text-[10px] sm:text-xs tracking-tight transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
-                      viewMode === 'outcomes'
-                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm border border-purple-400/40 font-extrabold'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="View modalities grouped and scored by functional outcome vectors (Skin Clarity, Focus, Sleep, Longevity)"
-                  >
-                    <Sparkles size={11} className="shrink-0 text-amber-300" />
-                    <span>Outcome Lens</span>
                   </button>
                 </div>
               </div>
