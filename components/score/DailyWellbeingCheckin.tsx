@@ -371,8 +371,30 @@ export default function DailyWellbeingCheckin({
   const [skinClarity, setSkinClarity] = useState(5)
   const [focusScore, setFocusScore] = useState(5)
 
-  // Current State & Quick Modal State
-  const [isCurrentStateExpanded, setIsCurrentStateExpanded] = useState(false)
+  // Current State Collapse Tier: 'minimal' (1-line), 'numbers' (semi-open default), 'trends' (fully open)
+  const [outcomeCollapseTier, setOutcomeCollapseTier] = useState<'minimal' | 'numbers' | 'trends'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('levl_current_state_collapse_tier')
+      if (saved === 'minimal' || saved === 'numbers' || saved === 'trends') {
+        return saved as 'minimal' | 'numbers' | 'trends'
+      }
+    }
+    return isCollapsedByDefault ? 'minimal' : 'numbers'
+  })
+
+  const updateOutcomeCollapseTier = (newTier: 'minimal' | 'numbers' | 'trends') => {
+    setOutcomeCollapseTier(newTier)
+    safeLocalStorageSet('levl_current_state_collapse_tier', newTier)
+  }
+
+  const isCurrentStateExpanded = outcomeCollapseTier === 'trends'
+
+  useEffect(() => {
+    if (isCollapsedByDefault) {
+      setOutcomeCollapseTier('minimal')
+    }
+  }, [isCollapsedByDefault])
+
   const [quickModalOutcome, setQuickModalOutcome] = useState<OutcomeLiveState | null>(null)
   const [isQuickModalOpen, setIsQuickModalOpen] = useState(false)
 
@@ -1555,6 +1577,91 @@ export default function DailyWellbeingCheckin({
       {/* ⚡ CONNECTED CONTAINER: Top Row (Morning Check-in Status / Edit) + Current State 4-Box Grid */}
       {(section === 'all' || section === 'morning_anytime') && (
         (isSaved && !isEditing) || isCollapsedAll ? (
+          outcomeCollapseTier === 'minimal' ? (
+            /* ⚡ TIER 1: ULTRA-SLEEK 1-LINE RIBBON (~40px) */
+            <div 
+              onClick={() => updateOutcomeCollapseTier('numbers')}
+              className="glass-card mb-4 rounded-2xl border border-emerald-500/30 bg-slate-950/80 hover:bg-slate-950 shadow-xl px-3.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-3 cursor-pointer group transition-all duration-200 animate-in fade-in select-none relative overflow-hidden"
+            >
+              {/* Subtle accent top border ribbon */}
+              <div className="h-[2px] w-full absolute top-0 left-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-purple-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+
+              {/* Left: Morning Status + Inline Live Bio-signals */}
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-x-auto no-scrollbar">
+                {/* Morning status indicator */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className={`w-2 h-2 rounded-full ${isSaved ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]' : 'bg-amber-400 animate-pulse'}`} />
+                  <span className="font-bold text-white text-xs whitespace-nowrap">
+                    {isSaved ? '☀️ Morning Complete' : '☀️ Morning Pending'}
+                  </span>
+                </div>
+
+                {/* Divider */}
+                <span className="text-white/20 hidden xs:inline shrink-0">|</span>
+
+                {/* Live Bio-signal Micro Pills */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {activeAnytimeDimensions.map(outcome => {
+                    const liveState = liveStateMap[outcome.id] || getLatestOutcomeLiveState(outcome.id, initialData, recentTasks, allOutcomes)
+                    const val = liveState.currentValue ?? 5
+                    const colorCfg = getOutcomeColorConfig(val, liveState.directionality)
+                    return (
+                      <span 
+                        key={outcome.id} 
+                        className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-lg border shrink-0 ${colorCfg.badgeBg} ${colorCfg.borderColor} ${colorCfg.textColor}`}
+                        title={`${liveState.name}: ${val}/10 (${liveState.sourceLabel})`}
+                      >
+                        <span className="opacity-75 font-normal text-[10px] sm:text-[11px]">{liveState.name}</span>
+                        <span className="font-mono font-black">{val}</span>
+                      </span>
+                    )
+                  })}
+                </div>
+
+                {/* Evening Check-in Mini Cue (if available and not yet saved) */}
+                {isNightlyAvailable && !isNightlySaved && (
+                  <span 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowNightlyCard(true)
+                      const el = document.getElementById('evening-checkin-section')
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    }}
+                    className="hidden md:inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25 transition-colors shrink-0"
+                    title="Click to jump to Evening Check-in"
+                  >
+                    <Moon size={10} className="text-rose-400" />
+                    <span>Evening Pending</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Right: Actions */}
+              <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCollapsedAll(false)
+                    setIsEditing(true)
+                  }}
+                  className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2 sm:px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                  title="Edit morning check-in"
+                >
+                  <span>{isSaved ? '✏ Edit' : 'Log'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => updateOutcomeCollapseTier('numbers')}
+                  className="p-1 sm:p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer shadow-sm active:scale-95 shrink-0 flex items-center gap-1 text-xs"
+                  title="Expand to numbers grid"
+                  aria-label="Expand to numbers grid"
+                >
+                  <ChevronDown size={14} className="text-slate-300 group-hover:text-white transition-colors" />
+                </button>
+              </div>
+            </div>
+          ) : (
           <div className="glass-card mb-4 rounded-2xl border border-emerald-500/30 bg-slate-950/70 shadow-xl overflow-hidden animate-in fade-in">
             {/* SMALL CONNECTED ROW DIRECTLY ABOVE: Morning Check-in Status & Edit */}
             <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-black/40 border-b border-white/10 text-xs">
@@ -1580,6 +1687,18 @@ export default function DailyWellbeingCheckin({
                   className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                 >
                   <span>{isSaved ? '✏ Edit Check-in' : 'Log Morning Check-in'}</span>
+                </button>
+
+                {/* Collapse to 1 line button */}
+                <button
+                  type="button"
+                  onClick={() => updateOutcomeCollapseTier('minimal')}
+                  className="p-1 sm:px-2 sm:py-0.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-[11px]"
+                  title="Collapse to 1 line"
+                  aria-label="Collapse to 1 line"
+                >
+                  <ChevronUp size={12} />
+                  <span className="hidden sm:inline">1-Line</span>
                 </button>
               </div>
             </div>
@@ -1636,7 +1755,7 @@ export default function DailyWellbeingCheckin({
             <div className="flex items-center justify-between gap-2">
               <div 
                 className="flex items-center gap-2 min-w-0 cursor-pointer group"
-                onClick={() => setIsCurrentStateExpanded(!isCurrentStateExpanded)}
+                onClick={() => updateOutcomeCollapseTier(outcomeCollapseTier === 'trends' ? 'numbers' : 'trends')}
                 title="Click to toggle trend details"
               >
                 <span className="text-white font-black text-xs sm:text-sm tracking-wide">
@@ -1663,12 +1782,24 @@ export default function DailyWellbeingCheckin({
 
                 <button
                   type="button"
-                  onClick={() => setIsCurrentStateExpanded(!isCurrentStateExpanded)}
+                  onClick={() => updateOutcomeCollapseTier(outcomeCollapseTier === 'trends' ? 'numbers' : 'trends')}
                   className="text-[11px] font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/15 px-2 py-1 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                  title={isCurrentStateExpanded ? "Collapse trend details" : "Expand trend details"}
+                  title={outcomeCollapseTier === 'trends' ? "Collapse trend details" : "Expand trend details"}
                 >
-                  {isCurrentStateExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                  <span className="hidden xs:inline">{isCurrentStateExpanded ? 'Less' : 'Trends'}</span>
+                  {outcomeCollapseTier === 'trends' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  <span className="hidden xs:inline">{outcomeCollapseTier === 'trends' ? 'Less' : 'Trends'}</span>
+                </button>
+
+                {/* Collapse all to 1 line button */}
+                <button
+                  type="button"
+                  onClick={() => updateOutcomeCollapseTier('minimal')}
+                  className="p-1 sm:px-2 sm:py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-[11px]"
+                  title="Collapse all to 1 line"
+                  aria-label="Collapse all to 1 line"
+                >
+                  <ChevronUp size={12} />
+                  <span className="hidden sm:inline">1-Line</span>
                 </button>
               </div>
             </div>
@@ -1987,6 +2118,7 @@ export default function DailyWellbeingCheckin({
           })()}
           </div>
         </div>
+        )
       ) : (
         <div className="glass-card p-4 rounded-xl mb-6 space-y-6 border border-levl-accent/20">
       <div className="flex items-center justify-between flex-wrap gap-2">
