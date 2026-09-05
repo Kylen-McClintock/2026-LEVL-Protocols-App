@@ -22,7 +22,7 @@ import { getMacroCategory, MACRO_CATEGORIES } from '@/lib/utils/categories'
 import { sortModalitiesByNBA } from '@/lib/ranking/nextBestAction'
 import { calculateModalityPopularityScore, calculateProtocolPopularityScore } from '@/lib/ranking/popularityScore'
 import Link from 'next/link'
-import { Compass, Filter, ChevronDown, ChevronUp, X, Search, SlidersHorizontal, History, Scale, Sparkles, Trash2, ArrowRight, Info, Flame, Sun, Bookmark, HelpCircle, Target, Sliders, ShieldAlert, Zap, AlertTriangle } from 'lucide-react'
+import { Compass, Filter, ChevronDown, ChevronUp, X, Search, SlidersHorizontal, History, Scale, Sparkles, Trash2, ArrowRight, Info, Flame, Sun, Bookmark, HelpCircle, Target, Sliders, ShieldAlert, Zap, AlertTriangle, Layers, Calendar, Activity } from 'lucide-react'
 import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolCard, { PROTOCOL_SYNERGY_MAP } from '@/components/cards/ProtocolCard'
 import ModalityCompareModal from '@/components/modals/ModalityCompareModal'
@@ -76,10 +76,12 @@ export default function ExplorePage() {
     isOpen: boolean
     protocolA: Protocol | null
     protocolB: Protocol | null
+    protocols?: Protocol[]
   }>({
     isOpen: false,
     protocolA: null,
-    protocolB: null
+    protocolB: null,
+    protocols: []
   })
 
   const [inspectStackFitModal, setInspectStackFitModal] = useState<{
@@ -127,18 +129,10 @@ export default function ExplorePage() {
       if (exists) {
         return prev.filter(p => p.id !== protocol.id)
       }
-      if (prev.length >= 2) {
-        return [prev[0], protocol]
+      if (prev.length >= 5) {
+        return [...prev.slice(1), protocol]
       }
-      const updated = [...prev, protocol]
-      if (updated.length === 2) {
-        setProtocolCompareModal({
-          isOpen: true,
-          protocolA: updated[0],
-          protocolB: updated[1]
-        })
-      }
-      return updated
+      return [...prev, protocol]
     })
   }
 
@@ -268,6 +262,14 @@ export default function ExplorePage() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const activeTodayProtocolsList = useMemo(() => {
+    return protocols.filter(p => 
+      todayProtocolIds.has(p.id) || 
+      todayProtocolIds.has(p.name?.toLowerCase()) ||
+      todayProtocolIds.has(p.id?.toLowerCase())
+    )
+  }, [protocols, todayProtocolIds])
 
   const MODALITY_FAMILIES = [
     // Thermal & Cold
@@ -1507,43 +1509,104 @@ export default function ExplorePage() {
           </div>
         </>
       ) : (
-        /* Protocols 2-Wide Responsive Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5 items-start animate-in fade-in slide-in-from-right-4">
-          {filteredProtocols.length === 0 ? (
-            <div className="col-span-full text-center p-8 bg-white/5 rounded-2xl text-gray-400 text-sm space-y-3">
-              <p>No protocols found matching your search and filter criteria.</p>
-              {(searchQuery || selectedMainCategories.length > 1 || selectedMainCategories[0] !== 'all' || selectedSubCategories.length > 0) && (
+        /* Protocols 2-Wide Responsive Grid with Stacking Studio Banner */
+        <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+          {/* Multi-Protocol Stacking Studio Hero Bar */}
+          <div className="p-4 rounded-3xl bg-gradient-to-r from-purple-950/40 via-slate-900 to-emerald-950/40 border border-purple-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center shrink-0 shadow-md">
+                <Layers size={20} className="text-purple-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black text-white">Multi-Protocol Stacking Studio</h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                    8 Vectors &amp; 12 Hallmarks
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Combine 2, 3, or more protocols to eliminate biometric valleys with zero chronobiological timing clashes.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end md:self-auto shrink-0 flex-wrap">
+              {activeTodayProtocolsList.length > 0 && (
                 <button
                   type="button"
                   onClick={() => {
-                    handleClearSearch()
-                    setSelectedMainCategories(['all'])
-                    setSelectedSubCategories([])
-                    setFilterCost('all')
-                    setFilterEffort('all')
-                    setFilterEvidence('all')
-                    setFilterSafety('all')
+                    setProtocolCompareModal({
+                      isOpen: true,
+                      protocolA: activeTodayProtocolsList[0] || null,
+                      protocolB: activeTodayProtocolsList[1] || null,
+                      protocols: activeTodayProtocolsList
+                    })
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-300 font-bold text-xs hover:bg-orange-500/30 cursor-pointer"
+                  className="py-2 px-3 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
-                  Reset Search &amp; Filters
+                  <Calendar size={13} className="text-cyan-400" />
+                  <span>Analyze My Active Stack ({activeTodayProtocolsList.length})</span>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const defaultStack = pinnedProtocols.length >= 1 ? pinnedProtocols : protocols.slice(0, 2)
+                  setProtocolCompareModal({
+                    isOpen: true,
+                    protocolA: defaultStack[0] || null,
+                    protocolB: defaultStack[1] || null,
+                    protocols: defaultStack
+                  })
+                }}
+                className="py-2 px-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-600 hover:opacity-95 text-white font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              >
+                <Activity size={13} />
+                <span>Launch Stack Studio</span>
+                <ArrowRight size={13} />
+              </button>
             </div>
-          ) : (
-            filteredProtocols.map(protocol => (
-              <div key={protocol.id} className="min-w-0 w-full">
-                <ProtocolCard 
-                  protocol={protocol}
-                  activeStatus={getProtocolActiveStatus(protocol)}
-                  onAddToBench={handleAddProtocolToBench}
-                  onAddToToday={handleAddProtocolToToday}
-                  onCompare={handlePinProtocol}
-                  isPinnedForCompare={pinnedProtocols.some(p => p.id === protocol.id)}
-                />
+          </div>
+
+          {/* Protocols Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5 items-start">
+            {filteredProtocols.length === 0 ? (
+              <div className="col-span-full text-center p-8 bg-white/5 rounded-2xl text-gray-400 text-sm space-y-3">
+                <p>No protocols found matching your search and filter criteria.</p>
+                {(searchQuery || selectedMainCategories.length > 1 || selectedMainCategories[0] !== 'all' || selectedSubCategories.length > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleClearSearch()
+                      setSelectedMainCategories(['all'])
+                      setSelectedSubCategories([])
+                      setFilterCost('all')
+                      setFilterEffort('all')
+                      setFilterEvidence('all')
+                      setFilterSafety('all')
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-300 font-bold text-xs hover:bg-orange-500/30 cursor-pointer"
+                  >
+                    Reset Search &amp; Filters
+                  </button>
+                )}
               </div>
-            ))
-          )}
+            ) : (
+              filteredProtocols.map(protocol => (
+                <div key={protocol.id} className="min-w-0 w-full">
+                  <ProtocolCard 
+                    protocol={protocol}
+                    activeStatus={getProtocolActiveStatus(protocol)}
+                    onAddToBench={handleAddProtocolToBench}
+                    onAddToToday={handleAddProtocolToToday}
+                    onCompare={handlePinProtocol}
+                    isPinnedForCompare={pinnedProtocols.some(p => p.id === protocol.id)}
+                  />
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
@@ -1553,13 +1616,13 @@ export default function ExplorePage() {
           <div className="bg-slate-950/95 border border-purple-500/50 p-3 sm:p-4 rounded-2xl shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-center gap-3 sm:gap-4 max-w-xl">
             <div className="flex items-center gap-2 flex-1 min-w-0 w-full sm:w-auto">
               <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center shrink-0">
-                <Scale size={18} className="text-purple-400" />
+                <Layers size={18} className="text-purple-400" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <span>Compare Tray</span>
+                  <span>Stack &amp; Compare Tray</span>
                   <span className="text-[10px] bg-purple-500/30 text-purple-300 px-2 py-0.5 rounded-full font-mono font-bold">
-                    {pinnedModalities.length > 0 ? `${pinnedModalities.length}/2 Modalities` : `${pinnedProtocols.length}/2 Protocols`}
+                    {pinnedModalities.length > 0 ? `${pinnedModalities.length}/2 Modalities` : `${pinnedProtocols.length} Protocols in Stack`}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -1579,7 +1642,7 @@ export default function ExplorePage() {
                     <span className="text-[10px] text-slate-500 italic">Select 1 more modality...</span>
                   )}
                   {pinnedProtocols.length === 1 && (
-                    <span className="text-[10px] text-slate-500 italic">Select 1 more protocol...</span>
+                    <span className="text-[10px] text-slate-500 italic">Add more protocols to stack...</span>
                   )}
                 </div>
               </div>
@@ -1604,19 +1667,20 @@ export default function ExplorePage() {
                 </button>
               )}
 
-              {pinnedProtocols.length === 2 && (
+              {pinnedProtocols.length >= 1 && (
                 <button
                   onClick={() => {
                     setProtocolCompareModal({
                       isOpen: true,
                       protocolA: pinnedProtocols[0],
-                      protocolB: pinnedProtocols[1]
+                      protocolB: pinnedProtocols[1] || null,
+                      protocols: pinnedProtocols
                     })
                   }}
-                  className="flex-1 sm:flex-initial px-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  className="flex-1 sm:flex-initial px-4 py-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-600 hover:opacity-95 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                 >
-                  <Scale size={14} />
-                  <span>Compare Protocols</span>
+                  <Layers size={14} />
+                  <span>Stack Studio ({pinnedProtocols.length})</span>
                   <ArrowRight size={14} />
                 </button>
               )}
@@ -1627,7 +1691,7 @@ export default function ExplorePage() {
                   setPinnedProtocols([])
                 }}
                 className="px-2.5 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 border border-slate-800 transition-colors cursor-pointer text-xs font-bold flex items-center gap-1 shrink-0"
-                title="Clear Compare Tray"
+                title="Clear Tray"
               >
                 <X size={14} />
                 <span>Clear</span>
@@ -1648,12 +1712,15 @@ export default function ExplorePage() {
         onSuccess={loadData}
       />
 
-      {/* Side-by-side Protocol vs Protocol Comparison Modal */}
+      {/* Protocol Longevity Fingerprints & Multi-Protocol Stacking Studio Modal */}
       <ProtocolCompareModal 
         isOpen={protocolCompareModal.isOpen}
         onClose={() => setProtocolCompareModal(prev => ({ ...prev, isOpen: false }))}
         protocolA={protocolCompareModal.protocolA}
         protocolB={protocolCompareModal.protocolB}
+        protocols={protocolCompareModal.protocols}
+        allProtocols={protocols}
+        activeTodayProtocols={activeTodayProtocolsList}
         onSuccess={loadData}
       />
 

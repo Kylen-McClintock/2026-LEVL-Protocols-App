@@ -334,3 +334,45 @@ For any vector $V$ with current dialed-in score $S_V \in [0, 100]$:
 - **Remote Cloud Supabase**: Graceful non-blocking persistence into `user_lab_panels`, `biomarker_measurements`, and `bioage_calculation_logs`.
 - **Reactive UI Events**: Dispatches `levl_biomarkers_updated` and `levl_lab_panels_updated` CustomEvents upon save, triggering immediate re-calculation across all Today cards, analysis modal tabs, and lens views without full page reloads.
 
+---
+
+## 8. Protocol Longevity Fingerprints & Multi-Protocol Stacking Studio
+
+### 8.1 Objective & Clinical Overview
+Protocol selection in longevity medicine has historically been obscured by text-heavy overviews and marketing claims. The **Protocol Longevity Fingerprints & Multi-Protocol Stacking Studio** establishes a rigorous geometric and mathematical standard for evaluating, combining, and chronobiologically harmonizing protocols across all 16 preset stacks in the LEVL library.
+
+### 8.2 Dual-Dimension Biometric Scoring
+Every pre-built protocol is calibrated across two distinct biological lenses:
+1. **8 Longevity Vectors (Physiological Outcomes, 0–100)**:
+   - `heart_health` (Cardiovascular & Endothelial Perfusion)
+   - `brain_longevity` (Neuroprotection & BDNF Synaptic Density)
+   - `metabolic_health` (Insulin Sensitivity & AMPK Activation)
+   - `cancer_defense` (Macroautophagy & Senolytic Clearance)
+   - `testosterone` (Endocrine Vitality & Anabolic Tone)
+   - `chronic_inflammation` (Systemic Inflammaging & hs-CRP Suppression)
+   - `bone_density` (Axial Mechanotransduction & BMD)
+   - `cellular_longevity` (Epigenetic Clocks, NAD+ & Telomere Protection)
+2. **12 Hallmarks of Aging (Cellular & Molecular Mechanisms, 0–100)**:
+   - `genomic_instability`, `telomere_attrition`, `epigenetic_alterations`, `loss_of_proteostasis`, `disabled_macroautophagy`, `deregulated_nutrient_sensing`, `mitochondrial_dysfunction`, `cellular_senescence`, `stem_cell_exhaustion`, `altered_intercellular_communication`, `chronic_inflammation`, `dysbiosis`.
+
+### 8.3 The Multi-Protocol Stacking Formula
+For any set of stacked protocols $\mathcal{P} = \{P_1, P_2, \dots, P_k\}$ and any dimension $d$:
+$$\text{StackedScore}_d = \min\left(100, \; \max_{P \in \mathcal{P}}(S_{P, d}) + \Delta_{\text{synergy}, d}\right)$$
+Where $\Delta_{\text{synergy}, d}$ represents verified cross-protocol synergy bonuses (+2 to +5 pts when 2+ protocols both target the dimension at $\ge 70$).
+
+**Total Systemic Coverage**:
+$$\text{Coverage \%} = \frac{\sum_{d=1}^{N} \text{StackedScore}_d}{N \times 100} \times 100\%$$
+Quantifies the percentage expansion of the stacked envelope over the best single protocol, highlighting filled biometric blindspots.
+
+### 8.4 Complementary Protocol Discovery Algorithm
+When a user evaluates an active stack $\mathcal{P}$, remaining candidate protocols $C \notin \mathcal{P}$ are evaluated:
+$$\text{ComplementaryScore}(C) = \sum_{d} \max(0, S_{C, d} - \text{StackedScore}_d) - \left(15 \times \text{ClashCount}(C, \mathcal{P})\right)$$
+Candidates that fill the deepest valleys with zero antagonistic timing clashes rank as the #1 recommended addition.
+
+### 8.5 Chronobiological Clash Harmonization
+The engine consolidates all constituent steps into chronological blocks (Sunrise/Morning, Midday/Performance, Evening/Dinner, and Nocturnal Recovery) and runs `detectAntagonisticClashes`. Clashes trigger automated chronobiological resolution notes:
+- *Cold immersion post-lifting*: Automatically shifted to early morning or non-lifting recovery days ($\ge 4\text{h}$ separation).
+- *CNS stimulants vs. Sleep protocols*: Enforces strict 12:00 PM caffeine/nootropic cutoff.
+- *Fasting vs. Anabolic windows*: Periodizes into alternating days or cycling weeks.
+
+

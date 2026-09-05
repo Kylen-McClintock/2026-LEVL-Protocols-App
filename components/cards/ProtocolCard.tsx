@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookmarkPlus, Plus, Check, Link as LinkIcon, Info, ShieldCheck, User, Zap, ExternalLink, Scale, CheckCircle2, Bookmark, Dna } from 'lucide-react'
+import { BookmarkPlus, Plus, Check, Link as LinkIcon, Info, ShieldCheck, User, Zap, ExternalLink, Scale, CheckCircle2, Bookmark, Dna, Layers } from 'lucide-react'
 import { Protocol, ProtocolStep } from '@/lib/types'
 import ProtocolAvatar, { ProtocolCategoryPills } from '@/components/ui/ProtocolAvatar'
 import { getProtocolVisualTheme } from '@/lib/utils/protocolThemes'
 import ProtocolLongevityDrawer from './ProtocolLongevityDrawer'
 import { LONGEVITY_VECTORS_METADATA } from '@/lib/data/longevityKnowledgeBase'
+import { ProtocolVectorRadar } from '@/components/ui/ProtocolVectorRadar'
+import { getProtocolFingerprint } from '@/lib/data/protocolFingerprints'
 
 type ProtocolCardProps = {
   protocol: Protocol | any // Using any to tolerate partial/mock data for now
@@ -228,8 +230,17 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
             </div>
           </div>
           
-          <div className="bg-levl-accent/10 text-levl-accent text-[10px] uppercase px-2 py-1 rounded border border-levl-accent/20 font-bold tracking-wider shrink-0">
-            {protocol.protocol_type ? formatStackGroup(protocol.protocol_type) : 'Protocol'}
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <div className="bg-levl-accent/10 text-levl-accent text-[10px] uppercase px-2 py-1 rounded border border-levl-accent/20 font-bold tracking-wider shrink-0">
+              {protocol.protocol_type ? formatStackGroup(protocol.protocol_type) : 'Protocol'}
+            </div>
+            <div className="w-12 h-12 flex items-center justify-center p-0.5 rounded-xl bg-slate-950/60 border border-purple-500/20 shadow-inner group-hover:border-purple-500/40 transition-colors" title={`${protocol.name} Longevity Fingerprint`}>
+              <ProtocolVectorRadar
+                protocols={[getProtocolFingerprint(protocol)]}
+                variant="thumbnail"
+                size={44}
+              />
+            </div>
           </div>
         </div>
         
@@ -454,10 +465,10 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
                 ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 shadow-sm'
                 : 'bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 border-purple-700/40'
             }`}
-            title="Compare protocol side-by-side"
+            title="Add protocol to Stack Studio"
           >
-            <Scale size={14} className="text-purple-400" />
-            <span className="hidden sm:inline">{isPinnedForCompare ? 'Selected' : 'Compare'}</span>
+            <Layers size={14} className="text-purple-400" />
+            <span className="hidden sm:inline">{isPinnedForCompare ? 'Stacked' : 'Stack'}</span>
           </button>
         )}
       </div>
