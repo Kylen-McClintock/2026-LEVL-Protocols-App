@@ -67,13 +67,13 @@ export const BUILT_IN_LONGEVITY_MODALITIES: Modality[] = [
   {
     id: 'cold_plunge',
     slug: 'cold-plunge',
-    name: 'Deliberate Cold Water Immersion',
-    display_name: 'Deliberate Cold Plunge (Søberg Principle)',
+    name: 'Deliberate Cold Plunge Immersion',
+    display_name: 'Deliberate Cold Plunge (Hydrostatic Immersion 50°F–55°F)',
     category: 'fitness',
     modality_type: 'thermal',
     status: 'active',
-    brief_description: '2–3 minute immersion in 50°F–55°F (10°C–13°C) water, ending on cold to stimulate brown adipose tissue thermogenesis.',
-    headline_benefit: 'Elevates sustained dopamine by 250%, increases brown fat thermogenesis (UCP-1), and sharpens mental resilience.',
+    brief_description: '2–3 minute full subclavicular immersion in 50°F–55°F (10°C–13°C) water, ending on cold to stimulate brown adipose tissue thermogenesis.',
+    headline_benefit: 'Elevates sustained dopamine by 250%, increases brown fat thermogenesis (UCP-1), and sharpens mental resilience via hydrostatic pressure.',
     primary_outcome: 'Dopamine & Metabolic Thermogenesis',
     dose_or_exposure: '2–3 mins per session • 11 mins total weekly',
     temperature: '50°F–55°F / 10°C–13°C',
@@ -93,6 +93,101 @@ export const BUILT_IN_LONGEVITY_MODALITIES: Modality[] = [
       rationale: 'Forcing the body to reheat naturally without hot showers stimulates brown adipose tissue (BAT) mitochondrial uncoupling and sustained noradrenaline.'
     },
     instructions: 'Submerge to clavicle level in 50°F–55°F water for 2–3 minutes. Control breathing with slow nasal exhales. Exit and warm up naturally (horse stance or air dry) to maximize thermogenesis.'
+  },
+  {
+    id: 'cold_shower',
+    slug: 'cold-shower',
+    name: 'Cutaneous Cold Shower Finish',
+    display_name: 'Cutaneous Cold Shower (55°F–65°F End of Shower)',
+    category: 'fitness',
+    modality_type: 'thermal',
+    status: 'active',
+    brief_description: 'Ending your daily morning shower with 60–180 seconds of cold water (55°F–65°F / 13°C–18°C) to trigger cutaneous cold shock, autonomic alertness, and immune resilience.',
+    headline_benefit: '29% reduction in sickness absence (Buijze RCT 3,018 participants), instantaneous morning norepinephrine surge, and zero hardware required.',
+    primary_outcome: 'Morning Alertness & Immune Resilience',
+    dose_or_exposure: '60–180 seconds at end of morning shower',
+    temperature: '55°F–65°F / 13°C–18°C',
+    timing_summary: 'morning',
+    frequency: 'Daily or 5x per week',
+    duration: '1–3 mins',
+    evidence_quality: 5,
+    scientific_references: [
+      {
+        title: 'The Effect of Cold Showering on Health and Work: A Randomized Controlled Trial (PLoS One 2016)',
+        url: 'https://pubmed.ncbi.nlm.nih.gov/27631897/',
+        pmid: '27631897'
+      }
+    ],
+    synergy_notes: {
+      pairsWellWith: 'Morning Sunlight, Optic Flow Walk, Deep Nasal Breathing',
+      rationale: 'Cutaneous cold shock stimulates sympathetic tone, releases norepinephrine, and conditions autonomic thermoregulation with zero specialized equipment.'
+    },
+    instructions: 'Take your regular warm shower. For the final 60 to 180 seconds, turn the water fully cold (55°F–65°F). Rotate so cold water strikes your chest, upper back, and neck while maintaining calm, deep breathing.'
+  },
+  {
+    id: 'dry_sauna',
+    slug: 'dry-sauna',
+    name: 'Traditional Finnish Dry Sauna',
+    display_name: 'Traditional Finnish Dry Sauna (174°F–200°F)',
+    category: 'fitness',
+    modality_type: 'thermal',
+    status: 'active',
+    brief_description: 'High-temperature convective dry sauna (174°F–200°F / 80°C–93°C) for 15–20 minutes to trigger Heat Shock Proteins (HSP70) and cardiovascular exercise mimetics.',
+    headline_benefit: 'Reduces cardiovascular mortality by 50% and sudden cardiac death by 63% (KIHD 20-year cohort), surges eNOS nitric oxide, and triggers HSP70.',
+    primary_outcome: 'Cardiovascular Longevity & Heat Shock Proteostasis',
+    dose_or_exposure: '15–20 mins per session • 4–7x weekly',
+    temperature: '174°F–200°F / 80°C–93°C',
+    timing_summary: 'evening',
+    frequency: '4–7x per week (or 3–4x minimum)',
+    duration: '15–20 mins',
+    evidence_quality: 5,
+    scientific_references: [
+      {
+        title: 'Association Between Sauna Bathing and Fatal Cardiovascular and All-Cause Mortality Events (KIHD Study, JAMA Intern Med)',
+        url: 'https://pubmed.ncbi.nlm.nih.gov/25705824/',
+        pmid: '25705824'
+      },
+      {
+        title: 'Cardiovascular and Other Health Benefits of Sauna Bathing: A Review of the Evidence (Mayo Clin Proc)',
+        url: 'https://pubmed.ncbi.nlm.nih.gov/30077204/',
+        pmid: '30077204'
+      }
+    ],
+    synergy_notes: {
+      pairsWellWith: 'Electrolyte Hydration (16oz pre/post), Cold Plunge Contrast, Evening Wind-Down',
+      rationale: 'Convective hyperthermia elevates core temperature, inducing eNOS shear stress and a post-sauna core temperature drop that triggers deep sleep melatonin synthesis.'
+    },
+    instructions: 'Hydrate with 16 oz water and electrolytes prior to entry. Sit inside Finnish sauna heated to 174°F–200°F for 15–20 minutes. Exit and cool down naturally with air or tepid shower. Rehydrate with 20 oz electrolyte water.'
+  },
+  {
+    id: 'infrared_sauna',
+    slug: 'infrared-sauna',
+    name: 'Far-Infrared Radiant Sauna',
+    display_name: 'Far-Infrared Radiant Deep Tissue Sauna (120°F–140°F)',
+    category: 'fitness',
+    modality_type: 'thermal',
+    status: 'active',
+    brief_description: 'Radiant far-infrared thermal exposure (120°F–140°F / 49°C–60°C) penetrating 3–4cm into musculoskeletal tissue for neuromuscular recovery with gentle cardiac load.',
+    headline_benefit: 'Accelerates neuromuscular recovery post-training, boosts microvascular perfusion 3–4cm deep, and provides gentle cardiovascular activation.',
+    primary_outcome: 'Neuromuscular Recovery & Microvascular Perfusion',
+    dose_or_exposure: '30–45 mins per session • 3–5x weekly',
+    temperature: '120°F–140°F / 49°C–60°C',
+    timing_summary: 'evening',
+    frequency: '3–5x per week',
+    duration: '30–45 mins',
+    evidence_quality: 4,
+    scientific_references: [
+      {
+        title: 'Effects of Far-Infrared Sauna Bathing on Recovery from Strength and Endurance Training (Springerplus 2015)',
+        url: 'https://pubmed.ncbi.nlm.nih.gov/26180741/',
+        pmid: '26180741'
+      }
+    ],
+    synergy_notes: {
+      pairsWellWith: 'Post-Workout Protein & Collagen, Evening Magnesium Glycinate, Hydration',
+      rationale: 'Far-infrared radiant wavelengths directly heat tissue without oppressive air temps, facilitating cellular recovery and microcirculation with minimal sympathetic strain.'
+    },
+    instructions: 'Preheat far-infrared cabin to 120°F–140°F (49°C–60°C). Relax for 30–45 minutes while radiant emitters penetrate deep soft tissue. Sip electrolyte water throughout the session.'
   },
   {
     id: 'delay_caffeine_90_120',

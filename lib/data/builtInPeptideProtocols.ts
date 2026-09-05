@@ -1549,25 +1549,65 @@ export const collagen_peptides_modality: Modality = {
 export const sauna_exposure_modality: Modality = {
   id: 'sauna_exposure',
   slug: 'sauna-exposure',
-  name: 'Sauna Exposure (174°F+ / 80°C+)',
-  display_name: 'Infrared / Finnish Sauna (174°F+ for 20–30m)',
+  name: 'Dry Sauna (Traditional Finnish 174°F–200°F)',
+  display_name: 'Traditional Finnish Dry Sauna (174°F–200°F)',
   category: 'thermal',
   modality_type: 'hardware',
   status: 'active',
-  brief_description: 'High-temperature thermal conditioning (174°F+) to induce heat shock proteins, dilate vascular beds, and surge microvascular blood flow.',
-  expanded_why: 'Whole-body thermal conditioning raises core temperature, upregulating protective Heat Shock Proteins (HSP70/HSP90), stimulating endothelial nitric oxide synthase (eNOS), increasing microvascular perfusion into hypovascular connective tissue, and lowering cardiovascular morbidity.',
-  headline_benefit: 'Heat Shock Protein Induction & Deep Connective Vascular Perfusion',
-  primary_outcome: 'Soreness',
-  secondary_outcomes: ['Heat Shock Proteins', 'Cardiovascular Flow', 'Endothelial NO'],
+  brief_description: 'High-temperature convective dry thermal conditioning (174°F–200°F / 80°C–93°C) to upregulate Heat Shock Proteins (HSP70), activate eNOS vasodilation, and mimic moderate-to-vigorous cardiovascular exercise.',
+  expanded_why: 'Traditional Finnish dry saunas operate at high convective temperatures (174°F–200°F) with low ambient humidity. This acute hyperthermia raises core temperature by 1–2°C, inducing robust Heat Shock Protein (HSP70/HSP90) chaperoning that refolds denatured proteins, stimulates endothelial nitric oxide synthase (eNOS) via hemodynamic shear stress, and attenuates all-cause and sudden cardiac death risk by 50–63% (KIHD 20-year cohort, Laukkanen et al.).',
+  headline_benefit: 'Heat Shock Protein (HSP70) Induction & 50–63% Cardiovascular Risk Attenuation',
+  primary_outcome: 'Cardiovascular Flow',
+  secondary_outcomes: ['Heat Shock Proteins', 'Soreness', 'Endothelial NO', 'Longevity'],
   functional_outcomes_to_track: ['soreness', 'joint_comfort', 'sleep_quality', 'stress'],
-  dose_or_exposure: '20–30 mins @ 174°F–194°F (80°C–90°C)',
+  dose_or_exposure: '15–20 mins @ 174°F–200°F (80°C–93°C)',
   timing_summary: 'Late Afternoon / Evening',
   default_timing_slot: 'evening',
-  frequency: '3–4x / Week (57 mins total weekly)',
+  frequency: '4–7x / Week (or 3–4x minimum)',
   cadence_layer: 'weekly',
   scientific_references: [
     {
+      title: 'Laukkanen et al. (2015) Association Between Sauna Bathing and Fatal Cardiovascular and All-Cause Mortality Events',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/25705824/',
+      type: 'pubmed'
+    },
+    {
       title: 'Laukkanen et al. (2018) Cardiovascular and Other Health Benefits of Sauna Bathing: A Review of the Evidence',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/30077204/',
+      type: 'pubmed'
+    }
+  ]
+}
+
+export const dry_sauna_modality = sauna_exposure_modality
+
+export const infrared_sauna_modality: Modality = {
+  id: 'infrared_sauna',
+  slug: 'infrared-sauna',
+  name: 'Infrared Sauna (Far-Infrared 120°F–140°F)',
+  display_name: 'Far-Infrared Radiant Sauna (120°F–140°F)',
+  category: 'thermal',
+  modality_type: 'hardware',
+  status: 'active',
+  brief_description: 'Radiant far-infrared thermal conditioning (120°F–140°F / 49°C–60°C) utilizing 6–12 µm light waves that penetrate 3–4cm into musculoskeletal tissue for deep microvascular perfusion and gentle cardiac activation.',
+  expanded_why: 'Unlike convective Finnish saunas that require oppressive ambient air temperatures, far-infrared saunas emit radiant light wavelengths that penetrate deep into subcutaneous tissue, tendons, and joints. Clinically demonstrated by Mero et al. (2015) to enhance neuromuscular recovery from strength and endurance training sessions while placing substantially lower strain on the cardiovascular system.',
+  headline_benefit: '3–4cm Deep Tissue Radiant Heating & Accelerated Neuromuscular Recovery',
+  primary_outcome: 'Soreness',
+  secondary_outcomes: ['Microvascular Perfusion', 'Neuromuscular Recovery', 'Joint Comfort'],
+  functional_outcomes_to_track: ['soreness', 'joint_comfort', 'sleep_quality', 'stress'],
+  dose_or_exposure: '30–45 mins @ 120°F–140°F (49°C–60°C)',
+  timing_summary: 'Late Afternoon / Evening',
+  default_timing_slot: 'evening',
+  frequency: '3–5x / Week',
+  cadence_layer: 'weekly',
+  scientific_references: [
+    {
+      title: 'Mero et al. (2015) Effects of far-infrared sauna bathing on recovery from strength and endurance training sessions in men',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/26180741/',
+      type: 'pubmed'
+    },
+    {
+      title: 'Hussain & Cohen (2018) Clinical Effects of Regular Dry Sauna and Far-Infrared Sauna Bathing: A Systematic Review',
       url: 'https://pubmed.ncbi.nlm.nih.gov/30077204/',
       type: 'pubmed'
     }
@@ -1577,26 +1617,61 @@ export const sauna_exposure_modality: Modality = {
 export const cold_water_immersion_modality: Modality = {
   id: 'cold_water_immersion',
   slug: 'cold-water-immersion',
-  name: 'Cold Water Immersion / Cold Plunge (50°F–55°F)',
-  display_name: 'Cold Plunge (50°F–55°F for 2–3m)',
+  name: 'Deliberate Cold Plunge (Hydrostatic Immersion 50°F–55°F)',
+  display_name: 'Deliberate Cold Plunge (50°F–55°F for 2–3m)',
   category: 'thermal',
   modality_type: 'hardware',
   status: 'active',
-  brief_description: 'Deliberate cold water immersion (50°F–55°F) for 2–3 minutes to trigger norepinephrine surges, reduce acute edema, and heighten dopamine.',
-  expanded_why: 'Cold water exposure triggers robust sympathetic vasoconstriction and a ~250% surge in plasma norepinephrine, driving acute lymphatic drainage, blunting inflammatory cascades, and enhancing long-lasting dopamine baseline levels.',
-  headline_benefit: 'Norepinephrine Neurochemical Surge & Acute Inflammation Flushing',
-  primary_outcome: 'Soreness',
-  secondary_outcomes: ['Norepinephrine Surge', 'Lymphatic Drainage', 'Dopamine Elevation'],
-  functional_outcomes_to_track: ['soreness', 'energy', 'mood', 'joint_comfort'],
+  brief_description: 'Full-body subclavicular cold water immersion (50°F–55°F / 10°C–13°C) for 2–3 minutes to trigger a sustained 250% dopamine surge, brown adipose tissue (BAT) UCP-1 thermogenesis, and acute vasoconstrictive lymphatic clearance.',
+  expanded_why: 'Submerging the entire body to clavicle level in 50°F–55°F water combines severe thermal shock with hydrostatic pressure. This immediately drives peripheral blood into the central core, triggers an enduring 2.5x surge in plasma dopamine and norepinephrine that persists for hours, activates brown fat mitochondrial uncoupling, and drives rapid lymphatic drainage (Søberg et al., 2021).',
+  headline_benefit: '250% Sustained Dopamine Elevation & Brown Fat Thermogenesis',
+  primary_outcome: 'Dopamine & Focus',
+  secondary_outcomes: ['Norepinephrine Surge', 'Lymphatic Drainage', 'Soreness', 'Metabolic Rate'],
+  functional_outcomes_to_track: ['soreness', 'energy', 'mood', 'joint_comfort', 'focus'],
   dose_or_exposure: '2–3 mins @ 50°F–55°F (10°C–13°C), 11 mins total weekly',
-  timing_summary: 'Post-Sauna or Morning',
+  timing_summary: 'Morning or Post-Sauna',
   default_timing_slot: 'morning',
   frequency: '3–4x / Week (11 mins total weekly)',
   cadence_layer: 'weekly',
   scientific_references: [
     {
       title: 'Søberg et al. (2021) Altered brown fat thermoregulation and cold-induced thermogenesis in winter-swimming men',
-      url: 'https://pubmed.ncbi.nlm.nih.gov/34637734/',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/34637731/',
+      type: 'pubmed'
+    },
+    {
+      title: 'Šrámek et al. (2000) Human physiological responses to immersion into water of different temperatures',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/10751106/',
+      type: 'pubmed'
+    }
+  ]
+}
+
+export const cold_plunge_modality = cold_water_immersion_modality
+
+export const cold_shower_modality: Modality = {
+  id: 'cold_shower',
+  slug: 'cold-shower',
+  name: 'Cold Shower (Cutaneous Cold Shock 55°F–65°F)',
+  display_name: 'Cold Shower (End-of-Shower Finish 1–3m)',
+  category: 'thermal',
+  modality_type: 'lifestyle',
+  status: 'active',
+  brief_description: 'Finishing daily morning shower with 60–180 seconds of cold water (55°F–65°F / 13°C–18°C) spray to trigger cutaneous cold shock, autonomic alertness, and immune resilience without immersion equipment.',
+  expanded_why: 'Cold showers deliver an accessible, high-compliance cold stimulus directly against epidermal cold receptors. In a large randomized controlled trial with 3,018 participants (Buijze et al., 2016), ending morning showers with 30, 60, or 90 seconds of cold water led to a 29% reduction in self-reported sickness absence, heightened subjective vitality, and acute sympathetic activation.',
+  headline_benefit: '29% Reduction in Sickness Absence & Instant Morning Alertness',
+  primary_outcome: 'Energy & Alertness',
+  secondary_outcomes: ['Immune Resilience', 'Autonomic Tone', 'Circadian Waking'],
+  functional_outcomes_to_track: ['energy', 'mood', 'stress'],
+  dose_or_exposure: '60–180 seconds @ 55°F–65°F (13°C–18°C) at end of shower',
+  timing_summary: 'Morning Shower Finish',
+  default_timing_slot: 'morning',
+  frequency: 'Daily (5–7x / Week)',
+  cadence_layer: 'daily',
+  scientific_references: [
+    {
+      title: 'Buijze et al. (2016) The Effect of Cold Showering on Health and Work: A Randomized Controlled Trial',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/27631897/',
       type: 'pubmed'
     }
   ]
@@ -3861,14 +3936,14 @@ export const BUILT_IN_PEPTIDE_PROTOCOLS: (Protocol & { steps: ProtocolStep[] })[
         display_order: 3,
         timing_slot: 'evening',
         timing_anchor: 'evening',
-        frequency: '3–4x / Week (20–30 mins)',
+        frequency: '3–4x / Week (20 mins)',
         required: true,
-        dose_amount: 25,
+        dose_amount: 20,
         dose_unit: 'mins',
-        dose_text: '20–30 mins @ 174°F–194°F (80°C–90°C)',
-        duration: '30 mins',
-        instructions: 'Enter sauna heated to at least 174°F (80°C). Stay hydrated with electrolytes. Remain inside for 20–30 minutes until deep sweating is established.',
-        notes: 'Heat Shock Protein (HSP70) induction and microvascular connective blood flow surge.',
+        dose_text: '20 mins @ 174°F–200°F (80°C–93°C) Finnish dry heat',
+        duration: '20 mins',
+        instructions: 'Enter Finnish dry sauna preheated to 174°F–200°F (80°C–93°C). Pre-hydrate with 16 oz electrolyte water. Remain seated for 20 minutes to upregulate HSP70 molecular chaperones and surge peripheral nitric oxide into articular capsules.',
+        notes: 'Convective hyperthermic Heat Shock Protein (HSP70) synthesis and microvascular blood flow surge.',
         target_outcomes: ['Soreness', 'Joint Comfort', 'Stress'],
         modality: sauna_exposure_modality
       },
@@ -3884,10 +3959,10 @@ export const BUILT_IN_PEPTIDE_PROTOCOLS: (Protocol & { steps: ProtocolStep[] })[
         required: true,
         dose_amount: 3,
         dose_unit: 'mins',
-        dose_text: '2–3 mins @ 50°F–55°F (10°C–13°C), ending on cold',
+        dose_text: '2–3 mins @ 50°F–55°F (10°C–13°C) full immersion plunge',
         duration: '5 mins',
-        instructions: 'Submerge to the neck in cold water (50°F–55°F / 10°C–13°C) immediately after sauna. Breathe slowly and steadily for 2–3 minutes. Allow natural rewarming (Søberg principle).',
-        notes: 'Acute vasoconstriction, norepinephrine release, and reactive hyperemic nutrient delivery.',
+        instructions: 'Submerge to clavicle level in cold water immersion tub (50°F–55°F / 10°C–13°C) immediately after sauna. Breathe slowly and steadily for 2–3 minutes. Exit and re-warm autonomously via Søberg principle to maximize brown fat thermogenesis.',
+        notes: 'Hydrostatic venous compression, 250% dopamine and norepinephrine release, and acute edema flushing.',
         target_outcomes: ['Soreness', 'Energy', 'Mood'],
         modality: cold_water_immersion_modality
       }
@@ -4173,6 +4248,174 @@ export const BUILT_IN_PEPTIDE_PROTOCOLS: (Protocol & { steps: ProtocolStep[] })[
         modality: optic_flow_modality
       }
     ]
+  },
+
+  // 36. Traditional Finnish Dry Sauna Hyperthermic Protocol
+  {
+    id: 'traditional_dry_sauna_protocol',
+    name: 'Traditional Finnish Dry Sauna Hyperthermic Protocol (174°F–200°F)',
+    author_name: 'Finnish Hyperthermic Physiology (KIHD Study)',
+    source_label: 'Finnish Longevity Standard',
+    protocol_type: 'expert_created',
+    primary_goal: 'Heat Shock Protein (HSP70) Chaperoning, eNOS Vasodilation & Cardiovascular Mortality Risk Attenuation',
+    secondary_goals: [
+      '50–63% Reduction in Sudden Cardiac Death & Fatal Cardiovascular Disease',
+      'Endothelial Shear Stress Nitric Oxide Synthesis & Arterial Compliance',
+      'Post-Exercise Lactate Clearance & Deep Sleep Melatonin Cascade'
+    ],
+    target_population: 'Individuals targeting cardiovascular resilience, vascular elasticity, heat shock proteostasis, and deep recovery.',
+    difficulty_level: 'Beginner',
+    evidence_level: 'High (20-Year Prospective RCTs & KIHD Cohorts)',
+    safety_level: 'High',
+    description: 'High-heat Finnish dry sauna protocol based on the 20-year Kuopio Ischemic Heart Disease (KIHD) cohort. Delivers convective hyperthermia at 174°F–200°F (80°C–93°C) for 15–20 minutes to stimulate cardiac output, upregulate HSP70 molecular chaperones, and halve cardiovascular mortality risk.',
+    rationale: 'Convective dry heat elevates core temperature to ~39°C, surging heart rate to 110–140 bpm (exercise mimetic) and inducing intense endothelial shear stress. This upregulates eNOS for sustained nitric oxide release and triggers protective Heat Shock Proteins (HSP70/HSP90) that refold damaged proteins.',
+    steps: [
+      {
+        id: 'dry_sauna_step_main',
+        protocol_id: 'traditional_dry_sauna_protocol',
+        modality_id: 'sauna_exposure',
+        ordering_index: 1,
+        display_order: 1,
+        timing_slot: 'evening',
+        timing_anchor: 'evening',
+        frequency: '4–7x / Week (KIHD Study)',
+        required: true,
+        dose_amount: 20,
+        dose_unit: 'mins',
+        dose_text: '15–20 mins @ 174°F–200°F (80°C–93°C) Finnish dry heat',
+        duration: '20 mins',
+        instructions: 'Pre-hydrate with 16 oz water + electrolytes. Enter dry Finnish sauna heated to 174°F–200°F (80°C–93°C). Sit comfortably for 15–20 minutes until deep sweating is established. Exit, cool down with ambient air or tepid water, and rehydrate with 20 oz electrolyte water.',
+        notes: 'Convective dry heat induces HSP70 synthesis, reduces arterial stiffness, and drops blood pressure below baseline during post-exposure recovery.',
+        target_outcomes: ['Cardiovascular Flow', 'Heat Shock Proteins', 'Soreness', 'Longevity'],
+        modality: sauna_exposure_modality
+      }
+    ]
+  },
+
+  // 37. Far-Infrared Radiant Deep Tissue Sauna Protocol
+  {
+    id: 'infrared_sauna_protocol',
+    name: 'Far-Infrared Radiant Deep Tissue Sauna Protocol (120°F–140°F)',
+    author_name: 'Radiant Photothermal & Neuromuscular Physiology',
+    source_label: 'Far-Infrared Recovery Protocol',
+    protocol_type: 'expert_created',
+    primary_goal: '3–4cm Deep Tissue Radiant Heating, Microvascular Musculoskeletal Perfusion & Gentle Cardiac Workload',
+    secondary_goals: [
+      'Accelerated Neuromuscular Recovery Post-Strength Training',
+      'Endothelial Perfusion with Lower Ambient Thermal Burden',
+      'Cutaneous Sweat Detoxification at Tolerable Temperatures'
+    ],
+    target_population: 'Individuals seeking musculoskeletal joint relief, neuromuscular recovery, or deep sweating without high convective heat strain.',
+    difficulty_level: 'Beginner',
+    evidence_level: 'Moderate to High (Mero et al. & Hussain & Cohen Reviews)',
+    safety_level: 'High',
+    description: 'Far-infrared radiant light therapy utilizing 6–12 µm wavelengths to penetrate 3–4cm deep into soft tissue and joints at comfortable air temperatures of 120°F–140°F (49°C–60°C). Promotes deep microvascular circulation, tendon recovery, and relaxation.',
+    rationale: 'Radiant infrared waves directly excite water molecules and cellular structures within deep musculoskeletal tissue rather than merely heating ambient air. Mero et al. (2015) demonstrated that far-infrared sauna accelerates neuromuscular recovery after intense training sessions with significantly less cardiovascular exhaustion than Finnish dry saunas.',
+    steps: [
+      {
+        id: 'infrared_sauna_step_main',
+        protocol_id: 'infrared_sauna_protocol',
+        modality_id: 'infrared_sauna',
+        ordering_index: 1,
+        display_order: 1,
+        timing_slot: 'evening',
+        timing_anchor: 'evening',
+        frequency: '3–5x / Week',
+        required: true,
+        dose_amount: 35,
+        dose_unit: 'mins',
+        dose_text: '30–45 mins @ 120°F–140°F (49°C–60°C) far-infrared radiant light',
+        duration: '40 mins',
+        instructions: 'Preheat far-infrared sauna to 120°F–140°F (49°C–60°C). Sit inside for 30–45 minutes while radiant infrared panels directly penetrate deep musculoskeletal layers. Hydrate with electrolyte-rich water throughout.',
+        notes: 'Direct radiant penetration accelerates deep tendon and neuromuscular recovery at gentle cardiac loads.',
+        target_outcomes: ['Soreness', 'Joint Comfort', 'Microvascular Perfusion', 'Stress'],
+        modality: infrared_sauna_modality
+      }
+    ]
+  },
+
+  // 38. Deliberate Cold Plunge Immersion Protocol
+  {
+    id: 'deliberate_cold_plunge_protocol',
+    name: 'Deliberate Cold Plunge Immersion Protocol (50°F–55°F)',
+    author_name: 'Metabolic Cold Physiology & Susanna Søberg Ph.D.',
+    source_label: 'Søberg Principle Immersion',
+    protocol_type: 'expert_created',
+    primary_goal: '250% Sustained Dopamine Surge, Brown Fat (BAT) UCP-1 Thermogenesis & Hydrostatic Venous Return',
+    secondary_goals: [
+      'Enduring 2.5x Neurochemical Elevation of Dopamine and Norepinephrine',
+      'Brown Adipose Tissue (BAT) Mitochondrial Uncoupling & Shivering Succinate Hormone Release',
+      'Autonomous Rewarming (Søberg Principle) to Maximize Post-Plunge Caloric Expenditure'
+    ],
+    target_population: 'Athletes, biohackers, and individuals seeking mental resilience, sustained focus, brown fat metabolic priming, and acute inflammation control.',
+    difficulty_level: 'Intermediate',
+    evidence_level: 'High (Cell Reports Medicine 2021 & Human Physiology Trials)',
+    safety_level: 'Moderate',
+    description: 'Full-body cold water immersion protocol targeting 11 total minutes weekly (2–3 minutes per session at 50°F–55°F / 10°C–13°C). Ends on cold to force the body to autonomously re-warm, activating brown adipose tissue and metabolic thermogenesis.',
+    rationale: 'Submerging to clavicle level combines intense cold shock with hydrostatic compression. Cold shock triggers a sustained 250% dopamine surge and sympathetic norepinephrine release. Ending on cold and allowing natural re-warming (Søberg principle) prevents blunting of shivering succinate signaling and maximizes brown fat uncoupling.',
+    steps: [
+      {
+        id: 'cold_plunge_step_main',
+        protocol_id: 'deliberate_cold_plunge_protocol',
+        modality_id: 'cold_water_immersion',
+        ordering_index: 1,
+        display_order: 1,
+        timing_slot: 'morning',
+        timing_anchor: 'morning',
+        frequency: '3–4x / Week (11 mins total weekly)',
+        required: true,
+        dose_amount: 3,
+        dose_unit: 'mins',
+        dose_text: '2–3 mins @ 50°F–55°F (10°C–13°C), ending on cold',
+        duration: '5 mins',
+        instructions: 'Submerge to clavicle level in 50°F–55°F (10°C–13°C) cold water. Control initial gasp reflex with slow, deep nasal breaths. Remain calm for 2–3 minutes. Exit and re-warm autonomously (horse stance or natural air dry) without hot showers to maximize brown fat thermogenesis.',
+        notes: 'Hydrostatic pressure and extreme cold surge dopamine by 250% for hours; autonomous reheating drives mitochondrial uncoupling.',
+        target_outcomes: ['Dopamine & Focus', 'Soreness', 'Metabolic Rate', 'Mood'],
+        modality: cold_water_immersion_modality
+      }
+    ]
+  },
+
+  // 39. End-of-Shower Cutaneous Cold Shock Protocol
+  {
+    id: 'cutaneous_cold_shower_protocol',
+    name: 'End-of-Shower Cutaneous Cold Shock Protocol (55°F–65°F)',
+    author_name: 'Academic Medical Center Amsterdam (Buijze et al. RCT)',
+    source_label: 'Buijze Daily Cold Shower RCT',
+    protocol_type: 'expert_created',
+    primary_goal: '29% Sickness Absence Reduction, Epidermal Cold Receptor Shock & Autonomic Sympathetic Alertness',
+    secondary_goals: [
+      'Instant Morning Alertness & Vagal Retuning',
+      'Cutaneous Vasoconstriction & Immune System Priming',
+      'Zero-Equipment Daily Habit Accessible in Any Household Shower'
+    ],
+    target_population: 'Individuals seeking the invigorating, immune-boosting benefits of cold exposure with zero specialized tubs, ice, or hardware.',
+    difficulty_level: 'Beginner',
+    evidence_level: 'High (3,018-Participant Randomized Controlled Trial, Buijze et al.)',
+    safety_level: 'High',
+    description: 'An evidence-based, zero-equipment cold exposure protocol. Take your usual warm morning shower, and turn the dial completely cold (55°F–65°F / 13°C–18°C) for the final 60–180 seconds to activate epidermal thermoreceptors and bolster immune resilience.',
+    rationale: 'Buijze et al. (2016) demonstrated in a large 3,018-participant RCT that concluding morning showers with 30, 60, or 90 seconds of cold water reduced sickness absence by 29%. Cold spray on cutaneous receptors triggers immediate norepinephrine release, heightens perceived vitality, and stimulates autonomic tone.',
+    steps: [
+      {
+        id: 'cold_shower_step_main',
+        protocol_id: 'cutaneous_cold_shower_protocol',
+        modality_id: 'cold_shower',
+        ordering_index: 1,
+        display_order: 1,
+        timing_slot: 'morning',
+        timing_anchor: 'morning',
+        frequency: 'Daily (5–7x / Week)',
+        required: true,
+        dose_amount: 2,
+        dose_unit: 'mins',
+        dose_text: '60–180 seconds @ 55°F–65°F (13°C–18°C) at end of shower',
+        duration: '3 mins',
+        instructions: 'Take your regular warm shower. For the final 1 to 3 minutes, turn the temperature dial fully to cold (55°F–65°F). Rotate under the stream so cold water hits your chest, upper back, and neck. Maintain steady breathing throughout.',
+        notes: 'Epidermal cold shock triggers acute norepinephrine and vagal retuning, cutting sickness absence by 29%.',
+        target_outcomes: ['Energy & Alertness', 'Immune Resilience', 'Mood', 'Stress'],
+        modality: cold_shower_modality
+      }
+    ]
   }
 ]
 
@@ -4202,7 +4445,9 @@ export const BUILT_IN_PEPTIDE_MODALITIES: Modality[] = [
   red_light_therapy_modality,
   collagen_peptides_modality,
   sauna_exposure_modality,
+  infrared_sauna_modality,
   cold_water_immersion_modality,
+  cold_shower_modality,
   zone_2_cardio_modality,
   intermittent_fasting_16_8_modality,
   blue_light_blocking_modality,

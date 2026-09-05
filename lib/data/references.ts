@@ -19,6 +19,15 @@ export const modalityReferences: Record<string, { title: string; url: string; ty
     { title: "Sauna Bathing Is Inversely Associated with Dementia and Alzheimer's Disease", url: "https://pubmed.ncbi.nlm.nih.gov/27932366/", type: "Observational" },
     { title: "Cardiovascular and Other Health Benefits of Sauna Bathing", url: "https://pubmed.ncbi.nlm.nih.gov/30077204/", type: "Review" }
   ],
+  'dry_sauna': [
+    { title: "Association Between Sauna Bathing and Fatal Cardiovascular and All-Cause Mortality Events (KIHD Study)", url: "https://pubmed.ncbi.nlm.nih.gov/25705824/", type: "Clinical Trial" },
+    { title: "Cardiovascular and Other Health Benefits of Sauna Bathing: A Review of the Evidence", url: "https://pubmed.ncbi.nlm.nih.gov/30077204/", type: "Review" },
+    { title: "Sauna Bathing Is Inversely Associated with Dementia and Alzheimer's Disease", url: "https://pubmed.ncbi.nlm.nih.gov/27932366/", type: "Observational" }
+  ],
+  'infrared_sauna': [
+    { title: "Effects of Far-Infrared Sauna Bathing on Recovery from Strength and Endurance Training Sessions in Men", url: "https://pubmed.ncbi.nlm.nih.gov/26180741/", type: "Clinical Trial" },
+    { title: "Clinical Effects of Regular Dry Sauna and Far-Infrared Sauna Bathing: A Systematic Review", url: "https://pubmed.ncbi.nlm.nih.gov/30077204/", type: "Review" }
+  ],
   'epa_dha_omega3': [
     { title: "Cardiovascular Risk Reduction with Icosapent Ethyl for Hypertriglyceridemia (REDUCE-IT)", url: "https://pubmed.ncbi.nlm.nih.gov/30415628/", type: "RCT" },
     { title: "Marine Omega-3 Supplementation and Cardiovascular Disease", url: "https://pubmed.ncbi.nlm.nih.gov/31567003/", type: "Meta-Analysis" }
@@ -28,8 +37,16 @@ export const modalityReferences: Record<string, { title: string; url: string; ty
     { title: "International Society of Sports Nutrition position stand: safety and efficacy of creatine", url: "https://pubmed.ncbi.nlm.nih.gov/28615996/", type: "Review" }
   ],
   'cold_water_immersion': [
+    { title: "Altered brown fat thermoregulation and cold-induced thermogenesis in winter-swimming men", url: "https://pubmed.ncbi.nlm.nih.gov/34637731/", type: "Clinical Trial" },
     { title: "Human physiological responses to immersion into water of different temperatures", url: "https://pubmed.ncbi.nlm.nih.gov/10751106/", type: "Experimental" },
     { title: "Health effects of voluntary exposure to cold water", url: "https://pubmed.ncbi.nlm.nih.gov/36137592/", type: "Review" }
+  ],
+  'cold_plunge': [
+    { title: "Altered Brown Fat Thermoregulation & Cold-Induced Thermogenesis (Søberg et al., Cell Reports Med)", url: "https://pubmed.ncbi.nlm.nih.gov/34637731/", type: "Clinical Trial" },
+    { title: "Human physiological responses to immersion into water of different temperatures (250% dopamine elevation)", url: "https://pubmed.ncbi.nlm.nih.gov/10751106/", type: "Experimental" }
+  ],
+  'cold_shower': [
+    { title: "The Effect of Cold Showering on Health and Work: A Randomized Controlled Trial (3,018 participants, 29% sickness reduction)", url: "https://pubmed.ncbi.nlm.nih.gov/27631897/", type: "RCT" }
   ],
   'intermittent_fasting_16_8': [
     { title: "Effects of Intermittent Fasting on Health, Aging, and Disease", url: "https://pubmed.ncbi.nlm.nih.gov/31881139/", type: "Review" },

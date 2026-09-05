@@ -41,7 +41,23 @@ export function InfradianAdaptiveBanner({
   onStatusUpdated
 }: InfradianAdaptiveBannerProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [isExpanded, setIsExpanded] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('levl_infradian_banner_collapsed')
+      if (saved === 'true') return false
+    }
+    return true
+  })
+
+  const handleToggleExpand = () => {
+    setIsExpanded((prev) => {
+      const next = !prev
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('levl_infradian_banner_collapsed', next ? 'false' : 'true')
+      }
+      return next
+    })
+  }
 
   if (!status || !status.enabled) return null
 
@@ -73,6 +89,68 @@ export function InfradianAdaptiveBanner({
     : isOvulatory
     ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
     : 'bg-purple-950/80 text-purple-300 border-purple-800'
+
+  // Sleek 1-Row Collapsed View
+  if (!isExpanded) {
+    return (
+      <>
+        <div className={`rounded-2xl border ${themeBorder} bg-gradient-to-r ${themeBg} px-3 sm:px-4 py-2 shadow-md backdrop-blur-md transition-all text-white flex items-center justify-between gap-2.5 overflow-hidden`}>
+          {/* Left: 1-Row Infradian Indicator */}
+          <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border bg-slate-900/90 border-white/10 text-slate-300 flex items-center gap-1 shrink-0">
+              <span>🌙</span> <span className="hidden xs:inline">Infradian</span>
+            </span>
+
+            <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full border truncate shrink-0 ${phaseBadgeColor}`}>
+              {status.phaseName} · Day {status.cycleDay}/{status.cycleLength}
+            </span>
+
+            {status.todayLog?.is_period_day ? (
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-950/90 text-rose-300 border border-rose-800 shrink-0 hidden sm:flex items-center gap-1">
+                <Droplets size={10} /> Flow: <strong className="capitalize">{status.todayLog.flow_level}</strong>
+              </span>
+            ) : status.isPeriodExpectedSoon && !status.isPeriodActive ? (
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-950/90 text-rose-300 border border-rose-800 shrink-0 hidden sm:inline-block animate-pulse">
+                Period Soon (~{status.daysUntilNextPeriod}d)
+              </span>
+            ) : null}
+          </div>
+
+          {/* Right: Quick Action & Expand Button */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="px-2.5 py-1 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white text-[11px] font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+            >
+              <Edit2 size={11} />
+              <span>{status.todayLog?.is_period_day ? 'Edit Flow' : '+ Log Flow'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleToggleExpand}
+              aria-label="Expand infradian details"
+              className="p-1 rounded-lg bg-slate-900/80 border border-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="Expand details"
+            >
+              <ChevronDown size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Logger Modal */}
+        <PeriodFlowLoggerModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          localUserId={localUserId}
+          userProfile={userProfile}
+          targetDate={targetDate}
+          onSaved={onStatusUpdated}
+        />
+      </>
+    )
+  }
 
   return (
     <>
@@ -114,18 +192,17 @@ export function InfradianAdaptiveBanner({
 
             <button
               type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={handleToggleExpand}
               aria-label="Toggle details"
               className="p-1.5 rounded-xl bg-slate-900 border border-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
-              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              <ChevronUp size={16} />
             </button>
           </div>
         </div>
 
-        {/* Collapsible Details & Protocol Modifications */}
-        {isExpanded && (
-          <div className="space-y-3 pt-1 border-t border-white/10 text-xs animate-in fade-in">
+        {/* Details & Protocol Modifications */}
+        <div className="space-y-3 pt-1 border-t border-white/10 text-xs animate-in fade-in">
             {/* Hormonal & Biomarker Baseline Badges */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
               <div className="p-2 rounded-xl bg-slate-900/80 border border-white/5 space-y-0.5">
@@ -238,7 +315,6 @@ export function InfradianAdaptiveBanner({
               </div>
             )}
           </div>
-        )}
       </div>
 
       {/* Logger Modal */}

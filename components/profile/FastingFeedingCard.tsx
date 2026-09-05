@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { UserProfile } from '@/lib/types'
 import { updateUserProfile } from '@/lib/data'
 import { Utensils, Zap, Sparkles, Check, Clock, Droplets, CheckCircle2, ShieldCheck } from 'lucide-react'
+import CircadianTimePickerInput from '@/components/ui/CircadianTimePickerInput'
 
 interface FastingFeedingCardProps {
   profile: UserProfile
@@ -171,40 +172,32 @@ export default function FastingFeedingCard({ profile, onUpdated }: FastingFeedin
 
       {/* Eating Window Start & End */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
-          <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-            <Clock size={14} className="text-teal-400" />
-            <span>Eating Window Start (First Bite)</span>
-          </label>
-          <input
-            type="time"
+        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+          <CircadianTimePickerInput
+            label="Eating Window Start (First Bite)"
+            icon={<Clock size={14} className="text-teal-400" />}
             value={windowStart}
-            onChange={(e) => {
-              const val = e.target.value
+            onChange={(val) => {
               setWindowStart(val)
               autoSave({ eating_window_start: val })
             }}
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-teal-500"
+            accentColor="emerald"
+            helperText="Marks the opening of your nutrient absorption phase"
           />
-          <p className="text-[11px] text-slate-500">Marks the opening of your nutrient absorption phase</p>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
-          <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-            <Clock size={14} className="text-emerald-400" />
-            <span>Eating Window End (Last Bite)</span>
-          </label>
-          <input
-            type="time"
+        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+          <CircadianTimePickerInput
+            label="Eating Window End (Last Bite / Food)"
+            icon={<Clock size={14} className="text-emerald-400" />}
             value={windowEnd}
-            onChange={(e) => {
-              const val = e.target.value
+            onChange={(val) => {
               setWindowEnd(val)
               autoSave({ eating_window_end: val })
             }}
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
+            accentColor="indigo"
+            helperText="Marks the start of cellular fasting & autophagy"
           />
-          <p className="text-[11px] text-slate-500">Marks the start of cellular fasting &amp; autophagy</p>
         </div>
       </div>
 

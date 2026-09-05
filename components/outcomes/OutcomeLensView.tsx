@@ -37,6 +37,7 @@ import { getBiomarkerFeedbackForOutcome } from '@/lib/outcomes/biomarkerFeedback
 import { BiomarkerMeasurementRecord } from '@/lib/aging-models/bioAgeTypes'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { Activity } from 'lucide-react'
+import { OutcomeFilterDropdown } from '@/components/ui/OutcomeFilterDropdown'
 
 interface OutcomeLensViewProps {
   tasks: DailyProtocolTask[]
@@ -55,6 +56,9 @@ interface OutcomeLensViewProps {
   outcomesRefreshKey?: number
   onInspectOutcome: (outcomeState: OutcomeOptimizationState) => void
   onAutoFixClash?: (clash: AntagonisticClash) => void
+  selectedOutcomes?: string[]
+  onToggleOutcome?: (outcomeName: string) => void
+  onClearOutcomes?: () => void
 }
 
 export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
@@ -73,9 +77,38 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
   onOpenRescheduleModal,
   outcomesRefreshKey,
   onInspectOutcome,
-  onAutoFixClash
+  onAutoFixClash,
+  selectedOutcomes: controlledSelectedOutcomes,
+  onToggleOutcome: controlledOnToggleOutcome,
+  onClearOutcomes: controlledOnClearOutcomes
 }) => {
-  const [selectedOutcomeFilter, setSelectedOutcomeFilter] = useState<string>('all')
+  const [internalSelectedOutcomes, setInternalSelectedOutcomes] = useState<string[]>([])
+  const activeSelectedOutcomes = controlledSelectedOutcomes ?? internalSelectedOutcomes
+
+  const handleToggleOutcome = (outcomeName: string) => {
+    if (controlledOnToggleOutcome) {
+      controlledOnToggleOutcome(outcomeName)
+    } else {
+      setInternalSelectedOutcomes(prev => {
+        const norm = outcomeName.toLowerCase().trim()
+        const exists = prev.some(o => o.toLowerCase().trim() === norm)
+        if (exists) {
+          return prev.filter(o => o.toLowerCase().trim() !== norm)
+        } else {
+          return [...prev, outcomeName]
+        }
+      })
+    }
+  }
+
+  const handleClearOutcomes = () => {
+    if (controlledOnClearOutcomes) {
+      controlledOnClearOutcomes()
+    } else {
+      setInternalSelectedOutcomes([])
+    }
+  }
+
   const [expandedOutcomes, setExpandedOutcomes] = useState<Record<string, boolean>>({})
   const [showEmptyDimensions, setShowEmptyDimensions] = useState(false)
   const [selectedAnalysisOutcome, setSelectedAnalysisOutcome] = useState<OutcomeOptimizationState | null>(null)
@@ -167,11 +200,25 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
   const displayedSummaries = useMemo(() => {
     return outcomeSummaries.filter(summary => {
       const normId = summary.outcomeId.toLowerCase().trim()
+      const normName = summary.outcomeName.toLowerCase().trim()
       const associatedTasks = tasksByOutcome.get(normId) || []
       const hasContent = associatedTasks.length > 0 || summary.activeModalities.length > 0
 
-      if (selectedOutcomeFilter !== 'all' && normId !== selectedOutcomeFilter.toLowerCase().trim()) {
-        return false
+      if (activeSelectedOutcomes.length > 0) {
+        const matchesSelection = activeSelectedOutcomes.some(sel => {
+          const normSel = sel.toLowerCase().trim()
+          return (
+            normSel === normId ||
+            normSel === normName ||
+            normId.includes(normSel) ||
+            normSel.includes(normId) ||
+            normName.includes(normSel) ||
+            normSel.includes(normName)
+          )
+        })
+        if (!matchesSelection) {
+          return false
+        }
       }
 
       if (!showEmptyDimensions && !hasContent) {
@@ -180,7 +227,7 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
 
       return true
     })
-  }, [outcomeSummaries, tasksByOutcome, selectedOutcomeFilter, showEmptyDimensions])
+  }, [outcomeSummaries, tasksByOutcome, activeSelectedOutcomes, showEmptyDimensions])
 
   // Stats
   const targetGreenCount = outcomeSummaries.filter(s => s.status === 'green').length
@@ -256,55 +303,27 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
         )}
       </div>
 
-      {/* 2. Outcome Dimension Filter Chips */}
-      <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 scrollbar-thin">
-        <div className="flex items-center gap-1.5 flex-nowrap">
+      {/* 2. Outcome Filter Dropdown Selector (Same dropdown as Today View) */}
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex-1">
+            <OutcomeFilterDropdown
+              selectedOutcomes={activeSelectedOutcomes}
+              onToggleOutcome={handleToggleOutcome}
+              onClearOutcomes={handleClearOutcomes}
+              availableOutcomes={outcomeDimensions}
+              userProfile={userProfile}
+              allOutcomeDimensions={allOutcomes || outcomeDimensions}
+            />
+          </div>
           <button
             type="button"
-            onClick={() => setSelectedOutcomeFilter('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-              selectedOutcomeFilter === 'all'
-                ? 'bg-purple-600 text-white shadow-md border border-purple-400/40'
-                : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
-            }`}
+            onClick={() => setShowEmptyDimensions(!showEmptyDimensions)}
+            className="text-xs text-slate-400 hover:text-slate-200 transition-colors px-3 py-2 rounded-xl border border-slate-800 bg-slate-900/70 hover:bg-slate-800/80 font-medium cursor-pointer shrink-0 self-end sm:self-auto"
           >
-            All Outcomes ({displayedSummaries.length})
+            {showEmptyDimensions ? 'Hide Inactive Dimensions' : 'Show All Dimensions'}
           </button>
-
-          {outcomeSummaries
-            .filter(s => (tasksByOutcome.get(s.outcomeId.toLowerCase().trim()) || []).length > 0)
-            .map(summary => {
-              const isSelected = selectedOutcomeFilter.toLowerCase() === summary.outcomeId.toLowerCase()
-              const taskCount = (tasksByOutcome.get(summary.outcomeId.toLowerCase().trim()) || []).length
-
-              return (
-                <button
-                  key={summary.outcomeId}
-                  type="button"
-                  onClick={() => setSelectedOutcomeFilter(isSelected ? 'all' : summary.outcomeId)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
-                    isSelected
-                      ? 'bg-purple-600 text-white shadow-md border border-purple-400/40'
-                      : 'bg-slate-900/90 text-slate-300 hover:text-white border border-slate-800'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    summary.status === 'green' ? 'bg-emerald-400' : summary.status === 'yellow' ? 'bg-amber-400' : 'bg-rose-400'
-                  }`} />
-                  <span>{summary.outcomeName}</span>
-                  <span className="text-[10px] opacity-70 font-mono">({taskCount})</span>
-                </button>
-              )
-            })}
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowEmptyDimensions(!showEmptyDimensions)}
-          className="text-[11px] text-slate-400 hover:text-slate-200 transition-colors shrink-0 px-2 py-1 font-medium cursor-pointer"
-        >
-          {showEmptyDimensions ? 'Hide Inactive' : 'Show All Dimensions'}
-        </button>
       </div>
 
       {/* 3. Outcome Vectors List */}

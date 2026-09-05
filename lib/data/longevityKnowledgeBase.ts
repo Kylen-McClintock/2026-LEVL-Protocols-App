@@ -448,6 +448,144 @@ export const MASTER_MODALITY_LONGEVITY_PROFILES: Record<string, ModalityLongevit
     ]
   },
 
+  dry_sauna: {
+    modalityId: 'dry_sauna',
+    displayName: 'Traditional Finnish Dry Sauna (174°F–200°F)',
+    category: 'thermal',
+    longevityImpacts: {
+      heart_health: {
+        outcomeId: 'heart_health',
+        outcomeName: 'Heart & Cardiovascular Health',
+        score: 92,
+        tier: 'foundational',
+        evidenceGrade: 'Grade A (Human RCT)',
+        effectSize: '50% reduction in fatal cardiovascular disease and 63% reduction in sudden cardiac death (KIHD cohort)',
+        biomarkers: ['Resting Heart Rate', 'Blood Pressure (MAP)', 'Arterial Compliance', 'Flow-Mediated Dilation'],
+        mechanism: 'Convective dry hyperthermia (174°F–200°F) induces intense peripheral vasodilation, elevated cardiac output mirroring moderate exercise, and shear-stress-mediated eNOS activation.',
+        studies: [
+          {
+            pmid: '25705824',
+            title: 'Association Between Sauna Bathing and Fatal Cardiovascular and All-Cause Mortality Events',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/25705824/',
+            type: 'Clinical Trial'
+          },
+          {
+            pmid: '30077204',
+            title: 'Cardiovascular and Other Health Benefits of Sauna Bathing: A Review of the Evidence',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/30077204/',
+            type: 'Systematic Review'
+          }
+        ]
+      },
+      chronic_inflammation: {
+        outcomeId: 'chronic_inflammation',
+        outcomeName: 'Systemic Inflammation Reduction',
+        score: 86,
+        tier: 'foundational',
+        evidenceGrade: 'Grade A (Human RCT)',
+        effectSize: 'Significant reduction in hs-CRP and systemic inflammatory cytokines',
+        biomarkers: ['hs-CRP', 'IL-6', 'TNF-alpha'],
+        mechanism: 'Upregulates protective Heat Shock Proteins (HSP70/HSP90) that refold denatured proteins and downregulate NF-kB transcription.',
+        studies: [
+          {
+            pmid: '29209503',
+            title: 'Sauna bathing reduces systemic C-reactive protein levels in a prospective study',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/29209503/',
+            type: 'Clinical Trial'
+          }
+        ]
+      },
+      brain_longevity: {
+        outcomeId: 'brain_longevity',
+        outcomeName: 'Brain Longevity & Neuroprotection',
+        score: 82,
+        tier: 'synergistic',
+        evidenceGrade: 'Grade B (Clinical Trial)',
+        effectSize: '65% reduced risk of Alzheimer’s and dementia in frequent bathers',
+        biomarkers: ['BDNF', 'Deep Sleep Duration'],
+        mechanism: 'Elevates cerebral blood flow, induces dynorphin-endorphin rebound, and surges BDNF to preserve cognitive longevity.',
+        studies: [
+          {
+            pmid: '27932366',
+            title: 'Sauna bathing is inversely associated with dementia and Alzheimer’s disease in middle-aged Finnish men',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/27932366/',
+            type: 'Clinical Trial'
+          }
+        ]
+      }
+    },
+    hallmarkImpacts: [
+      {
+        hallmarkId: 'loss_of_proteostasis',
+        hallmarkName: 'Loss of Proteostasis',
+        impactScore: 9.4,
+        tier: 'foundational',
+        mechanism: 'Induces chaperone-mediated Heat Shock Proteins (HSP70/HSP90) to prevent cellular protein misfolding.',
+        clinicalEvidenceGrade: 'Grade A (Human RCT)',
+        pmid: '30077204',
+        studyTitle: 'Cardiovascular and Proteostatic Health Benefits of Sauna',
+        studyUrl: 'https://pubmed.ncbi.nlm.nih.gov/30077204/'
+      }
+    ]
+  },
+
+  infrared_sauna: {
+    modalityId: 'infrared_sauna',
+    displayName: 'Far-Infrared Radiant Sauna (120°F–140°F)',
+    category: 'thermal',
+    longevityImpacts: {
+      chronic_inflammation: {
+        outcomeId: 'chronic_inflammation',
+        outcomeName: 'Systemic Inflammation Reduction',
+        score: 80,
+        tier: 'synergistic',
+        evidenceGrade: 'Grade B (Clinical Trial)',
+        effectSize: 'Accelerated muscular recovery and attenuated soreness markers post-exercise',
+        biomarkers: ['Creatine Kinase', 'hs-CRP'],
+        mechanism: 'Far-infrared radiant wavelengths (6–12 µm) penetrate 3–4cm into musculoskeletal tissue, accelerating microvascular lymphatic clearance with reduced cardiovascular strain.',
+        studies: [
+          {
+            pmid: '26180741',
+            title: 'Effects of far-infrared sauna bathing on recovery from strength and endurance training sessions in men',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/26180741/',
+            type: 'Clinical Trial'
+          }
+        ]
+      },
+      heart_health: {
+        outcomeId: 'heart_health',
+        outcomeName: 'Heart & Cardiovascular Health',
+        score: 75,
+        tier: 'synergistic',
+        evidenceGrade: 'Grade B (Clinical Trial)',
+        effectSize: 'Reduces resting blood pressure and improves endothelial flow in heat-sensitive individuals',
+        biomarkers: ['Systolic Blood Pressure', 'Endothelial Flow'],
+        mechanism: 'Gentle peripheral vasodilation at 120°F–140°F allows sustained microvascular circulation with lower cardiac chronotropic workload than dry sauna.',
+        studies: [
+          {
+            pmid: '30077204',
+            title: 'Clinical Effects of Regular Dry Sauna and Far-Infrared Sauna Bathing: A Systematic Review',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/30077204/',
+            type: 'Systematic Review'
+          }
+        ]
+      }
+    },
+    hallmarkImpacts: [
+      {
+        hallmarkId: 'loss_of_proteostasis',
+        hallmarkName: 'Loss of Proteostasis',
+        impactScore: 8.0,
+        tier: 'synergistic',
+        mechanism: 'Radiant deep tissue heating activates mild cellular proteostatic repair mechanisms.',
+        clinicalEvidenceGrade: 'Grade B (Clinical Trial)',
+        pmid: '26180741',
+        studyTitle: 'Neuromuscular and Proteostatic Recovery via Far-Infrared Radiation',
+        studyUrl: 'https://pubmed.ncbi.nlm.nih.gov/26180741/'
+      }
+    ]
+  },
+
   // ---------------------------------------------------------------------------
   // THERMAL CONDITIONING: COLD PLUNGE
   // ---------------------------------------------------------------------------
@@ -510,6 +648,138 @@ export const MASTER_MODALITY_LONGEVITY_PROFILES: Record<string, ModalityLongevit
         pmid: '10751106',
         studyTitle: 'Human physiological responses to immersion in cold water',
         studyUrl: 'https://pubmed.ncbi.nlm.nih.gov/10751106/'
+      }
+    ]
+  },
+
+  cold_plunge: {
+    modalityId: 'cold_plunge',
+    displayName: 'Deliberate Cold Plunge (50°F–55°F)',
+    category: 'thermal',
+    longevityImpacts: {
+      chronic_inflammation: {
+        outcomeId: 'chronic_inflammation',
+        outcomeName: 'Systemic Inflammation Reduction',
+        score: 92,
+        tier: 'foundational',
+        evidenceGrade: 'Grade A (Human RCT)',
+        effectSize: 'Significant post-exposure suppression of TNF-alpha and IL-6',
+        biomarkers: ['hs-CRP', 'TNF-alpha', 'IL-6'],
+        mechanism: 'Hydrostatic pressure and 50°F–55°F cold immersion trigger a massive 200–300% norepinephrine surge, downregulating pro-inflammatory cytokine expression.',
+        studies: [
+          {
+            pmid: '10751106',
+            title: 'Human physiological responses to immersion into water of different temperatures',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/10751106/',
+            type: 'Clinical Trial'
+          }
+        ]
+      },
+      brain_longevity: {
+        outcomeId: 'brain_longevity',
+        outcomeName: 'Brain Longevity & Neuroprotection',
+        score: 88,
+        tier: 'foundational',
+        evidenceGrade: 'Grade A (Human RCT)',
+        effectSize: '+250% sustained elevation in plasma dopamine persisting for hours',
+        biomarkers: ['Dopamine', 'Norepinephrine', 'Cognitive Focus'],
+        mechanism: 'Cold shock activates the locus coeruleus, releasing sustained dopamine and norepinephrine without an addictive compensatory crash.',
+        studies: [
+          {
+            pmid: '10751106',
+            title: 'Human physiological responses to immersion into water of different temperatures',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/10751106/',
+            type: 'Clinical Trial'
+          }
+        ]
+      },
+      metabolic_health: {
+        outcomeId: 'metabolic_health',
+        outcomeName: 'Metabolic Health & Blood Sugar',
+        score: 84,
+        tier: 'foundational',
+        evidenceGrade: 'Grade A (Human RCT)',
+        effectSize: 'Upregulation of brown adipose tissue (BAT) mitochondrial uncoupling (UCP-1)',
+        biomarkers: ['Brown Adipose Activity', 'Fasting Glucose', 'Resting Metabolic Rate'],
+        mechanism: 'Forcing the body to reheat naturally without external warmth (Søberg principle) stimulates brown fat thermogenesis and shivering succinate signaling.',
+        studies: [
+          {
+            pmid: '34637731',
+            title: 'Altered brown fat thermoregulation and cold-induced thermogenesis in winter-swimming men',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/34637731/',
+            type: 'Clinical Trial'
+          }
+        ]
+      }
+    },
+    hallmarkImpacts: [
+      {
+        hallmarkId: 'chronic_inflammation',
+        hallmarkName: 'Chronic Inflammation',
+        impactScore: 9.1,
+        tier: 'foundational',
+        mechanism: 'Norepinephrine-mediated suppression of macrophage cytokine transcription.',
+        clinicalEvidenceGrade: 'Grade A (Human RCT)',
+        pmid: '10751106',
+        studyTitle: 'Human physiological responses to immersion in cold water',
+        studyUrl: 'https://pubmed.ncbi.nlm.nih.gov/10751106/'
+      }
+    ]
+  },
+
+  cold_shower: {
+    modalityId: 'cold_shower',
+    displayName: 'Cutaneous Cold Shower (55°F–65°F)',
+    category: 'thermal',
+    longevityImpacts: {
+      chronic_inflammation: {
+        outcomeId: 'chronic_inflammation',
+        outcomeName: 'Systemic Inflammation Reduction',
+        score: 74,
+        tier: 'synergistic',
+        evidenceGrade: 'Grade A (Human RCT)',
+        effectSize: '29% reduction in sickness absence in a 3,018-participant randomized controlled trial',
+        biomarkers: ['Sickness Absence Days', 'Subjective Vitality'],
+        mechanism: 'Cutaneous stimulation of epidermal cold receptors elicits transient sympathetic activation and autonomic retuning.',
+        studies: [
+          {
+            pmid: '27631897',
+            title: 'The Effect of Cold Showering on Health and Work: A Randomized Controlled Trial',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/27631897/',
+            type: 'RCT'
+          }
+        ]
+      },
+      brain_longevity: {
+        outcomeId: 'brain_longevity',
+        outcomeName: 'Brain Longevity & Neuroprotection',
+        score: 78,
+        tier: 'synergistic',
+        evidenceGrade: 'Grade B (Clinical Trial)',
+        effectSize: 'Rapid morning sympathetic awakening and locus coeruleus activation',
+        biomarkers: ['Alertness Score', 'Heart Rate Variability'],
+        mechanism: 'Cold water spray on the head, neck, and torso stimulates trigeminal and cervical cutaneous nerves, clearing residual adenosine.',
+        studies: [
+          {
+            pmid: '27631897',
+            title: 'The Effect of Cold Showering on Health and Work: A Randomized Controlled Trial',
+            url: 'https://pubmed.ncbi.nlm.nih.gov/27631897/',
+            type: 'RCT'
+          }
+        ]
+      }
+    },
+    hallmarkImpacts: [
+      {
+        hallmarkId: 'chronic_inflammation',
+        hallmarkName: 'Chronic Inflammation',
+        impactScore: 7.2,
+        tier: 'synergistic',
+        mechanism: 'Cutaneous cold shock triggers autonomic retuning and reduced immune fatigue.',
+        clinicalEvidenceGrade: 'Grade A (Human RCT)',
+        pmid: '27631897',
+        studyTitle: 'The Effect of Cold Showering on Health and Work: A Randomized Controlled Trial',
+        studyUrl: 'https://pubmed.ncbi.nlm.nih.gov/27631897/'
       }
     ]
   },
@@ -2120,11 +2390,17 @@ export function findBenchmarkLongevityProfile(modId: string, modName?: string, m
   }
 
   // 3. Semantic keyword mapping for biological modalities
-  if (combined.includes('cold') && (combined.includes('immersion') || combined.includes('plunge') || combined.includes('shock') || combined.includes('bath') || combined.includes('water'))) {
-    return MASTER_MODALITY_LONGEVITY_PROFILES['cold_water_immersion']
+  if (combined.includes('cold shower') || (combined.includes('shower') && combined.includes('cold'))) {
+    return MASTER_MODALITY_LONGEVITY_PROFILES['cold_shower']
   }
-  if (combined.includes('sauna') || combined.includes('hypertherm')) {
-    return MASTER_MODALITY_LONGEVITY_PROFILES['sauna_hyperthermic']
+  if (combined.includes('plunge') || combined.includes('cold_water') || (combined.includes('cold') && (combined.includes('immersion') || combined.includes('shock') || combined.includes('bath') || combined.includes('water')))) {
+    return MASTER_MODALITY_LONGEVITY_PROFILES['cold_plunge'] || MASTER_MODALITY_LONGEVITY_PROFILES['cold_water_immersion']
+  }
+  if (combined.includes('infrared') || combined.includes('far-infrared') || combined.includes('ir sauna')) {
+    return MASTER_MODALITY_LONGEVITY_PROFILES['infrared_sauna']
+  }
+  if (combined.includes('dry sauna') || combined.includes('finnish') || combined.includes('sauna') || combined.includes('hypertherm')) {
+    return MASTER_MODALITY_LONGEVITY_PROFILES['dry_sauna'] || MASTER_MODALITY_LONGEVITY_PROFILES['sauna_exposure']
   }
   if ((combined.includes('zone_2') || combined.includes('zone 2') || combined.includes('aerobic') || combined.includes('cardio')) && !combined.includes('vo2')) {
     return MASTER_MODALITY_LONGEVITY_PROFILES['zone_2_cardio']

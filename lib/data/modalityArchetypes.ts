@@ -106,14 +106,16 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     name.includes('heat exposure')
   ) {
     const isCold = name.includes('cold') || name.includes('ice') || name.includes('cryo')
+    const isShower = name.includes('shower')
     const isSauna = name.includes('sauna') || name.includes('heat')
+    const isInfrared = name.includes('infrared') || name.includes('far-infrared')
     
     if (isCold) {
-      specializedTraits.hasSobergWarmup = true
-      specializedTraits.hasSubmersionDepth = true
+      specializedTraits.hasSobergWarmup = !isShower
+      specializedTraits.hasSubmersionDepth = !isShower
     }
     if (isSauna) {
-      specializedTraits.hasHumidity = true
+      specializedTraits.hasHumidity = !isInfrared
     }
 
     return {
