@@ -82,7 +82,7 @@ export default function RootLayout({
               <a href="/schedule" className="block hover:text-white transition-colors">Schedule</a>
               <a href="/bench" className="block hover:text-white transition-colors">Bench</a>
               <a href="/aging" className="block hover:text-white transition-colors flex items-center gap-1.5"><span className="text-levl-accent">⚡</span> Biological Aging</a>
-              <a href="/tracking" className="block hover:text-white transition-colors">Tracking</a>
+              <a href="/tracking" className="block hover:text-white transition-colors">Insights</a>
               <a href="/coach" className="block hover:text-white transition-colors text-levl-accent font-medium flex items-center"><span className="mr-2">✦</span> Coach</a>
               <a href="/explore" className="block hover:text-white transition-colors">Explore</a>
               <a href="/settings" className="block hover:text-white transition-colors">Profile</a>

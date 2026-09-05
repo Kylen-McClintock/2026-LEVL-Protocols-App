@@ -148,7 +148,7 @@ export default function SettingsPage() {
               <Target size={16} />
             </div>
             <div className="min-w-0">
-              <span className="text-xs font-bold text-white group-hover:text-sky-300 block truncate transition-colors">Tracking &amp; ROI</span>
+              <span className="text-xs font-bold text-white group-hover:text-sky-300 block truncate transition-colors">Insights &amp; ROI</span>
               <span className="text-[10px] text-slate-400 block truncate">Habits &amp; Synergies</span>
             </div>
           </div>

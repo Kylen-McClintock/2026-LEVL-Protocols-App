@@ -744,7 +744,7 @@ export default function TrackingPage() {
               <div>
                 <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
                   <Target size={28} className="text-levl-accent" />
-                  <span>Protocol Tracking &amp; Outcome ROI</span>
+                  <span>Protocol Insights &amp; Outcome ROI</span>
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-3xl leading-relaxed">
                   Real-time 80/20 biological leverage engine. Analyzes active habit consistency, isolates high-friction execution leaks, and unlocks Next Best Action stack upgrades.

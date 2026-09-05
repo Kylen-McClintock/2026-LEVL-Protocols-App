@@ -106,7 +106,7 @@ export default function SchedulePage() {
               href="/tracking"
               className="px-3 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
             >
-              <Target size={13} /> Tracking
+              <Target size={13} /> Insights
             </Link>
             <Link
               href="/aging"
