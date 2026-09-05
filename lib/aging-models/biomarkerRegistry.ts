@@ -420,6 +420,55 @@ export const BIOMARKER_REGISTRY: Record<string, BiomarkerDefinition> = {
     bioage_model_usage: { phenoage: false, kdm: false, hd: false },
     description: 'Independent genetic risk factor for calcific aortic valve stenosis and coronary heart disease.',
     longevity_importance: 'Primary genetic cardiovascular longevity marker.'
+  },
+
+  // --- FUNCTIONAL CARDIORESPIRATORY & DIAGNOSTIC IMAGING ---
+  vo2_max: {
+    id: 'vo2_max',
+    name: 'VO2 Max (Cardiorespiratory Fitness)',
+    canonical_aliases: ['vo2_max', 'vo2max', 'vo2 max', 'maximal oxygen consumption', 'peak vo2', 'cardiorespiratory fitness', 'vo2'],
+    primary_unit: 'mL/kg/min',
+    supported_units: ['mL/kg/min', 'ml/kg/min'],
+    system: 'cardiovascular',
+    secondary_systems: ['lung', 'musculoskeletal'],
+    standard_lab_range: { min: 25, max: 60, unit: 'mL/kg/min', display: '30 - 55 mL/kg/min' },
+    levl_optimal_zone: { min: 48, max: 70, unit: 'mL/kg/min', display: '> 48 mL/kg/min (Age-scaled)', longevity_rationale: 'Elite cardiorespiratory fitness provides up to a 5-fold reduction in all-cause cardiovascular and metabolic mortality.' },
+    study_citation: 'Mandsager K et al. JAMA Netw Open 2018; Kokkinos P et al. J Am Coll Cardiol 2022',
+    study_url: 'https://pubmed.ncbi.nlm.nih.gov/30646198/',
+    bioage_model_usage: { phenoage: false, kdm: false, hd: false },
+    description: 'Maximal volume of oxygen consumed during incremental exercise, testing cardiac stroke volume and mitochondrial capacity.',
+    longevity_importance: 'Single strongest objective physical predictor of longevity and all-cause survival.'
+  },
+  dexa_t_score: {
+    id: 'dexa_t_score',
+    name: 'DEXA Bone Mineral Density (T-Score)',
+    canonical_aliases: ['dexa_t_score', 'dexa', 't-score', 't score', 'dexa t score', 'bone mineral density', 'bmd t-score', 'femoral neck t-score', 'lumbar t-score'],
+    primary_unit: 'T-Score',
+    supported_units: ['T-Score', 't-score', 'SD'],
+    system: 'musculoskeletal',
+    standard_lab_range: { min: -2.5, max: 2.0, unit: 'T-Score', display: '> -1.0 T-Score' },
+    levl_optimal_zone: { min: 0.0, max: 2.5, unit: 'T-Score', display: '> 0.0 T-Score', longevity_rationale: 'Maintaining positive T-scores protects femoral and vertebral trabecular density, preventing catastrophic fracture morbidity.' },
+    study_citation: 'Kanis JA et al. Osteoporos Int 2019; WHO Scientific Assessment of Osteoporosis',
+    study_url: 'https://pubmed.ncbi.nlm.nih.gov/31388698/',
+    bioage_model_usage: { phenoage: false, kdm: false, hd: false },
+    description: 'Standard deviations from young-adult peak bone mineral density measured via dual-energy X-ray absorptiometry.',
+    longevity_importance: 'Direct surrogate for structural skeletal durability, osteopenia prevention, and frailty resistance.'
+  },
+  dnam_age: {
+    id: 'dnam_age',
+    name: 'DNAmAge / DunedinPACE Pace of Aging',
+    canonical_aliases: ['dnam_age', 'dunedin_pace', 'dunedinpace', 'dnamage', 'epigenetic age', 'biological pace of aging', 'pace of aging', 'horvath clock', 'dna methylation age'],
+    primary_unit: 'years/year',
+    supported_units: ['years/year', 'ratio'],
+    system: 'immune',
+    secondary_systems: ['cardiovascular', 'metabolic'],
+    standard_lab_range: { min: 0.70, max: 1.40, unit: 'years/year', display: '0.85 - 1.15 years/year' },
+    levl_optimal_zone: { min: 0.60, max: 0.85, unit: 'years/year', display: '< 0.85 years/year', longevity_rationale: 'Aging at under 0.85 biological years per calendar year signifies systemic resistance to multi-organ functional decline.' },
+    study_citation: 'Belsky DW et al. eLife 2022 (DunedinPACE); Horvath S. Genome Biol 2013',
+    study_url: 'https://pubmed.ncbi.nlm.nih.gov/35023837/',
+    bioage_model_usage: { phenoage: false, kdm: false, hd: false },
+    description: 'Epigenetic DNA methylation biomarker measuring the instantaneous velocity of multi-system biological aging.',
+    longevity_importance: 'Direct molecular measure of organismal aging speed.'
   }
 }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Sparkles,
   Sliders,
@@ -39,6 +39,12 @@ import {
 } from '@/lib/outcomes/outcomeOptimizationEngine'
 import { getOutcomeColor } from '@/lib/outcomes/outcomeColors'
 import { LongevityAnalysisModal } from '@/components/modals/LongevityAnalysisModal'
+import { BiomarkerSyncDrawer } from '@/components/modals/BiomarkerSyncDrawer'
+import { getLatestBiomarkerMeasurements } from '@/lib/data/bloodworkData'
+import { getBiomarkerFeedbackForOutcome, OutcomeBiomarkerFeedback } from '@/lib/outcomes/biomarkerFeedbackEngine'
+import { BiomarkerMeasurementRecord } from '@/lib/aging-models/bioAgeTypes'
+import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
+import { Activity } from 'lucide-react'
 
 interface Outcome8020SpotlightCardProps {
   selectedOutcomeIds: string[]
@@ -68,6 +74,34 @@ export const Outcome8020SpotlightCard: React.FC<Outcome8020SpotlightCardProps> =
   const [isExpanded, setIsExpanded] = useState(false)
   const [isActionLoading, setIsActionLoading] = useState(false)
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false)
+  const [isBiomarkerDrawerOpen, setIsBiomarkerDrawerOpen] = useState(false)
+  const [biomarkers, setBiomarkers] = useState<BiomarkerMeasurementRecord[]>([])
+
+  const localUid = userProfile?.local_user_id || getLocalUserId()
+
+  const loadUserBiomarkers = async () => {
+    if (!localUid) return
+    try {
+      const latest = await getLatestBiomarkerMeasurements(localUid)
+      setBiomarkers(latest)
+    } catch (err) {
+      console.warn('Failed to load biomarkers:', err)
+    }
+  }
+
+  useEffect(() => {
+    loadUserBiomarkers()
+  }, [localUid])
+
+  useEffect(() => {
+    const handleUpdate = () => loadUserBiomarkers()
+    window.addEventListener('levl_biomarkers_updated', handleUpdate)
+    window.addEventListener('levl_lab_panels_updated', handleUpdate)
+    return () => {
+      window.removeEventListener('levl_biomarkers_updated', handleUpdate)
+      window.removeEventListener('levl_lab_panels_updated', handleUpdate)
+    }
+  }, [localUid])
 
   // Primary outcome being spotlighted (first selected outcome)
   const primaryOutcomeNameOrId = selectedOutcomeIds[0] || 'focus'
@@ -141,6 +175,15 @@ export const Outcome8020SpotlightCard: React.FC<Outcome8020SpotlightCardProps> =
     }
   }, [normKey, userProfile, activeModalitiesToday, todayTasks, outcomeDim])
 
+  // Real-world Biomarker Feedback & Calibration
+  const biomarkerFeedback: OutcomeBiomarkerFeedback = useMemo(() => {
+    return getBiomarkerFeedbackForOutcome(
+      normKey,
+      outcomeState.dialedInScore,
+      biomarkers
+    )
+  }, [normKey, outcomeState.dialedInScore, biomarkers])
+
   // Compute Next Best Action (if short of dialed-in goal)
   const isShortOfGoal = outcomeState.dialedInScore < outcomeState.targetConfig.targetDialedIn
   const nextBestAction = useMemo(() => {
@@ -202,7 +245,7 @@ export const Outcome8020SpotlightCard: React.FC<Outcome8020SpotlightCardProps> =
             {outcomeState.dialedInScore}% Dialed-In
           </span>
 
-          <span className="hidden sm:inline text-[10px] font-mono text-slate-400 shrink-0">
+          <span className="hidden lg:inline text-[10px] font-mono text-slate-400 shrink-0">
             Effort: <span className={isEffortOverBudget ? "text-amber-400 font-bold" : "text-slate-300"}>{outcomeState.effortScore}/100</span>
           </span>
         </div>
@@ -217,7 +260,7 @@ export const Outcome8020SpotlightCard: React.FC<Outcome8020SpotlightCardProps> =
           )}
 
           {isEffortOverBudget && benchCandidate && (
-            <span className="hidden min-[540px]:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-950/70 border border-amber-500/40 text-amber-300 text-[10px] font-bold font-mono">
+            <span className="hidden min-[600px]:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-950/70 border border-amber-500/40 text-amber-300 text-[10px] font-bold font-mono">
               <Scale size={10} className="text-amber-400" />
               <span>1 to Bench</span>
             </span>
@@ -228,6 +271,35 @@ export const Outcome8020SpotlightCard: React.FC<Outcome8020SpotlightCardProps> =
               <ShieldAlert size={10} className="text-rose-400" />
               <span>Clash</span>
             </span>
+          )}
+
+          {/* Biomarker Feedback Quick Pill (Collapsed Bar) */}
+          {biomarkerFeedback.primaryBiomarker.currentValue !== null ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsBiomarkerDrawerOpen(true)
+              }}
+              className="hidden min-[680px]:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-950/50 border border-cyan-500/30 text-cyan-300 text-[10px] font-mono font-bold hover:bg-cyan-900/60 hover:text-white transition-all cursor-pointer"
+              title="View / Sync Lab Biomarkers"
+            >
+              <Activity size={10} className="text-cyan-400" />
+              <span>{biomarkerFeedback.primaryBiomarker.shortName}: {biomarkerFeedback.primaryBiomarker.currentValue} {biomarkerFeedback.primaryBiomarker.unit}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsBiomarkerDrawerOpen(true)
+              }}
+              className="hidden min-[680px]:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900/60 border border-dashed border-slate-700 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 text-[10px] font-mono transition-all cursor-pointer"
+              title="Sync Lab Biomarkers"
+            >
+              <Activity size={10} className="text-slate-500" />
+              <span>Sync Labs</span>
+            </button>
           )}
 
           {/* Clinical Analysis (i) Explainer Trigger */}
@@ -331,6 +403,56 @@ export const Outcome8020SpotlightCard: React.FC<Outcome8020SpotlightCardProps> =
               ))}
             </div>
           )}
+
+          {/* 🧬 BIOMARKER FEEDBACK LOOP (Actual Lab Values vs. Dialed-In Scores) */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900/90 to-cyan-950/25 border border-cyan-500/35 shadow-lg space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300">
+                  <Activity size={13} />
+                </span>
+                <span className="font-extrabold text-xs text-white tracking-tight">
+                  Biomarker Feedback Loop (Actual Labs vs. Dialed-In)
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsBiomarkerDrawerOpen(true)}
+                className="px-2.5 py-1 rounded-lg bg-cyan-950/70 hover:bg-cyan-900/80 border border-cyan-500/40 text-cyan-300 hover:text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-sm active:scale-95"
+              >
+                <Sliders size={11} />
+                <span>Sync / Enter Labs</span>
+              </button>
+            </div>
+
+            {/* Primary Biomarker Status Bar */}
+            <div className="flex items-center justify-between gap-2 bg-black/50 p-2.5 rounded-xl border border-white/5 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-200">
+                  {biomarkerFeedback.primaryBiomarker.name}
+                </span>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${biomarkerFeedback.primaryBiomarker.statusColor.badgeBg} ${biomarkerFeedback.primaryBiomarker.statusColor.badgeBorder} ${biomarkerFeedback.primaryBiomarker.statusColor.badgeText}`}>
+                  {biomarkerFeedback.primaryBiomarker.statusLabel}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px] font-mono">
+                <span className="text-slate-400">
+                  Current: <strong className="text-white">{biomarkerFeedback.primaryBiomarker.currentValue !== null ? `${biomarkerFeedback.primaryBiomarker.currentValue} ${biomarkerFeedback.primaryBiomarker.unit}` : 'Not Logged'}</strong>
+                </span>
+                <span className="text-slate-600">•</span>
+                <span className="text-slate-400">
+                  Target: <strong className="text-cyan-300">{biomarkerFeedback.primaryBiomarker.clinicalTargetDisplay}</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Calibrated Narrative Prediction */}
+            <p className="text-[11px] sm:text-xs text-cyan-100/90 leading-relaxed pl-0.5 font-medium">
+              {biomarkerFeedback.overallSummaryText}
+            </p>
+          </div>
 
           {/* Card A: Next Best Action (if short of goal) */}
           {isShortOfGoal && nextBestAction && (
@@ -457,6 +579,17 @@ export const Outcome8020SpotlightCard: React.FC<Outcome8020SpotlightCardProps> =
           currentDialedInScore={outcomeState.dialedInScore}
           activeModalities={activeModalitiesToday.length > 0 ? activeModalitiesToday : allModalities}
           todayTasks={todayTasks}
+        />
+      )}
+
+      {/* Biomarker Feedback & Lab Calibration Drawer */}
+      {isBiomarkerDrawerOpen && (
+        <BiomarkerSyncDrawer
+          isOpen={isBiomarkerDrawerOpen}
+          onClose={() => setIsBiomarkerDrawerOpen(false)}
+          userId={localUid}
+          highlightBiomarkerId={biomarkerFeedback.primaryBiomarker.biomarkerId}
+          onSaved={() => loadUserBiomarkers()}
         />
       )}
     </div>

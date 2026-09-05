@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   X,
@@ -31,6 +31,13 @@ import {
 } from '@/lib/data/longevityKnowledgeBase'
 import { getOutcomeColor } from '@/lib/outcomes/outcomeColors'
 import { Modality, DailyProtocolTask } from '@/lib/types'
+import { BiomarkerSyncDrawer } from './BiomarkerSyncDrawer'
+import { getLatestBiomarkerMeasurements } from '@/lib/data/bloodworkData'
+import { BiomarkerMeasurementRecord } from '@/lib/aging-models/bioAgeTypes'
+import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
+import { evaluateBiomarkerCalibration } from '@/lib/outcomes/biomarkerFeedbackEngine'
+import { resolveCanonicalBiomarkerId } from '@/lib/aging-models/biomarkerRegistry'
+import { Sliders } from 'lucide-react'
 
 type ModalTab = 'methodology' | 'biomarkers' | 'active_stack' | 'evidence'
 
@@ -54,6 +61,37 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
   todayTasks = []
 }) => {
   const [activeTab, setActiveTab] = useState<ModalTab>('methodology')
+  const [biomarkers, setBiomarkers] = useState<BiomarkerMeasurementRecord[]>([])
+  const [isBiomarkerDrawerOpen, setIsBiomarkerDrawerOpen] = useState(false)
+  const [highlightMarker, setHighlightMarker] = useState<string | undefined>(undefined)
+
+  const localUid = getLocalUserId()
+
+  const loadBiomarkers = async () => {
+    if (!localUid) return
+    try {
+      const list = await getLatestBiomarkerMeasurements(localUid)
+      setBiomarkers(list)
+    } catch (err) {
+      console.warn('Error loading biomarkers:', err)
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      loadBiomarkers()
+    }
+  }, [isOpen, localUid])
+
+  useEffect(() => {
+    const handleUpdate = () => loadBiomarkers()
+    window.addEventListener('levl_biomarkers_updated', handleUpdate)
+    window.addEventListener('levl_lab_panels_updated', handleUpdate)
+    return () => {
+      window.removeEventListener('levl_biomarkers_updated', handleUpdate)
+      window.removeEventListener('levl_lab_panels_updated', handleUpdate)
+    }
+  }, [localUid])
 
   const normOutcomeId = useMemo(() => {
     return outcomeId.toLowerCase().replace(/[-\s]/g, '_').trim()
@@ -316,28 +354,103 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
 
           {/* TAB 2: CLINICAL BIOMARKERS */}
           {activeTab === 'biomarkers' && (
-            <div className="space-y-3 animate-in fade-in duration-200">
-              <div className="text-xs text-slate-300 leading-relaxed mb-2">
-                This outcome is anchored to <strong className="text-white">objective clinical biomarkers</strong>. In LEVL, protocols are calibrated to move these verifiable blood and physiological metrics:
+            <div className="space-y-3.5 animate-in fade-in duration-200">
+              <div className="flex items-start justify-between gap-3 p-3 bg-cyan-950/25 border border-cyan-500/30 rounded-2xl flex-wrap">
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-bold text-white block">
+                    Real-World Biomarker Calibration
+                  </span>
+                  <p className="text-[11px] text-slate-300 mt-0.5 leading-normal">
+                    Comparing your actual lab measurements against LEVL optimal longevity targets and your current <strong className="text-cyan-300">{currentDialedInScore ?? 85}% Dialed-In</strong> score.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHighlightMarker(undefined)
+                    setIsBiomarkerDrawerOpen(true)
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
+                >
+                  <Sliders size={12} />
+                  <span>Sync / Enter Labs</span>
+                </button>
               </div>
 
               {vectorMetadata && vectorMetadata.biomarkers.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {vectorMetadata.biomarkers.map((b, idx) => (
-                    <div key={idx} className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between space-y-2">
-                      <div>
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-extrabold text-white text-xs">{b.name}</span>
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-cyan-950/60 border border-cyan-800/40 text-cyan-300">
-                            Target: {b.clinicalTarget} {b.unit}
-                          </span>
+                  {vectorMetadata.biomarkers.map((b, idx) => {
+                    const canonicalId = resolveCanonicalBiomarkerId(b.name) || b.name.toLowerCase().replace(/[^a-z0-9]/g, '_')
+                    const userRecord = biomarkers.find(m => m.biomarker_id === canonicalId)
+                    const feedback = evaluateBiomarkerCalibration(
+                      canonicalId,
+                      userRecord,
+                      currentDialedInScore ?? 85,
+                      displayName
+                    )
+
+                    return (
+                      <div 
+                        key={idx} 
+                        className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between space-y-2.5 hover:border-slate-700 transition-colors"
+                      >
+                        <div>
+                          {/* Marker Header */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="font-extrabold text-white text-xs block">{b.name}</span>
+                              <span className="text-[10px] font-mono text-cyan-300 font-bold">
+                                Target: {b.clinicalTarget} {b.unit}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setHighlightMarker(canonicalId)
+                                setIsBiomarkerDrawerOpen(true)
+                              }}
+                              className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80 transition-opacity ${feedback.statusColor.badgeBg} ${feedback.statusColor.badgeBorder} ${feedback.statusColor.badgeText}`}
+                              title="Click to update or log this biomarker"
+                            >
+                              {feedback.statusLabel}
+                            </button>
+                          </div>
+
+                          <p className="text-[11px] text-slate-400 mt-1.5 leading-normal">
+                            {b.description}
+                          </p>
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-1.5 leading-normal">
-                          {b.description}
-                        </p>
+
+                        {/* Actual Measurement & Calibration Shift */}
+                        <div className="p-2.5 rounded-xl bg-black/60 border border-white/5 space-y-1 text-[11px]">
+                          <div className="flex items-center justify-between text-slate-400 text-[10px] font-mono">
+                            <span>Logged Lab:</span>
+                            <span className="text-white font-bold">
+                              {feedback.currentValue !== null ? `${feedback.currentValue} ${feedback.unit}` : 'None logged'}
+                            </span>
+                          </div>
+
+                          {feedback.currentValue !== null ? (
+                            <p className="text-cyan-200 text-[10px] leading-snug pt-0.5">
+                              {feedback.calibrationText}
+                            </p>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setHighlightMarker(canonicalId)
+                                setIsBiomarkerDrawerOpen(true)
+                              }}
+                              className="text-cyan-400 hover:text-cyan-300 text-[10px] font-bold flex items-center gap-1 pt-0.5 cursor-pointer"
+                            >
+                              <span>+ Enter lab value to calibrate</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="p-6 text-center text-xs text-slate-500 bg-slate-900/30 rounded-2xl border border-white/5">
@@ -511,5 +624,18 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
   )
 
   if (typeof document === 'undefined') return null
-  return createPortal(modalContent, document.body)
+  return (
+    <>
+      {createPortal(modalContent, document.body)}
+      {isBiomarkerDrawerOpen && (
+        <BiomarkerSyncDrawer
+          isOpen={isBiomarkerDrawerOpen}
+          onClose={() => setIsBiomarkerDrawerOpen(false)}
+          userId={localUid}
+          highlightBiomarkerId={highlightMarker}
+          onSaved={() => loadBiomarkers()}
+        />
+      )}
+    </>
+  )
 }

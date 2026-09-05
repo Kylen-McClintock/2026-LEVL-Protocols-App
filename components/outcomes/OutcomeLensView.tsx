@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { 
   Sparkles, 
   Sliders, 
@@ -31,6 +31,12 @@ import {
 } from '@/lib/outcomes/outcomeOptimizationEngine'
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
 import { LongevityAnalysisModal } from '@/components/modals/LongevityAnalysisModal'
+import { BiomarkerSyncDrawer } from '@/components/modals/BiomarkerSyncDrawer'
+import { getLatestBiomarkerMeasurements } from '@/lib/data/bloodworkData'
+import { getBiomarkerFeedbackForOutcome } from '@/lib/outcomes/biomarkerFeedbackEngine'
+import { BiomarkerMeasurementRecord } from '@/lib/aging-models/bioAgeTypes'
+import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
+import { Activity } from 'lucide-react'
 
 interface OutcomeLensViewProps {
   tasks: DailyProtocolTask[]
@@ -73,6 +79,35 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
   const [expandedOutcomes, setExpandedOutcomes] = useState<Record<string, boolean>>({})
   const [showEmptyDimensions, setShowEmptyDimensions] = useState(false)
   const [selectedAnalysisOutcome, setSelectedAnalysisOutcome] = useState<OutcomeOptimizationState | null>(null)
+  const [biomarkers, setBiomarkers] = useState<BiomarkerMeasurementRecord[]>([])
+  const [isBiomarkerDrawerOpen, setIsBiomarkerDrawerOpen] = useState(false)
+  const [activeDrawerMarkerId, setActiveDrawerMarkerId] = useState<string | undefined>(undefined)
+
+  const localUid = userProfile?.local_user_id || getLocalUserId()
+
+  const loadBiomarkers = async () => {
+    if (!localUid) return
+    try {
+      const list = await getLatestBiomarkerMeasurements(localUid)
+      setBiomarkers(list)
+    } catch (err) {
+      console.warn('Error loading biomarkers:', err)
+    }
+  }
+
+  useEffect(() => {
+    loadBiomarkers()
+  }, [localUid])
+
+  useEffect(() => {
+    const handleUpdate = () => loadBiomarkers()
+    window.addEventListener('levl_biomarkers_updated', handleUpdate)
+    window.addEventListener('levl_lab_panels_updated', handleUpdate)
+    return () => {
+      window.removeEventListener('levl_biomarkers_updated', handleUpdate)
+      window.removeEventListener('levl_lab_panels_updated', handleUpdate)
+    }
+  }, [localUid])
 
   // Calculate optimization summaries for all official outcome dimensions
   const outcomeSummaries: OutcomeOptimizationState[] = useMemo(() => {
@@ -383,6 +418,32 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
                   </div>
                 </div>
 
+                {/* Real-World Biomarker Feedback Strip */}
+                {(() => {
+                  const fb = getBiomarkerFeedbackForOutcome(summary.outcomeId, summary.dialedInScore, biomarkers)
+                  return (
+                    <div className="px-4 py-2 bg-slate-950/70 border-b border-slate-800/70 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Activity size={12} className="text-cyan-400 shrink-0" />
+                        <span className="text-slate-400 font-mono text-[11px] truncate">
+                          {fb.primaryBiomarker.name}: <strong className="text-white">{fb.primaryBiomarker.currentValue !== null ? `${fb.primaryBiomarker.currentValue} ${fb.primaryBiomarker.unit}` : 'None logged'}</strong> (Target: <span className="text-cyan-300 font-bold">{fb.primaryBiomarker.clinicalTargetDisplay}</span>)
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveDrawerMarkerId(fb.primaryBiomarker.biomarkerId)
+                          setIsBiomarkerDrawerOpen(true)
+                        }}
+                        className="text-[10px] font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 shrink-0 cursor-pointer"
+                      >
+                        <span>{fb.primaryBiomarker.currentValue !== null ? 'Calibrate Labs' : '+ Sync Labs'}</span>
+                      </button>
+                    </div>
+                  )
+                })()}
+
                 {/* Clashes Alert Banner for this Outcome */}
                 {summary.clashes.length > 0 && (
                   <div className="p-4 bg-rose-950/30 border-b border-rose-500/20 space-y-3">
@@ -500,6 +561,17 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
           currentDialedInScore={selectedAnalysisOutcome.dialedInScore}
           activeModalities={activeModalities}
           todayTasks={tasks}
+        />
+      )}
+
+      {/* Biomarker Feedback & Lab Calibration Drawer */}
+      {isBiomarkerDrawerOpen && (
+        <BiomarkerSyncDrawer
+          isOpen={isBiomarkerDrawerOpen}
+          onClose={() => setIsBiomarkerDrawerOpen(false)}
+          userId={localUid}
+          highlightBiomarkerId={activeDrawerMarkerId}
+          onSaved={() => loadBiomarkers()}
         />
       )}
     </div>

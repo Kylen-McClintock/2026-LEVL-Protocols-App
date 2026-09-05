@@ -301,3 +301,36 @@ Whenever the developer adds or seeds a new modality to the system:
 4. Diagnostics must be categorized under `Diagnostics & Tracking` with monitored biomarkers specified.
 5. `functional_impacts` and `hallmarks_of_aging_impact` must be populated non-destructively in remote Supabase.
 
+---
+
+## 7. Biomarker Feedback Loop & Lab Calibration Architecture
+
+### 7.1 Objective & Clinical Rationale
+The **Biomarker Feedback Loop** bridges the gap between daily adherence habits (80/20 Dialed-In scores) and verifiable clinical outcomes. Rather than presenting abstract scores in a vacuum, LEVL dynamically matches real-world laboratory bloodwork and imaging diagnostics against active protocol vectors to project quantifiable shifts.
+
+### 7.2 The 8 Canonical Healthspan Biomarkers
+| Biomarker ID | Name | Primary Longevity Vector | Clinical Target | Calibrated Effect Size Range |
+| :--- | :--- | :--- | :--- | :--- |
+| `apob` | Apolipoprotein B | Heart & Cardiovascular | `< 60 mg/dL` | -14% to -18% reduction toward target |
+| `vo2_max` | VO2 Max | Heart Health & Endurance | `> 48 mL/kg/min` | +10% to +16% cardiorespiratory capacity increase |
+| `fasting_insulin` | Fasting Insulin | Metabolic Health | `< 4.5 uIU/mL` | -20% to -30% reduction restoring GLUT4 clearance |
+| `crp` | High-Sensitivity CRP | Systemic Inflammation | `< 0.5 mg/L` | -25% to -40% reduction via NLRP3 suppression |
+| `testosterone` | Total Testosterone | Endocrine Vitality | `650–950 ng/dL` | +15% to +25% endogenous Leydig steroidogenesis |
+| `free_testosterone` | Free Testosterone | Endocrine Vitality | `18–28 pg/mL` | +18% to +28% bioavailable androgen signaling |
+| `dexa_t_score` | DEXA Bone Density (T-Score) | Bone Density | `> 0.0 T-Score` | +1.5% to +3.0% annual trabecular bone preservation |
+| `dnam_age` | DunedinPACE Pace of Aging | Cellular Longevity & DNA | `< 0.85 years/year`| -0.06 to -0.12 pace deceleration |
+
+### 7.3 Calibrated Predictive Shift Algorithm
+For any vector $V$ with current dialed-in score $S_V \in [0, 100]$:
+1. **Optimal Baseline**: If user's latest recorded measurement is within the LEVL optimal zone, the engine displays:
+   `"Your [Marker] is [Value] [Unit] (Optimal Zone). Sustaining [Score]% Dialed-In on [Vector] maintains your vascular/cellular protective baseline."`
+2. **Suboptimal/Elevated Baseline**: If the value exceeds optimal thresholds, the engine projects expected post-intervention shifts:
+   `"Your [Marker] is [Value] [Unit]. Reaching [Score]% Dialed-In on [Vector] predicts a [Min%–Max%] improvement (est. ~[Projected] [Unit]) toward your [Target] target."`
+3. **Missing / Unlogged Baseline**: Encourages objective testing with an inline prompt and 1-click launch to `BiomarkerSyncDrawer`:
+   `"No recent [Marker] logged. Enter your lab result to calibrate [Vector] 80/20 predictions against real clinical bloodwork."`
+
+### 7.4 Dual Persistence & Reactive Event Loop
+- **Client Storage**: Instant offline resilience via `levl_biomarkers_${userId}` and `levl_lab_panels_${userId}`.
+- **Remote Cloud Supabase**: Graceful non-blocking persistence into `user_lab_panels`, `biomarker_measurements`, and `bioage_calculation_logs`.
+- **Reactive UI Events**: Dispatches `levl_biomarkers_updated` and `levl_lab_panels_updated` CustomEvents upon save, triggering immediate re-calculation across all Today cards, analysis modal tabs, and lens views without full page reloads.
+
