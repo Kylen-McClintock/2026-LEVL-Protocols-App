@@ -37,6 +37,7 @@ export type UserProfile = {
   infradian_cycle_enabled?: boolean
   last_period_start_date?: string // 'YYYY-MM-DD'
   average_cycle_length_days?: number // default 28
+  birth_control_enabled?: boolean
   created_at: string
   updated_at: string
 }
@@ -73,6 +74,7 @@ export interface ContraindicationWarning {
 export type PeriodFlowLevel = 'none' | 'spotting' | 'light' | 'medium' | 'heavy'
 export type PeriodPainLevel = 0 | 1 | 2 | 3 // 0: None, 1: Mild, 2: Moderate, 3: Severe
 export type InfradianPhase = 'menstrual' | 'follicular' | 'ovulatory' | 'early_luteal' | 'late_luteal'
+export type BirthControlDailyStatus = 'active' | 'placebo' | 'missed' | 'none'
 
 export interface PeriodDailyLogEntry {
   id: string
@@ -82,6 +84,7 @@ export interface PeriodDailyLogEntry {
   is_period_start?: boolean
   flow_level: PeriodFlowLevel
   pain_level: PeriodPainLevel
+  birth_control_status?: BirthControlDailyStatus
   symptoms: string[] // e.g. ['cramps', 'headache', 'low_energy', 'bloating', 'energized']
   notes?: string
   created_at: string

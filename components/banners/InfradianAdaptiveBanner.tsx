@@ -18,7 +18,8 @@ import {
   Sun,
   Thermometer,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  Pill
 } from 'lucide-react'
 import { InfradianStatus, InfradianProtocolModification, UserProfile } from '@/lib/types'
 import PeriodFlowLoggerModal from '@/components/modals/PeriodFlowLoggerModal'
@@ -114,6 +115,18 @@ export function InfradianAdaptiveBanner({
                 Period Soon (~{status.daysUntilNextPeriod}d)
               </span>
             ) : null}
+
+            {status.todayLog?.birth_control_status && status.todayLog.birth_control_status !== 'none' && (
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border shrink-0 hidden md:flex items-center gap-1 ${
+                status.todayLog.birth_control_status === 'active'
+                  ? 'bg-teal-950/90 text-teal-300 border-teal-800'
+                  : status.todayLog.birth_control_status === 'placebo'
+                  ? 'bg-indigo-950/90 text-indigo-300 border-indigo-800'
+                  : 'bg-amber-950/90 text-amber-300 border-amber-800 animate-pulse'
+              }`}>
+                <span>{status.todayLog.birth_control_status === 'active' ? '💊 Active Pill' : status.todayLog.birth_control_status === 'placebo' ? '⚪ Placebo' : '⚠️ Missed Pill'}</span>
+              </span>
+            )}
           </div>
 
           {/* Right: Quick Action & Expand Button */}
@@ -124,7 +137,7 @@ export function InfradianAdaptiveBanner({
               className="px-2.5 py-1 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white text-[11px] font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
             >
               <Edit2 size={11} />
-              <span>{status.todayLog?.is_period_day ? 'Edit Flow' : '+ Log Flow'}</span>
+              <span>{status.todayLog?.is_period_day || (status.todayLog?.birth_control_status && status.todayLog.birth_control_status !== 'none') ? 'Edit Log' : '+ Log Flow'}</span>
             </button>
 
             <button
@@ -187,7 +200,7 @@ export function InfradianAdaptiveBanner({
               className="px-3 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
             >
               <Edit2 size={12} />
-              <span>{status.todayLog?.is_period_day ? 'Edit Period Flow' : '+ Log Period / Flow'}</span>
+              <span>{status.todayLog?.is_period_day || (status.todayLog?.birth_control_status && status.todayLog.birth_control_status !== 'none') ? 'Edit Period & Pill Log' : '+ Log Period / Flow'}</span>
             </button>
 
             <button
@@ -223,18 +236,39 @@ export function InfradianAdaptiveBanner({
               </div>
             </div>
 
-            {/* Today's Logged Flow / Pain Note */}
-            {status.todayLog?.is_period_day && (
+            {/* Today's Logged Flow / Pain / Birth Control Note */}
+            {(status.todayLog?.is_period_day || (status.todayLog?.birth_control_status && status.todayLog.birth_control_status !== 'none')) && (
               <div className="p-2.5 rounded-xl bg-slate-900/90 border border-white/10 flex items-center justify-between text-xs flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-rose-400 font-bold flex items-center gap-1">
-                    <Droplets size={13} /> Flow: <strong className="capitalize">{status.todayLog.flow_level}</strong>
-                  </span>
-                  <span className="text-slate-500">·</span>
-                  <span className="text-amber-400 font-bold flex items-center gap-1">
-                    <Zap size={13} /> Pain Level: <strong>{status.todayLog.pain_level}/3</strong>
-                  </span>
-                  {status.todayLog.symptoms?.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {status.todayLog?.is_period_day && (
+                    <>
+                      <span className="text-rose-400 font-bold flex items-center gap-1">
+                        <Droplets size={13} /> Flow: <strong className="capitalize">{status.todayLog.flow_level}</strong>
+                      </span>
+                      <span className="text-slate-500">·</span>
+                      <span className="text-amber-400 font-bold flex items-center gap-1">
+                        <Zap size={13} /> Pain Level: <strong>{status.todayLog.pain_level}/3</strong>
+                      </span>
+                    </>
+                  )}
+                  {status.todayLog?.birth_control_status && status.todayLog.birth_control_status !== 'none' && (
+                    <>
+                      {status.todayLog?.is_period_day && <span className="text-slate-500">·</span>}
+                      <span className={`font-bold flex items-center gap-1 ${
+                        status.todayLog.birth_control_status === 'active'
+                          ? 'text-teal-300'
+                          : status.todayLog.birth_control_status === 'placebo'
+                          ? 'text-indigo-300'
+                          : 'text-amber-400'
+                      }`}>
+                        <Pill size={13} /> Pill:{' '}
+                        <strong className="capitalize">
+                          {status.todayLog.birth_control_status === 'active' ? 'Active Dose' : status.todayLog.birth_control_status === 'placebo' ? 'Placebo Week' : 'Missed'}
+                        </strong>
+                      </span>
+                    </>
+                  )}
+                  {status.todayLog?.symptoms && status.todayLog.symptoms.length > 0 && (
                     <>
                       <span className="text-slate-500">·</span>
                       <span className="text-slate-300 text-[11px]">

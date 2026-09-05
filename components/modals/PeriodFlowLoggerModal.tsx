@@ -12,13 +12,15 @@ import {
   Zap,
   Activity,
   Flame,
-  Clock
+  Clock,
+  Pill
 } from 'lucide-react'
 import {
   UserProfile,
   PeriodDailyLogEntry,
   PeriodFlowLevel,
   PeriodPainLevel,
+  BirthControlDailyStatus,
   InfradianStatus
 } from '@/lib/types'
 import {
@@ -58,6 +60,10 @@ export default function PeriodFlowLoggerModal({
   const [flow, setFlow] = useState<PeriodFlowLevel>('medium')
   const [pain, setPain] = useState<PeriodPainLevel>(1)
   const [isPeriodStart, setIsPeriodStart] = useState<boolean>(false)
+  const [birthControlStatus, setBirthControlStatus] = useState<BirthControlDailyStatus>('none')
+  const [isBirthControlTrackingEnabled, setIsBirthControlTrackingEnabled] = useState<boolean>(() => {
+    return Boolean(userProfile?.birth_control_enabled)
+  })
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([])
   const [notes, setNotes] = useState<string>('')
   const [isSaving, setIsSaving] = useState<boolean>(false)
@@ -72,6 +78,12 @@ export default function PeriodFlowLoggerModal({
       setIsPeriodStart(Boolean(existing.is_period_start))
       setSelectedSymptoms(existing.symptoms || [])
       setNotes(existing.notes || '')
+      setBirthControlStatus(existing.birth_control_status || 'none')
+      if (existing.birth_control_status && existing.birth_control_status !== 'none') {
+        setIsBirthControlTrackingEnabled(true)
+      } else {
+        setIsBirthControlTrackingEnabled(Boolean(userProfile?.birth_control_enabled))
+      }
     } else {
       // Defaults
       setFlow('medium')
@@ -79,8 +91,10 @@ export default function PeriodFlowLoggerModal({
       setIsPeriodStart(false)
       setSelectedSymptoms([])
       setNotes('')
+      setBirthControlStatus('none')
+      setIsBirthControlTrackingEnabled(Boolean(userProfile?.birth_control_enabled))
     }
-  }, [isOpen, localUserId, targetDate])
+  }, [isOpen, localUserId, targetDate, userProfile?.birth_control_enabled])
 
   if (!isOpen) return null
 
@@ -102,6 +116,7 @@ export default function PeriodFlowLoggerModal({
       is_period_start: isPeriodStart,
       flow_level: flow,
       pain_level: pain,
+      birth_control_status: isBirthControlTrackingEnabled ? birthControlStatus : undefined,
       symptoms: selectedSymptoms,
       notes: notes.trim() || undefined,
       created_at: new Date().toISOString(),
@@ -112,14 +127,20 @@ export default function PeriodFlowLoggerModal({
 
     // If user flagged this as period start date, update user profile
     let updatedProfile = userProfile
-    if (isPeriodStart && userProfile) {
-      await updateUserProfile(localUserId, {
-        last_period_start_date: targetDate
-      })
+    const profileUpdates: Partial<UserProfile> = {}
+    if (isPeriodStart) {
+      profileUpdates.last_period_start_date = targetDate
+    }
+    if (isBirthControlTrackingEnabled && !userProfile?.birth_control_enabled) {
+      profileUpdates.birth_control_enabled = true
+    }
+
+    if (Object.keys(profileUpdates).length > 0 && userProfile) {
+      await updateUserProfile(localUserId, profileUpdates)
       if (updatedProfile) {
         updatedProfile = {
           ...updatedProfile,
-          last_period_start_date: targetDate
+          ...profileUpdates
         }
       }
     }
@@ -220,11 +241,127 @@ export default function PeriodFlowLoggerModal({
           </div>
         </div>
 
+        {/* 2. Birth Control / Daily Pill (Option A) */}
+        <div className="space-y-2.5 p-3.5 rounded-2xl bg-teal-950/20 border border-teal-500/30 transition-all">
+          <div className="flex items-center justify-between gap-2">
+            <label className="block text-xs font-mono font-bold uppercase tracking-wider text-teal-300 flex items-center gap-1.5">
+              <Pill size={14} className="text-teal-400" />
+              2. Birth Control / Contraceptive Pill
+            </label>
+
+            {!isBirthControlTrackingEnabled ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBirthControlTrackingEnabled(true)
+                  if (birthControlStatus === 'none') {
+                    setBirthControlStatus('active')
+                  }
+                }}
+                className="text-[11px] font-bold text-teal-400 hover:text-teal-300 bg-teal-500/10 border border-teal-500/30 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-sm"
+              >
+                <span>+ Track Daily Pill</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBirthControlTrackingEnabled(false)
+                  setBirthControlStatus('none')
+                }}
+                className="text-[10px] text-slate-400 hover:text-slate-300 transition-colors cursor-pointer"
+                title="Hide birth control row if not on oral contraception"
+              >
+                Hide
+              </button>
+            )}
+          </div>
+
+          {isBirthControlTrackingEnabled ? (
+            <div className="space-y-2.5 pt-1 animate-in fade-in duration-200">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  {
+                    id: 'active',
+                    label: 'Active Pill',
+                    desc: 'Hormone dose taken',
+                    colorActive: 'bg-teal-950/90 border-teal-500 text-teal-200 shadow-[0_0_15px_rgba(20,184,166,0.35)] ring-1 ring-teal-500/40'
+                  },
+                  {
+                    id: 'placebo',
+                    label: 'Placebo Pill',
+                    desc: 'Sugar / inert week',
+                    colorActive: 'bg-indigo-950/90 border-indigo-500 text-indigo-200 shadow-[0_0_15px_rgba(99,102,241,0.35)] ring-1 ring-indigo-500/40'
+                  },
+                  {
+                    id: 'missed',
+                    label: 'Missed Pill',
+                    desc: 'Delayed or skipped',
+                    colorActive: 'bg-amber-950/90 border-amber-500 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.35)] ring-1 ring-amber-500/40'
+                  },
+                  {
+                    id: 'none',
+                    label: 'None Today',
+                    desc: 'No pill taken',
+                    colorActive: 'bg-slate-800 border-slate-600 text-slate-300 ring-1 ring-slate-500/40'
+                  }
+                ].map(item => {
+                  const active = birthControlStatus === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setBirthControlStatus(item.id as BirthControlDailyStatus)}
+                      className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center space-y-0.5 ${
+                        active
+                          ? item.colorActive
+                          : 'bg-slate-900/70 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
+                      }`}
+                    >
+                      <span className="text-xs font-bold block">{item.label}</span>
+                      <span className="text-[9px] text-slate-400 block">{item.desc}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {birthControlStatus === 'missed' && (
+                <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-[11px] text-amber-200 flex items-center gap-2 animate-in fade-in">
+                  <AlertTriangle size={15} className="text-amber-400 shrink-0" />
+                  <span>
+                    <strong>Missed Pill Notice:</strong> A drop in synthetic hormones can cause breakthrough spotting or cramping within 24–48h. Follow your pack guidelines (e.g. take when remembered, consider backup barrier protection).
+                  </span>
+                </div>
+              )}
+
+              {birthControlStatus === 'placebo' && (
+                <div className="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-[11px] text-indigo-200 flex items-center gap-2 animate-in fade-in">
+                  <Droplets size={15} className="text-indigo-400 shrink-0" />
+                  <span>
+                    <strong>Placebo Interval (Withdrawal Bleed):</strong> Flow during placebo days is an exogenous withdrawal bleed rather than biological ovulation. Prioritize iron defense, magnesium, and hydration.
+                  </span>
+                </div>
+              )}
+
+              {birthControlStatus === 'active' && (
+                <div className="p-2 rounded-xl bg-teal-950/40 border border-teal-500/20 text-[11px] text-teal-300 flex items-center gap-1.5 animate-in fade-in">
+                  <Check size={13} className="text-teal-400 shrink-0 stroke-[3]" />
+                  <span>Daily active hormone pill logged. Steady synthetic state active.</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-[10px] text-slate-400">
+              Taking an oral contraceptive or pill? Tap <strong className="text-teal-300">&ldquo;+ Track Daily Pill&rdquo;</strong> to record active vs placebo days and correlate breakthrough spotting.
+            </p>
+          )}
+        </div>
+
         {/* 3. Cramping & Pain Severity */}
         <div className="space-y-2">
           <label className="block text-xs font-mono font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
             <Zap size={13} className="text-amber-400" />
-            2. Cramping &amp; Pain Level (Dysmenorrhea)
+            3. Cramping &amp; Pain Level (Dysmenorrhea)
           </label>
           <div className="grid grid-cols-4 gap-2">
             {[
@@ -265,7 +402,7 @@ export default function PeriodFlowLoggerModal({
         {/* 4. Secondary Symptoms */}
         <div className="space-y-2">
           <label className="block text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
-            3. Secondary Symptoms (Optional 1-Tap)
+            4. Secondary Symptoms (Optional 1-Tap)
           </label>
           <div className="flex flex-wrap gap-2">
             {SYMPTOM_OPTIONS.map(sym => {

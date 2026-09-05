@@ -126,7 +126,15 @@ export function calculateInfradianStatus(
   let phaseName = 'Follicular Phase'
   let phaseDescription = 'Estrogen rising, insulin sensitivity peak, optimal for high-intensity training and cold hormesis.'
 
-  if (isPeriodActive || cycleDay <= 5) {
+  if (todayLog?.birth_control_status === 'placebo') {
+    currentPhase = 'menstrual'
+    phaseName = 'Placebo Interval (Withdrawal Bleed)'
+    phaseDescription = 'Hormone-free interval triggers scheduled synthetic withdrawal bleed. Prioritize iron defense, hydration, and gentle recovery.'
+  } else if (todayLog?.birth_control_status === 'active' && cycleDay >= 14 && cycleDay <= 16) {
+    currentPhase = 'follicular'
+    phaseName = 'Active Pill Phase (Mid-Cycle)'
+    phaseDescription = 'Synthetic progestin/estrogen suppresses endogenous LH surge. Steady metabolic output and consistent training tolerance.'
+  } else if (isPeriodActive || cycleDay <= 5) {
     currentPhase = 'menstrual'
     phaseName = 'Menstrual Phase (Menses)'
     phaseDescription = 'Low systemic hormones, acute energy preservation, prioritize warmth, magnesium, and gentle movement.'
@@ -281,6 +289,31 @@ export function calculateInfradianStatus(
         colorTheme: 'purple'
       })
     }
+  }
+
+  // E. Birth Control Adherence Rules
+  if (todayLog?.birth_control_status === 'missed') {
+    protocolModifications.push({
+      id: 'missed_pill_advisory',
+      category: 'nutrition_supplement',
+      type: 'caution',
+      title: 'Missed Birth Control Pill Logged',
+      reason: 'Sudden drop in circulating synthetic progestin/estrogen can trigger breakthrough spotting or uterine cramping within 24–48h. Follow package instructions and consider backup barrier contraception.',
+      badgeText: '⚠️ Missed Pill Logged',
+      colorTheme: 'amber'
+    })
+  } else if (todayLog?.birth_control_status === 'active') {
+    protocolModifications.push({
+      id: 'oral_contraceptive_micronutrients',
+      category: 'nutrition_supplement',
+      type: 'add',
+      title: 'B-Complex & Magnesium Synergy',
+      reason: 'Oral contraceptives accelerate hepatic clearance of B-vitamins (B6, B12, Folate) and magnesium. Ensure adequate dietary or supplemental intake.',
+      suggestedModalityName: 'B-Complex & Magnesium Glycinate',
+      suggestedAction: 'Take with morning meal or evening recovery stack',
+      badgeText: '💊 Pill Synergy',
+      colorTheme: 'purple'
+    })
   }
 
   return {
