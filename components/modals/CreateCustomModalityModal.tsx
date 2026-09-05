@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { 
   X, Sparkles, Plus, Clock, Pill, BookOpen, Bookmark, Calendar, 
   Check, ArrowRight, ArrowLeft, Layers, ShieldCheck, Flame, 
-  Moon, Dumbbell, Brain, Activity, Droplets, Sun, Wind, Tag, FileText, CheckCircle2 
+  Moon, Dumbbell, Brain, Activity, Droplets, Sun, Wind, Tag, FileText, CheckCircle2,
+  Camera, Upload, RefreshCw
 } from 'lucide-react'
 import { 
   createCustomModality, 
@@ -20,6 +21,20 @@ import { useAuth } from '@/contexts/AuthContext'
 import { format } from 'date-fns'
 import ModalityIcon from '@/components/ui/ModalityIcon'
 import { assessModalityOrProtocol, ICON_COLOR_PRESETS, AVAILABLE_ICONS } from '@/lib/utils/iconAssessmentEngine'
+import { scanSupplementImage, SupplementScanResult } from '@/lib/supplements/supplementIngestionEngine'
+
+export const CATEGORY_TO_COLOR: Record<string, string> = {
+  'Supplements': '#FBBF24', // Solar Amber
+  'Peptides': '#C084FC',    // Electric Violet
+  'Thermal': '#FB923C',     // Ember Coral
+  'Fitness': '#38BDF8',     // Ice Cyan
+  'Sleep': '#818CF8',       // Moonlight Periwinkle
+  'Nootropics': '#34D399',   // Vital Mint
+  'Nutrition': '#22D3EE',   // High-Tech Cyan
+  'Mindfulness': '#22D3EE', // High-Tech Cyan
+  'Light Therapy': '#FBBF24', // Solar Amber
+  'Other': '#38BDF8'        // Ice Cyan
+}
 
 export interface CustomModalityInitialData {
   id?: string
@@ -161,14 +176,35 @@ export default function CreateCustomModalityModal({
 
   // Icon & Color Assessment State
   const [assessedIcon, setAssessedIcon] = useState<string>('Target')
-  const [assessedColor, setAssessedColor] = useState<string>('#38BDF8')
+  const [assessedColor, setAssessedColor] = useState<string>(CATEGORY_TO_COLOR[initialData?.category || 'Supplements'] || '#FBBF24')
   const [isExistingMatch, setIsExistingMatch] = useState<boolean>(false)
   const [matchReason, setMatchReason] = useState<string>('')
   const [userCustomizedIcon, setUserCustomizedIcon] = useState<boolean>(false)
+  const [userCustomizedColor, setUserCustomizedColor] = useState<boolean>(false)
+
+  // Camera & Image Scan State for Supplements
+  const cameraInputRef = useRef<HTMLInputElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [isScanningLabel, setIsScanningLabel] = useState<boolean>(false)
+  const [scannedImagePreview, setScannedImagePreview] = useState<string | null>(null)
+  const [scanSuccessSummary, setScanSuccessSummary] = useState<{
+    productName: string
+    dosage: string
+    timing: string
+    ingredientsCount: number
+  } | null>(null)
+
+  const handleCategorySelect = (selectedCat: string) => {
+    setCategory(selectedCat)
+    // Auto-select relevant color based on the category chosen
+    const catColor = CATEGORY_TO_COLOR[selectedCat] || '#38BDF8'
+    setAssessedColor(catColor)
+    setUserCustomizedColor(false)
+  }
 
   // Real-time assessment of icon and color
   useEffect(() => {
-    if (userCustomizedIcon) return
+    if (userCustomizedIcon && userCustomizedColor) return
     const assessment = assessModalityOrProtocol({
       name,
       category,
@@ -176,11 +212,139 @@ export default function CreateCustomModalityModal({
       outcomes: selectedOutcomes,
       type: 'modality'
     })
-    setAssessedIcon(assessment.iconName)
-    setAssessedColor(assessment.colorHex)
-    setIsExistingMatch(assessment.isExistingMatch)
-    setMatchReason(assessment.matchReason)
-  }, [name, category, headlineBenefit, instructions, selectedOutcomes, userCustomizedIcon])
+    if (!userCustomizedIcon) {
+      setAssessedIcon(assessment.iconName)
+      setIsExistingMatch(assessment.isExistingMatch)
+      setMatchReason(assessment.matchReason)
+    }
+    if (!userCustomizedColor) {
+      const catColor = CATEGORY_TO_COLOR[category] || assessment.colorHex
+      setAssessedColor(catColor)
+    }
+  }, [name, category, headlineBenefit, instructions, selectedOutcomes, userCustomizedIcon, userCustomizedColor])
+
+  // Handle Photo Capture & AI Auto-Translation
+  const handleImagePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      setIsScanningLabel(true)
+      setErrorMsg('')
+      const previewUrl = URL.createObjectURL(file)
+      setScannedImagePreview(previewUrl)
+
+      const result: SupplementScanResult = await scanSupplementImage(file)
+
+      // 1. Modality Name
+      const autoName = result.product_name || result.primary_active_ingredient || 'Supplement'
+      setName(autoName)
+
+      // 2. Ensure Category is Supplements & Auto-select Solar Amber color
+      setCategory('Supplements')
+      const suppColor = CATEGORY_TO_COLOR['Supplements'] || '#FBBF24'
+      if (!userCustomizedColor) {
+        setAssessedColor(suppColor)
+      }
+
+      // 3. Headline Benefit & Instructions
+      if (result.headline_benefit) {
+        setHeadlineBenefit(result.headline_benefit)
+      } else if (result.expanded_why) {
+        setHeadlineBenefit(result.expanded_why)
+      }
+
+      if (result.suggested_instructions) {
+        setInstructions(result.suggested_instructions)
+      }
+
+      // 4. Dose Amount & Unit Parsing
+      if (result.ingredients && result.ingredients.length > 0) {
+        const primaryIng = result.ingredients[0]
+        if (primaryIng.amount != null) {
+          setDoseAmount(String(primaryIng.amount))
+        }
+        if (primaryIng.unit) {
+          const rawUnit = primaryIng.unit.toLowerCase().trim()
+          const matched = DOSE_UNITS.find(u => u.toLowerCase() === rawUnit) || (rawUnit.includes('cap') ? 'capsules' : rawUnit.includes('drop') ? 'drops' : 'mg')
+          setDoseUnit(matched)
+        }
+      } else if (result.dosage_summary || result.serving_size) {
+        const doseStr = result.dosage_summary || result.serving_size || ''
+        const numMatch = doseStr.match(/^([\d.,]+)\s*([a-zA-Z]+)?/)
+        if (numMatch) {
+          setDoseAmount(numMatch[1])
+          if (numMatch[2]) {
+            const rawUnit = numMatch[2].toLowerCase().trim()
+            const matched = DOSE_UNITS.find(u => u.toLowerCase() === rawUnit) || (rawUnit.includes('cap') ? 'capsules' : 'mg')
+            setDoseUnit(matched)
+          }
+        }
+      }
+
+      // 5. Admin Context from Instructions
+      const instrLower = (result.suggested_instructions || '').toLowerCase()
+      if (instrLower.includes('fat') || instrLower.includes('meal') || instrLower.includes('food')) {
+        setAdminContext('With fatty meal')
+      } else if (instrLower.includes('empty stomach') || instrLower.includes('waking') || instrLower.includes('fasted')) {
+        setAdminContext('Empty stomach upon waking')
+      } else if (instrLower.includes('bed') || instrLower.includes('sleep') || instrLower.includes('night')) {
+        setAdminContext('30m before bedtime')
+      } else if (instrLower.includes('pre-workout') || instrLower.includes('workout')) {
+        setAdminContext('Pre-workout (30-45m)')
+      }
+
+      // 6. Timing Slot
+      if (result.suggested_timing_slot) {
+        const slotMap: Record<string, string> = {
+          'morning_supplement_stack': 'morning_supplement_stack',
+          'first_meal': 'first_meal',
+          'midday': 'midday',
+          'pre_workout_stack': 'afternoon',
+          'evening_routine': 'evening_supplement_stack',
+          'bedtime': 'bedtime',
+          'anytime': 'anytime'
+        }
+        const mappedSlot = slotMap[result.suggested_timing_slot] || 'morning_supplement_stack'
+        setTimingSlot(mappedSlot)
+      }
+
+      // 7. Functional Outcomes to Track
+      if (result.functional_outcomes_to_track && result.functional_outcomes_to_track.length > 0) {
+        const mapped = result.functional_outcomes_to_track.map(fo => {
+          const l = fo.toLowerCase()
+          if (l.includes('sleep')) return 'sleep_quality'
+          if (l.includes('energy') || l.includes('vitality')) return 'energy'
+          if (l.includes('focus') || l.includes('cognitive') || l.includes('brain')) return 'cognitive_performance'
+          if (l.includes('stress') || l.includes('calm') || l.includes('anxiety')) return 'stress_resilience'
+          if (l.includes('muscle') || l.includes('strength') || l.includes('soreness')) return 'muscle_mass'
+          if (l.includes('cardio') || l.includes('heart') || l.includes('vo2')) return 'cardiovascular_health'
+          return 'overall_longevity'
+        })
+        const unique = Array.from(new Set(mapped))
+        if (unique.length > 0) {
+          setSelectedOutcomes(unique)
+        }
+      }
+
+      // 8. Success Summary
+      setScanSuccessSummary({
+        productName: autoName,
+        dosage: result.dosage_summary || result.serving_size || '1 serving',
+        timing: result.suggested_timing_slot || 'morning_supplement_stack',
+        ingredientsCount: result.ingredients?.length || 1
+      })
+
+    } catch (err: any) {
+      console.error('Supplement scan error:', err)
+      setErrorMsg(err.message || 'Could not clearly read supplement label. Please ensure lighting is bright and text is legible, or enter details manually.')
+    } finally {
+      setIsScanningLabel(false)
+      if (e.target) {
+        e.target.value = ''
+      }
+    }
+  }
 
   // Hydrate fields whenever initialData changes and modal opens
   useEffect(() => {
@@ -476,24 +640,157 @@ export default function CreateCustomModalityModal({
                   {CATEGORIES.map((cat) => {
                     const Icon = cat.icon
                     const isSelected = category === cat.name
+                    const catColor = CATEGORY_TO_COLOR[cat.name] || '#38BDF8'
                     return (
                       <button
                         type="button"
                         key={cat.name}
-                        onClick={() => setCategory(cat.name)}
+                        onClick={() => handleCategorySelect(cat.name)}
                         className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer ${
                           isSelected
-                            ? 'bg-sky-500/20 border-sky-500/60 text-white shadow-md shadow-sky-500/10'
+                            ? 'bg-slate-800 border-white/40 text-white shadow-lg shadow-black/40 ring-1 ring-white/20'
                             : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                         }`}
                       >
-                        <Icon size={16} className={isSelected ? 'text-sky-300' : 'text-slate-400'} />
+                        <span 
+                          className="p-1 rounded-lg shrink-0 flex items-center justify-center transition-colors" 
+                          style={{ backgroundColor: isSelected ? `${catColor}25` : 'transparent' }}
+                        >
+                          <Icon size={16} style={{ color: isSelected ? catColor : undefined }} className={!isSelected ? 'text-slate-400' : ''} />
+                        </span>
                         <span className="text-xs font-medium truncate">{cat.name}</span>
                       </button>
                     )
                   })}
                 </div>
               </div>
+
+              {/* AI Supplement Facts Label Scanner Action Banner when Supplement is Selected */}
+              {category.toLowerCase().includes('supplement') && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900/90 to-purple-950/30 border border-amber-500/40 shadow-lg space-y-3 relative overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shrink-0 mt-0.5 shadow-sm">
+                        <Camera size={18} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-black text-white uppercase tracking-wider">
+                            Auto-Translate from Picture
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
+                            <Sparkles size={11} /> Gemini Vision
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">
+                          Snap a photo of the Supplement Facts bottle label to auto-populate ingredients, dosage, and optimal circadian timing.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        disabled={isScanningLabel}
+                        className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        {isScanningLabel ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" />
+                            <span>Analyzing Label...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Camera size={15} />
+                            <span>Take Picture</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isScanningLabel}
+                        className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-xs flex items-center gap-1.5 border border-slate-700 transition-all cursor-pointer disabled:opacity-50"
+                        title="Upload existing photo from gallery"
+                      >
+                        <Upload size={14} />
+                        <span>Upload</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Live Scanning Indicator */}
+                  {isScanningLabel && (
+                    <div className="p-3 bg-amber-950/50 border border-amber-500/30 rounded-xl flex items-center gap-3 animate-pulse">
+                      <RefreshCw size={16} className="text-amber-400 animate-spin shrink-0" />
+                      <div className="text-xs text-amber-200">
+                        <span className="font-bold block">Analyzing Supplement Facts Label with Gemini Vision...</span>
+                        <span className="text-[11px] text-amber-300/80">Extracting chemical forms, elemental amounts, serving size, and circadian timing.</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Success Badge Banner */}
+                  {scanSuccessSummary && !isScanningLabel && (
+                    <div className="p-3 bg-emerald-950/60 border border-emerald-500/40 rounded-xl flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {scannedImagePreview && (
+                          <img 
+                            src={scannedImagePreview} 
+                            alt="Scanned bottle" 
+                            className="w-9 h-9 rounded-lg object-cover border border-emerald-500/40 shrink-0"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <span className="font-bold text-emerald-300 flex items-center gap-1">
+                            <CheckCircle2 size={13} /> {scanSuccessSummary.productName} Auto-Translated
+                          </span>
+                          <span className="text-[11px] text-slate-300 block truncate">
+                            {scanSuccessSummary.ingredientsCount} {scanSuccessSummary.ingredientsCount === 1 ? 'ingredient' : 'ingredients'} • {scanSuccessSummary.dosage} • {scanSuccessSummary.timing.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('dosing')}
+                          className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer bg-emerald-500/20 px-2 py-1 rounded-lg border border-emerald-500/30"
+                        >
+                          <span>Review Dose</span>
+                          <ArrowRight size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => cameraInputRef.current?.click()}
+                          className="text-[11px] font-semibold text-slate-400 hover:text-slate-200 underline cursor-pointer"
+                        >
+                          Rescan
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hidden file inputs for Camera and File Upload */}
+                  <input
+                    type="file"
+                    ref={cameraInputRef}
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleImagePicked}
+                  />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImagePicked}
+                  />
+                </div>
+              )}
 
               {/* Smart Icon & Visual Identity Assessment */}
               <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3 relative overflow-hidden shadow-inner">
@@ -529,7 +826,12 @@ export default function CreateCustomModalityModal({
                   {userCustomizedIcon && (
                     <button
                       type="button"
-                      onClick={() => setUserCustomizedIcon(false)}
+                      onClick={() => {
+                        setUserCustomizedIcon(false)
+                        setUserCustomizedColor(false)
+                        const catColor = CATEGORY_TO_COLOR[category]
+                        if (catColor) setAssessedColor(catColor)
+                      }}
                       className="text-[10px] text-sky-400 hover:text-sky-300 font-semibold underline shrink-0 cursor-pointer"
                     >
                       Reset Auto
@@ -539,9 +841,16 @@ export default function CreateCustomModalityModal({
 
                 {/* Color Swatches */}
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Accent Color Theme
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Accent Color Theme
+                    </label>
+                    {userCustomizedColor && (
+                      <span className="text-[10px] text-amber-400 font-semibold">
+                        Custom Color Override
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {ICON_COLOR_PRESETS.map((p) => {
                       const isSelected = assessedColor === p.hex
@@ -551,6 +860,7 @@ export default function CreateCustomModalityModal({
                           key={p.hex}
                           onClick={() => {
                             setAssessedColor(p.hex)
+                            setUserCustomizedColor(true)
                             setUserCustomizedIcon(true)
                           }}
                           className={`w-6 h-6 rounded-lg transition-transform cursor-pointer border ${
