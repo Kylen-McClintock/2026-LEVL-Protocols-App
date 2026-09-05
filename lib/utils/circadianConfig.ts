@@ -659,3 +659,38 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   const stopStrings = uniqueStops.map(s => `${s.color} ${s.pct}%`)
   return `linear-gradient(to bottom, ${stopStrings.join(', ')})`
 }
+
+/**
+ * Determines whether the current local time falls in the late-night window:
+ * from midnight (12:00 AM / 00:00) until 3 hours before the user's ideal wake time.
+ * If true, the user is still in their biological evening session from yesterday,
+ * so the app should prioritize loading yesterday's protocol tasks and evening check-in first.
+ */
+export function isLateNightCarryoverWindow(
+  now: Date = new Date(),
+  idealWakeTime?: string | null
+): boolean {
+  const curHour = now.getHours()
+  const curMinute = now.getMinutes()
+  const curTotalMins = curHour * 60 + curMinute
+
+  // Default ideal wake time is 06:30 AM (390 mins)
+  let wakeHour = 6
+  let wakeMinute = 30
+  if (idealWakeTime && idealWakeTime.includes(':')) {
+    const [h, m] = idealWakeTime.split(':').map(Number)
+    if (!isNaN(h) && !isNaN(m)) {
+      wakeHour = h
+      wakeMinute = m
+    }
+  }
+
+  const wakeTotalMins = wakeHour * 60 + wakeMinute
+  const cutoffMins = wakeTotalMins - 180 // 3 hours before wake time (e.g. 06:30 -> 03:30 / 210 mins)
+
+  // From 12:00 AM (00:00) until 3 hours before wake time
+  if (cutoffMins > 0) {
+    return curTotalMins < cutoffMins
+  }
+  return false
+}

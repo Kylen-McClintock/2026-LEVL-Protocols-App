@@ -385,10 +385,11 @@ export default function DailyWellbeingCheckin({
   const [showCoreMetricsSection, setShowCoreMetricsSection] = useState(true)
   const [showOutcomesSection, setShowOutcomesSection] = useState(true)
 
-  // Nightly Check-in Expandable Card state (After 6 PM)
+  // Nightly Check-in Expandable Card state (After 6 PM or any past date)
   const [showNightlyCard, setShowNightlyCard] = useState(false)
   const [isNightlyEditing, setIsNightlyEditing] = useState(false)
   const [isNightlySaved, setIsNightlySaved] = useState(false)
+  const [nightlySavedToast, setNightlySavedToast] = useState(false)
 
   // Daytime Anytime Check-in state (Between Morning & Nightly, 10 AM - 6 PM)
   const [showDaytimeCard, setShowDaytimeCard] = useState(false)
@@ -551,11 +552,16 @@ export default function DailyWellbeingCheckin({
     }
   }, [isCurrentDay, localProfile?.ideal_bedtime])
 
-  const phaseLabel = isCurrentDay ? (isNightly ? 'Nightly Check-in' : 'Morning Check-in') : `Check-in for ${date.toLocaleDateString()}`
-  
   const isFutureDate = isFuture(date) && !isSameDay(date, new Date())
   const isPastDate = isPast(date) && !isSameDay(date, new Date())
 
+  // On past dates, the entire evening has concluded, so the evening check-in is always available to log/edit
+  const isNightlyAvailable = isPastDate || (isCurrentDay && isNightly)
+
+  const phaseLabel = isCurrentDay 
+    ? (isNightly ? 'Nightly Check-in' : 'Morning Check-in') 
+    : (section === 'nightly' ? `Evening Check-in for ${date.toLocaleDateString()}` : `Check-in for ${date.toLocaleDateString()}`)
+  
   // Custom user-created outcomes
   const [customOutcomesList, setCustomOutcomesList] = useState<OutcomeDimension[]>([])
 
@@ -1039,6 +1045,10 @@ export default function DailyWellbeingCheckin({
 
       const hasNightlyData = Boolean(
         customJSON._nightly_logged_at ||
+        customJSON.evening_notes ||
+        customJSON._evening_notes ||
+        customJSON.confounders ||
+        (initialData.last_food_time && initialData.last_food_time !== '19:00') ||
         (typeof window !== 'undefined' && dStr && localStorage.getItem('levl_nightly_saved_' + dStr) === 'true')
       )
       setIsNightlySaved(hasNightlyData)
@@ -1068,6 +1078,7 @@ export default function DailyWellbeingCheckin({
       const localNightlySaved = typeof window !== 'undefined' && dStr && localStorage.getItem('levl_nightly_saved_' + dStr) === 'true'
       setIsNightlySaved(Boolean(localNightlySaved))
       setIsEditing(false)
+      setShowNightlyCard(false)
     }
   }, [initialData, date])
 
@@ -1155,6 +1166,11 @@ export default function DailyWellbeingCheckin({
       _nightly_logged_at: new Date().toISOString()
     }
 
+    if (eveningNotes) {
+      combinedCustomOutcomes.evening_notes = eveningNotes
+      combinedCustomOutcomes._evening_notes = eveningNotes
+    }
+
     if (alcoholDrinks !== 'skip') combinedCustomOutcomes.alcohol_drinks = Number(alcoholDrinks)
     if (lateCaffeine !== 'skip') combinedCustomOutcomes.late_caffeine = lateCaffeine
     if (nicotineExposure !== 'skip') combinedCustomOutcomes.nicotine_exposure = nicotineExposure
@@ -1178,6 +1194,8 @@ export default function DailyWellbeingCheckin({
       sleepSource
     )
     setIsNightlySaved(true)
+    setNightlySavedToast(true)
+    setTimeout(() => setNightlySavedToast(false), 3500)
     if (typeof window !== 'undefined' && date) {
       const dStr = format(date, 'yyyy-MM-dd')
       safeLocalStorageSet('levl_nightly_saved_' + dStr, 'true')
@@ -1517,7 +1535,7 @@ export default function DailyWellbeingCheckin({
   const currentStressCfg = getOutcomeColorConfig(stress, 'lower_is_better')
   const currentSleepCfg = getOutcomeColorConfig(subjectiveSleep, 'higher_is_better')
 
-  if (section === 'nightly' && (!isNightly || !isCurrentDay)) {
+  if (section === 'nightly' && !isNightlyAvailable) {
     return null
   }
 
@@ -1555,32 +1573,48 @@ export default function DailyWellbeingCheckin({
               </div>
             </div>
 
-            {/* Compact Evening Check-in Jump Cue when ~3h before bedtime & uncompleted */}
-            {isNightly && isCurrentDay && !isNightlySaved && (
+            {/* Compact Evening Check-in Jump Cue when available */}
+            {isNightlyAvailable && (
               <div 
                 onClick={() => {
+                  setShowNightlyCard(true)
                   const el = document.getElementById('evening-checkin-section')
                   if (el) {
                     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
                   }
                 }}
-                className="flex items-center justify-between px-3 sm:px-4 py-2.5 bg-gradient-to-r from-rose-950/70 via-purple-950/40 to-slate-950 border-b border-rose-500/30 text-xs cursor-pointer hover:bg-rose-950/90 transition-all group shadow-sm select-none"
+                className={`flex items-center justify-between px-3 sm:px-4 py-2.5 border-b text-xs cursor-pointer transition-all group shadow-sm select-none ${
+                  isNightlySaved 
+                    ? 'bg-gradient-to-r from-emerald-950/40 via-teal-950/30 to-slate-950 border-emerald-500/20 hover:bg-emerald-950/60' 
+                    : 'bg-gradient-to-r from-rose-950/70 via-purple-950/40 to-slate-950 border-rose-500/30 hover:bg-rose-950/90'
+                }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                    {!isNightlySaved && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    )}
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${isNightlySaved ? 'bg-emerald-400' : 'bg-rose-500'}`}></span>
                   </span>
                   <span className="font-bold text-white text-xs flex items-center gap-1.5">
-                    <Moon size={13} className="text-rose-400" /> Evening Check-in Available
+                    <Moon size={13} className={isNightlySaved ? "text-emerald-400" : "text-rose-400"} /> 
+                    {isNightlySaved 
+                      ? (isPastDate ? `Evening Check-in Logged (${format(date, 'MMM d')})` : "Evening Check-in Complete") 
+                      : (isPastDate ? `Evening Check-in Pending (${format(date, 'MMM d')})` : "Evening Check-in Available")}
                   </span>
-                  <span className="text-[10px] text-rose-300/80 hidden sm:inline font-medium">
-                    (~3h before bedtime · Decompression &amp; day review)
+                  <span className="text-[10px] text-gray-400 hidden sm:inline font-medium">
+                    {isNightlySaved 
+                      ? "(Tap to review or edit your evening reflections)" 
+                      : (isPastDate ? "(Log your day review, sleep factors & reflections)" : "(~3h before bedtime · Decompression & day review)")}
                   </span>
                 </div>
-                <span className="text-[11px] font-semibold text-rose-300 group-hover:text-white flex items-center gap-1 transition-colors">
-                  <span>Jump to Evening Check-in</span>
-                  <ArrowDown size={12} className="group-hover:translate-y-0.5 transition-transform text-rose-400 group-hover:text-white" />
+                <span className={`text-[11px] font-semibold flex items-center gap-1 transition-colors ${
+                  isNightlySaved ? 'text-emerald-300 group-hover:text-white' : 'text-rose-300 group-hover:text-white'
+                }`}>
+                  <span>{isNightlySaved ? "Edit Evening Check-in" : "Log Evening Check-in"}</span>
+                  <ArrowDown size={12} className={`group-hover:translate-y-0.5 transition-transform ${
+                    isNightlySaved ? 'text-emerald-400 group-hover:text-white' : 'text-rose-400 group-hover:text-white'
+                  }`} />
                 </span>
               </div>
             )}
@@ -1986,10 +2020,11 @@ export default function DailyWellbeingCheckin({
         </div>
       </div>
 
-      {/* Compact Evening Check-in Jump Cue when ~3h before bedtime & uncompleted */}
-      {isNightly && isCurrentDay && !isNightlySaved && (
+      {/* Compact Evening Check-in Jump Cue when available & uncompleted */}
+      {isNightlyAvailable && !isNightlySaved && (
         <div 
           onClick={() => {
+            setShowNightlyCard(true)
             const el = document.getElementById('evening-checkin-section')
             if (el) {
               el.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -2003,14 +2038,14 @@ export default function DailyWellbeingCheckin({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
             </span>
             <span className="font-bold text-white text-xs flex items-center gap-1.5">
-              <Moon size={13} className="text-rose-400" /> Evening Check-in Available
+              <Moon size={13} className="text-rose-400" /> {isPastDate ? `Evening Check-in for ${format(date, 'MMM d')}` : "Evening Check-in Available"}
             </span>
             <span className="text-[10px] text-rose-300/80 hidden sm:inline font-medium">
-              (~3h before bedtime · Decompression &amp; day review)
+              {isPastDate ? "(Log past day review & reflections)" : "(~3h before bedtime · Decompression & day review)"}
             </span>
           </div>
           <span className="text-[11px] font-semibold text-rose-300 group-hover:text-white flex items-center gap-1 transition-colors">
-            <span>Jump to Evening Check-in</span>
+            <span>{isPastDate ? "Log Evening Check-in" : "Jump to Evening Check-in"}</span>
             <ArrowDown size={12} className="group-hover:translate-y-0.5 transition-transform text-rose-400 group-hover:text-white" />
           </span>
         </div>
@@ -2998,8 +3033,8 @@ export default function DailyWellbeingCheckin({
     </div>
   ))}
 
-    {/* Dedicated Nightly Check-in Card (~3 hours before bedtime) */}
-    {(section === 'all' || section === 'nightly') && isNightly && isCurrentDay && (
+    {/* Dedicated Nightly Check-in Card (~3 hours before bedtime, or anytime on past dates) */}
+    {(section === 'all' || section === 'nightly') && isNightlyAvailable && (
       <div id="evening-checkin-section" className="glass-card p-4 rounded-xl mb-6 space-y-4 border border-rose-500/30 bg-rose-950/20 scroll-mt-24 shadow-xl">
         <div 
           onClick={() => setShowNightlyCard(!showNightlyCard)}
@@ -3008,11 +3043,16 @@ export default function DailyWellbeingCheckin({
           <div className="flex items-center gap-2">
             <div className={`w-2.5 h-2.5 rounded-full ${isNightlySaved ? 'bg-emerald-400' : 'bg-rose-400'} animate-pulse`} />
             <h3 className="font-bold text-sm text-white uppercase tracking-wider flex items-center gap-1.5">
-              <Moon size={15} className="text-rose-300" /> Today's Nightly Check-in
+              <Moon size={15} className="text-rose-300" /> {isPastDate ? `Evening Check-in (${format(date, 'EEE, MMM d')})` : "Today's Nightly Check-in"}
             </h3>
             <span className="text-[10px] text-rose-300/80 font-semibold bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
               {showNightlyCard ? '▲ Collapse' : isNightlySaved ? '▼ Edit' : '▼ Log'}
             </span>
+            {nightlySavedToast && (
+              <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30 animate-in fade-in">
+                ✓ Evening Check-in Saved!
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -3924,7 +3964,7 @@ export default function DailyWellbeingCheckin({
               onClick={handleNightlySave}
               className="w-full bg-rose-600 hover:bg-rose-500 text-white rounded-lg py-2.5 text-xs font-bold transition-all shadow-lg shadow-rose-600/20 cursor-pointer"
             >
-              {isNightlySaved ? "Edit Evening Check-in" : "Log Evening Check-in"}
+              {isNightlySaved ? (isPastDate ? "Save Updated Evening Check-in" : "Edit Evening Check-in") : "Log Evening Check-in"}
             </button>
           </div>
         ) : null}

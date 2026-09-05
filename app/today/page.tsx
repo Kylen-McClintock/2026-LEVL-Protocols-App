@@ -31,7 +31,7 @@ import {
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
-  Columns, Rows, ChevronsUpDown
+  Columns, Rows, ChevronsUpDown, Moon, ArrowRight
 } from 'lucide-react'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
@@ -66,7 +66,7 @@ import { getScoredLongevityTips } from '@/lib/ranking/tipPersonalization'
 import { getMacroCategory } from '@/lib/utils/categories'
 import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getModalityMacroType } from '@/lib/utils/modalityColors'
-import { getCircadianConfig, getAdaptiveCircadianConfig, isCurrentCircadianSlot, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS } from '@/lib/utils/circadianConfig'
+import { getCircadianConfig, getAdaptiveCircadianConfig, isCurrentCircadianSlot, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS, isLateNightCarryoverWindow } from '@/lib/utils/circadianConfig'
 import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
 import AdaptiveSleepTriageCard from '@/components/today/AdaptiveSleepTriageCard'
 import { OutcomeLensView } from '@/components/outcomes/OutcomeLensView'
@@ -151,8 +151,28 @@ function TodayPageContent() {
     setIsMounted(true)
   }, [])
 
-  // SWR Instant Local Hydration (0ms initial render)
-  const initialDateStr = dateParam || format(new Date(), 'yyyy-MM-dd')
+  // Helper to extract cached wake time for 0ms initial render
+  const cachedWakeTime = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('levl_cached_user_profile')
+        if (cached) return JSON.parse(cached)?.ideal_wake_time || null
+      } catch (e) {}
+    }
+    return null
+  }, [])
+
+  // SWR Instant Local Hydration (0ms initial render):
+  // If accessing without date param between midnight and 3h before wake time, prioritize yesterday
+  const initialEffectiveDate = useMemo(() => {
+    if (dateParam) return parseLocalDate(dateParam)
+    if (isLateNightCarryoverWindow(new Date(), cachedWakeTime)) {
+      return subDays(new Date(), 1)
+    }
+    return new Date()
+  }, [dateParam, cachedWakeTime])
+
+  const initialDateStr = format(initialEffectiveDate, 'yyyy-MM-dd')
   const [profile, setProfile] = useState<UserProfile | null>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -279,12 +299,7 @@ function TodayPageContent() {
   const hasLoadedInitialCatalogRef = useRef(false)
   const activeDateReqIdRef = useRef(0)
 
-  const [activeDate, setActiveDate] = useState<Date>(() => {
-    if (dateParam) {
-      return parseLocalDate(dateParam)
-    }
-    return new Date()
-  })
+  const [activeDate, setActiveDate] = useState<Date>(initialEffectiveDate)
 
   // Synchronize activeDate if URL searchParams change externally (e.g. browser back/forward buttons)
   useEffect(() => {
@@ -292,15 +307,23 @@ function TodayPageContent() {
       const parsed = parseLocalDate(dateParam)
       setActiveDate(parsed)
     } else {
-      setActiveDate(new Date())
+      if (isLateNightCarryoverWindow(new Date(), profile?.ideal_wake_time || cachedWakeTime)) {
+        setActiveDate(subDays(new Date(), 1))
+      } else {
+        setActiveDate(new Date())
+      }
     }
-  }, [dateParam])
+  }, [dateParam, profile?.ideal_wake_time, cachedWakeTime])
 
   const currentDate = activeDate
   const dateStr = format(currentDate, 'yyyy-MM-dd')
   const isPastDate = isBefore(startOfDay(currentDate), startOfDay(new Date()))
   const isFutureTimeline = isBefore(startOfDay(new Date()), startOfDay(currentDate))
   const isCurrentDay = dateStr === format(new Date(), 'yyyy-MM-dd')
+
+  // Late-night carryover window detection (12:00 AM until 3 hours before wake time)
+  const isLateNightTime = isLateNightCarryoverWindow(new Date(), profile?.ideal_wake_time || cachedWakeTime)
+  const isViewingYesterdayLateNight = isLateNightTime && isSameDay(activeDate, subDays(new Date(), 1))
 
   // Always anchor viewport strictly at the top of the day view on load and date switch (unless navigating to a specific modality or protocol)
   useEffect(() => {
@@ -556,7 +579,9 @@ function TodayPageContent() {
     setActiveDate(targetDate)
     const todayFormatted = format(new Date(), 'yyyy-MM-dd')
     const dStr = format(targetDate, 'yyyy-MM-dd')
-    const url = dStr === todayFormatted ? '/today' : `/today?date=${dStr}`
+    const isLateNight = isLateNightCarryoverWindow(new Date(), profile?.ideal_wake_time || cachedWakeTime)
+    // If user explicitly chooses today during late night carryover, set ?date= so URL doesn't revert to yesterday
+    const url = (dStr === todayFormatted && !isLateNight) ? '/today' : `/today?date=${dStr}`
     if (typeof window !== 'undefined') {
       window.history.replaceState(null, '', url)
     }
@@ -3604,6 +3629,39 @@ function TodayPageContent() {
         {/* Primary Timeline & Today Section */}
         {calendarViewMode === 'today' && (
           <>
+            {/* Late-Night Window Notification Banner */}
+            {isViewingYesterdayLateNight && (
+              <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-950 border border-purple-500/40 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center shrink-0 text-purple-300 shadow-inner">
+                    <Moon size={18} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-white text-xs sm:text-sm">🌙 Late-Night Wind Down Mode</span>
+                      <span className="text-[10px] text-purple-200 bg-purple-500/25 px-2.5 py-0.5 rounded-full font-semibold border border-purple-400/30 font-mono">
+                        Showing Yesterday ({format(activeDate, 'EEE, MMM d')})
+                      </span>
+                    </div>
+                    <p className="text-xs text-purple-200/80 mt-1">
+                      It's after midnight and before your wake-up window. We've loaded yesterday so you can finish your evening routine and log your evening check-in.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <button
+                    type="button"
+                    onClick={() => navigateToDate(new Date())}
+                    className="text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 border border-purple-400/40 px-3.5 py-1.5 rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5 hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <span>Switch to Today</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* 3. Daily Historical Debrief Header & Snapshot when viewing past dates */}
             {isPastDate && (
               <div className="mb-6">
