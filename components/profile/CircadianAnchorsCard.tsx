@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { UserProfile } from '@/lib/types'
 import { updateUserProfile } from '@/lib/data'
 import { Moon, Sun, Clock, Coffee, Eye, Sparkles, Check, Flame, ShieldAlert, CheckCircle2 } from 'lucide-react'
+import CircadianTimePickerInput from '@/components/ui/CircadianTimePickerInput'
 
 interface CircadianAnchorsCardProps {
   profile: UserProfile
@@ -150,40 +151,32 @@ export default function CircadianAnchorsCard({ profile, onUpdated }: CircadianAn
 
       {/* Target Bed & Wake Times */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
-          <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-            <Sun size={14} className="text-amber-400" />
-            <span>Target Wake Time</span>
-          </label>
-          <input
-            type="time"
+        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+          <CircadianTimePickerInput
+            label="Target Wake Time"
+            icon={<Sun size={14} className="text-amber-400" />}
             value={wakeTime}
-            onChange={(e) => {
-              const val = e.target.value
+            onChange={(val) => {
               setWakeTime(val)
               autoSave({ ideal_wake_time: val })
             }}
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-amber-500"
+            accentColor="amber"
+            helperText="Anchors your morning sunlight and cortisol peak"
           />
-          <p className="text-[11px] text-slate-500">Anchors your morning sunlight and cortisol peak</p>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
-          <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-            <Moon size={14} className="text-indigo-400" />
-            <span>Target Sleep / Lights Out</span>
-          </label>
-          <input
-            type="time"
+        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+          <CircadianTimePickerInput
+            label="Target Sleep / Lights Out"
+            icon={<Moon size={14} className="text-indigo-400" />}
             value={bedTime}
-            onChange={(e) => {
-              const val = e.target.value
+            onChange={(val) => {
               setBedTime(val)
               autoSave({ ideal_bedtime: val })
             }}
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-indigo-500"
+            accentColor="indigo"
+            helperText="Anchors your caffeine and metabolic fasting cutoffs"
           />
-          <p className="text-[11px] text-slate-500">Anchors your caffeine and metabolic fasting cutoffs</p>
         </div>
       </div>
 

@@ -14,6 +14,7 @@ import MindfulReflectionPrompt from '@/components/mindfulness/MindfulReflectionP
 import { getStoredCustomOutcomes } from '@/lib/data'
 import { fetchCurrentWeather, getCachedWeather, LocalWeatherData } from '@/lib/services/weatherService'
 import { ExternalConfounderData } from '@/lib/types'
+import CircadianTimePickerInput, { resolveCircadianLastMealTime } from '@/components/ui/CircadianTimePickerInput'
 
 function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: string = '22:30'): number {
   const [h, m] = timeStr.split(':').map(Number)
@@ -355,7 +356,14 @@ export default function DailyWellbeingCheckin({
     setActualSleepMinutes(prev => Math.max(0, prev + deltaMins))
   }
 
-  const [lastFoodTime, setLastFoodTime] = useState<string>('19:00')
+  // Resolve default circadian last meal time (from user's adjusted onboarding milestones / bedtime)
+  const defaultCircadianLastMeal = useMemo(() => resolveCircadianLastMealTime(profile), [profile])
+
+  const [lastFoodTime, setLastFoodTime] = useState<string>(() => {
+    return (initialData as any)?.last_food_time || 
+           (initialData as any)?.custom_outcomes_jsonb?.late_meal?.replace?.('time:', '') || 
+           resolveCircadianLastMealTime(profile)
+  })
   const [notes, setNotes] = useState<string>('')
   const [eveningNotes, setEveningNotes] = useState<string>('')
 
@@ -956,7 +964,10 @@ export default function DailyWellbeingCheckin({
       setStress(initialData.stress_0_10 ?? 5)
       setSubjectiveSleep(initialData.subjective_sleep_0_10 ?? 5)
       setSleepScore(initialData.sleep_score_0_100 != null ? initialData.sleep_score_0_100.toString() : '')
-      setLastFoodTime(initialData.last_food_time || '19:00')
+      const hydratedLastFood = (initialData as any).last_food_time || 
+                               (initialData as any).custom_outcomes_jsonb?.late_meal?.replace?.('time:', '') || 
+                               defaultCircadianLastMeal
+      setLastFoodTime(hydratedLastFood)
       
       const customJSON = (initialData as any).custom_outcomes_jsonb || {}
       const hydratedBedtime = (initialData as any).actual_bedtime || customJSON._actual_bedtime || profile?.ideal_bedtime || '22:30'
@@ -1048,7 +1059,7 @@ export default function DailyWellbeingCheckin({
         customJSON.evening_notes ||
         customJSON._evening_notes ||
         customJSON.confounders ||
-        (initialData.last_food_time && initialData.last_food_time !== '19:00') ||
+        (initialData.last_food_time && initialData.last_food_time !== defaultCircadianLastMeal) ||
         (typeof window !== 'undefined' && dStr && localStorage.getItem('levl_nightly_saved_' + dStr) === 'true')
       )
       setIsNightlySaved(hasNightlyData)
@@ -1058,7 +1069,7 @@ export default function DailyWellbeingCheckin({
       setStress(5)
       setSubjectiveSleep(5)
       setSleepScore('')
-      setLastFoodTime('19:00')
+      setLastFoodTime(defaultCircadianLastMeal)
       setSkinClarity(5)
       setFocusScore(5)
       setAlcoholDrinks('skip')
@@ -1066,7 +1077,7 @@ export default function DailyWellbeingCheckin({
       setNicotineExposure('skip')
       setCannabisExposure('skip')
       setSittingDuration('skip')
-      setLateMeal('time:19:30')
+      setLateMeal(`time:${defaultCircadianLastMeal}`)
       setBlueLight('time:21:30')
       setProcessedSugar('skip')
       setNotes('')
@@ -2539,7 +2550,7 @@ export default function DailyWellbeingCheckin({
             </span>
             <div className="flex items-center gap-2">
               <span className="text-indigo-300 font-mono font-bold text-xs bg-indigo-900/60 px-2.5 py-0.5 rounded-full border border-indigo-500/40">
-                {lastFoodTime}
+                {formatTimeTo12h(lastFoodTime)}
               </span>
               <button
                 type="button"
@@ -2551,27 +2562,20 @@ export default function DailyWellbeingCheckin({
             </div>
           </div>
           {showMealSection && (
-            <>
+            <div className="space-y-2 pt-1">
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                Starts the clock on postprandial glucose clearing and calculates your true overnight fasted state.
+                Starts the clock on postprandial glucose clearing and calculates your true overnight fasted state. Defaulted to your calibrated circadian last meal cutoff.
               </p>
-              <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 pt-1">
-                {['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'].map((tStr) => (
-                  <button
-                    key={tStr}
-                    type="button"
-                    onClick={() => setLastFoodTime(tStr)}
-                    className={`py-1.5 text-xs font-mono rounded-lg border transition-all cursor-pointer ${
-                      lastFoodTime === tStr 
-                        ? 'bg-levl-accent text-white border-levl-accent font-bold shadow-md shadow-levl-accent/20' 
-                        : 'bg-black/30 text-gray-300 border-white/10 hover:border-white/30'
-                    }`}
-                  >
-                    {tStr}
-                  </button>
-                ))}
-              </div>
-            </>
+              <CircadianTimePickerInput
+                value={lastFoodTime}
+                onChange={(val) => {
+                  setLastFoodTime(val)
+                  setLateMeal(`time:${val}`)
+                }}
+                accentColor="indigo"
+                helperText="Use -15m/+15m steppers or tap clock to adjust"
+              />
+            </div>
           )}
         </div>
       )}
@@ -3905,37 +3909,19 @@ export default function DailyWellbeingCheckin({
                   <span>🍽️</span> Time of Last Meal / Food
                 </span>
                 <span className="text-indigo-300 font-mono font-bold text-xs bg-indigo-900/60 px-2.5 py-0.5 rounded-full border border-indigo-500/40">
-                  {lastFoodTime}
+                  {formatTimeTo12h(lastFoodTime)}
                 </span>
               </div>
-              <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 pt-1">
-                {['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'].map((tStr) => (
-                  <button
-                    key={tStr}
-                    type="button"
-                    onClick={() => setLastFoodTime(tStr)}
-                    className={`py-1.5 text-xs font-mono rounded-lg border transition-all cursor-pointer ${
-                      lastFoodTime === tStr 
-                        ? 'bg-levl-accent text-white border-levl-accent font-bold shadow-md shadow-levl-accent/20' 
-                        : 'bg-black/30 text-gray-300 border-white/10 hover:border-white/30'
-                    }`}
-                  >
-                    {tStr}
-                  </button>
-                ))}
-              </div>
 
-              {/* Custom Manual Time Input */}
-              <div className="flex items-center justify-between gap-3 pt-2 text-xs">
-                <span className="text-gray-400 font-medium">Or enter exact custom time:</span>
-                <input
-                  type="text"
-                  placeholder="e.g. 22:45"
-                  value={lastFoodTime}
-                  onChange={(e) => setLastFoodTime(e.target.value)}
-                  className="bg-black/80 border border-white/20 rounded-lg px-3 py-1.5 text-white font-mono text-xs focus:border-rose-400 focus:outline-none cursor-pointer w-28 text-center"
-                />
-              </div>
+              <CircadianTimePickerInput
+                value={lastFoodTime}
+                onChange={(val) => {
+                  setLastFoodTime(val)
+                  setLateMeal(`time:${val}`)
+                }}
+                accentColor="indigo"
+                helperText="Defaulted to your calibrated circadian last meal cutoff. Use -15m/+15m steppers or tap clock to fine-tune."
+              />
             </div>
 
             {/* Evening Freeform Reflection & Notes Card */}

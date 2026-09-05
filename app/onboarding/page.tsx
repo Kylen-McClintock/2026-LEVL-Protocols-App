@@ -17,6 +17,7 @@ import {
   Sliders, Thermometer, Coffee, ShieldAlert, Edit3, X, HelpCircle, ArrowUpRight,
   Mail, AlertCircle
 } from 'lucide-react'
+import CircadianTimePickerInput from '@/components/ui/CircadianTimePickerInput'
 
 export interface ModalityOption {
   id: string
@@ -1531,42 +1532,26 @@ function OnboardingContent() {
                   2. Dial in Your Exact Target Times
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
-                        <Sunrise size={16} />
-                        <span>Target Wake Time</span>
-                      </div>
-                      <span className="text-[10px] font-mono text-amber-400 font-semibold">{idealWakeTime}</span>
-                    </div>
-                    <input
-                      type="time"
+                  <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    <CircadianTimePickerInput
+                      label="Target Wake Time"
+                      icon={<Sunrise size={16} className="text-amber-400" />}
                       value={idealWakeTime}
-                      onChange={(e) => setIdealWakeTime(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-amber-400"
+                      onChange={setIdealWakeTime}
+                      accentColor="amber"
+                      helperText="Anchors morning light, hydration & cortisol peak"
                     />
-                    <span className="text-[10px] text-slate-400 block">
-                      Anchors morning light, hydration &amp; cortisol peak
-                    </span>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs font-bold text-indigo-300">
-                        <Moon size={16} />
-                        <span>Target Bedtime</span>
-                      </div>
-                      <span className="text-[10px] font-mono text-indigo-400 font-semibold">{idealBedtime}</span>
-                    </div>
-                    <input
-                      type="time"
+                  <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    <CircadianTimePickerInput
+                      label="Target Bedtime"
+                      icon={<Moon size={16} className="text-indigo-400" />}
                       value={idealBedtime}
-                      onChange={(e) => setIdealBedtime(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-indigo-400"
+                      onChange={setIdealBedtime}
+                      accentColor="indigo"
+                      helperText="Triggers wind-down, thermal drop & melatonin buffer"
                     />
-                    <span className="text-[10px] text-slate-400 block">
-                      Triggers wind-down, thermal drop &amp; melatonin buffer
-                    </span>
                   </div>
                 </div>
               </div>
