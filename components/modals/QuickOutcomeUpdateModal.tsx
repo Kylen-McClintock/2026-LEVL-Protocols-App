@@ -53,7 +53,7 @@ export const QuickOutcomeUpdateModal: React.FC<QuickOutcomeUpdateModalProps> = (
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
         className="w-full max-w-sm rounded-3xl bg-slate-950 border border-white/15 p-5 shadow-2xl space-y-4 relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}

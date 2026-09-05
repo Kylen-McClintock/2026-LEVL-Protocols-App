@@ -160,7 +160,7 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
   const displayName = outcomeName || vectorMetadata?.name || outcomeId.replace(/_/g, ' ')
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-2xl sm:max-w-3xl bg-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col justify-between space-y-4">
         
         {/* Ambient background glow */}

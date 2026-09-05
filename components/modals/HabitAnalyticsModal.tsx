@@ -322,7 +322,7 @@ export function HabitAnalyticsModal({
   const selectedDetails = selectedDate ? historyData?.completionDetailsMap[selectedDate] : null
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       {/* Maximum Desktop Screen Real Estate Container */}
       <div className="relative w-[96vw] max-w-6xl xl:max-w-7xl max-h-[94vh] flex flex-col bg-slate-950 border border-indigo-500/30 rounded-2xl shadow-[0_0_60px_rgba(99,102,241,0.25)] overflow-hidden text-white">
         

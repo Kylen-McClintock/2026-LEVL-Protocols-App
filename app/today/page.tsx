@@ -3364,7 +3364,7 @@ function TodayPageContent() {
 
       {/* Toast Notification */}
       {completionToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-[60] flex items-center gap-3 bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-4">
           <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold border border-emerald-500/40 shrink-0">
             <Check size={18} strokeWidth={3} />
           </div>
@@ -3380,7 +3380,7 @@ function TodayPageContent() {
 
       {/* Action Feedback Toast (.5s Confirmation for Bench & Eliminate) */}
       {actionFeedback && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 border bg-slate-950/95 border-slate-700">
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-[60] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 border bg-slate-950/95 border-slate-700">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 border ${
             actionFeedback.type === 'eliminate'
               ? 'bg-red-500/20 text-red-400 border-red-500/40'

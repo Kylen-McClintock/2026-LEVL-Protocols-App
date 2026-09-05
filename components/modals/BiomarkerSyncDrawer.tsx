@@ -243,7 +243,7 @@ export const BiomarkerSyncDrawer: React.FC<BiomarkerSyncDrawerProps> = ({
   if (!isOpen) return null
 
   const drawerContent = (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[90] flex justify-end bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       {/* Background click dismiss */}
       <div className="flex-1 cursor-pointer" onClick={onClose} />
 

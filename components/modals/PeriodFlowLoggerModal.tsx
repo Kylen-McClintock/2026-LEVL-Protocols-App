@@ -155,8 +155,8 @@ export default function PeriodFlowLoggerModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-lg rounded-3xl bg-slate-950 border border-rose-500/40 p-5 sm:p-7 shadow-2xl space-y-5 text-white max-h-[90vh] overflow-y-auto scrollbar-thin">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg rounded-3xl bg-slate-950 border border-rose-500/40 p-5 sm:p-7 shadow-2xl space-y-5 text-white max-h-[90vh] overflow-y-auto scrollbar-thin">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
           <div>
@@ -427,11 +427,11 @@ export default function PeriodFlowLoggerModal({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+        <div className="sticky bottom-0 bg-slate-950/95 backdrop-blur-md pt-3 pb-1 border-t border-white/10 z-10 flex items-center justify-end gap-3 mt-4">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-900 border border-white/10 text-slate-300 hover:text-white text-xs font-bold cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-slate-900 border border-white/10 text-slate-300 hover:text-white text-xs font-bold cursor-pointer transition-colors"
           >
             Cancel
           </button>

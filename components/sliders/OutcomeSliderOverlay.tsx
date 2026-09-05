@@ -49,7 +49,7 @@ export default function OutcomeSliderOverlay({ outcomes, modality, onSave, onClo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm p-4 pb-safe animate-in fade-in">
+    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 backdrop-blur-sm p-4 pb-safe animate-in fade-in">
       <div className="bg-levl-bg border border-levl-border w-full max-w-md rounded-2xl p-6 shadow-2xl relative slide-in-from-bottom-10">
         <button 
           onClick={onClose}

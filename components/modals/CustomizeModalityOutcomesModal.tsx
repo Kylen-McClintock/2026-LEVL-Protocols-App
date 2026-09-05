@@ -76,7 +76,7 @@ export default function CustomizeModalityOutcomesModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in overflow-y-auto">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in overflow-y-auto">
       <div className="bg-levl-bg border border-levl-border w-full max-w-xl rounded-2xl p-4 sm:p-6 shadow-2xl relative space-y-4 max-h-[85vh] flex flex-col my-auto">
         <button 
           onClick={onClose}

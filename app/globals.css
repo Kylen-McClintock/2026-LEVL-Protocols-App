@@ -37,6 +37,10 @@
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 
+  .pb-nav-ios {
+    padding-bottom: max(0.35rem, calc(env(safe-area-inset-bottom, 0px) * 0.42));
+  }
+
   .pt-safe {
     padding-top: max(0.75rem, env(safe-area-inset-top));
   }
