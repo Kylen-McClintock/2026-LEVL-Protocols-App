@@ -217,8 +217,8 @@ export default function QuickHotkeyGrid({
       {/* Tray Header Bar */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-levl-accent animate-pulse" />
-          <span className="text-xs font-black text-white uppercase tracking-wider">
+          <Sparkles size={15} className="text-levl-accent animate-pulse" />
+          <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wider">
             Daily Quick-Log Hotkeys
           </span>
         </div>
@@ -227,17 +227,17 @@ export default function QuickHotkeyGrid({
           <button
             type="button"
             onClick={toggleCollapse}
-            className="text-[11px] font-bold text-slate-400 hover:text-white flex items-center gap-1 transition-all cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-xl border border-white/5 active:scale-95"
+            className="text-xs sm:text-[12.5px] font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-white/10 active:scale-95 shadow-sm"
             title={isCollapsed ? 'Show hotkeys tray' : 'Hide hotkeys tray'}
           >
             {isCollapsed ? (
               <>
-                <Eye size={12} className="text-orange-400" />
+                <Eye size={13} className="text-orange-400" />
                 <span>Show All ({visibleHotkeys.length})</span>
               </>
             ) : (
               <>
-                <EyeOff size={12} />
+                <EyeOff size={13} />
                 <span>Hide All</span>
               </>
             )}
@@ -248,7 +248,7 @@ export default function QuickHotkeyGrid({
             <button
               type="button"
               onClick={() => setIsPeriodModalOpen(true)}
-              className="text-[11px] font-bold text-rose-300 hover:text-rose-200 flex items-center gap-1.5 transition-all cursor-pointer bg-rose-950/60 hover:bg-rose-950/90 px-2.5 py-1 rounded-xl border border-rose-500/40 shadow-sm active:scale-95"
+              className="text-xs sm:text-[12.5px] font-bold text-rose-300 hover:text-rose-200 flex items-center gap-1.5 transition-all cursor-pointer bg-rose-950/60 hover:bg-rose-950/90 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-rose-500/40 shadow-sm active:scale-95"
             >
               <span>🌸</span>
               <span>
@@ -265,9 +265,9 @@ export default function QuickHotkeyGrid({
             <button
               type="button"
               onClick={() => setIsManageModalOpen(true)}
-              className="text-[11px] font-bold text-slate-400 hover:text-orange-300 flex items-center gap-1 transition-all cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-xl border border-white/5 active:scale-95"
+              className="text-xs sm:text-[12.5px] font-bold text-slate-300 hover:text-orange-300 flex items-center gap-1.5 transition-all cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-white/10 active:scale-95 shadow-sm"
             >
-              <Sliders size={12} />
+              <Sliders size={13} />
               <span>Customize Tray</span>
             </button>
           )}
@@ -297,7 +297,7 @@ export default function QuickHotkeyGrid({
             <div
               key={hotkey.id}
               onClick={(e) => handleQuickTapIncrement(e, hotkey)}
-              className={`min-h-[110px] sm:min-h-[120px] md:min-h-[128px] aspect-[1/1] sm:aspect-[1.05/1] md:aspect-square rounded-2xl border transition-all flex flex-col justify-between p-2.5 sm:p-3 overflow-hidden relative select-none shadow-md cursor-pointer hover:bg-white/[0.03] active:scale-[0.97] group/card ${
+              className={`min-h-[114px] sm:min-h-[122px] md:min-h-[130px] aspect-[1/1] sm:aspect-[1.05/1] md:aspect-square rounded-2xl border transition-all flex flex-col justify-between p-2.5 sm:p-3 md:p-3.5 overflow-hidden relative select-none shadow-md cursor-pointer hover:bg-white/[0.03] active:scale-[0.97] group/card ${
                 isTapped
                   ? isNegative
                     ? 'ring-2 ring-rose-400 scale-[0.96] bg-slate-800'
@@ -341,7 +341,7 @@ export default function QuickHotkeyGrid({
               {/* TOP ROW: Icon + Increment Badge */}
               <div className="flex items-center justify-between gap-1 w-full pl-0.5">
                 <div
-                  className={`w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-lg sm:rounded-xl flex items-center justify-center border text-[11px] shrink-0 transition-colors ${
+                  className={`w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center border text-xs shrink-0 transition-colors ${
                     isNegative
                       ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
                       : isNeutral
@@ -353,11 +353,11 @@ export default function QuickHotkeyGrid({
                       : 'bg-slate-800 border-white/5 text-slate-300 group-hover/card:text-white'
                   }`}
                 >
-                  <IconComp size={14} className="sm:size-4" />
+                  <IconComp size={15} className="sm:size-4 md:size-[17px]" />
                 </div>
 
                 <span
-                  className={`px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md text-[10px] sm:text-xs md:text-[12.5px] font-mono font-black border transition-all flex items-baseline gap-0.5 shadow-sm ${
+                  className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-xs sm:text-[13px] md:text-sm font-mono font-black border transition-all flex items-baseline gap-1 shadow-sm ${
                     isNegative
                       ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 group-hover/card:bg-rose-500 group-hover/card:text-white'
                       : isNeutral
@@ -367,14 +367,14 @@ export default function QuickHotkeyGrid({
                       : 'bg-orange-500/20 text-orange-300 border-orange-500/40 group-hover/card:bg-orange-500 group-hover/card:text-black'
                   }`}
                 >
-                  <Plus size={10} strokeWidth={3} className="shrink-0 self-center" />
+                  <Plus size={11} strokeWidth={3} className="shrink-0 self-center" />
                   <span className="font-black">{hotkey.default_increment}</span>
-                  <span className="text-[8px] sm:text-[9px] md:text-[10px] font-bold opacity-80 uppercase tracking-tighter ml-0.5">{hotkey.unit}</span>
+                  <span className="text-[9.5px] sm:text-[11px] md:text-xs font-bold opacity-85 uppercase tracking-tight ml-0.5">{hotkey.unit}</span>
                 </span>
               </div>
 
-              {/* FULL-WIDTH NAME ROW: Prominent and readable text scaling proportionately */}
-              <div className={`w-full pl-0.5 text-xs sm:text-sm md:text-[14.5px] font-extrabold text-slate-100 tracking-tight transition-colors truncate leading-tight ${
+              {/* FULL-WIDTH NAME ROW: Prominent, legible, bold text */}
+              <div className={`w-full pl-0.5 text-sm sm:text-[15px] md:text-base font-extrabold text-slate-100 tracking-tight transition-colors line-clamp-2 leading-tight ${
                 isNegative
                   ? 'group-hover/card:text-rose-300'
                   : isNeutral
@@ -387,19 +387,19 @@ export default function QuickHotkeyGrid({
               {/* BOTTOM ROW: Numerator & Denominator Value Metric + Expand/Detail Chevron on the right */}
               <div className="flex items-end justify-between gap-1 w-full pl-0.5">
                 <div className="flex items-baseline gap-1 min-w-0 flex-wrap">
-                  <span className={`text-xl sm:text-2xl md:text-3xl font-black font-mono tracking-tight leading-none transition-colors ${
+                  <span className={`text-2xl sm:text-3xl font-black font-mono tracking-tight leading-none transition-colors ${
                     isGoalReached && !isNegative ? 'text-emerald-400' : 'text-white'
                   }`}>
                     {totalVal}
                   </span>
                   {hotkey.daily_goal && !isNegative ? (
-                    <span className={`text-xs sm:text-sm md:text-[14px] font-bold font-mono transition-colors truncate ${
+                    <span className={`text-xs sm:text-sm md:text-base font-bold font-mono transition-colors truncate ${
                       isGoalReached ? 'text-emerald-400 font-bold' : 'text-slate-300'
                     }`}>
-                      /{hotkey.daily_goal} <span className="text-[10px] sm:text-xs md:text-[12.5px] font-semibold text-slate-400">{hotkey.unit}</span>
+                      /{hotkey.daily_goal} <span className="text-[11px] sm:text-xs md:text-sm font-semibold text-slate-400">{hotkey.unit}</span>
                     </span>
                   ) : (
-                    <span className="text-xs sm:text-sm md:text-[13px] font-bold font-mono text-slate-400 truncate">
+                    <span className="text-xs sm:text-sm md:text-base font-bold font-mono text-slate-400 truncate">
                       {hotkey.unit}
                     </span>
                   )}
@@ -411,10 +411,10 @@ export default function QuickHotkeyGrid({
                     e.stopPropagation()
                     handleCardClick(hotkey)
                   }}
-                  className="shrink-0 p-1 text-slate-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/10"
+                  className="shrink-0 p-1 sm:p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/10"
                   title="Click for details & logs"
                 >
-                  <ChevronRight size={14} strokeWidth={2.5} />
+                  <ChevronRight size={16} strokeWidth={2.5} />
                 </button>
               </div>
             </div>
@@ -424,15 +424,15 @@ export default function QuickHotkeyGrid({
         {/* Add Hotkey Card */}
         <div
           onClick={() => setIsManageModalOpen(true)}
-          className="min-h-[110px] sm:min-h-[120px] md:min-h-[128px] aspect-[1/1] sm:aspect-[1.05/1] md:aspect-square rounded-2xl border border-dashed border-slate-800 hover:border-orange-500/50 bg-slate-950/40 hover:bg-orange-950/10 transition-all cursor-pointer flex flex-col items-center justify-center text-center p-2.5 sm:p-3 space-y-1.5 group shadow-sm"
+          className="min-h-[114px] sm:min-h-[122px] md:min-h-[130px] aspect-[1/1] sm:aspect-[1.05/1] md:aspect-square rounded-2xl border border-dashed border-slate-800 hover:border-orange-500/50 bg-slate-950/40 hover:bg-orange-950/10 transition-all cursor-pointer flex flex-col items-center justify-center text-center p-2.5 sm:p-3 md:p-3.5 space-y-1.5 group shadow-sm"
         >
-          <div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-lg sm:rounded-xl bg-white/5 group-hover:bg-orange-500/20 text-slate-400 group-hover:text-orange-400 flex items-center justify-center transition-colors">
-            <Plus size={15} />
+          <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-xl bg-white/5 group-hover:bg-orange-500/20 text-slate-400 group-hover:text-orange-400 flex items-center justify-center transition-colors">
+            <Plus size={17} strokeWidth={2.5} />
           </div>
-          <span className="text-[11px] sm:text-xs md:text-sm font-bold text-slate-300 group-hover:text-white transition-colors">
+          <span className="text-xs sm:text-sm md:text-[15px] font-bold text-slate-200 group-hover:text-white transition-colors">
             + Add Hotkey
           </span>
-          <span className="text-[8.5px] sm:text-[9.5px] md:text-[10.5px] text-slate-500">Custom / Preset</span>
+          <span className="text-[10px] sm:text-[11px] md:text-xs text-slate-400 font-medium">Custom / Preset</span>
         </div>
       </div>
       ) : (
