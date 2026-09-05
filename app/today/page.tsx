@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { 
@@ -31,10 +32,12 @@ import {
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
-  Columns, Rows, ChevronsUpDown, Moon, ArrowRight
+  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink
 } from 'lucide-react'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
+import ProtocolAvatar from '@/components/ui/ProtocolAvatar'
+import { getProtocolVisualTheme } from '@/lib/utils/protocolThemes'
 import { triggerHaptic } from '@/lib/utils/haptics'
 import { safeLocalStorageSet } from '@/lib/utils/storage'
 import { PulsedModalityCard } from '@/components/cards/PulsedModalityCard'
@@ -2551,6 +2554,9 @@ function TodayPageContent() {
         await handleStatusChange(t.id, 'completed', undefined, nowIso)
       }
     }
+    if (viewMode === 'protocol') {
+      setCollapsedGroups(prev => ({ ...prev, [groupName]: true }))
+    }
   }
 
   const handleSaveGroupTracking = async (groupTasks: DedupedTask[], markComplete: boolean) => {
@@ -2576,6 +2582,7 @@ function TodayPageContent() {
   }
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const [collapsedProtocolCards, setCollapsedProtocolCards] = useState<Record<string, boolean>>({})
 
   const isSupplementGroup = (gName: string, gTasks: DailyProtocolTask[]) => {
     const gLower = gName.toLowerCase()
@@ -2633,12 +2640,41 @@ function TodayPageContent() {
     return Math.max(userProtocolsInToday.length, activeGroupCount)
   }, [userProtocolsInToday.length, sortedProtocolGroups])
 
+  const isProtocolCardCollapsed = (groupName: string, groupTasks: DailyProtocolTask[]) => {
+    if (collapsedProtocolCards[groupName] !== undefined) {
+      return collapsedProtocolCards[groupName]
+    }
+    const completedCount = groupTasks.filter(t => t.status === 'completed').length
+    const isAllCompleted = completedCount === groupTasks.length && groupTasks.length > 0
+    if (!isAllCompleted) return false
+
+    // Default for completed protocols:
+    // If total user protocols > 3 (where view starts collapsed), collapse to minimal name row
+    if (totalUserProtocolCount > 3) {
+      return true
+    }
+    return false
+  }
+
+  const toggleProtocolCardCollapse = (groupName: string) => {
+    setCollapsedProtocolCards(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }))
+  }
+
   const isGroupCollapsed = (groupName: string, groupTasks: DailyProtocolTask[]) => {
     if (collapsedGroups[groupName] !== undefined) {
       return collapsedGroups[groupName]
     }
     // In Today view, if user has more than 3 protocols, collapse by default when viewing by protocol
     if (viewMode === 'protocol') {
+      const completedCount = groupTasks.filter(t => t.status === 'completed').length
+      const isAllCompleted = completedCount === groupTasks.length && groupTasks.length > 0
+      if (isAllCompleted) {
+        // "When an entire protocol is completed it should be mostly collapsed when in protocol view mode."
+        return true
+      }
       if (totalUserProtocolCount > 3) {
         return true
       }
@@ -2657,16 +2693,45 @@ function TodayPageContent() {
   }
 
   const areAnyProtocolsExpanded = useMemo(() => {
-    return sortedProtocolGroups.some(([name, gTasks]) => !isGroupCollapsed(name, gTasks))
-  }, [sortedProtocolGroups, isGroupCollapsed])
+    return sortedProtocolGroups.some(([name, gTasks]) => {
+      const completedCount = gTasks.filter(t => t.status === 'completed').length
+      const isAllCompleted = completedCount === gTasks.length && gTasks.length > 0
+      if (isAllCompleted) {
+        return !isProtocolCardCollapsed(name, gTasks)
+      }
+      return !isGroupCollapsed(name, gTasks)
+    })
+  }, [sortedProtocolGroups, isGroupCollapsed, isProtocolCardCollapsed])
 
   const handleToggleAllProtocolCollapse = () => {
     const shouldCollapse = areAnyProtocolsExpanded
-    const nextState: Record<string, boolean> = { ...collapsedGroups }
-    sortedProtocolGroups.forEach(([name]) => {
-      nextState[name] = shouldCollapse
+    const nextCollapsedGroups: Record<string, boolean> = { ...collapsedGroups }
+    const nextCollapsedCards: Record<string, boolean> = { ...collapsedProtocolCards }
+
+    sortedProtocolGroups.forEach(([name, gTasks]) => {
+      const completedCount = gTasks.filter(t => t.status === 'completed').length
+      const isAllCompleted = completedCount === gTasks.length && gTasks.length > 0
+
+      if (shouldCollapse) {
+        // "in collapse all mode just show the protocol name when completed."
+        if (isAllCompleted) {
+          nextCollapsedCards[name] = true
+        }
+        nextCollapsedGroups[name] = true
+      } else {
+        // "When in expand all show the protocol with collapsed modalities if the entire protocol was completed."
+        if (isAllCompleted) {
+          nextCollapsedCards[name] = false
+          nextCollapsedGroups[name] = true // Modalities stay collapsed as chips!
+        } else {
+          nextCollapsedCards[name] = false
+          nextCollapsedGroups[name] = false // Incomplete protocols expand fully
+        }
+      }
     })
-    setCollapsedGroups(nextState)
+
+    setCollapsedGroups(nextCollapsedGroups)
+    setCollapsedProtocolCards(nextCollapsedCards)
   }
 
   const areAnyTimeBlocksExpanded = useMemo(() => {
@@ -2689,7 +2754,10 @@ function TodayPageContent() {
         ? availableProtocols.find((p: any) => p.name === groupName || p.id === groupTasks[0]?.protocol_step?.protocol_id) || groupTasks[0]?.protocol_step?.protocol
         : null
       const isCollapsed = isGroupCollapsed(groupName, groupTasks)
+      const totalCount = groupTasks.length
       const completedCount = groupTasks.filter(t => t.status === 'completed').length
+      const isAllCompleted = completedCount === totalCount && totalCount > 0
+      const isCardCollapsed = isAllCompleted && isProtocolCardCollapsed(groupName, groupTasks)
 
       if (isProtocolGroup && groupName !== 'Standalone & Individual Modalities') {
         const protoId = matchedProtocol?.id || groupTasks[0]?.protocol_step?.protocol_id || ''
@@ -2708,6 +2776,82 @@ function TodayPageContent() {
             b.protocol_step?.modality?.name || b.loose_modality?.name || ''
           )
         })
+
+        const visualTheme = getProtocolVisualTheme(matchedProtocol || groupName, groupTasks)
+
+        // When in collapse all mode (or collapsed), completed protocol renders minimal single-line bar
+        if (isCardCollapsed) {
+          return (
+            <div 
+              key={groupName} 
+              id={`protocol-group-${protoSlug}`}
+              data-protocol-id={protoId}
+              data-protocol-name={groupName.toLowerCase()}
+              onClick={() => toggleProtocolCardCollapse(groupName)}
+              className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-purple-500/20 hover:border-purple-500/40 shadow-xl mb-4 relative overflow-hidden backdrop-blur-md transition-all duration-300 cursor-pointer group hover:bg-slate-900/70"
+            >
+              {/* Top Edge Signature Protocol Gradient Ribbon */}
+              <div 
+                className="h-[2.5px] w-full absolute top-0 left-0 transition-opacity duration-300 opacity-80 group-hover:opacity-100" 
+                style={{ background: visualTheme.accentBorderCSS }} 
+              />
+
+              <div className="flex items-center justify-between gap-3 relative z-10">
+                {/* Left: Avatar + Protocol Name (no truncate, wraps cleanly) */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <ProtocolAvatar 
+                    protocolName={groupName}
+                    protocolInfo={matchedProtocol as any}
+                    groupTasksOrSteps={groupTasks}
+                    themeOverride={visualTheme}
+                    size={36}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base sm:text-lg font-bold text-white tracking-wide break-words leading-tight">
+                      <Link 
+                        href={`/protocols/${encodeURIComponent(matchedProtocol?.id || groupName)}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="hover:underline hover:text-purple-300 transition-colors inline-flex items-center gap-1.5 flex-wrap max-w-full"
+                        title="Click to view full protocol focus page"
+                      >
+                        <span className="break-words leading-tight">{groupName}</span>
+                        <ExternalLink size={14} className="text-purple-400 opacity-80 shrink-0" />
+                      </Link>
+                    </h2>
+                    <span className="text-[11px] text-slate-400 font-medium sm:hidden block mt-0.5">
+                      {totalCount} {totalCount === 1 ? 'Modality' : 'Modalities'} • Tap to expand
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right: Completed Status Badge & Expand Chevron */}
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <div className="hidden sm:flex items-center gap-1.5 text-xs text-purple-300/80 font-medium">
+                    <span>{totalCount} {totalCount === 1 ? 'Modality' : 'Modalities'}</span>
+                  </div>
+
+                  <span className="text-xs px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 flex items-center gap-1.5 font-semibold shadow-sm">
+                    <Check size={13} className="text-emerald-400 stroke-[3]" />
+                    <span>Completed ({completedCount}/{totalCount})</span>
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleProtocolCardCollapse(groupName)
+                    }}
+                    className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+                    title="Expand protocol details and modalities"
+                    aria-label="Expand protocol details and modalities"
+                  >
+                    <ChevronDown className="w-4 h-4 text-slate-300 group-hover:text-white transition-colors" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }
 
         return (
           <div 
@@ -2730,6 +2874,7 @@ function TodayPageContent() {
               onTrackGroup={() => handleStartGroupTracking(groupName, groupTasks)}
               isTrackingActive={activeGroupTrackKey === groupName}
               isFutureTimeline={isFutureTimeline}
+              onCollapseProtocol={isAllCompleted ? () => toggleProtocolCardCollapse(groupName) : undefined}
             />
 
             {/* Group Tracking Slider Panel */}

@@ -197,6 +197,7 @@ interface ProtocolOverviewHeaderCardProps {
   onCompletedTimeChange?: (newTime: string) => void
   onEditTrackedOutcomes?: () => void
   trackingPanelSlot?: React.ReactNode
+  onCollapseProtocol?: () => void
 }
 
 export default function ProtocolOverviewHeaderCard({
@@ -212,7 +213,8 @@ export default function ProtocolOverviewHeaderCard({
   completedTime,
   onCompletedTimeChange,
   onEditTrackedOutcomes,
-  trackingPanelSlot
+  trackingPanelSlot,
+  onCollapseProtocol
 }: ProtocolOverviewHeaderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isSynthesisStepsExpanded, setIsSynthesisStepsExpanded] = useState(false)
@@ -287,14 +289,14 @@ export default function ProtocolOverviewHeaderCard({
               size={38}
             />
             <div className="min-w-0 flex-1">
-              <h2 className="text-base sm:text-lg font-extrabold text-white tracking-wide leading-snug">
+              <h2 className="text-base sm:text-lg font-extrabold text-white tracking-wide leading-snug break-words">
                 <Link 
                   href={`/protocols/${encodeURIComponent(protocolInfo?.id || protocolName)}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="hover:underline hover:text-purple-300 transition-colors flex items-center gap-1.5 inline-flex"
+                  className="hover:underline hover:text-purple-300 transition-colors inline-flex items-center gap-1.5 flex-wrap max-w-full"
                   title="Click to view full protocol focus page"
                 >
-                  <span className="truncate">{protocolName}</span>
+                  <span className="break-words leading-tight">{protocolName}</span>
                   <ExternalLink size={14} className="text-purple-400 opacity-80 shrink-0" />
                 </Link>
               </h2>
@@ -335,6 +337,20 @@ export default function ProtocolOverviewHeaderCard({
               >
                 <Check size={13} /> {groupStatusLabel}
               </button>
+
+              {/* Collapse to minimal protocol name button if fully completed and handler provided */}
+              {onCollapseProtocol && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onCollapseProtocol(); }}
+                  className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-purple-500/30 text-purple-300 hover:text-white transition-all cursor-pointer shadow-sm shrink-0 active:scale-95 flex items-center gap-1"
+                  title="Collapse to protocol name"
+                  aria-label="Collapse to protocol name"
+                >
+                  <ChevronUp className="w-4 h-4 text-purple-300" />
+                  <span className="hidden sm:inline text-xs font-bold">Collapse</span>
+                </button>
+              )}
 
               {/* Clean Dropdown Chevron Icon Button */}
               <button
