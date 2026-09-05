@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { DailySession, Modality, UserProfile } from '@/lib/types'
-import { Info, Check, X, Activity, ChevronDown, ChevronUp } from 'lucide-react'
+import { Info, Check, X, Activity, ChevronDown, ChevronUp, Dna } from 'lucide-react'
 import GeekMode from './GeekMode'
+import ModalityLongevityDrawer from './ModalityLongevityDrawer'
+import { getAllModalityLongevityImpacts } from '@/lib/data/longevityKnowledgeBase'
 import { generateCoachInsight } from '@/lib/ranking/insights'
 import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import OutcomePill from '@/components/outcomes/OutcomePill'
@@ -21,7 +23,10 @@ type ModalityCardProps = {
 export default function ModalityCard({ session, userProfile, onComplete, onSkip, onTrackOutcomes }: ModalityCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [showGeekMode, setShowGeekMode] = useState(false)
+  const [showLongevityDrawer, setShowLongevityDrawer] = useState(false)
   const modality = session.modality
+
+  const longevityReport = getAllModalityLongevityImpacts(modality)
 
   if (!modality) return null
 
@@ -104,6 +109,26 @@ export default function ModalityCard({ session, userProfile, onComplete, onSkip,
                   <span className="opacity-60 mr-1">Time:</span> {modality.timing_summary}
                 </span>
               )}
+              {/* Clinical Longevity Evidence Chip */}
+              {longevityReport.primaryVector && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setExpanded(true)
+                    setShowLongevityDrawer(true)
+                  }}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 font-mono font-bold transition-all cursor-pointer ${
+                    longevityReport.primaryVector.tier === 'foundational'
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
+                      : 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25'
+                  }`}
+                  title="Click to inspect clinical longevity evidence & biomarkers"
+                >
+                  <Dna size={10} className={longevityReport.primaryVector.tier === 'foundational' ? 'text-emerald-400' : 'text-cyan-400'} />
+                  <span>{longevityReport.primaryVector.tier === 'foundational' ? 'Tier-1' : 'Tier-2'}: {longevityReport.primaryVector.outcomeName.split('&')[0].trim()} ({longevityReport.primaryVector.score})</span>
+                </button>
+              )}
             </div>
           </div>
           
@@ -173,17 +198,27 @@ export default function ModalityCard({ session, userProfile, onComplete, onSkip,
           <div className="flex gap-2">
             <button 
               onClick={(e) => { e.stopPropagation(); onTrackOutcomes(modality, session.id); }}
-              className="flex-1 bg-white/5 hover:bg-white/10 text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-2"
+              className="flex-1 bg-white/5 hover:bg-white/10 text-xs sm:text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <Activity size={16} /> Track Outcomes
+              <Activity size={15} /> Track
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowLongevityDrawer(!showLongevityDrawer); }}
+              className={`flex-1 border text-xs sm:text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${showLongevityDrawer ? 'bg-purple-600 text-white border-purple-500 shadow-md' : 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white'}`}
+            >
+              <Dna size={15} /> Longevity
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); setShowGeekMode(!showGeekMode); }}
-              className={`flex-1 border text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${showGeekMode ? 'bg-levl-purple text-white border-levl-purple' : 'bg-levl-purple/10 border-levl-purple/30 text-levl-purple hover:bg-levl-purple hover:text-white'}`}
+              className={`flex-1 border text-xs sm:text-sm font-medium py-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${showGeekMode ? 'bg-levl-purple text-white border-levl-purple' : 'bg-levl-purple/10 border-levl-purple/30 text-levl-purple hover:bg-levl-purple hover:text-white'}`}
             >
-              <Info size={16} /> Geek Mode
+              <Info size={15} /> Geek Mode
             </button>
           </div>
+
+          {showLongevityDrawer && !showGeekMode && (
+            <ModalityLongevityDrawer modality={modality} defaultExpanded={true} />
+          )}
           
           {showGeekMode && <GeekMode modality={modality} />}
         </div>

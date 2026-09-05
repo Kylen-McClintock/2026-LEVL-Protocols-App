@@ -282,8 +282,9 @@ const OUTCOME_THEME_REGISTRY: Record<string, OutcomeColorTheme> = {
     hex: '#3b82f6'
   },
 
-  // Cardiovascular & Recovery
+  // Cardiovascular & Heart Longevity
   cardiovascular_health: MASTER_PALETTES[7],
+  heart_health: MASTER_PALETTES[7],
   endurance: MASTER_PALETTES[7],
   hrv: {
     ...MASTER_PALETTES[7],
@@ -302,6 +303,61 @@ const OUTCOME_THEME_REGISTRY: Record<string, OutcomeColorTheme> = {
     border: 'border-teal-500/40',
     glow: 'rgba(45, 212, 191, 0.35)',
     hex: '#2dd4bf'
+  },
+
+  // Brain Longevity & Neuroprotection
+  brain_longevity: {
+    ...MASTER_PALETTES[2],
+    gradient: 'from-violet-500 via-purple-600 to-indigo-600',
+    text: 'text-violet-400',
+    bg: 'bg-violet-950/40',
+    border: 'border-violet-500/40',
+    glow: 'rgba(139, 92, 246, 0.35)',
+    hex: '#8b5cf6'
+  },
+
+  // Cancer Defense & Autophagy
+  cancer_defense: {
+    ...MASTER_PALETTES[8],
+    gradient: 'from-emerald-400 via-teal-500 to-cyan-600',
+    text: 'text-emerald-400',
+    bg: 'bg-emerald-950/40',
+    border: 'border-emerald-500/40',
+    glow: 'rgba(16, 185, 129, 0.35)',
+    hex: '#10b981'
+  },
+
+  // Metabolic Health & Blood Sugar
+  metabolic_health: {
+    ...MASTER_PALETTES[11],
+    gradient: 'from-amber-400 via-orange-500 to-red-500',
+    text: 'text-amber-400',
+    bg: 'bg-amber-950/40',
+    border: 'border-amber-500/40',
+    glow: 'rgba(245, 158, 11, 0.35)',
+    hex: '#f59e0b'
+  },
+
+  // Chronic Inflammation Defense
+  chronic_inflammation: {
+    ...MASTER_PALETTES[8],
+    gradient: 'from-cyan-400 via-sky-500 to-blue-600',
+    text: 'text-cyan-300',
+    bg: 'bg-cyan-950/40',
+    border: 'border-cyan-500/40',
+    glow: 'rgba(6, 182, 212, 0.35)',
+    hex: '#06b6d4'
+  },
+
+  // Bone Density & Skeletal Strength
+  bone_density: {
+    ...MASTER_PALETTES[11],
+    gradient: 'from-slate-200 via-zinc-400 to-stone-400',
+    text: 'text-slate-200',
+    bg: 'bg-slate-900/60',
+    border: 'border-slate-500/40',
+    glow: 'rgba(226, 232, 240, 0.35)',
+    hex: '#e2e8f0'
   },
 
   // Skin, Connective Tissue & Joints
@@ -329,6 +385,15 @@ const OUTCOME_THEME_REGISTRY: Record<string, OutcomeColorTheme> = {
 
   // Hormonal, Vitality & Growth
   libido: MASTER_PALETTES[9],
+  testosterone: {
+    ...MASTER_PALETTES[3],
+    gradient: 'from-blue-400 via-indigo-500 to-purple-600',
+    text: 'text-blue-400',
+    bg: 'bg-blue-950/40',
+    border: 'border-blue-500/40',
+    glow: 'rgba(59, 130, 246, 0.35)',
+    hex: '#3b82f6'
+  },
   hgh_elevation: {
     ...MASTER_PALETTES[9],
     gradient: 'from-purple-500 via-indigo-600 to-pink-500',

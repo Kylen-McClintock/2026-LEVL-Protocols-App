@@ -11,11 +11,15 @@ import {
   getDailyWellbeingHistory,
   getModalities,
   addToBench,
-  getUserModalityHabits
+  getUserModalityHabits,
+  getBenchItems,
+  getOutcomeDimensions,
+  updateTaskExecutionDetails,
+  updateUserProfile
 } from '@/lib/data'
 import { calculateNextBestAction } from '@/lib/ranking/nextBestAction'
 import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
-import { UserProfile, Modality, DailyProtocolTask, UserModalityHabit, DailyWellbeingCheckin } from '@/lib/types'
+import { UserProfile, Modality, DailyProtocolTask, UserModalityHabit, DailyWellbeingCheckin, UserBenchItem, OutcomeDimension } from '@/lib/types'
 import {
   Target,
   Activity,
@@ -70,9 +74,13 @@ import {
   SynergyMultiplierEvaluation
 } from '@/lib/tracking/synergyMultiplierEngine'
 import { getOutcomeColor } from '@/lib/outcomes/outcomeColors'
+import { OutcomeLensView } from '@/components/outcomes/OutcomeLensView'
+import { OutcomeOptimizationModal } from '@/components/modals/OutcomeOptimizationModal'
+import { OutcomeOptimizationState, AntagonisticClash } from '@/lib/outcomes/outcomeOptimizationEngine'
+import { ALL_SCHEMA_CHECKIN_OUTCOMES } from '@/components/ui/ViewSelectorHeader'
 
 type FilterTab = 'all' | 'priority' | 'leaks' | 'momentum'
-type ViewSection = 'adherence_roi' | 'hallmarks_radar'
+type ViewSection = 'adherence_roi' | 'pareto_80_20' | 'hallmarks_radar'
 
 interface ExtendedOutcomeSummary extends OutcomeAdherenceSummary {
   hasSynergyBonus?: boolean
@@ -103,6 +111,55 @@ export default function TrackingPage() {
   const [selectedHallmarkId, setSelectedHallmarkId] = useState<string | null>(null)
   const [allModalitiesList, setAllModalitiesList] = useState<Modality[]>([])
   const [todaysTasksList, setTodaysTasksList] = useState<DailyProtocolTask[]>([])
+
+  // 80/20 Pareto Lens state & modals
+  const [benchItemsList, setBenchItemsList] = useState<UserBenchItem[]>([])
+  const [allOutcomesList, setAllOutcomesList] = useState<OutcomeDimension[]>(
+    ALL_SCHEMA_CHECKIN_OUTCOMES.map(o => ({
+      ...o,
+      is_default_wellbeing: true,
+      is_contextual: false
+    }))
+  )
+  const [isOutcomeModalOpen, setIsOutcomeModalOpen] = useState(false)
+  const [inspectingOutcomeState, setInspectingOutcomeState] = useState<OutcomeOptimizationState | null>(null)
+
+  const handleAutoFixClash = async (clash: AntagonisticClash) => {
+    const taskToShift = todaysTasksList.find(t => {
+      const mId = t.modality_id || t.protocol_step?.modality_id
+      return mId === clash.modalityA.id || mId === clash.modalityB.id
+    })
+    if (taskToShift) {
+      const newSlot = clash.outcomeId.toLowerCase().includes('sleep') ? 'morning' : 'evening'
+      await updateTaskExecutionDetails(taskToShift.id, { timing_slot: newSlot })
+      const localUserId = authUserId || getLocalUserId()
+      const today = new Date().toISOString().split('T')[0]
+      const refreshed = await getDailyProtocolTasks(localUserId, today)
+      setTodaysTasksList(refreshed)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+      }
+    }
+  }
+
+  const handleUpdateOutcomeTarget = async (outcomeId: string, newTarget: number, newEffort: number) => {
+    if (!profile) return
+    try {
+      const currentScores = (profile as any)?.outcome_preference_scores || {}
+      const updatedScores = {
+        ...currentScores,
+        [outcomeId]: {
+          targetDialedIn: newTarget,
+          maxEffortAllowance: newEffort,
+          updatedAt: new Date().toISOString()
+        }
+      }
+      setProfile(prev => prev ? ({ ...prev, outcome_preference_scores: updatedScores } as any) : null)
+      await updateUserProfile(profile.local_user_id, { outcome_preference_scores: updatedScores } as any)
+    } catch (err) {
+      console.error('Failed to save outcome target preference:', err)
+    }
+  }
 
   // 12 Hallmarks Interactive Controls: Evidence, Simulator, Effort Tier, Biomarkers
   const [evidenceFilter, setEvidenceFilter] = useState<'all' | 'grade_a'>('all')
@@ -153,13 +210,15 @@ export default function TrackingPage() {
       thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 30)
       const thirtyDaysAgo = thirtyDaysAgoDate.toISOString().split('T')[0]
 
-      const [fetchedProfile, userHabits, todaysTasks, history, allModalities, wellbeingHistory] = await Promise.all([
+      const [fetchedProfile, userHabits, todaysTasks, history, allModalities, wellbeingHistory, benchItems, dbOutcomes] = await Promise.all([
         getOrCreateUserProfile(localUserId),
         getUserModalityHabits(localUserId),
         getDailyProtocolTasks(localUserId, today),
         getProtocolTasksHistory(localUserId, thirtyDaysAgo, today),
         getModalities(),
-        getDailyWellbeingHistory(localUserId, thirtyDaysAgo, today)
+        getDailyWellbeingHistory(localUserId, thirtyDaysAgo, today),
+        getBenchItems(localUserId),
+        getOutcomeDimensions()
       ])
 
       setProfile(fetchedProfile)
@@ -167,6 +226,26 @@ export default function TrackingPage() {
       setWellbeingLogs(wellbeingHistory)
       setAllModalitiesList(allModalities)
       setTodaysTasksList(todaysTasks)
+      setBenchItemsList(benchItems || [])
+
+      // Combine ALL_SCHEMA_CHECKIN_OUTCOMES with dbOutcomes
+      const allOutcomesDimMap = new Map<string, OutcomeDimension>()
+      ALL_SCHEMA_CHECKIN_OUTCOMES.forEach(o => {
+        allOutcomesDimMap.set(o.id.toLowerCase(), {
+          ...o,
+          is_default_wellbeing: true,
+          is_contextual: false
+        })
+      })
+      if (Array.isArray(dbOutcomes)) {
+        dbOutcomes.forEach(o => {
+          const key = o.id.toLowerCase()
+          if (!allOutcomesDimMap.has(key)) {
+            allOutcomesDimMap.set(key, o)
+          }
+        })
+      }
+      setAllOutcomesList(Array.from(allOutcomesDimMap.values()))
 
       const activeModalitiesMap = new Map<string, Modality>()
       todaysTasks.forEach(task => {
@@ -526,31 +605,43 @@ export default function TrackingPage() {
         </Link>
       </div>
 
-      {/* Analytics Hub Sub-Navigation: Outcomes ROI vs 12 Hallmarks Bio-Coverage */}
-      <div className="flex items-center gap-2 p-1.5 bg-slate-950/90 rounded-2xl border border-white/10 max-w-lg shadow-xl">
+      {/* Analytics Hub Sub-Navigation: Outcomes ROI vs 80/20 Pareto Lens vs 12 Hallmarks */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-950/90 rounded-2xl border border-white/10 max-w-xl shadow-xl">
         <button
           type="button"
           onClick={() => setActiveViewSection('adherence_roi')}
-          className={`flex-1 py-2.5 px-4 text-center text-xs sm:text-sm font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`flex-1 py-2 sm:py-2.5 px-3 sm:px-4 text-center text-xs sm:text-sm font-extrabold rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
             activeViewSection === 'adherence_roi'
               ? 'bg-levl-accent text-black shadow-md'
               : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
         >
           <Target size={15} />
-          <span>Outcome ROI &amp; Habits</span>
+          <span>Outcome ROI</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveViewSection('pareto_80_20')}
+          className={`flex-1 py-2 sm:py-2.5 px-3 sm:px-4 text-center text-xs sm:text-sm font-extrabold rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
+            activeViewSection === 'pareto_80_20'
+              ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.35)]'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Sparkles size={15} className="text-emerald-300" />
+          <span>80/20 Pareto Lens</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveViewSection('hallmarks_radar')}
-          className={`flex-1 py-2.5 px-4 text-center text-xs sm:text-sm font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer ${
+          className={`flex-1 py-2 sm:py-2.5 px-3 sm:px-4 text-center text-xs sm:text-sm font-extrabold rounded-xl flex items-center justify-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
             activeViewSection === 'hallmarks_radar'
               ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 text-white shadow-[0_0_15px_rgba(168,85,247,0.35)]'
               : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
         >
           <Dna size={15} className="text-purple-400" />
-          <span>12 Hallmarks Radar</span>
+          <span>12 Hallmarks</span>
         </button>
       </div>
 
@@ -600,6 +691,49 @@ export default function TrackingPage() {
             onToggleSimulate={handleToggleSimulate}
             selectedEffortFilter={selectedEffortFilter}
             onEffortFilterChange={(filter) => setSelectedEffortFilter(filter)}
+          />
+        </div>
+      ) : activeViewSection === 'pareto_80_20' ? (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Header for 80/20 Pareto Lens */}
+          <header className="space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
+                  <Sparkles size={28} className="text-emerald-400" />
+                  <span>80/20 Pareto Lens &amp; Outcome Dials</span>
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-3xl leading-relaxed">
+                  Maximize biological return per unit of daily effort. Tune your personal dialed-in target scores, establish effort budgets, eliminate synergistic clashes, and unlock marginal stack upgrades.
+                </p>
+              </div>
+            </div>
+          </header>
+
+          <OutcomeLensView
+            tasks={todaysTasksList}
+            activeModalities={allModalitiesList}
+            outcomeDimensions={allOutcomesList}
+            userProfile={profile}
+            benchItems={benchItemsList}
+            allOutcomes={allOutcomesList}
+            wellbeingCheckin={wellbeingLogs.length > 0 ? wellbeingLogs[0] : null}
+            completionMode="fast"
+            onStatusChange={async (id, status) => {
+              await updateTaskExecutionDetails(id, { status })
+              const localUserId = authUserId || getLocalUserId()
+              const today = new Date().toISOString().split('T')[0]
+              const refreshed = await getDailyProtocolTasks(localUserId, today)
+              setTodaysTasksList(refreshed)
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+              }
+            }}
+            onInspectOutcome={(state) => {
+              setInspectingOutcomeState(state)
+              setIsOutcomeModalOpen(true)
+            }}
+            onAutoFixClash={handleAutoFixClash}
           />
         </div>
       ) : (
@@ -1249,6 +1383,29 @@ export default function TrackingPage() {
         totalSynergyBonusPoints={totalSynergyBonusPoints}
         onSelectFilter={(filter) => setSelectedFilter(filter)}
       />
+
+      {/* 80/20 Outcome Optimization Modal */}
+      {isOutcomeModalOpen && inspectingOutcomeState && (
+        <OutcomeOptimizationModal
+          isOpen={isOutcomeModalOpen}
+          onClose={() => {
+            setIsOutcomeModalOpen(false)
+            setInspectingOutcomeState(null)
+          }}
+          outcomeState={inspectingOutcomeState}
+          userProfile={profile}
+          todayTasks={todaysTasksList}
+          onUpdateTarget={handleUpdateOutcomeTarget}
+          onAutoFixClash={async (clashId) => {
+            const clash = inspectingOutcomeState.clashes.find(c => c.id === clashId)
+            if (clash) {
+              await handleAutoFixClash(clash)
+              setIsOutcomeModalOpen(false)
+              setInspectingOutcomeState(null)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

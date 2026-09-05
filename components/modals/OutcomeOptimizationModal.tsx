@@ -23,6 +23,7 @@ import {
   evaluateOutcomeStatus
 } from '@/lib/outcomes/outcomeOptimizationEngine'
 import { UserProfile, DailyProtocolTask } from '@/lib/types'
+import { LongevityAnalysisModal } from '@/components/modals/LongevityAnalysisModal'
 
 interface OutcomeOptimizationModalProps {
   isOpen: boolean
@@ -49,6 +50,7 @@ export const OutcomeOptimizationModal: React.FC<OutcomeOptimizationModalProps> =
   const [localTargetDialedIn, setLocalTargetDialedIn] = useState<number>(outcomeState.targetConfig.targetDialedIn)
   const [localMaxEffort, setLocalMaxEffort] = useState<number>(outcomeState.targetConfig.maxEffortAllowance)
   const [isSavingTarget, setIsSavingTarget] = useState(false)
+  const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false)
 
   // Live dynamic evaluation as user adjusts sliders
   const liveTargetConfig: OutcomeTargetConfig = {
@@ -102,13 +104,23 @@ export const OutcomeOptimizationModal: React.FC<OutcomeOptimizationModalProps> =
             </h2>
           </div>
 
-          <button 
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button 
+              type="button"
+              onClick={() => setIsAnalysisModalOpen(true)}
+              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+              title="View Clinical Analysis & Scoring Calculus"
+            >
+              <Info size={18} />
+            </button>
+            <button 
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Content */}
@@ -405,6 +417,18 @@ export const OutcomeOptimizationModal: React.FC<OutcomeOptimizationModalProps> =
           </div>
         </div>
       </div>
+
+      {isAnalysisModalOpen && (
+        <LongevityAnalysisModal
+          isOpen={isAnalysisModalOpen}
+          onClose={() => setIsAnalysisModalOpen(false)}
+          outcomeId={outcomeState.outcomeId}
+          outcomeName={outcomeState.outcomeName}
+          currentDialedInScore={outcomeState.dialedInScore}
+          activeModalities={outcomeState.activeModalities}
+          todayTasks={todayTasks}
+        />
+      )}
     </div>,
     document.body
   )

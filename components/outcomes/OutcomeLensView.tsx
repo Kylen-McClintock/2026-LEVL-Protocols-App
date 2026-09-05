@@ -30,6 +30,7 @@ import {
   AntagonisticClash 
 } from '@/lib/outcomes/outcomeOptimizationEngine'
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
+import { LongevityAnalysisModal } from '@/components/modals/LongevityAnalysisModal'
 
 interface OutcomeLensViewProps {
   tasks: DailyProtocolTask[]
@@ -71,6 +72,7 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
   const [selectedOutcomeFilter, setSelectedOutcomeFilter] = useState<string>('all')
   const [expandedOutcomes, setExpandedOutcomes] = useState<Record<string, boolean>>({})
   const [showEmptyDimensions, setShowEmptyDimensions] = useState(false)
+  const [selectedAnalysisOutcome, setSelectedAnalysisOutcome] = useState<OutcomeOptimizationState | null>(null)
 
   // Calculate optimization summaries for all official outcome dimensions
   const outcomeSummaries: OutcomeOptimizationState[] = useMemo(() => {
@@ -352,6 +354,15 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
                     <div className="flex items-center gap-2 border-l border-white/10 pl-3 sm:pl-4">
                       <button
                         type="button"
+                        onClick={() => setSelectedAnalysisOutcome(summary)}
+                        className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-cyan-400 hover:text-cyan-300 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center cursor-pointer active:scale-95"
+                        title="View Clinical Analysis & Scoring Calculus"
+                      >
+                        <Info size={14} />
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => onInspectOutcome(summary)}
                         className="px-3 py-1.5 bg-purple-950/70 hover:bg-purple-900/80 border border-purple-500/40 text-purple-200 hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
                         title="Tune Target Ambition & Effort Allowance"
@@ -478,6 +489,19 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
           })
         )}
       </div>
+
+      {/* Interactive Clinical Analysis & Methodology Modal */}
+      {selectedAnalysisOutcome && (
+        <LongevityAnalysisModal
+          isOpen={!!selectedAnalysisOutcome}
+          onClose={() => setSelectedAnalysisOutcome(null)}
+          outcomeId={selectedAnalysisOutcome.outcomeId}
+          outcomeName={selectedAnalysisOutcome.outcomeName}
+          currentDialedInScore={selectedAnalysisOutcome.dialedInScore}
+          activeModalities={activeModalities}
+          todayTasks={tasks}
+        />
+      )}
     </div>
   )
 }

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { Protocol, Modality, OutcomeDimension } from '@/lib/types'
 import { DedupedTask, TimePickerWithAmPmToggle } from './ProtocolTaskCard'
+import ProtocolLongevityDrawer from '@/components/cards/ProtocolLongevityDrawer'
 import ProtocolVarianceModal from '../modals/ProtocolVarianceModal'
 import ProtocolActionModal from '../modals/ProtocolActionModal'
 import { ModalityExecutionGuide } from '../modals/ModalityExecutionGuide'
@@ -601,6 +602,22 @@ export default function ProtocolOverviewHeaderCard({
                       </div>
                     </div>
                   )}
+
+                  {/* 🧬 Clinical Longevity Evidence Drawer (Collapsed by default in Geek Mode) */}
+                  <div className="pt-2 border-t border-white/10">
+                    <ProtocolLongevityDrawer
+                      protocol={protocolInfo || { 
+                        id: protocolName, 
+                        name: protocolName, 
+                        steps: groupTasks.map(t => ({ 
+                          modality: t.loose_modality || t.protocol_step?.modality, 
+                          modality_id: t.modality_id 
+                        })) 
+                      }}
+                      allModalities={groupTasks.map(t => t.loose_modality || t.protocol_step?.modality).filter(Boolean)}
+                      defaultExpanded={false}
+                    />
+                  </div>
                 </div>
               </div>
             )}

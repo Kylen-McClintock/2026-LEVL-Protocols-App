@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookmarkPlus, Plus, Check, Link as LinkIcon, Info, ShieldCheck, User, Zap, ExternalLink, Scale, CheckCircle2, Bookmark } from 'lucide-react'
+import { BookmarkPlus, Plus, Check, Link as LinkIcon, Info, ShieldCheck, User, Zap, ExternalLink, Scale, CheckCircle2, Bookmark, Dna } from 'lucide-react'
 import { Protocol, ProtocolStep } from '@/lib/types'
 import ProtocolAvatar, { ProtocolCategoryPills } from '@/components/ui/ProtocolAvatar'
 import { getProtocolVisualTheme } from '@/lib/utils/protocolThemes'
+import ProtocolLongevityDrawer from './ProtocolLongevityDrawer'
+import { LONGEVITY_VECTORS_METADATA } from '@/lib/data/longevityKnowledgeBase'
 
 type ProtocolCardProps = {
   protocol: Protocol | any // Using any to tolerate partial/mock data for now
@@ -205,6 +207,23 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
                     {protocol.status || 'draft'}
                   </span>
                 </div>
+
+                {/* Target Longevity Vectors Pills */}
+                {Array.isArray(protocol.target_vectors) && protocol.target_vectors.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap w-full mt-1.5">
+                    <span className="text-[10px] font-mono text-purple-300 flex items-center gap-1">
+                      <Dna size={11} className="text-purple-400" /> Target Vectors:
+                    </span>
+                    {protocol.target_vectors.map((vec: string) => {
+                      const meta = LONGEVITY_VECTORS_METADATA[vec]
+                      return (
+                        <span key={vec} className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-purple-950/80 border border-purple-500/40 text-purple-200">
+                          {meta?.shortLabel || vec.replace(/_/g, ' ')}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -238,6 +257,9 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
               </div>
             )
           })()}
+
+          {/* 🧬 Protocol Clinical Longevity & Biomarkers Expandable Breakdown */}
+          <ProtocolLongevityDrawer protocol={protocol} defaultExpanded={false} />
 
           <div className="bg-black/30 rounded-lg p-4 border border-white/5 space-y-4">
             <h4 className="text-xs font-semibold text-levl-text-secondary uppercase tracking-wider flex items-center gap-1.5 mb-2">

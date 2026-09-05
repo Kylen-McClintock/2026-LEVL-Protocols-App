@@ -231,3 +231,73 @@ npm run build
 npm run dev
 ```
 Open `http://localhost:3000` to verify live circadian execution, explore catalog, and adaptive recommendations.
+
+---
+
+## 6. Master Longevity Outcome Assessment Engine & Clinical Evidence Architecture
+
+### A. The 8 Canonical Biological Longevity Vectors
+Every modality (209 total) and protocol (16 total) is evaluated across an exhaustive, 8-vector biogerontological framework:
+
+1. **Heart & Cardiovascular Health (`heart_health`)**: Endothelial nitric oxide (eNOS), microvascular perfusion, ApoB clearance, and arterial compliance.
+   - *Biomarkers*: ApoB (<60 mg/dL), VO2 Max (>48 mL/kg/min), CAC (0 Agatston), Resting HR (48–56 bpm), HRV (>55 ms).
+2. **Brain Longevity & Neuroprotection (`brain_longevity`)**: BDNF signaling, slow-wave glymphatic amyloid/tau clearance, and synaptic plasticity.
+   - *Biomarkers*: Serum BDNF (>25 ng/mL), Executive Processing Speed (>85th %ile), Homocysteine (<8.0 umol/L), Deep Sleep % (18–25%).
+3. **Metabolic Health & Blood Sugar (`metabolic_health`)**: Insulin-independent GLUT4 disposal, hepatic AMPK activation, and visceral fat clearance.
+   - *Biomarkers*: Fasting Insulin (<4.5 uIU/mL), HbA1c (<5.2%), HOMA-IR (<1.0), Postprandial Glucose Peak (<120 mg/dL).
+4. **Cancer Defense & Autophagy (`cancer_defense`)**: Macroautophagic flux (LC3-II/p62), p16INK4a senolysis, and NK cell surveillance.
+   - *Biomarkers*: p16INK4a Expression, NK Cell Activity (>50 LU30), Plasma Free IGF-1 (115–160 ng/mL), hs-CRP (<0.5 mg/L).
+5. **Testosterone & Endocrine Vitality (`testosterone`)**: Leydig cell steroidogenesis, androgen receptor sensitivity, and cortisol blunting.
+   - *Biomarkers*: Total Testosterone (650–950 ng/dL), Free Testosterone (18–28 pg/mL), SHBG (25–40 nmol/L), Cortisol:T (<0.05).
+6. **Systemic Inflammation Reduction (`chronic_inflammation`)**: NLRP3 inflammasome suppression, NF-kB inhibition, and Resolvin/SPM synthesis.
+   - *Biomarkers*: High-Sensitivity CRP (<0.5 mg/L), IL-6 (<1.5 pg/mL), TNF-alpha (<2.0 pg/mL), GlycA (<350 umol/L).
+7. **Bone Density & Skeletal Strength (`bone_density`)**: Axial osteoblast mechanotransduction, osteocalcin carboxylation (K2 MK-7), and tendon stiffness.
+   - *Biomarkers*: DEXA Femoral Neck T-Score (>0.0), Serum P1NP (35–75 ug/L), Serum CTx (<350 pg/mL), 25-OH Vitamin D (50–70 ng/mL).
+8. **Cellular Longevity & DNA Repair (`cellular_longevity`)**: Sirtuin deacetylation, intracellular NAD+ pools, telomerase (TERT), and DNA excision repair.
+   - *Biomarkers*: Whole Blood NAD+ (>40 uM), DunedinPACE (<0.85), Leukocyte Telomere Length (>60th %ile), Glutathione (>800 uM).
+
+---
+
+### B. The 3-Tier Objective Evidence Scoring Rubric
+
+| Tier | Score Range | Clinical Threshold | Role in 80/20 Engine |
+| :--- | :--- | :--- | :--- |
+| **Tier 1: Foundational Anchor** | **65–100** | Human RCT / Meta-analysis proving $\ge 15\%$ direct clinical shift in primary hard biomarker. | Core 80% dialed-in requirement. |
+| **Tier 2: Targeted Synergist** | **30–64** | Clinical trial proving rate-limiting co-factor replenishment or bio-amplification of a Tier 1 anchor. | Multiplies foundation; pushes score toward 90%+. |
+| **Tier 3: Marginal Modulator** | **5–29** | In vivo rodent data or subtle human biomarker modulation ($\le 5\%$). | Diminishing returns. |
+
+---
+
+### C. Modality Archetype Classification & The "Neutral Vector" Standard
+No biological longevity vector is ever omitted. The engine automatically balances **Active Vectors + Neutral Vectors = exactly 8**:
+
+1. **Active Longevity Interventions (186 Modalities)**:
+   - Evaluates targeted vectors at the top with clinical score, evidence grade, effect size, biomarkers, mechanism, and PubMed RCT citations with PMID links.
+   - Remaining un-evidenced vectors are collapsed under **Non-Targeted / Neutral Vectors**, explaining that the modality acts on other pathways.
+2. **Diagnostic Surveillance Tools (18 Modalities)**:
+   - E.g. *Full-Body MRI Screening*, *VO₂ Max CPET*, *24h Ambulatory Blood Pressure Monitor*, *DunedinPACE Epigenetic Clock*, *GRAIL Multi-Cancer Screen*, *Heavy Metals Panel*.
+   - Classified as `isDiagnostic: true` with a prominent **`🔍 Diagnostic Surveillance`** badge. Clarifies that diagnostics quantify pathology rather than functioning as active biochemical interventions, anchoring the biomarkers they measure.
+3. **Supportive Lifestyle Habits (5 Modalities)**:
+   - E.g. *Flossing & Tongue Scraping*, *Time-Blocking*, *Baseline Hydration*, *Gratitude Journaling*.
+   - Classified with a **`⚪ Supportive Baseline`** badge, affirming foundational wellness value without unproven clinical lifespan extension claims.
+
+---
+
+### D. 80/20 Pareto Dialed-In Engine & Interactive Modals
+- **Dialed-In Score Formulation**:
+  $$\text{DialedInScore}(O) = 100 \times \left(1 - \exp\left(-\frac{\sum \text{Contribution}_i}{45}\right)\right)$$
+- **Interactive Modals**:
+  - `LongevityAnalysisModal.tsx`: Displays scoring calculus, biomarker targets, contributing active modalities, and verified PubMed citations.
+  - `ModalityLongevityDrawer.tsx`: Collapsed by default in Geek Mode across all modality cards; expands to display active and neutral breakdowns.
+  - `ProtocolLongevityDrawer.tsx`: Rendered on protocol detail pages; displays active targeted vectors and unaddressed neutral vectors for 100% protocol transparency.
+
+---
+
+### E. Developer Modality Creation Standards
+Whenever the developer adds or seeds a new modality to the system:
+1. Must be evaluated across all 8 canonical longevity vectors.
+2. Targeted vectors must include scores, tiers, biomarkers, mechanisms, and PubMed RCT PMIDs.
+3. Non-targeted vectors must be evaluated as Neutral with archetype context.
+4. Diagnostics must be categorized under `Diagnostics & Tracking` with monitored biomarkers specified.
+5. `functional_impacts` and `hallmarks_of_aging_impact` must be populated non-destructively in remote Supabase.
+

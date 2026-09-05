@@ -13,6 +13,7 @@ import { modalityReferences } from '@/lib/data/references'
 import { ModalityExecutionGuide } from '@/components/modals/ModalityExecutionGuide'
 import { getModalityVideoInfo } from '@/lib/data/modalityVideos'
 import MedicalDisclaimerBanner from '@/components/ui/MedicalDisclaimerBanner'
+import ModalityLongevityDrawer from '@/components/cards/ModalityLongevityDrawer'
 
 export const ELIMINATION_REASON_OPTIONS = [
   { id: 'time', label: 'Too Time-Consuming / Schedule Conflict', icon: '⏰' },
@@ -501,6 +502,9 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
                 </span>
               </div>
             </div>
+
+            {/* 🧬 Clinical Longevity Evidence Drawer (Collapsed by default in Geek Mode) */}
+            <ModalityLongevityDrawer modality={mod} defaultExpanded={false} />
 
             {/* Detailed Mechanism & PubMed Citations Grid on Desktop */}
             <div className={`grid grid-cols-1 ${mod.mechanism_of_action && refs.length > 0 ? 'lg:grid-cols-2' : ''} gap-4`}>

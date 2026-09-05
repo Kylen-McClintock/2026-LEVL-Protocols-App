@@ -1,4 +1,5 @@
 import { Modality, DailyProtocolTask, OutcomeDimension, UserProfile } from '../types'
+import { getModalityLongevityImpact, MASTER_MODALITY_LONGEVITY_PROFILES } from '../data/longevityKnowledgeBase'
 
 export interface AntagonisticClash {
   id: string
@@ -41,9 +42,130 @@ export interface OutcomeOptimizationState {
   }
 }
 
-// Foundational Tier-1 anchor modalities for key functional outcome dimensions
+/**
+ * Canonical normalizer for functional and biological longevity outcome keys
+ */
+export function normalizeOutcomeKey(raw: string): string {
+  const k = (raw || '').toLowerCase().replace(/[\s-]/g, '_').trim()
+  if (k.includes('libido') || k.includes('sexual')) return 'libido'
+  if (k.includes('heart') || k.includes('cardio') || k.includes('arter') || k.includes('bp') || k.includes('apob')) return 'heart_health'
+  if (k.includes('brain_longev') || k.includes('neuroprotect') || k.includes('dementia') || k.includes('alzheimer')) return 'brain_longevity'
+  if (k.includes('cancer') || k.includes('autophagy') || k.includes('senolyt') || k.includes('cellular_clean')) return 'cancer_defense'
+  if (k.includes('metabol') || k.includes('blood_sugar') || k.includes('glucose') || k.includes('insulin')) return 'metabolic_health'
+  if (k.includes('testoster') || k.includes('hormon') || k.includes('androgen')) return 'testosterone'
+  if (k.includes('inflamm') || k.includes('crp') || k.includes('cytokine')) return 'chronic_inflammation'
+  if (k.includes('bone') || k.includes('skelet') || k.includes('osteopor') || k.includes('fracture')) return 'bone_density'
+  if (k.includes('skin') || k.includes('dermat') || k.includes('collagen')) return 'skin_clarity'
+  if (k.includes('focus') || k.includes('cognit') || k.includes('attention')) return 'focus'
+  if (k.includes('mental_clarity') || k.includes('brain_fog')) return 'mental_clarity'
+  if (k.includes('deep_sleep') || k.includes('slow_wave')) return 'deep_sleep'
+  if (k.includes('sleep_latenc') || k.includes('falling_asleep')) return 'sleep_latency'
+  if (k.includes('sleep')) return 'sleep_quality'
+  if (k.includes('stress') || k.includes('anxiety') || k.includes('calm')) return 'stress'
+  if (k.includes('mood') || k.includes('emotion')) return 'mood'
+  if (k.includes('energy') || k.includes('vital') || k.includes('mitochond')) return 'energy'
+  if (k.includes('strength') || k.includes('hypertroph') || k.includes('power')) return 'strength'
+  if (k.includes('sore') || k.includes('doms')) return 'soreness'
+  if (k.includes('enduran') || k.includes('vo2')) return 'endurance'
+  if (k.includes('digest') || k.includes('gut') || k.includes('bloat')) return 'digestive_comfort'
+  if (k.includes('joint') || k.includes('cartilag')) return 'joint_comfort'
+  if (k.includes('cellular_longev') || k.includes('dna')) return 'cellular_longevity'
+  return k
+}
+
+// Foundational Tier-1 anchor modalities for key functional & biological longevity dimensions
 // These represent the steep 80% portion of the Pareto curve
-const FOUNDATIONAL_PILLARS: Record<string, string[]> = {
+export const FOUNDATIONAL_PILLARS: Record<string, string[]> = {
+  heart_health: [
+    'zone_2_cardio',
+    'sauna',
+    'omega_3_fish_oil',
+    'high_dose_omega_3',
+    'coq10_ubiquinol',
+    'vo2_max_4x4_intervals',
+    'citrus_bergamot',
+    'garlic_extract'
+  ],
+  brain_longevity: [
+    'sleep_routine',
+    'dark_cool_bedroom',
+    'zone_2_cardio',
+    'sauna',
+    'lions_mane',
+    'omega_3_fish_oil',
+    'creatine_monohydrate',
+    'cyclic_sighing'
+  ],
+  cancer_defense: [
+    'intermittent_fasting_16_8',
+    'prolonged_fasting',
+    'vo2_max_4x4_intervals',
+    'sulforaphane',
+    'green_tea_egcg',
+    'fisetin',
+    'quercetin',
+    'metformin'
+  ],
+  metabolic_health: [
+    'zone_2_cardio',
+    'ppl_push_day',
+    'ppl_pull_day',
+    'ppl_legs_day',
+    'resistance_training',
+    'intermittent_fasting_16_8',
+    'berberine',
+    'apple_cider_vinegar',
+    'inulin'
+  ],
+  testosterone: [
+    'ppl_push_day',
+    'ppl_pull_day',
+    'ppl_legs_day',
+    'resistance_training',
+    'morning_sunlight',
+    'sleep_routine',
+    'zinc_magnesium',
+    'tongkat_ali',
+    'shilajit',
+    'boron',
+    'fadogia_agrestis'
+  ],
+  chronic_inflammation: [
+    'curcumin',
+    'cold_plunge',
+    'cold_shower',
+    'intermittent_fasting_16_8',
+    'omega_3_fish_oil',
+    'tart_cherry'
+  ],
+  bone_density: [
+    'ppl_push_day',
+    'ppl_pull_day',
+    'ppl_legs_day',
+    'resistance_training',
+    'vitamin_d3_k2',
+    'collagen',
+    'calcium'
+  ],
+  libido: [
+    'tongkat_ali',
+    'shilajit',
+    'pt_141',
+    'kisspeptin',
+    'citrulline',
+    'zinc_magnesium',
+    'morning_sunlight'
+  ],
+  cellular_longevity: [
+    'intermittent_fasting_16_8',
+    'nmn',
+    'nad_booster',
+    'fisetin',
+    'quercetin',
+    'resveratrol',
+    'spermidine',
+    'sauna'
+  ],
   skin_clarity: [
     'mineral_sunscreen_spf50',
     'sunscreen',
@@ -258,6 +380,44 @@ export function detectAntagonisticClashes(
 }
 
 /**
+ * Robust check if a modality targets an outcome (handles synonyms & partial matches)
+ */
+export function isModalityMatchingOutcome(m: Modality, targetOutcomeId: string): boolean {
+  if (!m) return false
+  const normTarget = normalizeOutcomeKey(targetOutcomeId)
+  const isMatch = (val: string) => {
+    if (!val) return false
+    const normVal = normalizeOutcomeKey(val)
+    return normVal === normTarget || normVal.includes(normTarget) || normTarget.includes(normVal)
+  }
+
+  // 1. Text & metadata fields
+  if (
+    isMatch(m.primary_outcome || '') ||
+    (m.secondary_outcomes || []).some(s => isMatch(s)) ||
+    (m.functional_outcomes_to_track || []).some(f => isMatch(f)) ||
+    isMatch(m.name || '') ||
+    isMatch(m.display_name || '')
+  ) {
+    return true
+  }
+
+  // 2. Structured longevity knowledge base lookup
+  if (m.id && getModalityLongevityImpact(m.id, normTarget)) {
+    return true
+  }
+
+  // 3. Database functional_impacts JSONB mapping
+  if (m.functional_impacts && typeof m.functional_impacts === 'object') {
+    for (const key of Object.keys(m.functional_impacts)) {
+      if (normalizeOutcomeKey(key) === normTarget) return true
+    }
+  }
+
+  return false
+}
+
+/**
  * Calculates the 0-100 Dialed-In Score and Percentile Rank for a given outcome dimension
  */
 export function calculateOutcomeDialedInScore(
@@ -265,13 +425,8 @@ export function calculateOutcomeDialedInScore(
   activeModalities: Modality[],
   allClashes: AntagonisticClash[] = []
 ): { score: number; percentile: number; foundationalCount: number; boosterCount: number; marginalCount: number } {
-  const normOutcomeId = outcomeId.toLowerCase().trim()
-  const relevantMods = activeModalities.filter(m => {
-    const prim = (m.primary_outcome || '').toLowerCase().replace(/\s+/g, '_')
-    const secs = (m.secondary_outcomes || []).map(s => s.toLowerCase().replace(/\s+/g, '_'))
-    const funcs = (m.functional_outcomes_to_track || []).map(f => f.toLowerCase().replace(/\s+/g, '_'))
-    return prim === normOutcomeId || secs.includes(normOutcomeId) || funcs.includes(normOutcomeId)
-  })
+  const normOutcomeId = normalizeOutcomeKey(outcomeId)
+  const relevantMods = activeModalities.filter(m => isModalityMatchingOutcome(m, normOutcomeId))
 
   if (relevantMods.length === 0) {
     return { score: 15, percentile: 20, foundationalCount: 0, boosterCount: 0, marginalCount: 0 }
@@ -286,30 +441,32 @@ export function calculateOutcomeDialedInScore(
 
   relevantMods.forEach((m) => {
     const mId = (m.id || '').toLowerCase()
-    const isFoundational = foundationalKeys.some(k => mId.includes(k))
+    const mSlug = (m.slug || '').toLowerCase()
+    const longevityEvidence = getModalityLongevityImpact(m.id || '', normOutcomeId)
+    const isFoundational = (longevityEvidence && longevityEvidence.tier === 'foundational') ||
+      foundationalKeys.some(k => mId.includes(k) || mSlug.includes(k))
 
     if (isFoundational) {
       foundationalCount++
-      // The first foundational habits give massive gains (30-45 pts each)
-      if (foundationalCount === 1) rawPoints += 45
-      else if (foundationalCount === 2) rawPoints += 25
-      else rawPoints += 10
+      const baseWeight = longevityEvidence ? longevityEvidence.score : 85
+      // The first foundational habits give massive gains (35-48 pts each)
+      if (foundationalCount === 1) rawPoints += Math.round(baseWeight * 0.48)
+      else if (foundationalCount === 2) rawPoints += Math.round(baseWeight * 0.28)
+      else rawPoints += Math.round(baseWeight * 0.12)
+    } else if (longevityEvidence?.tier === 'synergistic' || rawPoints < 80) {
+      boosterCount++
+      const baseWeight = longevityEvidence ? longevityEvidence.score : 60
+      rawPoints += Math.round(baseWeight * 0.2) // 12-16 pts
     } else {
-      // Synergistic or marginal modalities
-      if (rawPoints < 80) {
-        boosterCount++
-        rawPoints += 12
-      } else {
-        marginalCount++
-        // Logarithmic diminishing returns past 80
-        const roomLeft = 100 - rawPoints
-        rawPoints += Math.max(1.5, roomLeft * 0.18)
-      }
+      marginalCount++
+      // Logarithmic diminishing returns past 80
+      const roomLeft = 100 - rawPoints
+      rawPoints += Math.max(1.5, roomLeft * 0.18)
     }
   })
 
   // Antagonistic clash deductions
-  const relevantClashes = allClashes.filter(c => c.outcomeId.toLowerCase() === normOutcomeId)
+  const relevantClashes = allClashes.filter(c => normalizeOutcomeKey(c.outcomeId) === normOutcomeId)
   relevantClashes.forEach(c => {
     rawPoints -= c.severity === 'high' ? 22 : 12
   })
@@ -341,13 +498,8 @@ export function calculateOutcomeEffortScore(
   outcomeId: string,
   activeModalities: Modality[]
 ): number {
-  const normOutcomeId = outcomeId.toLowerCase().trim()
-  const relevantMods = activeModalities.filter(m => {
-    const prim = (m.primary_outcome || '').toLowerCase().replace(/\s+/g, '_')
-    const secs = (m.secondary_outcomes || []).map(s => s.toLowerCase().replace(/\s+/g, '_'))
-    const funcs = (m.functional_outcomes_to_track || []).map(f => f.toLowerCase().replace(/\s+/g, '_'))
-    return prim === normOutcomeId || secs.includes(normOutcomeId) || funcs.includes(normOutcomeId)
-  })
+  const normOutcomeId = normalizeOutcomeKey(outcomeId)
+  const relevantMods = activeModalities.filter(m => isModalityMatchingOutcome(m, normOutcomeId))
 
   if (relevantMods.length === 0) return 0
 
@@ -526,13 +678,8 @@ export function getOutcomeOptimizationSummary(
     const clashesForDim = allClashes.filter(c => c.outcomeId.toLowerCase() === dim.id.toLowerCase())
     const statusEval = evaluateOutcomeStatus(dialedIn.score, effortScore, targetConfig, clashesForDim)
 
-    const normId = dim.id.toLowerCase().trim()
-    const relevantMods = activeModalities.filter(m => {
-      const prim = (m.primary_outcome || '').toLowerCase().replace(/\s+/g, '_')
-      const secs = (m.secondary_outcomes || []).map(s => s.toLowerCase().replace(/\s+/g, '_'))
-      const funcs = (m.functional_outcomes_to_track || []).map(f => f.toLowerCase().replace(/\s+/g, '_'))
-      return prim === normId || secs.includes(normId) || funcs.includes(normId)
-    })
+    const normId = normalizeOutcomeKey(dim.id)
+    const relevantMods = activeModalities.filter(m => isModalityMatchingOutcome(m, normId))
 
     const taskCount = activeTasks.filter(t => {
       const mId = t.modality_id || t.loose_modality?.id
@@ -545,10 +692,26 @@ export function getOutcomeOptimizationSummary(
     const marginal: { modality: Modality; weight: number }[] = []
 
     relevantMods.forEach(m => {
-      const isFoundational = foundationalKeys.some(k => (m.id || '').toLowerCase().includes(k))
-      if (isFoundational) foundational.push({ modality: m, weight: 35 })
-      else if (foundational.length + synergistic.length < 3) synergistic.push({ modality: m, weight: 15 })
-      else marginal.push({ modality: m, weight: 5 })
+      const longevityImpact = getModalityLongevityImpact(m.id || '', normId)
+      const isFoundational = (longevityImpact && longevityImpact.tier === 'foundational') ||
+        foundationalKeys.some(k => (m.id || '').toLowerCase().includes(k) || (m.slug || '').toLowerCase().includes(k))
+
+      if (isFoundational) {
+        foundational.push({
+          modality: m,
+          weight: longevityImpact ? Math.round(longevityImpact.score * 0.4) : 35
+        })
+      } else if (longevityImpact?.tier === 'synergistic' || (foundational.length + synergistic.length < 3)) {
+        synergistic.push({
+          modality: m,
+          weight: longevityImpact ? Math.round(longevityImpact.score * 0.25) : 15
+        })
+      } else {
+        marginal.push({
+          modality: m,
+          weight: longevityImpact ? Math.round(longevityImpact.score * 0.1) : 5
+        })
+      }
     })
 
     return {
@@ -606,5 +769,130 @@ export function calculateModalityMarginalImpact(
     deltaDialedIn,
     projectedEffort: Math.min(100, currentEffortScore + deltaEffort),
     deltaEffort
+  }
+}
+
+export interface NextBestActionOutcomeResult {
+  modalityId: string
+  modalityName: string
+  category: string
+  expectedPointsBoost: number
+  frictionDescription: string
+  rationale: string
+  modality?: Modality
+}
+
+export interface CandidateToBenchOutcomeResult {
+  modalityId: string
+  modalityName: string
+  category: string
+  effortPointsSaved: number
+  marginalScoreLost: number
+  rationale: string
+  modality?: Modality
+}
+
+/**
+ * Identifies the single highest-ROI missing foundational pillar for an outcome
+ */
+export function getNextBestActionForOutcome(
+  outcomeId: string,
+  activeModalities: Modality[],
+  allModalities: Modality[]
+): NextBestActionOutcomeResult | null {
+  const normId = normalizeOutcomeKey(outcomeId)
+  const foundationalKeys = FOUNDATIONAL_PILLARS[normId] || []
+  if (foundationalKeys.length === 0) return null
+
+  const activeIds = new Set(activeModalities.map(m => (m.id || '').toLowerCase()))
+  const activeSlugs = new Set(activeModalities.map(m => (m.slug || '').toLowerCase()))
+
+  // Find missing foundational keys
+  const missingKey = foundationalKeys.find(key => {
+    return !Array.from(activeIds).some(id => id.includes(key)) &&
+           !Array.from(activeSlugs).some(s => s.includes(key))
+  })
+
+  if (!missingKey) return null
+
+  // Find candidate modality in allModalities
+  const candidate = allModalities.find(m => {
+    const mId = (m.id || '').toLowerCase()
+    const mSlug = (m.slug || '').toLowerCase()
+    const mName = (m.name || '').toLowerCase()
+    return mId.includes(missingKey) || mSlug.includes(missingKey) || mName.includes(missingKey.replace(/_/g, ' '))
+  })
+
+  const friendlyName = candidate?.display_name || candidate?.name || missingKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+  const mCategory = candidate?.category || 'Lifestyle / Protocol'
+
+  const longevityEvidence = candidate ? getModalityLongevityImpact(candidate.id, normId) : null
+  const expectedPointsBoost = longevityEvidence ? Math.max(20, Math.round(longevityEvidence.score * 0.38)) : 25
+  const frictionDesc = candidate?.dose_or_exposure 
+    ? `${candidate.dose_or_exposure} • Foundational Tier-1 Anchor`
+    : 'Low equipment friction • Foundational biological anchor'
+
+  const rationale = longevityEvidence
+    ? `Adding ${friendlyName} introduces a Tier-1 anchor (${longevityEvidence.effectSize}): ${longevityEvidence.mechanism.slice(0, 160)}...`
+    : `Adding ${friendlyName} locks in a foundational 80/20 pillar for this outcome, capturing high-leverage cellular gains before diminishing returns.`
+
+  return {
+    modalityId: candidate?.id || missingKey,
+    modalityName: friendlyName,
+    category: mCategory,
+    expectedPointsBoost,
+    frictionDescription: frictionDesc,
+    rationale,
+    modality: candidate
+  }
+}
+
+/**
+ * Identifies a high-effort, marginal-gain modality that is safe to remove or bench
+ */
+export function getCandidateToBenchForOutcome(
+  outcomeState: OutcomeOptimizationState
+): CandidateToBenchOutcomeResult | null {
+  if (outcomeState.effortScore <= outcomeState.targetConfig.maxEffortAllowance) {
+    return null
+  }
+
+  // Look for marginal modalities first, then synergistic
+  const candidatePool = outcomeState.tierBreakdown.marginal.length > 0 
+    ? outcomeState.tierBreakdown.marginal 
+    : outcomeState.tierBreakdown.synergistic
+
+  if (candidatePool.length === 0) return null
+
+  // Find the highest effort modality in the pool
+  let topCulprit: { modality: Modality; weight: number } | null = null
+  let maxEffort = 0
+
+  candidatePool.forEach(item => {
+    const mType = (item.modality.modality_type || item.modality.category || '').toLowerCase()
+    let effort = 8
+    if (mType.includes('resistance') || mType.includes('fitness')) effort = 24
+    else if (mType.includes('device') || mType.includes('mask') || mType.includes('cold') || mType.includes('sauna')) effort = 18
+    else if (mType.includes('peptide')) effort = 14
+
+    if (effort > maxEffort) {
+      maxEffort = effort
+      topCulprit = item
+    }
+  })
+
+  if (!topCulprit) return null
+  const culprit = topCulprit as { modality: Modality; weight: number }
+
+  const friendlyName = culprit.modality.display_name || culprit.modality.name || 'High Friction Modality'
+
+  return {
+    modalityId: culprit.modality.id,
+    modalityName: friendlyName,
+    category: culprit.modality.category || 'Protocol',
+    effortPointsSaved: maxEffort,
+    marginalScoreLost: culprit.weight || 5,
+    rationale: `${friendlyName} costs ${maxEffort} daily friction points but only contributes marginal (+${culprit.weight || 5} pts) returns today. Benching it brings your effort back within budget while leaving your core 80/20 foundation completely protected.`,
+    modality: culprit.modality
   }
 }

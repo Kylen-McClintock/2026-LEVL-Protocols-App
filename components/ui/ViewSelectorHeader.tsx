@@ -199,33 +199,42 @@ export interface SchemaCheckinOutcome {
 }
 
 export const ALL_SCHEMA_CHECKIN_OUTCOMES: SchemaCheckinOutcome[] = [
-  { id: 'skin_clarity', name: 'Skin Clarity & Health', category: 'vitality', icon: '✨', defaultRank: 1, description: 'Dermal barrier integrity, collagen density, elasticity & cellular turnover.' },
-  { id: 'sleep_quality', name: 'Sleep Quality', category: 'sleep', icon: '🌙', defaultRank: 2, description: 'Deep & REM sleep architecture, restorative overnight recovery & fewer awakenings.' },
-  { id: 'deep_sleep', name: 'Deep Sleep', category: 'sleep', icon: '🌌', defaultRank: 3, description: 'Stage 3 slow-wave physical cellular repair & glymphatic brain clearance.' },
-  { id: 'energy', name: 'Energy & Mitochondria', category: 'vitality', icon: '⚡', defaultRank: 4, description: 'Sustained daytime vitality, cellular ATP production & eliminating energy crashes.' },
-  { id: 'focus', name: 'Cognitive Focus & Clarity', category: 'cognitive', icon: '🧠', defaultRank: 5, description: 'Laser focus, working memory retention, mental sharpness & flow state.' },
-  { id: 'stress', name: 'Stress & Autonomic Balance', category: 'recovery', icon: '❤️', defaultRank: 6, description: 'High parasympathetic vagal tone, rapid autonomic recovery & lower cortisol.' },
-  { id: 'mood', name: 'Mood & Emotional Resilience', category: 'cognitive', icon: '😊', defaultRank: 7, description: 'Positive neurochemical valence, emotional equilibrium & psychological well-being.' },
+  // 1. Biological Longevity & Clinical Biomarkers
+  { id: 'heart_health', name: 'Heart & Cardiovascular Health', category: 'longevity', icon: '🫀', defaultRank: 1, description: 'Cardiovascular resilience, arterial elasticity, blood pressure & ApoB lipid control.' },
+  { id: 'brain_longevity', name: 'Brain Longevity & Neuroprotection', category: 'longevity', icon: '🧠', defaultRank: 2, description: 'Long-term cognitive preservation, amyloid clearance, neuroprotection & dementia defense.' },
+  { id: 'cancer_defense', name: 'Cancer Defense & Autophagy', category: 'longevity', icon: '🛡️', defaultRank: 3, description: 'Autophagy stimulation, senescent cell clearance, DNA repair & oncogenic defense.' },
+  { id: 'metabolic_health', name: 'Metabolic Health & Blood Sugar', category: 'longevity', icon: '🔥', defaultRank: 4, description: 'Insulin sensitivity, stable glucose, metabolic flexibility & visceral fat reduction.' },
+  { id: 'testosterone', name: 'Testosterone & Hormone Balance', category: 'longevity', icon: '⚡', defaultRank: 5, description: 'Free testosterone, androgen receptor sensitivity, DHEA & endocrine vitality.' },
+  { id: 'chronic_inflammation', name: 'Chronic Inflammation Defense', category: 'longevity', icon: '❄️', defaultRank: 6, description: 'Lowering hs-CRP, cytokine balance, joint relief & blunting systemic inflammaging.' },
+  { id: 'bone_density', name: 'Bone Density & Skeletal Strength', category: 'longevity', icon: '🦴', defaultRank: 7, description: 'Cortical bone mineral density, osteoclast balance & structural skeletal resilience.' },
   { id: 'cellular_longevity', name: 'Cellular Longevity & DNA Repair', category: 'longevity', icon: '🧬', defaultRank: 8, description: 'Telomere protection, senescent cell clearance & NAD+ mitochondrial repair.' },
-  { id: 'metabolic_health', name: 'Metabolic Health & Fat Loss', category: 'metabolic', icon: '🔥', defaultRank: 9, description: 'Insulin sensitivity, stable blood glucose, fat oxidation & lipid balance.' },
-  { id: 'joint_comfort', name: 'Joint Comfort & Mobility', category: 'recovery', icon: '🩹', defaultRank: 10, description: 'Cartilage mobility, synovial lubrication, connective tissue repair & joint ease.' },
-  { id: 'muscle_hypertrophy', name: 'Muscle Hypertrophy & Growth', category: 'physical', icon: '💪', defaultRank: 11, description: 'Muscle protein synthesis, myofibrillar growth & lean mass retention.' },
-  { id: 'strength', name: 'Strength & Power', category: 'physical', icon: '🏋️', defaultRank: 12, description: 'Peak neuromuscular force output, power capacity & training output.' },
-  { id: 'athletic_endurance', name: 'Athletic & Aerobic Endurance', category: 'physical', icon: '🏃', defaultRank: 13, description: 'Cardiorespiratory stamina, VO2 max, aerobic efficiency & delayed lactate fatigue.' },
-  { id: 'digestive_comfort', name: 'Digestive Comfort & Gut Health', category: 'vitality', icon: '🥗', defaultRank: 14, description: 'Smooth gut motility, microbiome balance, intestinal barrier & reduced bloating.' },
-  { id: 'waking_restedness', name: 'Waking Restedness', category: 'sleep', icon: '🌅', defaultRank: 15, description: 'Waking alert and refreshed with optimal morning circadian cortisol response.' },
-  { id: 'calmness', name: 'Calmness & Anxiety Relief', category: 'cognitive', icon: '🧘', defaultRank: 16, description: 'Central nervous system relaxation, lower trait anxiety & inner tranquility.' },
-  { id: 'immune_resilience', name: 'Immune Resilience', category: 'recovery', icon: '🛡️', defaultRank: 17, description: 'Innate and adaptive immune defense & reduced susceptibility to infections.' },
-  { id: 'brain_fog', name: 'Brain Fog Reduction', category: 'cognitive', icon: '💡', defaultRank: 18, description: 'Fast neural processing speed, crisp mental acuity & cerebral metabolic clearance.' },
-  { id: 'satiety', name: 'Satiety & Appetite Control', category: 'metabolic', icon: '⚖️', defaultRank: 19, description: 'Optimal leptin/ghrelin signaling, prolonged fullness & craving mitigation.' },
-  { id: 'libido_vitality', name: 'Libido & Hormonal Vitality', category: 'vitality', icon: '❤️‍🔥', defaultRank: 20, description: 'Hormonal vitality, androgen balance, libido & vitality signaling.' },
-  { id: 'soreness', name: 'Soreness (DOMS) Recovery', category: 'recovery', icon: '🧊', defaultRank: 21, description: 'Delayed onset muscle soreness (DOMS) reduction & accelerated muscular recovery.' },
-  { id: 'sleep_latency', name: 'Sleep Latency (Falling Asleep)', category: 'sleep', icon: '⏱️', defaultRank: 22, description: 'Speed of falling asleep peacefully without tossing and turning.' },
-  { id: 'emotional_resilience', name: 'Emotional Resilience', category: 'cognitive', icon: '🪨', defaultRank: 23, description: 'Stress adaptability, heart rate variability (HRV) rebound & emotional control.' },
-  { id: 'motivation', name: 'Motivation & Drive', category: 'cognitive', icon: '🚀', defaultRank: 24, description: 'Dopamine-driven initiative, reward anticipation & productivity readiness.' },
-  { id: 'physical_fatigue', name: 'Physical Fatigue Reduction', category: 'vitality', icon: '🔋', defaultRank: 25, description: 'Mitigating systemic exhaustion, muscular burnout & heavy-limb sensations.' },
-  { id: 'productivity', name: 'Productivity & Deep Work', category: 'cognitive', icon: '📊', defaultRank: 26, description: 'High-leverage work output, cognitive stamina & deep work efficiency.' },
-  { id: 'pain', name: 'Musculoskeletal Pain Relief', category: 'recovery', icon: '🩺', defaultRank: 27, description: 'Systemic inflammatory relief, joint comfort & musculoskeletal ease.' }
+
+  // 2. Daily Wellbeing & Functional Performance
+  { id: 'focus', name: 'Cognitive Focus & Clarity', category: 'cognitive', icon: '🧠', defaultRank: 10, description: 'Laser focus, working memory retention, mental sharpness & flow state.' },
+  { id: 'sleep_quality', name: 'Sleep Quality', category: 'sleep', icon: '🌙', defaultRank: 11, description: 'Deep & REM sleep architecture, restorative overnight recovery & fewer awakenings.' },
+  { id: 'deep_sleep', name: 'Deep Sleep', category: 'sleep', icon: '🌌', defaultRank: 12, description: 'Stage 3 slow-wave physical cellular repair & glymphatic brain clearance.' },
+  { id: 'energy', name: 'Energy & Mitochondria', category: 'vitality', icon: '⚡', defaultRank: 13, description: 'Sustained daytime vitality, cellular ATP production & eliminating energy crashes.' },
+  { id: 'skin_clarity', name: 'Skin Clarity & Health', category: 'vitality', icon: '✨', defaultRank: 14, description: 'Dermal barrier integrity, collagen density, elasticity & cellular turnover.' },
+  { id: 'libido', name: 'Libido & Sexual Vitality', category: 'vitality', icon: '❤️‍🔥', defaultRank: 15, description: 'Sexual desire, arousal, reproductive health & endocrine vitality signaling.' },
+  { id: 'stress', name: 'Stress & Autonomic Balance', category: 'recovery', icon: '❤️', defaultRank: 16, description: 'High parasympathetic vagal tone, rapid autonomic recovery & lower cortisol.' },
+  { id: 'mood', name: 'Mood & Emotional Resilience', category: 'cognitive', icon: '😊', defaultRank: 17, description: 'Positive neurochemical valence, emotional equilibrium & psychological well-being.' },
+  { id: 'joint_comfort', name: 'Joint Comfort & Mobility', category: 'recovery', icon: '🩹', defaultRank: 18, description: 'Cartilage mobility, synovial lubrication, connective tissue repair & joint ease.' },
+  { id: 'muscle_hypertrophy', name: 'Muscle Hypertrophy & Growth', category: 'physical', icon: '💪', defaultRank: 19, description: 'Muscle protein synthesis, myofibrillar growth & lean mass retention.' },
+  { id: 'strength', name: 'Strength & Power', category: 'physical', icon: '🏋️', defaultRank: 20, description: 'Peak neuromuscular force output, power capacity & training output.' },
+  { id: 'athletic_endurance', name: 'Athletic & Aerobic Endurance', category: 'physical', icon: '🏃', defaultRank: 21, description: 'Cardiorespiratory stamina, VO2 max, aerobic efficiency & delayed lactate fatigue.' },
+  { id: 'digestive_comfort', name: 'Digestive Comfort & Gut Health', category: 'vitality', icon: '🥗', defaultRank: 22, description: 'Smooth gut motility, microbiome balance, intestinal barrier & reduced bloating.' },
+  { id: 'waking_restedness', name: 'Waking Restedness', category: 'sleep', icon: '🌅', defaultRank: 23, description: 'Waking alert and refreshed with optimal morning circadian cortisol response.' },
+  { id: 'calmness', name: 'Calmness & Anxiety Relief', category: 'cognitive', icon: '🧘', defaultRank: 24, description: 'Central nervous system relaxation, lower trait anxiety & inner tranquility.' },
+  { id: 'immune_resilience', name: 'Immune Resilience', category: 'recovery', icon: '🛡️', defaultRank: 25, description: 'Innate and adaptive immune defense & reduced susceptibility to infections.' },
+  { id: 'brain_fog', name: 'Brain Fog Reduction', category: 'cognitive', icon: '💡', defaultRank: 26, description: 'Fast neural processing speed, crisp mental acuity & cerebral metabolic clearance.' },
+  { id: 'satiety', name: 'Satiety & Appetite Control', category: 'metabolic', icon: '⚖️', defaultRank: 27, description: 'Optimal leptin/ghrelin signaling, prolonged fullness & craving mitigation.' },
+  { id: 'soreness', name: 'Soreness (DOMS) Recovery', category: 'recovery', icon: '🧊', defaultRank: 28, description: 'Delayed onset muscle soreness (DOMS) reduction & accelerated muscular recovery.' },
+  { id: 'sleep_latency', name: 'Sleep Latency (Falling Asleep)', category: 'sleep', icon: '⏱️', defaultRank: 29, description: 'Speed of falling asleep peacefully without tossing and turning.' },
+  { id: 'emotional_resilience', name: 'Emotional Resilience', category: 'cognitive', icon: '🪨', defaultRank: 30, description: 'Stress adaptability, heart rate variability (HRV) rebound & emotional control.' },
+  { id: 'motivation', name: 'Motivation & Drive', category: 'cognitive', icon: '🚀', defaultRank: 31, description: 'Dopamine-driven initiative, reward anticipation & productivity readiness.' },
+  { id: 'physical_fatigue', name: 'Physical Fatigue Reduction', category: 'vitality', icon: '🔋', defaultRank: 32, description: 'Mitigating systemic exhaustion, muscular burnout & heavy-limb sensations.' },
+  { id: 'productivity', name: 'Productivity & Deep Work', category: 'cognitive', icon: '📊', defaultRank: 33, description: 'High-leverage work output, cognitive stamina & deep work efficiency.' },
+  { id: 'pain', name: 'Musculoskeletal Pain Relief', category: 'recovery', icon: '🩺', defaultRank: 34, description: 'Systemic inflammatory relief, joint comfort & musculoskeletal ease.' }
 ]
 
 export const CategoryFiltersBar: React.FC<{
@@ -345,15 +354,18 @@ export const CategoryFiltersBar: React.FC<{
 
       if (!name) return
 
-      const existing = map.get(id) || Array.from(map.values()).find(o => o.name.toLowerCase() === name.toLowerCase())
+      // Canonical key normalization to merge synonyms (e.g. libido vs libido_vitality)
+      const normKey = (id.includes('libido') || name.toLowerCase().includes('libido')) ? 'libido' : id.toLowerCase()
+
+      const existing = map.get(normKey) || map.get(id) || Array.from(map.values()).find(o => o.name.toLowerCase() === name.toLowerCase())
       if (existing) {
         if (!existing.description && description) existing.description = description
       } else {
-        map.set(id, {
-          id,
+        map.set(normKey, {
+          id: normKey,
           name,
           category,
-          icon: getOutcomeEmoji(id, name),
+          icon: getOutcomeEmoji(normKey, name),
           defaultRank: 50,
           description: description || `Trackable biomarker and functional performance outcome: ${name}.`
         })
@@ -365,12 +377,13 @@ export const CategoryFiltersBar: React.FC<{
       userProfile.outcome_preference_scores.custom_user_outcomes.forEach((c: any) => {
         if (!c?.name) return
         const cid = (c.id || c.name).toLowerCase().replace(/[\s-]/g, '_')
-        if (!map.has(cid)) {
-          map.set(cid, {
-            id: cid,
+        const normKey = (cid.includes('libido') || c.name.toLowerCase().includes('libido')) ? 'libido' : cid
+        if (!map.has(normKey) && !map.has(cid)) {
+          map.set(normKey, {
+            id: normKey,
             name: c.name,
             category: c.category || 'vitality',
-            icon: getOutcomeEmoji(cid, c.name),
+            icon: getOutcomeEmoji(normKey, c.name),
             defaultRank: 1, // Custom user outcomes rank very high
             description: c.description || 'User-created custom bio-signal tracking dimension.'
           })
@@ -844,10 +857,13 @@ export const CategoryFiltersBar: React.FC<{
                 )}
               </div>
 
-              {/* Scrollable list of ranked outcomes: 2-WIDE GRID with unique emojis */}
-              <div className="overflow-y-auto max-h-72 p-0.5 scrollbar-thin">
-                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
-                  {filteredRankedOutcomes.map(item => {
+              {/* Scrollable list of ranked outcomes: 2-WIDE GRID sectioned by Longevity vs Wellbeing */}
+              <div className="overflow-y-auto max-h-80 p-0.5 scrollbar-thin space-y-3">
+                {(() => {
+                  const longevityOutcomes = filteredRankedOutcomes.filter(o => o.category === 'longevity')
+                  const wellbeingOutcomes = filteredRankedOutcomes.filter(o => o.category !== 'longevity')
+
+                  const renderButton = (item: typeof filteredRankedOutcomes[number]) => {
                     const isChecked = selectedOutcomes.some(sel => 
                       sel.toLowerCase().trim() === item.name.toLowerCase().trim() || 
                       sel.toLowerCase().trim() === item.id.toLowerCase().trim()
@@ -885,13 +901,44 @@ export const CategoryFiltersBar: React.FC<{
                         </div>
                       </button>
                     )
-                  })}
-                </div>
-                {filteredRankedOutcomes.length === 0 && (
-                  <div className="p-4 text-center text-xs text-slate-500">
-                    No matching outcomes found
-                  </div>
-                )}
+                  }
+
+                  if (filteredRankedOutcomes.length === 0) {
+                    return (
+                      <div className="p-4 text-center text-xs text-slate-500">
+                        No matching outcomes found
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <>
+                      {/* Section 1: Biological Longevity & Clinical Biomarkers */}
+                      {longevityOutcomes.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1 px-1 text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300">
+                            <span>🧬 Biological Longevity &amp; Biomarkers</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                            {longevityOutcomes.map(renderButton)}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Section 2: Daily Wellbeing & Functional Performance */}
+                      {wellbeingOutcomes.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center gap-1 px-1 text-[10px] font-mono font-bold uppercase tracking-wider text-teal-300">
+                            <span>⚡ Daily Wellbeing &amp; Performance</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                            {wellbeingOutcomes.map(renderButton)}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             </div>
           )}

@@ -4,6 +4,8 @@ import { Microscope, AlertTriangle, Coins, Target, BookOpen, ExternalLink, Activ
 import { modalityReferences } from '@/lib/data/references'
 import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
 import MedicalDisclaimerBanner from '../ui/MedicalDisclaimerBanner'
+import ModalityLongevityDrawer from './ModalityLongevityDrawer'
+import { LONGEVITY_VECTORS_METADATA } from '@/lib/data/longevityKnowledgeBase'
 
 type GeekModeProps = {
   modality: Modality
@@ -247,39 +249,53 @@ export default function GeekMode({ modality }: GeekModeProps) {
         </div>
       )}
 
-      {modality.functional_impacts && Object.keys(modality.functional_impacts).length > 0 && (
-        <div className="pt-4 border-t border-white/10 mt-2">
-          <div className="flex items-center gap-2 text-[10px] text-emerald-400 uppercase block mb-2 font-bold">
-            <Activity size={12} className="text-emerald-400" /> Functional Outcome Evidence
-          </div>
-          <div className="space-y-4">
-            {Object.entries(modality.functional_impacts)
-              .sort((a, b) => b[1].score - a[1].score)
-              .map(([outcome, impact]) => (
-                <div key={outcome} className="bg-emerald-900/10 p-3 rounded-lg border border-emerald-700/30">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-emerald-300">{outcome}</span>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono">{impact.score}/10 Impact</span>
-                  </div>
-                  {impact.studies && impact.studies.length > 0 ? (
-                    <div className="space-y-2 mt-2 border-t border-emerald-900/30 pt-2">
-                      {impact.studies.map((study, idx) => (
-                        <div key={idx}>
-                          <a href={study.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-300 hover:text-blue-200 block mb-1 group">
-                            {study.title} <ExternalLink size={10} className="inline opacity-50 group-hover:opacity-100" />
-                          </a>
-                          {study.notes && <p className="text-[10px] text-gray-400 italic leading-relaxed">{study.notes}</p>}
-                        </div>
-                      ))}
+      {/* 🧬 Clinical Longevity & Biomarkers Expandable Evidence */}
+      <ModalityLongevityDrawer modality={modality} defaultExpanded={false} />
+
+      {/* ⚡ Subjective / Acute Functional Performance Evidence */}
+      {(() => {
+        if (!modality.functional_impacts) return null
+        const subjectiveEntries = Object.entries(modality.functional_impacts).filter(([key]) => {
+          const normKey = key.toLowerCase().replace(/[-\s]/g, '_').trim()
+          return !LONGEVITY_VECTORS_METADATA[normKey]
+        })
+
+        if (subjectiveEntries.length === 0) return null
+
+        return (
+          <div className="pt-4 border-t border-white/10 mt-2">
+            <div className="flex items-center gap-2 text-[10px] text-emerald-400 uppercase block mb-2 font-bold">
+              <Activity size={12} className="text-emerald-400" /> Daily Functional Performance Evidence
+            </div>
+            <div className="space-y-4">
+              {subjectiveEntries
+                .sort((a, b) => b[1].score - a[1].score)
+                .map(([outcome, impact]) => (
+                  <div key={outcome} className="bg-emerald-900/10 p-3 rounded-lg border border-emerald-700/30">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-bold text-emerald-300">{outcome}</span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono">{impact.score}/10 Impact</span>
                     </div>
-                  ) : (
-                    <p className="text-[10px] text-gray-500 italic mt-1">Impact score mapped from consensus literature.</p>
-                  )}
-                </div>
-              ))}
+                    {impact.studies && impact.studies.length > 0 ? (
+                      <div className="space-y-2 mt-2 border-t border-emerald-900/30 pt-2">
+                        {impact.studies.map((study, idx) => (
+                          <div key={idx}>
+                            <a href={study.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-300 hover:text-blue-200 block mb-1 group">
+                              {study.title} <ExternalLink size={10} className="inline opacity-50 group-hover:opacity-100" />
+                            </a>
+                            {study.notes && <p className="text-[10px] text-gray-400 italic leading-relaxed">{study.notes}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-gray-500 italic mt-1">Impact score mapped from consensus literature.</p>
+                    )}
+                  </div>
+                ))}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Peptide Pharmacology, Reconstitution & Receptor Dynamics */}
       {modality.peptide_metadata && (

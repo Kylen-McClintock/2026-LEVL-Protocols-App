@@ -71,6 +71,7 @@ import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } fr
 import AdaptiveSleepTriageCard from '@/components/today/AdaptiveSleepTriageCard'
 import { OutcomeLensView } from '@/components/outcomes/OutcomeLensView'
 import { OutcomeOptimizationModal } from '@/components/modals/OutcomeOptimizationModal'
+import { Outcome8020SpotlightCard } from '@/components/outcomes/Outcome8020SpotlightCard'
 import { OutcomeOptimizationState, AntagonisticClash } from '@/lib/outcomes/outcomeOptimizationEngine'
 
 function formatSlotName(str: string): string {
@@ -4002,6 +4003,33 @@ function TodayPageContent() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* 80/20 Outcome Spotlight Bar (Ultra-minimalist collapsed by default, expandable for Next Best Action & Friction Buster) */}
+            {filterLens === 'outcomes' && selectedOutcomes.length > 0 && (
+              <div className="mb-3 sm:mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Outcome8020SpotlightCard
+                  selectedOutcomeIds={selectedOutcomes}
+                  allModalities={allModalities}
+                  todayTasks={tasks}
+                  userProfile={profile}
+                  allOutcomes={allOutcomes}
+                  onOpenTuneModal={(outcomeState) => {
+                    setInspectingOutcomeState(outcomeState)
+                    setIsOutcomeModalOpen(true)
+                  }}
+                  onAddModalityToToday={async (modalityId) => {
+                    if (profile) {
+                      await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
+                      await refreshTodayTasks()
+                    }
+                  }}
+                  onBenchModality={async (modalityId) => {
+                    await handleMoveToBench(modalityId)
+                  }}
+                  onAutoFixClash={handleAutoFixClash}
+                />
               </div>
             )}
 

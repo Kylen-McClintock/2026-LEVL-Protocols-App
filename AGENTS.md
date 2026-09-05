@@ -69,3 +69,36 @@ Always provide SQL scripts that the user can manually copy and paste into their 
    - Insert missing task rows on newly scheduled active days.
    - Propagate updated custom dosage, custom timing, and timing slots across all active future dates.
 <!-- END:end-to-end-state-lifecycle-rules -->
+
+<!-- BEGIN:developer-modality-longevity-and-neutral-standards -->
+# Developer Modality Creation Standards (8-Vector Completeness & Neutral Evaluations)
+
+Whenever creating, seeding, or extending any new modality for the developer (not end-users):
+1. **Mandatory 8-Vector Completeness**:
+   Every developer-created modality MUST be evaluated across all 8 canonical biological longevity vectors:
+   `heart_health`, `brain_longevity`, `metabolic_health`, `cancer_defense`, `testosterone`, `chronic_inflammation`, `bone_density`, `cellular_longevity`.
+   No vector may be omitted.
+
+2. **Clinical Evidence Anchoring for Active Vectors**:
+   All targeted biological vectors MUST include:
+   - **Score (0–100)**: Calibrated against the 3-tier clinical rubric (Tier-1 Anchor 65–100, Tier-2 Synergist 30–64, Tier-3 Marginal 5–29).
+   - **Evidence Grade**: (e.g. `Grade A (Human RCT)`, `Grade B (Clinical Trial)`).
+   - **Clinical Effect Size**: Specific quantifiable shift (e.g. `+15–20% VO2 Max`, `≥25% hs-CRP reduction`).
+   - **Biomarker Anchors**: Exact measurable blood/imaging targets (e.g. `ApoB`, `Fasting Insulin`, `DEXA BMD`).
+   - **Cellular / Physiological Mechanism**: Exact molecular pathways (e.g. `eNOS`, `AMPK`, `SIRT1`, `Piezo1`).
+   - **Verified PubMed Literature**: Linked PubMed citations with verified PMIDs, study titles, and URLs.
+
+3. **Explicit Neutral Evaluations**:
+   All non-targeted biological vectors MUST be evaluated and explicitly rendered as `Neutral` with contextual clinical rationale:
+   - Differentiate active interventions (targeted to other pathways) from diagnostic surveillance tools and supportive baseline habits.
+
+4. **Diagnostic Surveillance Tools Standard**:
+   Diagnostic modalities (imaging scans, panels, wearable monitors, epigenetic clocks) MUST:
+   - Be categorized under `Diagnostics & Tracking` (or include diagnostic keywords `scan`, `mri`, `cpet`, `panel`, `clock`, `monitor`).
+   - Be classified as `isDiagnostic: true` / `Diagnostic Surveillance (Neutral Intervention)`.
+   - Explicitly list the monitored clinical biomarkers they track.
+
+5. **Remote Supabase Persistence**:
+   Seed scripts and database updates MUST populate `functional_impacts` (preserving all existing subjective/symptom tags) and `hallmarks_of_aging_impact`, and MUST append idempotent SQL statements to `docs/update_longevity_outcomes.sql`.
+<!-- END:developer-modality-longevity-and-neutral-standards -->
+

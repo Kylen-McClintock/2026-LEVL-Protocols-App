@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Modality, UserProfile, UserBenchItem } from '@/lib/types'
-import { BookmarkPlus, Plus, Check, Info, Sparkles, Search, CalendarPlus, CheckCircle2, Bookmark, Scale, ArrowRightLeft, AlertTriangle, History, Ban, Flame, ShieldCheck, Layers, ChevronDown, ChevronUp } from 'lucide-react'
+import { BookmarkPlus, Plus, Check, Info, Sparkles, Search, CalendarPlus, CheckCircle2, Bookmark, Scale, ArrowRightLeft, AlertTriangle, History, Ban, Flame, ShieldCheck, Layers, ChevronDown, ChevronUp, Dna } from 'lucide-react'
 import GeekMode from './GeekMode'
+import ModalityLongevityDrawer from './ModalityLongevityDrawer'
+import { getAllModalityLongevityImpacts } from '@/lib/data/longevityKnowledgeBase'
 import ScheduleModalityModal from '../modals/ScheduleModalityModal'
 import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import { evaluateStackFit, StackFitResult } from '@/lib/synergy/stackFitEngine'
@@ -61,8 +63,11 @@ export default function ExploreCard({
   const [addedToToday, setAddedToToday] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [showGeekMode, setShowGeekMode] = useState(false)
+  const [showLongevityDrawer, setShowLongevityDrawer] = useState(false)
   const [isScheduling, setIsScheduling] = useState(false)
   const [showBenchConfirm, setShowBenchConfirm] = useState(false)
+
+  const longevityReport = getAllModalityLongevityImpacts(modality)
 
   const stackFit = stackFitResult || (
     (todayModalities.length > 0 || benchModalities.length > 0)
@@ -351,11 +356,23 @@ export default function ExploreCard({
           </div>
         )}
         
-        <div className="flex justify-between items-center mt-3 border-t border-white/5 pt-3">
-          <span className="text-xs text-levl-text-secondary">
-            Longevity Impact: <strong className="text-emerald-400 font-mono font-bold text-sm">{modality.overall_longevity_benefit || 8}/10</strong>
-          </span>
-          <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+        <div className="flex justify-between items-center mt-3 border-t border-white/5 pt-3 gap-2">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-xs text-levl-text-secondary shrink-0">
+              Longevity: <strong className="text-emerald-400 font-mono font-bold text-sm">{modality.overall_longevity_benefit || 8}/10</strong>
+            </span>
+            {longevityReport.primaryVector && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 font-mono font-bold shrink-0 ${
+                longevityReport.primaryVector.tier === 'foundational'
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                  : 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
+              }`}>
+                <Dna size={10} className={longevityReport.primaryVector.tier === 'foundational' ? 'text-emerald-400' : 'text-cyan-400'} />
+                <span>{longevityReport.primaryVector.tier === 'foundational' ? 'Tier-1' : 'Tier-2'}: {longevityReport.primaryVector.outcomeName.split('&')[0].trim()} ({longevityReport.primaryVector.score})</span>
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1 shrink-0">
             {expanded ? 'Collapse' : 'Inspect details'} {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           </span>
         </div>
@@ -537,6 +554,18 @@ export default function ExploreCard({
           )}
 
           <button 
+            onClick={(e) => { e.stopPropagation(); setShowLongevityDrawer(!showLongevityDrawer); }}
+            className={`h-9 px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+              showLongevityDrawer 
+                ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
+                : 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white'
+            }`}
+          >
+            <Dna size={14} />
+            <span>Longevity</span>
+          </button>
+
+          <button 
             onClick={(e) => { e.stopPropagation(); setShowGeekMode(!showGeekMode); }}
             className={`h-9 px-3.5 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
               showGeekMode 
@@ -548,6 +577,10 @@ export default function ExploreCard({
             <span>Geek Mode</span>
           </button>
         </div>
+
+        {showLongevityDrawer && !showGeekMode && (
+          <ModalityLongevityDrawer modality={modality} defaultExpanded={true} />
+        )}
 
         {showGeekMode && <GeekMode modality={modality} />}
       </div>

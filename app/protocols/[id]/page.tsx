@@ -63,6 +63,7 @@ import {
 } from '@/lib/calendar/skinCyclingEngine'
 import ProtocolAvatar, { ProtocolCategoryPills } from '@/components/ui/ProtocolAvatar'
 import { getProtocolVisualTheme } from '@/lib/utils/protocolThemes'
+import ProtocolLongevityDrawer from '@/components/cards/ProtocolLongevityDrawer'
 
 const formatSlotName = (str: string) => {
   if (!str) return 'Daily'
@@ -814,6 +815,19 @@ export default function ProtocolFocusPage() {
             )}
           </div>
         </div>
+
+        {/* 🧬 GEEK MODE PROTOCOL LONGEVITY EVIDENCE DRAWER (Collapsed by Default) */}
+        <ProtocolLongevityDrawer
+          protocol={{
+            ...protocol,
+            steps: evaluatedSteps.map((s: any) => ({
+              ...s.step,
+              modality: s.modality
+            }))
+          }}
+          allModalities={evaluatedSteps.map((s: any) => s.modality).filter(Boolean)}
+          defaultExpanded={false}
+        />
 
         {/* INTERACTIVE 4-DAY DERMATOLOGICAL SKIN CYCLING MATRIX */}
         {(protocol.id === 'cellular_dermal_matrix' || protocol.slug === 'cellular-dermal-matrix' || protocol.name?.toLowerCase().includes('dermal matrix') || protocol.name?.toLowerCase().includes('skin cycling')) && (
