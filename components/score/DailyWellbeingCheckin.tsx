@@ -296,6 +296,7 @@ export default function DailyWellbeingCheckin({
   date,
   isCurrentDay,
   isCollapsedByDefault = false,
+  forceCollapseTier,
   recentTasks,
   section = 'all'
 }: { 
@@ -318,6 +319,7 @@ export default function DailyWellbeingCheckin({
   date: Date
   isCurrentDay: boolean
   isCollapsedByDefault?: boolean
+  forceCollapseTier?: 'minimal' | 'numbers' | 'trends'
   recentTasks?: any[]
   section?: 'all' | 'morning_anytime' | 'nightly'
 }) {
@@ -373,6 +375,7 @@ export default function DailyWellbeingCheckin({
 
   // Current State Collapse Tier: 'minimal' (1-line), 'numbers' (semi-open default), 'trends' (fully open)
   const [outcomeCollapseTier, setOutcomeCollapseTier] = useState<'minimal' | 'numbers' | 'trends'>(() => {
+    if (forceCollapseTier) return forceCollapseTier
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('levl_current_state_collapse_tier')
       if (saved === 'minimal' || saved === 'numbers' || saved === 'trends') {
@@ -390,10 +393,19 @@ export default function DailyWellbeingCheckin({
   const isCurrentStateExpanded = outcomeCollapseTier === 'trends'
 
   useEffect(() => {
-    if (isCollapsedByDefault) {
+    if (forceCollapseTier) {
+      setOutcomeCollapseTier(forceCollapseTier)
+    } else if (isCollapsedByDefault) {
       setOutcomeCollapseTier('minimal')
+    } else if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('levl_current_state_collapse_tier')
+      if (saved === 'minimal' || saved === 'numbers' || saved === 'trends') {
+        setOutcomeCollapseTier(saved as 'minimal' | 'numbers' | 'trends')
+      } else {
+        setOutcomeCollapseTier('numbers')
+      }
     }
-  }, [isCollapsedByDefault])
+  }, [forceCollapseTier, isCollapsedByDefault])
 
   const [quickModalOutcome, setQuickModalOutcome] = useState<OutcomeLiveState | null>(null)
   const [isQuickModalOpen, setIsQuickModalOpen] = useState(false)

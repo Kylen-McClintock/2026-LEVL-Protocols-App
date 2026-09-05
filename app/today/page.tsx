@@ -430,6 +430,28 @@ function TodayPageContent() {
   const [showSnoozedInline, setShowSnoozedInline] = useState<boolean>(false)
   const [showSkippedInline, setShowSkippedInline] = useState<boolean>(false)
 
+  // Focus Mode (Super Simple View) State: collapses AI coach, current state, tips, hotkeys & hides completed/skipped modalities
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('levl_focus_mode_active') === 'true'
+      } catch (e) {}
+    }
+    return false
+  })
+
+  const toggleFocusMode = useCallback(() => {
+    setIsFocusMode(prev => {
+      const next = !prev
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('levl_focus_mode_active', next ? 'true' : 'false')
+        } catch (e) {}
+      }
+      return next
+    })
+  }, [])
+
   const [layoutOrientation, setLayoutOrientation] = useState<LayoutOrientation>('columns')
   const [multiDayTasks, setMultiDayTasks] = useState<Record<string, DailyProtocolTask[]>>({})
 
@@ -1927,12 +1949,12 @@ function TodayPageContent() {
 
       if (isCompleted) {
         completedTop.push(task)
-        if (showCompletedInline || isRecentlyCompleted) {
+        if (!isFocusMode && (showCompletedInline || isRecentlyCompleted)) {
           routine.push(task)
         }
       } else if (isSnoozed) {
         snoozedTop.push(task)
-        if (showSnoozedInline || (task.timing_slot && task.timing_slot !== 'anytime')) {
+        if (!isFocusMode && (showSnoozedInline || (task.timing_slot && task.timing_slot !== 'anytime'))) {
           routine.push(task)
         }
       } else if (isSkipped) {
@@ -1946,7 +1968,7 @@ function TodayPageContent() {
           return
         }
         skippedTop.push(task)
-        if (showSkippedInline) {
+        if (!isFocusMode && showSkippedInline) {
           routine.push(task)
         }
       } else {
@@ -1961,7 +1983,7 @@ function TodayPageContent() {
       allSkippedTasks: skippedTop,
       infrequentTasks: infrequent 
     }
-  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline, filterLens, selectedOutcomes])
+  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline, filterLens, selectedOutcomes, isFocusMode])
 
   const sortedCompletedGroups = useMemo(() => {
     if (allCompletedTasks.length === 0) return []
@@ -2760,6 +2782,11 @@ function TodayPageContent() {
       const isCardCollapsed = isAllCompleted && isProtocolCardCollapsed(groupName, groupTasks)
 
       if (isProtocolGroup && groupName !== 'Standalone & Individual Modalities') {
+        // In Focus Mode, hide completely finished protocols
+        if (isFocusMode && isAllCompleted) {
+          return null
+        }
+
         const protoId = matchedProtocol?.id || groupTasks[0]?.protocol_step?.protocol_id || ''
         const protoSlug = groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
@@ -2776,6 +2803,15 @@ function TodayPageContent() {
             b.protocol_step?.modality?.name || b.loose_modality?.name || ''
           )
         })
+
+        // In Focus Mode, hide completed, snoozed, and skipped tasks within the protocol
+        const tasksToRender = isFocusMode
+          ? sortedGroupTasks.filter(t => t.status !== 'completed' && t.status !== 'skipped' && t.status !== 'not_today')
+          : sortedGroupTasks
+
+        if (isFocusMode && tasksToRender.length === 0) {
+          return null
+        }
 
         const visualTheme = getProtocolVisualTheme(matchedProtocol || groupName, groupTasks)
 
@@ -2970,7 +3006,7 @@ function TodayPageContent() {
                   className="bg-slate-900/60 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-3.5 space-y-3 cursor-pointer transition-all hover:bg-slate-900/80 shadow-md group"
                 >
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    {sortedGroupTasks.map((t) => {
+                    {tasksToRender.map((t) => {
                       const mod = t.loose_modality || t.protocol_step?.modality
                       const name = mod?.display_name || mod?.name || 'Modality'
                       const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
@@ -3003,7 +3039,7 @@ function TodayPageContent() {
 
                   <div className="flex items-center justify-between text-[11px] text-purple-400/90 group-hover:text-purple-300 font-semibold pt-1 border-t border-white/5">
                     <span className="flex items-center gap-1">
-                      <span>▾ Tap to view full cards & dosages ({groupTasks.length})</span>
+                      <span>▾ Tap to view full cards & dosages ({tasksToRender.length})</span>
                     </span>
                     <span className="text-[10px] text-slate-400 font-normal">
                       {completedCount === groupTasks.length ? '✓ All Done' : `${groupTasks.length - completedCount} Remaining`}
@@ -3012,7 +3048,7 @@ function TodayPageContent() {
                 </div>
               ) : (
                 <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
-                  {sortedGroupTasks.map(task => {
+                  {tasksToRender.map(task => {
                     const mId = task.modality_id || task.protocol_step?.modality_id || ''
                     const benchItem = benchItems.find(b => b.modality_id === mId)
                     return (
@@ -3453,6 +3489,27 @@ function TodayPageContent() {
               </span>
             )}
 
+            {/* Focus Mode (Super Simple View) Toggle Button */}
+            {calendarViewMode === 'today' && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  toggleFocusMode()
+                }}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
+                  isFocusMode
+                    ? 'bg-emerald-950/70 border border-emerald-500/80 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.35)] ring-1 ring-emerald-500/40'
+                    : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
+                }`}
+                title={isFocusMode ? "Focus Mode ON (Super Simple View) — Click to show all tools & completed tasks" : "Focus Mode OFF — Click to collapse tools and focus on pending modalities"}
+                aria-label="Toggle Focus Mode"
+              >
+                <Zap size={13} className={isFocusMode ? "fill-emerald-400 text-emerald-400 animate-pulse" : "text-slate-400"} />
+                <span>Focus</span>
+              </button>
+            )}
+
             {calendarViewMode !== 'today' && calendarViewMode !== 'pulse' && multiDayStats && multiDayStats.total > 0 && (
               <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center gap-1">
                 <span>{multiDayStats.completed}/{multiDayStats.total}</span>
@@ -3514,7 +3571,7 @@ function TodayPageContent() {
         ) : (
           <>
         {/* Progressive Profiling Banner for Referral / Guest Instant Kickstart */}
-        {showGuestKickstartBanner && (
+        {showGuestKickstartBanner && !isFocusMode && (
           <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-900/90 border border-purple-500/40 shadow-xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
             <div className="flex items-start gap-3 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
@@ -3589,7 +3646,7 @@ function TodayPageContent() {
         )}
 
         {/* 3-Wide Daily Quick-Log Hotkeys Bar */}
-        {calendarViewMode === 'today' && (
+        {calendarViewMode === 'today' && !isFocusMode && (
           <QuickHotkeyGrid
             date={dateStr}
             localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
@@ -3598,7 +3655,7 @@ function TodayPageContent() {
         )}
 
         {/* Infradian & Menstrual Cycle Adaptive Protocol Banner (When enabled for Female < 52) */}
-        {calendarViewMode === 'today' && infradianStatus && infradianStatus.enabled && (
+        {calendarViewMode === 'today' && !isFocusMode && infradianStatus && infradianStatus.enabled && (
           <div className="mb-6">
             <InfradianAdaptiveBanner
               status={infradianStatus}
@@ -3808,7 +3865,7 @@ function TodayPageContent() {
             )}
 
             {/* 3. Daily Historical Debrief Header & Snapshot when viewing past dates */}
-            {isPastDate && (
+            {isPastDate && !isFocusMode && (
               <div className="mb-6">
                 <DailyHistoricalDebriefHeader
                   summary={dailyEfficacySummary}
@@ -3828,14 +3885,15 @@ function TodayPageContent() {
                 allOutcomes={allOutcomes}
                 date={currentDate}
                 isCurrentDay={isCurrentDay}
-                isCollapsedByDefault={isPastDate}
+                isCollapsedByDefault={isPastDate || isFocusMode}
+                forceCollapseTier={isFocusMode ? 'minimal' : undefined}
                 recentTasks={tasks}
                 section="morning_anytime"
               />
             </div>
 
             {/* 4b. Adaptive Sleep Recovery Protocol Triage Card */}
-            {shouldShowSleepTriage && (
+            {shouldShowSleepTriage && !isFocusMode && (
               <AdaptiveSleepTriageCard
                 actualSleepMinutes={userActualSleepMinutes || 0}
                 subjectiveSleep={userSubjectiveSleep ?? 5}
@@ -3852,7 +3910,7 @@ function TodayPageContent() {
             )}
 
             {/* 5. Daily Longevity Tip Banner (Hidden once added to today, benched, or skipped) */}
-            {!isTipActedUpon && (
+            {!isFocusMode && !isTipActedUpon && (
               <div className="mb-4">
                 <DailyLongevityTipBanner 
                   scoredTips={scoredTips}
@@ -3886,52 +3944,75 @@ function TodayPageContent() {
             )}
 
             {/* Full-Width AI Longevity Coach Input Bar */}
-            <div className="mb-6">
-              <LongevityCoachInputBar
-                userProfile={profile}
-                todayTasks={tasks}
-                currentTipHeadline={!isTipActedUpon && scoredTips && scoredTips.length > 0 ? scoredTips[0].tip.headline : undefined}
-                onAddToToday={async (nameOrId: string) => {
-                  if (profile) {
-                    const res = await addModalityOrProtocolToToday(profile.local_user_id, dateStr, nameOrId)
-                    await refreshTodayTasks()
-                    return res
-                  }
-                  return { success: false }
-                }}
-                onScrollToModality={handleScrollToModality}
-                onOpenModalityStudio={(name: string, aiSuggestions?: any) => {
-                  let doseAmount = ''
-                  let doseUnit = 'mg'
-                  if (aiSuggestions?.suggestedDose) {
-                    const parts = aiSuggestions.suggestedDose.trim().split(/\s+/)
-                    if (parts.length >= 2) {
-                      doseAmount = parts[0]
-                      doseUnit = parts.slice(1).join(' ')
-                    } else {
-                      doseAmount = parts[0]
+            {!isFocusMode && (
+              <div className="mb-6">
+                <LongevityCoachInputBar
+                  userProfile={profile}
+                  todayTasks={tasks}
+                  currentTipHeadline={!isTipActedUpon && scoredTips && scoredTips.length > 0 ? scoredTips[0].tip.headline : undefined}
+                  onAddToToday={async (nameOrId: string) => {
+                    if (profile) {
+                      const res = await addModalityOrProtocolToToday(profile.local_user_id, dateStr, nameOrId)
+                      await refreshTodayTasks()
+                      return res
                     }
-                  }
+                    return { success: false }
+                  }}
+                  onScrollToModality={handleScrollToModality}
+                  onOpenModalityStudio={(name: string, aiSuggestions?: any) => {
+                    let doseAmount = ''
+                    let doseUnit = 'mg'
+                    if (aiSuggestions?.suggestedDose) {
+                      const parts = aiSuggestions.suggestedDose.trim().split(/\s+/)
+                      if (parts.length >= 2) {
+                        doseAmount = parts[0]
+                        doseUnit = parts.slice(1).join(' ')
+                      } else {
+                        doseAmount = parts[0]
+                      }
+                    }
 
-                  setStudioModalData({
-                    isOpen: true,
-                    initialData: {
-                      name,
-                      doseAmount,
-                      doseUnit,
-                      timingSlot: aiSuggestions?.suggestedTiming || 'morning_supplement_stack',
-                      cadenceMode: aiSuggestions?.suggestedScheduleMode === 'rest_interval' ? 'interval' : (aiSuggestions?.suggestedDays?.length ? 'days_of_week' : 'daily'),
-                      selectedDays: aiSuggestions?.suggestedDays || ['Mon', 'Wed', 'Fri'],
-                      restIntervalDays: aiSuggestions?.suggestedRestIntervalDays ?? 1,
-                      startTab: 'dosing'
-                    }
-                  })
-                }}
-              />
-            </div>
+                    setStudioModalData({
+                      isOpen: true,
+                      initialData: {
+                        name,
+                        doseAmount,
+                        doseUnit,
+                        timingSlot: aiSuggestions?.suggestedTiming || 'morning_supplement_stack',
+                        cadenceMode: aiSuggestions?.suggestedScheduleMode === 'rest_interval' ? 'interval' : (aiSuggestions?.suggestedDays?.length ? 'days_of_week' : 'daily'),
+                        selectedDays: aiSuggestions?.suggestedDays || ['Mon', 'Wed', 'Fri'],
+                        restIntervalDays: aiSuggestions?.suggestedRestIntervalDays ?? 1,
+                        startTab: 'dosing'
+                      }
+                    })
+                  }}
+                />
+              </div>
+            )}
 
             {/* Completed, Snoozed, & Skipped Modalities Group (Zero Space Between Them) */}
             {(() => {
+              if (isFocusMode) {
+                if (allCompletedTasks.length === 0 && allSkippedTasks.length === 0) return null
+                return (
+                  <div className="mb-6 flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400 animate-in fade-in">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                      <span className="truncate">
+                        <strong className="text-white font-semibold">Focus Mode:</strong> {allCompletedTasks.length} completed{allSkippedTasks.length > 0 ? `, ${allSkippedTasks.length} skipped` : ''} modalities hidden
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleFocusMode()}
+                      className="text-emerald-400 hover:text-emerald-300 font-bold text-xs underline underline-offset-2 transition-colors cursor-pointer shrink-0 ml-2"
+                    >
+                      Exit Focus
+                    </button>
+                  </div>
+                )
+              }
+
               const activeStatusSections: ('completed' | 'snoozed' | 'skipped')[] = []
               if (allCompletedTasks.length > 0 && viewMode !== 'protocol') activeStatusSections.push('completed')
               if (allSnoozedTasks.length > 0) activeStatusSections.push('snoozed')
@@ -4424,26 +4505,54 @@ function TodayPageContent() {
             ) : (
               <div className="space-y-8">
                 {activeGroups.length === 0 ? (
-                  <div className="text-center p-8 bg-slate-950/60 border border-white/10 rounded-2xl text-gray-400 text-sm space-y-4 shadow-xl backdrop-blur-md">
-                    <div className="space-y-1">
-                      <p className="font-bold text-white text-base">You don&apos;t have any protocols scheduled for today.</p>
-                      <p className="text-xs text-slate-400">Enroll in an active protocol or log an ad-hoc session to start building your daily timeline.</p>
+                  dedupedTasks.length > 0 ? (
+                    <div className="text-center p-8 bg-slate-950/60 border border-emerald-500/30 rounded-2xl text-gray-400 text-sm space-y-4 shadow-xl backdrop-blur-md animate-in fade-in">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                        <Check size={24} strokeWidth={3} />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-bold text-white text-base">All Scheduled Modalities Completed!</p>
+                        <p className="text-xs text-slate-400">
+                          {isFocusMode 
+                            ? "All scheduled modalities for today are complete. Exit Focus Mode to review completed logs or bio-signals." 
+                            : "You have completed every scheduled task for today."}
+                        </p>
+                      </div>
+                      {isFocusMode && (
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={toggleFocusMode}
+                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
+                          >
+                            <Zap size={13} className="text-emerald-400" />
+                            <span>Exit Focus Mode</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-md mx-auto">
-                      <button 
-                        onClick={() => setIsEnrollModalOpen(true)}
-                        className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl transition-all font-bold text-xs shadow-lg shadow-purple-900/40 cursor-pointer"
-                      >
-                        <Sparkles size={16} /> + Enroll in Protocol
-                      </button>
-                      <button 
-                        onClick={() => setIsAdHocModalOpen(true)}
-                        className="flex items-center justify-center gap-2 w-full py-3 bg-white/10 hover:bg-white/15 border border-white/15 text-white rounded-xl transition-colors font-bold text-xs cursor-pointer"
-                      >
-                        <Plus size={16} /> Log Extra Activity
-                      </button>
+                  ) : (
+                    <div className="text-center p-8 bg-slate-950/60 border border-white/10 rounded-2xl text-gray-400 text-sm space-y-4 shadow-xl backdrop-blur-md">
+                      <div className="space-y-1">
+                        <p className="font-bold text-white text-base">You don&apos;t have any protocols scheduled for today.</p>
+                        <p className="text-xs text-slate-400">Enroll in an active protocol or log an ad-hoc session to start building your daily timeline.</p>
+                      </div>
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-md mx-auto">
+                        <button 
+                          onClick={() => setIsEnrollModalOpen(true)}
+                          className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl transition-all font-bold text-xs shadow-lg shadow-purple-900/40 cursor-pointer"
+                        >
+                          <Sparkles size={16} /> + Enroll in Protocol
+                        </button>
+                        <button 
+                          onClick={() => setIsAdHocModalOpen(true)}
+                          className="flex items-center justify-center gap-2 w-full py-3 bg-white/10 hover:bg-white/15 border border-white/15 text-white rounded-xl transition-colors font-bold text-xs cursor-pointer"
+                        >
+                          <Plus size={16} /> Log Extra Activity
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )
                 ) : (
                   <div 
                     ref={timelineContainerRef}
