@@ -228,10 +228,17 @@ export type Modality = {
   functional_impacts?: {
     [outcome: string]: {
       score: number
+      tier?: string
+      evidence_grade?: string
+      effect_size?: string
+      biomarkers?: string[]
+      mechanism?: string
       studies?: {
         title: string
         url: string
         notes?: string
+        pmid?: string
+        type?: string
       }[]
     }
   }
@@ -343,6 +350,7 @@ export type ProtocolStep = {
   safety_notes?: string
   status?: string
   duration?: string
+  temperature?: string
   instructions?: string
   optionality?: 'required' | 'optional' | 'as_needed' | 'situational' | 'experimental'
   modality?: Modality // expanded relation

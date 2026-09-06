@@ -71,12 +71,17 @@ import { BUILT_IN_TRAINING_PROTOCOLS } from './builtInTrainingProtocols'
 import { BUILT_IN_PEPTIDE_PROTOCOLS, BUILT_IN_PEPTIDE_MODALITIES } from './builtInPeptideProtocols'
 import { BUILT_IN_LONGEVITY_MODALITIES } from './builtInLongevityModalities'
 import { BUILT_IN_SKIN_PROTOCOLS, ALL_BUILT_IN_SKIN_MODALITIES } from './builtInSkinProtocols'
+import { HUBERMAN_DOAC_MODALITIES } from './hubermanDoacModalities'
+import { ALL_HUBERMAN_DOAC_PROTOCOLS, HUBERMAN_DOAC_MASTER_PROTOCOL, HUBERMAN_SUB_PROTOCOLS } from './hubermanDoacProtocol'
 import { getSkinCyclePhaseForDate, isSkinModalityActiveOnDate } from '../calendar/skinCyclingEngine'
+
+export { HUBERMAN_DOAC_MODALITIES, HUBERMAN_DOAC_MASTER_PROTOCOL, HUBERMAN_SUB_PROTOCOLS, ALL_HUBERMAN_DOAC_PROTOCOLS }
 
 const ALL_BUILT_IN_PROTOCOLS = [
   ...BUILT_IN_TRAINING_PROTOCOLS, 
   ...BUILT_IN_PEPTIDE_PROTOCOLS,
-  ...BUILT_IN_SKIN_PROTOCOLS
+  ...BUILT_IN_SKIN_PROTOCOLS,
+  ...ALL_HUBERMAN_DOAC_PROTOCOLS
 ]
 
 function getBuiltInModalities(): Modality[] {
@@ -101,8 +106,17 @@ function getBuiltInModalities(): Modality[] {
     }
   })
 
-  // 2. Built-in longevity & evidence-based tip/NBA modalities
+  // 3. Built-in longevity & evidence-based tip/NBA modalities
   BUILT_IN_LONGEVITY_MODALITIES.forEach(m => {
+    const key = (m.id || '').toLowerCase()
+    if (key && !seen.has(key)) {
+      seen.add(key)
+      mods.push(m)
+    }
+  })
+
+  // 4. Built-in Huberman DOAC modalities
+  HUBERMAN_DOAC_MODALITIES.forEach(m => {
     const key = (m.id || '').toLowerCase()
     if (key && !seen.has(key)) {
       seen.add(key)
