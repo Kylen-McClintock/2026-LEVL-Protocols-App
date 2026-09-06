@@ -502,7 +502,21 @@ function OnboardingContent() {
           }
           if (profile.outcome_preference_scores && Object.keys(profile.outcome_preference_scores).length > 0) {
             const allKeys = Object.keys(profile.outcome_preference_scores)
-            const regularOutcomes = allKeys.filter(k => !k.startsWith('habit:') && !k.startsWith('exposure:') && !k.startsWith('_'))
+            const NON_OUTCOME_KEYS = new Set([
+              'anytime_checkin_dimensions', 'evening_checkin_dimensions', 'morning_checkin_dimensions',
+              'custom_user_outcomes', 'last_period_start_date', 'average_cycle_length_days',
+              'infradian_cycle_enabled', 'dietary_pattern', 'hardware_access', 'ideal_wake_time',
+              'ideal_bedtime', 'chronotype', 'fitness_training_level', 'resistance_training_days',
+              'primary_workout_window', 'age', 'weight_lbs', 'height_inches', 'biological_sex',
+              'body_fat_percentage', 'baseline_sleep_quality_0_10'
+            ])
+            const regularOutcomes = allKeys.filter(k => 
+              !k.startsWith('habit:') && 
+              !k.startsWith('exposure:') && 
+              !k.startsWith('setting:') && 
+              !k.startsWith('_') &&
+              !NON_OUTCOME_KEYS.has(k)
+            )
             const habits = allKeys.filter(k => k.startsWith('habit:')).map(k => k.replace('habit:', ''))
             const exposures = allKeys.filter(k => k.startsWith('exposure:')).map(k => k.replace('exposure:', ''))
 

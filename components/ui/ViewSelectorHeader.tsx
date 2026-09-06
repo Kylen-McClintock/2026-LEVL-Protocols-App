@@ -397,9 +397,9 @@ export const CategoryFiltersBar: React.FC<{
   // Ranked strictly by user importance, tracked prominence in checkins, then predicted popularity
   const rankedOutcomesList = React.useMemo(() => {
     const prefs = (userProfile?.outcome_preference_scores || {}) as Record<string, any>
-    const anytimeDims = (userProfile?.anytime_checkin_dimensions || []).map(d => d.toLowerCase())
-    const morningDims = (userProfile?.morning_checkin_dimensions || []).map(d => d.toLowerCase())
-    const eveningDims = (userProfile?.evening_checkin_dimensions || []).map(d => d.toLowerCase())
+    const anytimeDims = (Array.isArray(userProfile?.anytime_checkin_dimensions) ? userProfile.anytime_checkin_dimensions : []).map(d => String(d).toLowerCase())
+    const morningDims = (Array.isArray(userProfile?.morning_checkin_dimensions) ? userProfile.morning_checkin_dimensions : []).map(d => String(d).toLowerCase())
+    const eveningDims = (Array.isArray(userProfile?.evening_checkin_dimensions) ? userProfile.evening_checkin_dimensions : []).map(d => String(d).toLowerCase())
     const targetOutcomes = (((userProfile as any)?.target_outcomes || []) as string[]).map(t => t.toLowerCase())
     const primaryGoals = (userProfile?.primary_goals || []).map(g => g.toLowerCase())
 

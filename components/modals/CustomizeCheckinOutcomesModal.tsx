@@ -119,13 +119,13 @@ export default function CustomizeCheckinOutcomesModal({
       return ['mood', 'energy', 'stress', 'focus'].includes(id)
     }
     if (tab === 'morning') {
-      if (userProfile?.morning_checkin_dimensions && userProfile.morning_checkin_dimensions.length > 0) {
+      if (Array.isArray(userProfile?.morning_checkin_dimensions) && userProfile.morning_checkin_dimensions.length > 0) {
         return userProfile.morning_checkin_dimensions.includes(id)
       }
       return ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep'].includes(id)
     }
     if (tab === 'nightly') {
-      if (userProfile?.evening_checkin_dimensions && userProfile.evening_checkin_dimensions.length > 0) {
+      if (Array.isArray(userProfile?.evening_checkin_dimensions) && userProfile.evening_checkin_dimensions.length > 0) {
         return userProfile.evening_checkin_dimensions.includes(id)
       }
       return ['mood', 'energy', 'stress', 'sleep_quality', 'subjective_sleep', 'digestive_comfort'].includes(id)

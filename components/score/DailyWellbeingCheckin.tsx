@@ -791,10 +791,10 @@ export default function DailyWellbeingCheckin({
 
   // Helper to determine if an outcome is tracked in morning vs nightly mode
   const isOutcomeTracked = (id: string, mode: 'morning' | 'nightly') => {
-    if (mode === 'morning' && localProfile?.morning_checkin_dimensions && localProfile.morning_checkin_dimensions.length > 0) {
+    if (mode === 'morning' && Array.isArray(localProfile?.morning_checkin_dimensions) && localProfile.morning_checkin_dimensions.length > 0) {
       return localProfile.morning_checkin_dimensions.includes(id)
     }
-    if (mode === 'nightly' && localProfile?.evening_checkin_dimensions && localProfile.evening_checkin_dimensions.length > 0) {
+    if (mode === 'nightly' && Array.isArray(localProfile?.evening_checkin_dimensions) && localProfile.evening_checkin_dimensions.length > 0) {
       return localProfile.evening_checkin_dimensions.includes(id)
     }
 

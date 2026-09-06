@@ -406,9 +406,21 @@ export function normalizeUserProfile(raw: any): UserProfile | null {
     body_fat_percentage: raw.body_fat_percentage ?? jsonPrefs.body_fat_percentage ?? null,
     baseline_sleep_quality_0_10: raw.baseline_sleep_quality_0_10 ?? jsonPrefs.baseline_sleep_quality_0_10 ?? null,
     dietary_pattern: raw.dietary_pattern ?? jsonPrefs.dietary_pattern ?? null,
-    morning_checkin_dimensions: raw.morning_checkin_dimensions ?? jsonPrefs.morning_checkin_dimensions ?? null,
-    evening_checkin_dimensions: raw.evening_checkin_dimensions ?? jsonPrefs.evening_checkin_dimensions ?? null,
-    anytime_checkin_dimensions: raw.anytime_checkin_dimensions ?? jsonPrefs.anytime_checkin_dimensions ?? null,
+    morning_checkin_dimensions: Array.isArray(raw.morning_checkin_dimensions) 
+      ? raw.morning_checkin_dimensions 
+      : Array.isArray(jsonPrefs.morning_checkin_dimensions) 
+        ? jsonPrefs.morning_checkin_dimensions 
+        : null,
+    evening_checkin_dimensions: Array.isArray(raw.evening_checkin_dimensions) 
+      ? raw.evening_checkin_dimensions 
+      : Array.isArray(jsonPrefs.evening_checkin_dimensions) 
+        ? jsonPrefs.evening_checkin_dimensions 
+        : null,
+    anytime_checkin_dimensions: Array.isArray(raw.anytime_checkin_dimensions) 
+      ? raw.anytime_checkin_dimensions 
+      : Array.isArray(jsonPrefs.anytime_checkin_dimensions) 
+        ? jsonPrefs.anytime_checkin_dimensions 
+        : null,
     outcome_preference_scores: jsonPrefs
   }
 }
