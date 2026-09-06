@@ -3885,7 +3885,7 @@ function TodayPageContent() {
                 allOutcomes={allOutcomes}
                 date={currentDate}
                 isCurrentDay={isCurrentDay}
-                isCollapsedByDefault={isPastDate || isFocusMode}
+                isCollapsedByDefault={true}
                 forceCollapseTier={isFocusMode ? 'minimal' : undefined}
                 recentTasks={tasks}
                 section="morning_anytime"

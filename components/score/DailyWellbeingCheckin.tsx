@@ -295,7 +295,7 @@ export default function DailyWellbeingCheckin({
   allOutcomes,
   date,
   isCurrentDay,
-  isCollapsedByDefault = false,
+  isCollapsedByDefault = true,
   forceCollapseTier,
   recentTasks,
   section = 'all'
@@ -395,12 +395,12 @@ export default function DailyWellbeingCheckin({
   useEffect(() => {
     if (forceCollapseTier) {
       setOutcomeCollapseTier(forceCollapseTier)
-    } else if (isCollapsedByDefault) {
-      setOutcomeCollapseTier('minimal')
     } else if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('levl_current_state_collapse_tier')
       if (saved === 'minimal' || saved === 'numbers' || saved === 'trends') {
         setOutcomeCollapseTier(saved as 'minimal' | 'numbers' | 'trends')
+      } else if (isCollapsedByDefault) {
+        setOutcomeCollapseTier('minimal')
       } else {
         setOutcomeCollapseTier('numbers')
       }
@@ -1601,10 +1601,19 @@ export default function DailyWellbeingCheckin({
               {/* Left: Morning Status + Inline Live Bio-signals */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-x-auto no-scrollbar">
                 {/* Morning status indicator */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div 
+                  onClick={(e) => {
+                    if (!isSaved) {
+                      e.stopPropagation()
+                      setIsCollapsedAll(false)
+                      setIsEditing(true)
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 shrink-0 ${!isSaved ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                >
                   <div className={`w-2 h-2 rounded-full ${isSaved ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]' : 'bg-amber-400 animate-pulse'}`} />
                   <span className="font-bold text-white text-xs whitespace-nowrap">
-                    {isSaved ? '☀️ Morning Complete' : '☀️ Morning Pending'}
+                    {isSaved ? '☀️ Morning Complete' : '☀️ Log Morning Check-in'}
                   </span>
                 </div>
 
@@ -1677,10 +1686,18 @@ export default function DailyWellbeingCheckin({
           <div className="glass-card mb-4 rounded-2xl border border-emerald-500/30 bg-slate-950/70 shadow-xl overflow-hidden animate-in fade-in">
             {/* SMALL CONNECTED ROW DIRECTLY ABOVE: Morning Check-in Status & Edit */}
             <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-black/40 border-b border-white/10 text-xs">
-              <div className="flex items-center gap-2">
+              <div 
+                onClick={() => {
+                  if (!isSaved) {
+                    setIsCollapsedAll(false)
+                    setIsEditing(true)
+                  }
+                }}
+                className={`flex items-center gap-2 ${!isSaved ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+              >
                 <div className={`w-2 h-2 rounded-full ${isSaved ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                 <span className="font-bold text-white text-xs">
-                  {isSaved ? '☀️ Morning Check-in: Complete' : '☀️ Morning Check-in: Pending'}
+                  {isSaved ? '☀️ Morning Check-in: Complete' : '☀️ Log Morning Check-in'}
                 </span>
                 {isSaved && (
                   <span className="text-[10px] text-gray-400 font-mono hidden xs:inline">
@@ -2167,7 +2184,10 @@ export default function DailyWellbeingCheckin({
 
           <button
             type="button"
-            onClick={() => setIsCollapsedAll(true)}
+            onClick={() => {
+              setIsCollapsedAll(true)
+              setIsEditing(false)
+            }}
             className="text-xs font-bold text-amber-300 bg-amber-950/80 hover:bg-amber-900 border border-amber-500/50 px-3.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ml-auto"
           >
             <ChevronUp size={14} /> Collapse All
