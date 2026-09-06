@@ -1273,7 +1273,21 @@ function OnboardingContent() {
 
                 {/* Conditional Infradian & Menstrual Cycle Tracking Card (Only for Female < 52) */}
                 {biologicalSex === 'Female' && (!age || parseInt(age, 10) < 52) && (
-                  <div className="space-y-3 p-4 rounded-2xl bg-rose-950/20 border border-rose-500/30 animate-in fade-in">
+                  <div className="space-y-2">
+                    {/* Optional Banner */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-950/40 via-slate-950/80 to-slate-950 border border-rose-500/30 shadow-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0">
+                          Optional
+                        </span>
+                        <span className="text-xs font-bold text-white truncate">Infradian Cycle Protocol Sync</span>
+                      </div>
+                      <span className="text-[10px] sm:text-[11px] text-slate-400 font-normal shrink-0">
+                        (You can add and edit these later)
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 p-4 rounded-2xl bg-rose-950/20 border border-rose-500/30 animate-in fade-in">
                     <div className="flex justify-between items-center gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="text-xl shrink-0">🌸</span>
@@ -1343,6 +1357,7 @@ function OnboardingContent() {
                         </p>
                       </div>
                     )}
+                  </div>
                   </div>
                 )}
               </div>
@@ -1571,7 +1586,21 @@ function OnboardingContent() {
               </div>
 
               {/* 3. Auto-Calculated Diurnal Timeline (Third - under Bed/Wake times) */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/80 border border-slate-800/90 space-y-3.5 shadow-inner">
+              <div className="space-y-2">
+                {/* Optional Banner */}
+                <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-950/40 via-slate-950/80 to-slate-950 border border-amber-500/30 shadow-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+                      Optional
+                    </span>
+                    <span className="text-xs font-bold text-white truncate">Diurnal Milestone Custom Overrides</span>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] text-slate-400 font-normal shrink-0">
+                    (You can add and edit these later)
+                  </span>
+                </div>
+
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/80 border border-slate-800/90 space-y-3.5 shadow-inner">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Sparkles size={15} className="text-amber-400" />
@@ -1699,6 +1728,7 @@ function OnboardingContent() {
                   })}
                 </div>
               </div>
+            </div>
             </div>
 
             <div className="pt-2 flex items-center justify-between gap-3">
@@ -2068,15 +2098,25 @@ function OnboardingContent() {
               </div>
 
               {/* 4. DAILY MICRO-HABITS & LIFESTYLE EXPOSURES (OPTIONAL) */}
-              <div className="space-y-4 pt-3 border-t border-slate-800">
+              <div className="space-y-3 pt-3 border-t border-slate-800">
+                {/* Optional Banner */}
+                <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap px-3.5 py-2 rounded-xl bg-gradient-to-r from-orange-950/40 via-slate-950/80 to-slate-950 border border-orange-500/30 shadow-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-orange-500/20 text-orange-300 border border-orange-500/40 shrink-0">
+                      Optional
+                    </span>
+                    <span className="text-xs font-bold text-white truncate">Daily Micro-Habits &amp; Lifestyle Factors</span>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] text-slate-400 font-normal shrink-0">
+                    (You can add and edit these later)
+                  </span>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-0.5 flex items-center gap-2">
                       <Sparkles size={14} className="text-orange-400" />
                       <span>Daily Micro-Habits &amp; Lifestyle Factors</span>
-                      <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full lowercase">
-                        optional
-                      </span>
                     </h3>
                     <p className="text-[11px] text-slate-400">
                       Choose positive habits and negative lifestyle factors ready for 1-tap logging. Fully customizable anytime.
@@ -2170,7 +2210,20 @@ function OnboardingContent() {
               </div>
 
               {/* 5. PROTOCOL CONSTRAINTS & CALIBRATION SLIDERS */}
-              <div className="space-y-4 pt-3 border-t border-slate-800">
+              <div className="space-y-3 pt-3 border-t border-slate-800">
+                {/* Optional Banner */}
+                <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-950/40 via-slate-950/80 to-slate-950 border border-emerald-500/30 shadow-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
+                      Optional
+                    </span>
+                    <span className="text-xs font-bold text-white truncate">Protocol Constraints &amp; Calibration Sliders</span>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] text-slate-400 font-normal shrink-0">
+                    (You can add and edit these later)
+                  </span>
+                </div>
+
                 <div>
                   <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider mb-0.5 flex items-center gap-2">
                     <Sliders size={14} className="text-emerald-400" />
