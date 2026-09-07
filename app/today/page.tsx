@@ -475,28 +475,38 @@ function TodayPageContent() {
   )
   const [show100Celebration, setShow100Celebration] = useState<boolean>(false)
 
-  // Referral / Instant Kickstart progressive profiling banner state
-  const [isGuestBannerDismissed, setIsGuestBannerDismissed] = useState<boolean>(() => {
+  // Guest Mode progressive profiling & onboarding card state
+  const [showGuestOnboardingCard, setShowGuestOnboardingCard] = useState<boolean>(false)
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        return localStorage.getItem('levl_guest_banner_dismissed') === 'true'
+        const completed = localStorage.getItem('levl_onboarding_completed') === 'true'
+        const dismissed = localStorage.getItem('levl_guest_banner_dismissed') === 'true'
+        setShowGuestOnboardingCard(!completed && !dismissed)
+      } catch (e) {
+        setShowGuestOnboardingCard(false)
+      }
+    }
+  }, [])
+
+  const handleDismissGuestCard = useCallback(() => {
+    setShowGuestOnboardingCard(false)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('levl_guest_banner_dismissed', 'true')
       } catch (e) {}
     }
-    return false
-  })
+  }, [])
 
   const guestKickstartProtocol = useMemo(() => {
     if (typeof window === 'undefined') return null
     try {
-      const isKickstarted = localStorage.getItem('levl_guest_instant_kickstart') === 'true' || !!localStorage.getItem('levl_referral_source')
-      if (!isKickstarted) return null
-      return localStorage.getItem('levl_active_protocol') || 'Cellular Dermal Matrix Protocol'
+      return localStorage.getItem('levl_active_protocol') || null
     } catch (e) {
       return null
     }
   }, [])
-
-  const showGuestKickstartBanner = !!guestKickstartProtocol && !isGuestBannerDismissed && (typeof window !== 'undefined' ? localStorage.getItem('levl_onboarding_completed') !== 'true' : true)
 
   const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false)
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false)
@@ -858,18 +868,15 @@ function TodayPageContent() {
             setLoading(true)
           }
           const userProfile = await getOrCreateUserProfile(localUserId)
+          const fallbackProfile: UserProfile = {
+            id: localUserId,
+            local_user_id: localUserId,
+            sleep_schedule: { wake_time: '07:00', bed_time: '23:00' },
+            outcome_preference_scores: {},
+            biological_metrics: {}
+          } as any
+          const effectiveProfile = userProfile || fallbackProfile
 
-          const hasCompletedOnboarding = typeof window !== 'undefined' && localStorage.getItem('levl_onboarding_completed') === 'true'
-
-          if (!hasCompletedOnboarding) {
-            router.replace('/onboarding')
-            return
-          }
-
-          if (!userProfile) {
-            router.push('/onboarding')
-            return
-          }
           const [currentTasks, outcomes, protocols, bench, todayCheckin] = await Promise.all([
             getDailyProtocolTasks(localUserId, dateStr),
             getOutcomeDimensions(),
@@ -880,7 +887,7 @@ function TodayPageContent() {
 
           if (reqId !== activeDateReqIdRef.current) return
 
-          setProfile(userProfile)
+          setProfile(effectiveProfile)
           setTasks(currentTasks)
           setAllOutcomes(outcomes)
           setAvailableProtocols(protocols.map((p: any) => ({ id: p.id, name: p.name })))
@@ -3570,48 +3577,101 @@ function TodayPageContent() {
           </div>
         ) : (
           <>
-        {/* Progressive Profiling Banner for Referral / Guest Instant Kickstart */}
-        {showGuestKickstartBanner && !isFocusMode && (
-          <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-900/90 border border-purple-500/40 shadow-xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-start gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
-                <Sparkles size={18} />
-              </div>
-              <div className="space-y-1 min-w-0">
+        {/* Enticing Guest Mode Onboarding & Circadian Calibration Card */}
+        {showGuestOnboardingCard && !isFocusMode && (
+          <div className="mb-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-indigo-950/90 via-slate-900/95 to-purple-950/80 border border-indigo-500/40 shadow-[0_4px_30px_rgba(99,102,241,0.2)] relative overflow-hidden backdrop-blur-md animate-in fade-in slide-in-from-top-3 duration-300">
+            {/* Ambient Background Glow */}
+            <div className="absolute -top-12 -right-12 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 space-y-4">
+              {/* Header row with badges and dismiss */}
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-black text-white">
-                    {guestKickstartProtocol ? `Tracking: ${guestKickstartProtocol}` : 'Instant Protocol Kickstart Active'}
+                  <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-cyan-300 bg-cyan-950/70 border border-cyan-500/40 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                    Guest Mode • Protocol Live
                   </span>
-                  <span className="text-[10px] font-mono font-bold text-teal-300 bg-teal-950/60 border border-teal-500/30 px-2 py-0.5 rounded-full">
-                    Free Direct Access
-                  </span>
+                  {guestKickstartProtocol && (
+                    <span className="text-[10px] font-medium text-purple-300 bg-purple-950/70 border border-purple-500/30 px-2.5 py-0.5 rounded-full truncate max-w-[240px]">
+                      Tracking: {guestKickstartProtocol}
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Your daily schedule is live with evidence-based skin cycling and modalities. Complete your full profile anytime to personalize circadian sleep times, fasting windows, and multi-protocol synergies.
+
+                <button
+                  type="button"
+                  onClick={handleDismissGuestCard}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                  title="Dismiss banner"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Title and core enticing reason */}
+              <div className="space-y-1.5">
+                <h3 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+                  <Sparkles size={18} className="text-indigo-400 shrink-0" />
+                  Personalize Your Circadian Protocol Schedule
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  You can track and check off today&apos;s scheduled modalities right now! Finish your quick 2-minute circadian calibration to tailor dosage timing to your exact wake &amp; sleep windows, unlock biological age tracking, and sync streaks across devices.
                 </p>
               </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => router.push('/onboarding')}
-                className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-md transition-all active:scale-95 whitespace-nowrap cursor-pointer"
-              >
-                Personalize Profile
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsGuestBannerDismissed(true)
-                  if (typeof window !== 'undefined') {
-                    try { localStorage.setItem('levl_guest_banner_dismissed', 'true') } catch (e) {}
-                  }
-                }}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-                title="Dismiss banner"
-              >
-                <X size={15} />
-              </button>
+
+              {/* 3 Quick Visual Benefit Pills */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                  <div className="w-6 h-6 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0 mt-0.5">
+                    <Clock size={13} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-200">Circadian Timing</div>
+                    <div className="text-[11px] text-slate-400 leading-tight">Auto-align doses to your wake &amp; sleep hours</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                  <div className="w-6 h-6 rounded-lg bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
+                    <Activity size={13} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-200">Biological Age Clocks</div>
+                    <div className="text-[11px] text-slate-400 leading-tight">Track shifts across 8 longevity vectors</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                  <div className="w-6 h-6 rounded-lg bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300 shrink-0 mt-0.5">
+                    <Zap size={13} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-200">Multi-Device Sync</div>
+                    <div className="text-[11px] text-slate-400 leading-tight">Preserve streaks &amp; tasks across phone &amp; Mac</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons Row */}
+              <div className="flex items-center gap-3 pt-1 flex-wrap sm:flex-nowrap">
+                <button
+                  type="button"
+                  onClick={() => router.push('/onboarding')}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs sm:text-sm font-extrabold shadow-lg shadow-indigo-500/25 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                >
+                  <span>Finish 2-Min Calibration</span>
+                  <ArrowRight size={14} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDismissGuestCard}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer text-center whitespace-nowrap"
+                >
+                  Explore Today First
+                </button>
+              </div>
             </div>
           </div>
         )}

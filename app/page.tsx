@@ -7,14 +7,7 @@ export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const isCompleted = localStorage.getItem('levl_onboarding_completed') === 'true'
-      if (isCompleted) {
-        router.replace('/today')
-      } else {
-        router.replace('/onboarding')
-      }
-    }
+    router.replace('/today')
   }, [router])
 
   return (
