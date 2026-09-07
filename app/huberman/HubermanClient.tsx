@@ -53,7 +53,9 @@ import {
   Droplets,
   Layers,
   Award,
-  Microscope
+  Microscope,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import CyclicSighingApplet from '@/components/applets/CyclicSighingApplet'
 import { DosageDetailModal } from '@/components/modals/DosageDetailModal'
@@ -167,6 +169,7 @@ export default function HubermanClient() {
   const [isDosageModalOpen, setIsDosageModalOpen] = useState(false)
   const [catalogModalities, setCatalogModalities] = useState<Modality[]>([])
   const [expandedGeekStepId, setExpandedGeekStepId] = useState<string | null>(null)
+  const [expandedDescStepIds, setExpandedDescStepIds] = useState<Record<string, boolean>>({})
 
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), [])
 
@@ -191,6 +194,7 @@ export default function HubermanClient() {
   const handleSelectTab = (slug: string) => {
     setSelectedTabSlug(slug)
     setActivatedSuccess(false)
+    setExpandedDescStepIds({})
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
       if (slug === 'all') {
@@ -734,17 +738,59 @@ export default function HubermanClient() {
                             )}
                           </div>
 
-                          {/* Instructions */}
-                          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed pt-0.5">
-                            {step.instructions}
-                          </p>
+                          {/* Modality Instructions & DOAC Note: Collapsed by Default for Longer Descriptions */}
+                          {(() => {
+                            const descriptionText = step.instructions || fullMod.brief_description || ''
+                            const hasLongDescription = descriptionText.length > 110 || Boolean(step.notes)
+                            const isDescExpanded = !!expandedDescStepIds[stepKey]
 
-                          {/* Synergy / Pod quote note */}
-                          {step.notes && (
-                            <p className="text-xs text-slate-400 italic pt-0.5">
-                              💡 Huberman DOAC Note: {step.notes}
-                            </p>
-                          )}
+                            if (!hasLongDescription) {
+                              return (
+                                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed pt-0.5">
+                                  {descriptionText}
+                                </p>
+                              )
+                            }
+
+                            return (
+                              <div className="space-y-1.5 pt-0.5">
+                                {isDescExpanded ? (
+                                  <>
+                                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed animate-in fade-in duration-150">
+                                      {descriptionText}
+                                    </p>
+                                    {step.notes && (
+                                      <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200/90 italic animate-in fade-in duration-150">
+                                        💡 <span className="font-semibold text-amber-300 not-italic">Huberman DOAC Note:</span> {step.notes}
+                                      </div>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedDescStepIds(prev => ({ ...prev, [stepKey]: false }))}
+                                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-slate-300 transition-colors pt-0.5 cursor-pointer"
+                                    >
+                                      <span>Collapse protocol instructions</span>
+                                      <ChevronUp className="w-3 h-3" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-2">
+                                      {descriptionText}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedDescStepIds(prev => ({ ...prev, [stepKey]: true }))}
+                                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors pt-0.5 cursor-pointer"
+                                    >
+                                      <span>Read full protocol instructions &amp; DOAC note</span>
+                                      <ChevronDown className="w-3 h-3" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </div>
                       </div>
 
