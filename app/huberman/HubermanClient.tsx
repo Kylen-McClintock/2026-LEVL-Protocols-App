@@ -140,7 +140,7 @@ const PROTOCOL_TABS: ProtocolTab[] = [
 export default function HubermanClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, isGuest, openAuthModal } = useAuth()
+  const { user, localUserId: authUserId, isGuest, openAuthModal } = useAuth()
 
   // Routing and Tab State
   const initialProtocolParam = searchParams.get('protocol') || searchParams.get('p') || 'all'
@@ -152,6 +152,7 @@ export default function HubermanClient() {
   const [copiedLink, setCopiedLink] = useState<string | null>(null)
   const [todayTasks, setTodayTasks] = useState<DailyProtocolTask[]>([])
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [hasAutoActivated, setHasAutoActivated] = useState(false)
   
   // Modals & Applets
   const [isBreathworkOpen, setIsBreathworkOpen] = useState(false)
@@ -159,6 +160,11 @@ export default function HubermanClient() {
   const [isDosageModalOpen, setIsDosageModalOpen] = useState(false)
 
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), [])
+
+  // Resolve user ID with exact parity to /today
+  const effectiveUserId = useMemo(() => {
+    return user?.id || authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+  }, [user?.id, authUserId])
 
   // Resolve current active protocol object
   const activeTab = useMemo(() => {
@@ -189,40 +195,70 @@ export default function HubermanClient() {
     }
   }
 
-  // Load existing tasks on mount
-  useEffect(() => {
-    const initData = async () => {
-      const localUserId = getLocalUserId()
-      try {
-        const [tasks, profile] = await Promise.all([
-          getDailyProtocolTasks(localUserId, todayStr),
-          getOrCreateUserProfile(localUserId)
-        ])
-        setTodayTasks(tasks)
-        setUserProfile(profile)
-      } catch (e) {
-        console.warn('Failed to load initial tasks:', e)
-      }
-    }
-    initData()
-  }, [todayStr])
-
   // Check if active protocol is already added in today's tasks
   const isProtocolAlreadyActiveToday = useMemo(() => {
     if (!currentProtocol || todayTasks.length === 0) return false
     const stepModalityIds = (currentProtocol.steps || []).map(s => s.modality_id || s.modality?.id).filter(Boolean)
     if (stepModalityIds.length === 0) return false
-    // If at least half of the protocol steps are present in today's tasks
+    // If at least 2 steps (or all if < 2) are present in today's tasks
     const matchedCount = stepModalityIds.filter(id => todayTasks.some(t => t.modality_id === id)).length
     return matchedCount >= Math.min(2, stepModalityIds.length)
   }, [currentProtocol, todayTasks])
 
+  // Load existing tasks on mount & automatically start the protocol if opening from link
+  useEffect(() => {
+    let isCancelled = false
+
+    const initData = async () => {
+      if (!effectiveUserId) return
+      try {
+        const [tasks, profile] = await Promise.all([
+          getDailyProtocolTasks(effectiveUserId, todayStr),
+          getOrCreateUserProfile(effectiveUserId)
+        ])
+        if (isCancelled) return
+        setTodayTasks(tasks)
+        setUserProfile(profile)
+
+        // Check if active protocol is already added in today's tasks
+        const stepModalityIds = (currentProtocol.steps || []).map(s => s.modality_id || s.modality?.id).filter(Boolean)
+        const isAlreadyActive = stepModalityIds.length > 0 && stepModalityIds.filter(id => tasks.some(t => t.modality_id === id)).length >= Math.min(2, stepModalityIds.length)
+
+        // Auto-activate on first load of link or if start query is set
+        const shouldAutoStart = searchParams.get('start') === 'true' || searchParams.get('autoAdd') === 'true' || !isAlreadyActive
+        if (!hasAutoActivated && shouldAutoStart) {
+          setHasAutoActivated(true)
+          await addProtocolToToday(effectiveUserId, todayStr, currentProtocol.id)
+          const updated = await getDailyProtocolTasks(effectiveUserId, todayStr)
+          if (isCancelled) return
+          setTodayTasks(updated)
+          setActivatedSuccess(true)
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(`levl_cached_tasks_${todayStr}`, JSON.stringify(updated))
+              localStorage.setItem('levl_guest_instant_kickstart', 'true')
+              localStorage.setItem('levl_active_protocol', currentProtocol.name)
+              localStorage.setItem('levl_referral_source', 'diary_of_a_ceo')
+              localStorage.setItem('levl_referral_influencer', 'andrew_huberman')
+              window.dispatchEvent(new CustomEvent('levl_sync_end'))
+              window.dispatchEvent(new CustomEvent('levl_tasks_updated', { detail: updated }))
+            } catch (e) {}
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load initial tasks in HubermanClient:', e)
+      }
+    }
+    initData()
+    return () => { isCancelled = true }
+  }, [effectiveUserId, todayStr, currentProtocol, searchParams, hasAutoActivated])
+
   // Instant Kickstart: Add protocol to today's schedule
-  const handleActivateProtocol = async () => {
+  const handleActivateProtocol = async (redirectAfter = true) => {
     if (!currentProtocol) return
     setIsActivating(true)
     try {
-      const localUserId = getLocalUserId()
+      const activeId = effectiveUserId || getLocalUserId()
       
       // Store referral and kickstart attribution
       if (typeof window !== 'undefined') {
@@ -234,10 +270,23 @@ export default function HubermanClient() {
         } catch (e) {}
       }
 
-      await addProtocolToToday(localUserId, todayStr, currentProtocol.id)
-      const updatedTasks = await getDailyProtocolTasks(localUserId, todayStr)
+      await addProtocolToToday(activeId, todayStr, currentProtocol.id)
+      const updatedTasks = await getDailyProtocolTasks(activeId, todayStr)
       setTodayTasks(updatedTasks)
+      
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`levl_cached_tasks_${todayStr}`, JSON.stringify(updatedTasks))
+          window.dispatchEvent(new CustomEvent('levl_sync_end'))
+          window.dispatchEvent(new CustomEvent('levl_tasks_updated', { detail: updatedTasks }))
+        } catch (e) {}
+      }
+
       setActivatedSuccess(true)
+
+      if (redirectAfter) {
+        router.push('/today')
+      }
     } catch (err) {
       console.error('Failed to activate protocol:', err)
     } finally {
@@ -245,12 +294,12 @@ export default function HubermanClient() {
     }
   }
 
-  // Copy shareable protocol link to clipboard
+  // Copy shareable protocol link to clipboard with auto-start enabled
   const handleCopyLink = (protocolSlug?: string) => {
     if (typeof window === 'undefined') return
     const targetSlug = protocolSlug || activeTab.slug
     const baseUrl = window.location.origin + '/huberman'
-    const shareUrl = targetSlug === 'all' ? baseUrl : `${baseUrl}?protocol=${targetSlug}`
+    const shareUrl = targetSlug === 'all' ? `${baseUrl}?start=true` : `${baseUrl}?protocol=${targetSlug}&start=true`
     
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopiedLink(targetSlug)
@@ -303,7 +352,7 @@ export default function HubermanClient() {
               </button>
             ) : (
               <button
-                onClick={handleActivateProtocol}
+                onClick={() => handleActivateProtocol(true)}
                 disabled={isActivating}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/25 transition-all transform active:scale-95 disabled:opacity-50"
               >
@@ -486,12 +535,31 @@ export default function HubermanClient() {
               </button>
 
               <button
-                onClick={handleActivateProtocol}
+                onClick={() => {
+                  if (isProtocolAlreadyActiveToday) {
+                    router.push('/today')
+                  } else {
+                    handleActivateProtocol(true)
+                  }
+                }}
                 disabled={isActivating}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all disabled:opacity-50"
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ${
+                  isProtocolAlreadyActiveToday
+                    ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                    : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                }`}
               >
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                <span>{isProtocolAlreadyActiveToday ? 'Re-Add to Today' : 'Add to Today'}</span>
+                {isProtocolAlreadyActiveToday ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Active in Schedule • View Today</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Add to Today</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

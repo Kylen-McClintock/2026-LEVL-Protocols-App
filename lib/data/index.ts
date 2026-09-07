@@ -3017,14 +3017,33 @@ export async function addProtocolToToday(localUserId: string, date: string, prot
       execution_details: t.execution_details || undefined
     }))
 
+    // Deduplicate against already existing scheduled tasks for this user & dates
+    const uniqueDates = Array.from(new Set(sanitizedTasks.map(t => t.scheduled_date)))
+    const minDate = uniqueDates.sort()[0]
+    const maxDate = uniqueDates[uniqueDates.length - 1]
+
+    const { data: existingRows } = await supabase
+      .from('daily_protocol_tasks')
+      .select('scheduled_date, modality_id')
+      .eq('local_user_id', localUserId)
+      .gte('scheduled_date', minDate)
+      .lte('scheduled_date', maxDate)
+
+    const existingKeySet = new Set((existingRows || []).map(r => `${r.scheduled_date}__${r.modality_id}`))
+    const tasksToActuallyInsert = sanitizedTasks.filter(t => !existingKeySet.has(`${t.scheduled_date}__${t.modality_id}`))
+
+    if (tasksToActuallyInsert.length === 0) {
+      return true
+    }
+
     const { error } = await supabase
       .from('daily_protocol_tasks')
-      .insert(sanitizedTasks)
+      .insert(tasksToActuallyInsert)
       
     if (error) {
       console.warn('First insert attempt warning, falling back to minimal task schema:', error?.message || error)
       
-      const cleanTasks = sanitizedTasks.map(t => ({
+      const cleanTasks = tasksToActuallyInsert.map(t => ({
         local_user_id: t.local_user_id,
         modality_id: t.modality_id,
         scheduled_date: t.scheduled_date,

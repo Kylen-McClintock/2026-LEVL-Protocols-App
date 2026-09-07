@@ -227,9 +227,14 @@ export async function linkGuestDataToAuthUser(guestId: string, authUser: User): 
       }
     }
 
-    // 6. Migrate protocol instances
+    // 6. Migrate protocol instances & daily protocol tasks
     await supabase
       .from('user_protocol_instances')
+      .update({ local_user_id: authUser.id })
+      .eq('local_user_id', guestId)
+
+    await supabase
+      .from('daily_protocol_tasks')
       .update({ local_user_id: authUser.id })
       .eq('local_user_id', guestId)
 
