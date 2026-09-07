@@ -9,12 +9,18 @@ import {
   HUBERMAN_SUB_PROTOCOLS,
   ALL_HUBERMAN_DOAC_PROTOCOLS 
 } from '@/lib/data/hubermanDoacProtocol'
+import { HUBERMAN_DOAC_MODALITIES } from '@/lib/data/hubermanDoacModalities'
+import { BUILT_IN_LONGEVITY_MODALITIES } from '@/lib/data/builtInLongevityModalities'
 import { 
   addProtocolToToday, 
   getDailyProtocolTasks,
   getOutcomeDimensions,
-  getOrCreateUserProfile
+  getOrCreateUserProfile,
+  getModalities,
+  createDailyTask
 } from '@/lib/data'
+import { modalityReferences } from '@/lib/data/references'
+import GeekMode from '@/components/cards/GeekMode'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { format } from 'date-fns'
 import { 
@@ -46,7 +52,8 @@ import {
   Heart,
   Droplets,
   Layers,
-  Award
+  Award,
+  Microscope
 } from 'lucide-react'
 import CyclicSighingApplet from '@/components/applets/CyclicSighingApplet'
 import { DosageDetailModal } from '@/components/modals/DosageDetailModal'
@@ -158,6 +165,8 @@ export default function HubermanClient() {
   const [isBreathworkOpen, setIsBreathworkOpen] = useState(false)
   const [selectedModalityForDetail, setSelectedModalityForDetail] = useState<Modality | null>(null)
   const [isDosageModalOpen, setIsDosageModalOpen] = useState(false)
+  const [catalogModalities, setCatalogModalities] = useState<Modality[]>([])
+  const [expandedGeekStepId, setExpandedGeekStepId] = useState<string | null>(null)
 
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), [])
 
@@ -195,15 +204,25 @@ export default function HubermanClient() {
     }
   }
 
-  // Check if active protocol is already added in today's tasks
-  const isProtocolAlreadyActiveToday = useMemo(() => {
-    if (!currentProtocol || todayTasks.length === 0) return false
-    const stepModalityIds = (currentProtocol.steps || []).map(s => s.modality_id || s.modality?.id).filter(Boolean)
-    if (stepModalityIds.length === 0) return false
-    // If at least 2 steps (or all if < 2) are present in today's tasks
-    const matchedCount = stepModalityIds.filter(id => todayTasks.some(t => t.modality_id === id)).length
-    return matchedCount >= Math.min(2, stepModalityIds.length)
-  }, [currentProtocol, todayTasks])
+  // Modality presence & schedule completion checks
+  const protocolStepModalityIds = useMemo(() => {
+    if (!currentProtocol?.steps) return []
+    return currentProtocol.steps.map(s => s.modality_id || s.modality?.id).filter(Boolean) as string[]
+  }, [currentProtocol])
+
+  const missingStepModalityIds = useMemo(() => {
+    if (!protocolStepModalityIds.length) return []
+    return protocolStepModalityIds.filter(id => !todayTasks.some(t => t.modality_id === id))
+  }, [protocolStepModalityIds, todayTasks])
+
+  const activeModalityCount = useMemo(() => {
+    return protocolStepModalityIds.filter(id => todayTasks.some(t => t.modality_id === id)).length
+  }, [protocolStepModalityIds, todayTasks])
+
+  const isProtocolFullyActiveToday = useMemo(() => {
+    if (!protocolStepModalityIds.length) return false
+    return missingStepModalityIds.length === 0
+  }, [protocolStepModalityIds, missingStepModalityIds])
 
   // Load existing tasks on mount & automatically start the protocol if opening from link
   useEffect(() => {
@@ -212,37 +231,44 @@ export default function HubermanClient() {
     const initData = async () => {
       if (!effectiveUserId) return
       try {
-        const [tasks, profile] = await Promise.all([
+        const [tasks, profile, allMods] = await Promise.all([
           getDailyProtocolTasks(effectiveUserId, todayStr),
-          getOrCreateUserProfile(effectiveUserId)
+          getOrCreateUserProfile(effectiveUserId),
+          getModalities()
         ])
         if (isCancelled) return
         setTodayTasks(tasks)
         setUserProfile(profile)
+        if (allMods) setCatalogModalities(allMods)
 
-        // Check if active protocol is already added in today's tasks
-        const stepModalityIds = (currentProtocol.steps || []).map(s => s.modality_id || s.modality?.id).filter(Boolean)
-        const isAlreadyActive = stepModalityIds.length > 0 && stepModalityIds.filter(id => tasks.some(t => t.modality_id === id)).length >= Math.min(2, stepModalityIds.length)
+        // Check if steps are missing from active protocol
+        const stepModalityIds = (currentProtocol.steps || []).map(s => s.modality_id || s.modality?.id).filter(Boolean) as string[]
+        const missing = stepModalityIds.filter(id => !tasks.some(t => t.modality_id === id))
 
         // Auto-activate on first load of link or if start query is set
-        const shouldAutoStart = searchParams.get('start') === 'true' || searchParams.get('autoAdd') === 'true' || !isAlreadyActive
+        const shouldAutoStart = (searchParams.get('start') === 'true' || searchParams.get('autoAdd') === 'true') && missing.length > 0
         if (!hasAutoActivated && shouldAutoStart) {
           setHasAutoActivated(true)
-          await addProtocolToToday(effectiveUserId, todayStr, currentProtocol.id)
-          const updated = await getDailyProtocolTasks(effectiveUserId, todayStr)
-          if (isCancelled) return
-          setTodayTasks(updated)
-          setActivatedSuccess(true)
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.setItem(`levl_cached_tasks_${todayStr}`, JSON.stringify(updated))
-              localStorage.setItem('levl_guest_instant_kickstart', 'true')
-              localStorage.setItem('levl_active_protocol', currentProtocol.name)
-              localStorage.setItem('levl_referral_source', 'diary_of_a_ceo')
-              localStorage.setItem('levl_referral_influencer', 'andrew_huberman')
-              window.dispatchEvent(new CustomEvent('levl_sync_end'))
-              window.dispatchEvent(new CustomEvent('levl_tasks_updated', { detail: updated }))
-            } catch (e) {}
+          setIsActivating(true)
+          try {
+            await addProtocolToToday(effectiveUserId, todayStr, currentProtocol.id)
+            const updated = await getDailyProtocolTasks(effectiveUserId, todayStr)
+            if (isCancelled) return
+            setTodayTasks(updated)
+            setActivatedSuccess(true)
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem(`levl_cached_tasks_${todayStr}`, JSON.stringify(updated))
+                localStorage.setItem('levl_guest_instant_kickstart', 'true')
+                localStorage.setItem('levl_active_protocol', currentProtocol.name)
+                localStorage.setItem('levl_referral_source', 'diary_of_a_ceo')
+                localStorage.setItem('levl_referral_influencer', 'andrew_huberman')
+                window.dispatchEvent(new CustomEvent('levl_sync_end'))
+                window.dispatchEvent(new CustomEvent('levl_tasks_updated', { detail: updated }))
+              } catch (e) {}
+            }
+          } finally {
+            setIsActivating(false)
           }
         }
       } catch (e) {
@@ -309,6 +335,29 @@ export default function HubermanClient() {
     })
   }
 
+  // Quick single-modality addition to today's schedule
+  const handleAddSingleStepToToday = async (stepModId: string, timingSlot?: string) => {
+    if (!stepModId) return
+    setIsActivating(true)
+    try {
+      const activeId = effectiveUserId || getLocalUserId()
+      await createDailyTask(activeId, todayStr, stepModId, timingSlot || 'morning')
+      const updated = await getDailyProtocolTasks(activeId, todayStr)
+      setTodayTasks(updated)
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`levl_cached_tasks_${todayStr}`, JSON.stringify(updated))
+          window.dispatchEvent(new CustomEvent('levl_sync_end'))
+          window.dispatchEvent(new CustomEvent('levl_tasks_updated', { detail: updated }))
+        } catch (e) {}
+      }
+    } catch (err) {
+      console.error('Failed to add single step to today:', err)
+    } finally {
+      setIsActivating(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-28">
       {/* Hero Header */}
@@ -341,13 +390,13 @@ export default function HubermanClient() {
 
           {/* Quick Action Bar: Start Protocol + Share Link */}
           <div className="flex flex-wrap items-center gap-3.5 pt-1">
-            {activatedSuccess || isProtocolAlreadyActiveToday ? (
+            {isProtocolFullyActiveToday ? (
               <button
                 onClick={() => router.push('/today')}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/25 transition-all transform active:scale-95"
               >
                 <CheckCircle2 className="w-4 h-4 text-slate-950" />
-                <span>Protocol Active in Today’s Schedule • Open Today</span>
+                <span>All {protocolStepModalityIds.length} Modalities Active in Today • Open Today</span>
                 <ArrowRight className="w-4 h-4 text-slate-950" />
               </button>
             ) : (
@@ -364,7 +413,12 @@ export default function HubermanClient() {
                 ) : (
                   <>
                     <Zap className="w-4 h-4 text-slate-950 fill-current" />
-                    <span>Start This Protocol Now (Instant Free Access)</span>
+                    <span>
+                      {activeModalityCount > 0 
+                        ? `Add Remaining ${missingStepModalityIds.length} Modalities to Today (${activeModalityCount}/${protocolStepModalityIds.length} Active)`
+                        : `Start This Protocol Now • Add All ${protocolStepModalityIds.length} Modalities`
+                      }
+                    </span>
                   </>
                 )}
               </button>
@@ -536,7 +590,7 @@ export default function HubermanClient() {
 
               <button
                 onClick={() => {
-                  if (isProtocolAlreadyActiveToday) {
+                  if (isProtocolFullyActiveToday) {
                     router.push('/today')
                   } else {
                     handleActivateProtocol(true)
@@ -544,20 +598,25 @@ export default function HubermanClient() {
                 }}
                 disabled={isActivating}
                 className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ${
-                  isProtocolAlreadyActiveToday
+                  isProtocolFullyActiveToday
                     ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
                     : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
                 }`}
               >
-                {isProtocolAlreadyActiveToday ? (
+                {isProtocolFullyActiveToday ? (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Active in Schedule • View Today</span>
+                    <span>All {protocolStepModalityIds.length} Active in Schedule • View Today</span>
+                  </>
+                ) : missingStepModalityIds.length > 0 && activeModalityCount > 0 ? (
+                  <>
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Add Remaining {missingStepModalityIds.length} Modalities ({activeModalityCount}/{protocolStepModalityIds.length} Active)</span>
                   </>
                 ) : (
                   <>
                     <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Add to Today</span>
+                    <span>Add All {protocolStepModalityIds.length} to Today</span>
                   </>
                 )}
               </button>
@@ -593,23 +652,47 @@ export default function HubermanClient() {
 
             <div className="space-y-3">
               {(currentProtocol.steps || []).map((step: ProtocolStep, idx: number) => {
-                const mod = step.modality
-                const isSigh = step.modality_id === 'physiological_sigh' || mod?.id === 'physiological_sigh'
-                
+                const stepModId = step.modality_id || step.modality?.id || ''
+                const fromCatalog = catalogModalities.find(m => m.id === stepModId || m.slug === stepModId)
+                const fromDoac = HUBERMAN_DOAC_MODALITIES.find(m => m.id === stepModId)
+                const fromBuiltIn = BUILT_IN_LONGEVITY_MODALITIES.find(m => m.id === stepModId)
+                const fromStep = step.modality
+
+                const baseMod = fromCatalog || fromDoac || fromBuiltIn || fromStep || ({ id: stepModId, name: step.instructions } as Modality)
+                const fallbackMod = fromDoac || fromBuiltIn || fromStep
+
+                const fullMod: Modality = {
+                  ...fallbackMod,
+                  ...baseMod,
+                  scientific_references: (baseMod.scientific_references && baseMod.scientific_references.length > 0)
+                    ? baseMod.scientific_references
+                    : (fallbackMod?.scientific_references && fallbackMod.scientific_references.length > 0)
+                      ? fallbackMod.scientific_references
+                      : (modalityReferences[stepModId] || []),
+                  functional_impacts: baseMod.functional_impacts || fallbackMod?.functional_impacts || {},
+                  mechanism_of_action: baseMod.mechanism_of_action || fallbackMod?.mechanism_of_action || '',
+                  evidence_summary: baseMod.evidence_summary || fallbackMod?.evidence_summary || ''
+                }
+
+                const isStepActiveToday = todayTasks.some(t => t.modality_id === stepModId || t.modality_id === fullMod.id)
+                const isSigh = stepModId === 'physiological_sigh' || stepModId === 'cyclic_sighing' || fullMod.id === 'physiological_sigh' || fullMod.id === 'cyclic_sighing'
+                const stepKey = step.id || `${stepModId}-${idx}`
+                const isGeekOpen = expandedGeekStepId === stepKey
+
                 return (
                   <div
-                    key={step.id || idx}
+                    key={stepKey}
                     className="group relative rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-950/60 p-4 transition-all"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
                         <div className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5 border border-slate-700">
                           {idx + 1}
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1.5 flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <h5 className="text-sm sm:text-base font-bold text-white group-hover:text-amber-300 transition-colors">
-                              {mod?.display_name || mod?.name || step.instructions}
+                              {fullMod.display_name || fullMod.name || step.instructions}
                             </h5>
                             {step.timing_slot && (
                               <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 uppercase">
@@ -620,6 +703,21 @@ export default function HubermanClient() {
                               <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-950/60 text-blue-300 border border-blue-800/60">
                                 🌡️ {step.temperature}
                               </span>
+                            )}
+                            {isStepActiveToday ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                <span>In Today’s Schedule</span>
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleAddSingleStepToToday(stepModId, step.timing_slot)}
+                                disabled={isActivating}
+                                className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-all disabled:opacity-50 cursor-pointer"
+                              >
+                                <Plus className="w-2.5 h-2.5 stroke-[3]" />
+                                <span>Add to Today</span>
+                              </button>
                             )}
                           </div>
 
@@ -637,7 +735,7 @@ export default function HubermanClient() {
                           </div>
 
                           {/* Instructions */}
-                          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed pt-1">
+                          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed pt-0.5">
                             {step.instructions}
                           </p>
 
@@ -650,45 +748,64 @@ export default function HubermanClient() {
                         </div>
                       </div>
 
-                      {/* Right-Side Actions: Launch Breathwork Applet or Inspect Dose */}
-                      <div className="flex sm:flex-col items-center sm:items-end gap-2 flex-shrink-0 pt-2 sm:pt-0">
+                      {/* Right-Side Actions: Launch Breathwork Applet, Inline Geek Mode, or Inspect Dose */}
+                      <div className="flex flex-wrap sm:flex-col items-center sm:items-end gap-2 flex-shrink-0 pt-2 sm:pt-0">
                         {isSigh && (
                           <button
                             onClick={() => setIsBreathworkOpen(true)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow transition-all"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow transition-all cursor-pointer"
                           >
                             <Play className="w-3 h-3 fill-current" />
                             <span>Run Pacer (5m)</span>
                           </button>
                         )}
 
-                        {mod && (
-                          <button
-                            onClick={() => {
-                              setSelectedModalityForDetail(mod)
-                              setIsDosageModalOpen(true)
-                            }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-slate-800/80 hover:bg-slate-700 hover:text-white border border-slate-700 transition-colors"
-                          >
-                            <Info className="w-3.5 h-3.5 text-slate-400" />
-                            <span>Inspect Modality</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setExpandedGeekStepId(isGeekOpen ? null : stepKey)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                            isGeekOpen 
+                              ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
+                              : 'bg-purple-950/40 text-purple-300 hover:bg-purple-900/60 border-purple-800/60'
+                          }`}
+                        >
+                          <Microscope className="w-3.5 h-3.5" />
+                          <span>{isGeekOpen ? 'Hide Science' : '🔬 Geek Mode'}</span>
+                        </button>
 
-                        {mod?.scientific_references?.[0]?.url && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedModalityForDetail(fullMod)
+                            setIsDosageModalOpen(true)
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-200 bg-slate-800/90 hover:bg-slate-700 hover:text-white border border-slate-700 transition-colors shadow-sm cursor-pointer"
+                        >
+                          <Info className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Inspect Modality</span>
+                        </button>
+
+                        {(fullMod.scientific_references?.[0]?.url || modalityReferences[stepModId]?.[0]?.url) && (
                           <a
-                            href={mod.scientific_references[0].url}
+                            href={fullMod.scientific_references?.[0]?.url || modalityReferences[stepModId]?.[0]?.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 transition-colors"
                           >
                             <BookOpen className="w-3 h-3" />
-                            <span>PubMed RCT</span>
+                            <span>PubMed Paper</span>
                             <ExternalLink className="w-2.5 h-2.5" />
                           </a>
                         )}
                       </div>
                     </div>
+
+                    {/* Inline Expandable Geek Mode Card */}
+                    {isGeekOpen && (
+                      <div className="mt-4 pt-3 border-t border-slate-800/80 animate-in fade-in duration-200">
+                        <GeekMode modality={fullMod} />
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -879,6 +996,8 @@ export default function HubermanClient() {
           }}
           modality={selectedModalityForDetail}
           userProfile={userProfile}
+          initialShowGeekMode={true}
+          initialShowLongevityDrawer={true}
         />
       )}
     </div>

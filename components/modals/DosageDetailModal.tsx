@@ -5,11 +5,14 @@ import { Modality, UserProfile } from '../../lib/types'
 import { resolveRecommendedDose, ProtocolDoseContext, getProtocolColorBadge } from '../../lib/utils/resolveRecommendedDose'
 import { 
   ShieldCheck, Info, Sparkles, CheckCircle2, ChevronRight, X, Layers, Scale, ExternalLink, 
-  BookOpen, Clock, Sliders, Bot, AlertTriangle, ChevronDown, ChevronUp, FileText, Edit3, CheckSquare, Square
+  BookOpen, Clock, Sliders, Bot, AlertTriangle, ChevronDown, ChevronUp, FileText, Edit3, CheckSquare, Square,
+  Microscope, Dna
 } from 'lucide-react'
 import { assessSafetyWithAI } from '../../lib/data'
 import { getCircadianTipForModality } from '../../lib/utils/circadianTimingTips'
 import { ModalityAICoachBar } from '../ai/ModalityAICoachBar'
+import GeekMode from '../cards/GeekMode'
+import ModalityLongevityDrawer from '../cards/ModalityLongevityDrawer'
 
 export const CHRONOLOGICAL_TIMING_PRESETS = [
   { label: '🌅 Upon Waking (6:00 AM – 8:00 AM)', value: 'Upon Waking (6:00 AM – 8:00 AM)' },
@@ -129,6 +132,8 @@ interface DosageDetailModalProps {
   onSelectDose?: (newDoseText: string, value: number) => void
   onOpenCustomizeOutcomes?: () => void
   onSavePersonalization?: (customDose: string, customTiming: string, notes?: string) => void
+  initialShowGeekMode?: boolean
+  initialShowLongevityDrawer?: boolean
 }
 
 export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
@@ -142,13 +147,19 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   existingTiming,
   onSelectDose,
   onOpenCustomizeOutcomes,
-  onSavePersonalization
+  onSavePersonalization,
+  initialShowGeekMode,
+  initialShowLongevityDrawer
 }) => {
   if (!isOpen) return null
 
   const resolved = resolveRecommendedDose(modality, userProfile, protocolContext)
   const [selectedSource, setSelectedSource] = useState<string>(resolved.sourceLabel)
   const [customValue, setCustomValue] = useState<number>(resolved.recommendedValue)
+
+  // Geek Mode & Longevity Drawer expansion states
+  const [showGeekMode, setShowGeekMode] = useState<boolean>(initialShowGeekMode ?? false)
+  const [showLongevityDrawer, setShowLongevityDrawer] = useState<boolean>(initialShowLongevityDrawer ?? false)
 
   // Custom dose text override option
   const [customDoseInput, setCustomDoseInput] = useState<string>('')
@@ -1039,7 +1050,62 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
             />
           </div>
 
-          {/* SECTION 7: SIDE-BY-SIDE HALF-WIDTH ACTION BUTTONS & MEDICAL DISCLAIMER */}
+          {/* SECTION 7: 🔬 GEEK MODE & 🧬 CLINICAL LONGEVITY SCIENCE EVIDENCE */}
+          <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Microscope className="w-4 h-4 text-purple-400" />
+                  Deep Science & Clinical Evidence
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Molecular mechanisms, PubMed trials, and 8-vector biological longevity profile
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowLongevityDrawer(!showLongevityDrawer)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+                    showLongevityDrawer 
+                      ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
+                      : 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white'
+                  }`}
+                >
+                  <Dna size={13} />
+                  <span>{showLongevityDrawer ? 'Hide Longevity' : '8-Vector Longevity'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowGeekMode(!showGeekMode)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+                    showGeekMode 
+                      ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
+                      : 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white'
+                  }`}
+                >
+                  <Info size={13} />
+                  <span>{showGeekMode ? 'Hide Geek Mode' : '🔬 Geek Mode'}</span>
+                </button>
+              </div>
+            </div>
+
+            {showLongevityDrawer && (
+              <div className="pt-2 animate-in fade-in duration-200">
+                <ModalityLongevityDrawer modality={modality} defaultExpanded={true} />
+              </div>
+            )}
+
+            {showGeekMode && (
+              <div className="pt-2 animate-in fade-in duration-200">
+                <GeekMode modality={modality} />
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 8: SIDE-BY-SIDE HALF-WIDTH ACTION BUTTONS & MEDICAL DISCLAIMER */}
           <div className="space-y-3 pt-2">
             <div className="flex items-center gap-3">
               {/* Button 1 (50% Width): Tracked Outcomes & Bio-Signals */}

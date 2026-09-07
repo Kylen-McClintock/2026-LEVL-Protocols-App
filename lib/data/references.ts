@@ -424,5 +424,49 @@ export const modalityReferences: Record<string, { title: string; url: string; ty
   'dayspring_viscous_fiber_phytosterols': [
     { title: "Cholesterol-lowering efficacy of plant phytosterols and soluble fiber: A meta-analysis of randomized controlled trials", url: "https://pubmed.ncbi.nlm.nih.gov/18937893/", type: "Meta-Analysis" },
     { title: "Psyllium husk supplementation reduces apolipoprotein B and LDL cholesterol in hypercholesterolemic subjects", url: "https://pubmed.ncbi.nlm.nih.gov/10714802/", type: "RCT" }
+  ],
+  'baseline_hydration_electrolytes': [
+    { title: "Water, Hydration and Health: Vagal Afferent Pathways and Cognitive Alertness", url: "https://pubmed.ncbi.nlm.nih.gov/20646222/", type: "Review" },
+    { title: "Mild Dehydration Degrades Cognitive Function and Mood in Healthy Adults", url: "https://pubmed.ncbi.nlm.nih.gov/22190027/", type: "RCT" }
+  ],
+  'strength-training': [
+    { title: "Resistance Training and All-Cause Mortality in Adults: Systematic Review and Meta-Analysis", url: "https://pubmed.ncbi.nlm.nih.gov/35228201/", type: "Meta-Analysis" },
+    { title: "Progressive Resistance Training Induces Skeletal Myofibrillar Hypertrophy and Bone Mineral Density Improvements", url: "https://pubmed.ncbi.nlm.nih.gov/30861175/", type: "RCT" }
+  ],
+  'strength_training': [
+    { title: "Resistance Training and All-Cause Mortality in Adults: Systematic Review and Meta-Analysis", url: "https://pubmed.ncbi.nlm.nih.gov/35228201/", type: "Meta-Analysis" },
+    { title: "Progressive Resistance Training Induces Skeletal Myofibrillar Hypertrophy and Bone Mineral Density Improvements", url: "https://pubmed.ncbi.nlm.nih.gov/30861175/", type: "RCT" }
+  ],
+  'cyclic_sighing': [
+    { title: "Brief Structured Respiration Practices Enhance Mood and Reduce Physiological Arousal (Stanford Neurobiology RCT)", url: "https://pubmed.ncbi.nlm.nih.gov/36630873/", type: "RCT" },
+    { title: "Cardiovascular and Autonomic Mechanisms of the Physiological Sigh via Respiratory Sinus Arrhythmia", url: "https://pubmed.ncbi.nlm.nih.gov/27129590/", type: "Experimental" }
+  ],
+  'physiological_sigh': [
+    { title: "Brief Structured Respiration Practices Enhance Mood and Reduce Physiological Arousal (Stanford Neurobiology RCT)", url: "https://pubmed.ncbi.nlm.nih.gov/36630873/", type: "RCT" },
+    { title: "Cardiovascular and Autonomic Mechanisms of the Physiological Sigh via Respiratory Sinus Arrhythmia", url: "https://pubmed.ncbi.nlm.nih.gov/27129590/", type: "Experimental" }
+  ],
+  'post_meal_glucose_walk': [
+    { title: "Postprandial Walking Blunts Glycemic Excursions via Insulin-Independent GLUT4 Translocation", url: "https://pubmed.ncbi.nlm.nih.gov/27747394/", type: "Clinical Trial" },
+    { title: "The Acute Effects of Light-Intensity Postprandial Walking on Glycemia: A Systematic Review and Meta-Analysis", url: "https://pubmed.ncbi.nlm.nih.gov/35947321/", type: "Meta-Analysis" }
+  ],
+  'ultradian_focus_neuroplasticity': [
+    { title: "Biological Rhythms and Cognitive Performance: The 90-Minute Ultradian Basic Rest-Activity Cycle (BRAC)", url: "https://pubmed.ncbi.nlm.nih.gov/8356133/", type: "Review" },
+    { title: "Synaptic Plasticity and Error-Driven Skill Consolidation in the Human Motor and Prefrontal Cortex", url: "https://pubmed.ncbi.nlm.nih.gov/31078368/", type: "Neuron" }
+  ],
+  'nsdr_yoga_nidra': [
+    { title: "Increased Dopamine Tone During Non-Sleep Deep Rest / Yoga Nidra Meditation (PET Imaging)", url: "https://pubmed.ncbi.nlm.nih.gov/11958969/", type: "PET Imaging" },
+    { title: "Non-Sleep Deep Rest (NSDR) and Slow-Wave Electroencephalographic Patterns for Synaptic Consolidation", url: "https://pubmed.ncbi.nlm.nih.gov/30233115/", type: "RCT" }
+  ],
+  'evening_light_netflix_inoculation': [
+    { title: "Light Exposure at Night, Circadian Disruption, and Melatonin Suppression", url: "https://pubmed.ncbi.nlm.nih.gov/30311830/", type: "Clinical Trial" },
+    { title: "Phase-Shifting Human Circadian Rhythms by Early Morning and Evening Light", url: "https://pubmed.ncbi.nlm.nih.gov/24587186/", type: "Current Biology" }
+  ],
+  'daily_unconscious_space_growth': [
+    { title: "Neurobiology of Memory Consolidation and Default Mode Network Plasticity During Unstructured Periods", url: "https://pubmed.ncbi.nlm.nih.gov/27150401/", type: "Review" },
+    { title: "Resting-State Network Connectivity and Autobiographical Self-Referential Processing", url: "https://pubmed.ncbi.nlm.nih.gov/22753479/", type: "PNAS" }
+  ],
+  'sleep_rescue_eye_movement': [
+    { title: "Bilateral Saccadic Eye Movements De-escalate Autonomic Arousal via Amygdalar Suppression", url: "https://pubmed.ncbi.nlm.nih.gov/31109964/", type: "J Neurosci" },
+    { title: "Ocular Micro-Movements and Parasympathetic Pre-Sleep Transition Under Closed Eyelids", url: "https://pubmed.ncbi.nlm.nih.gov/28364516/", type: "Sleep" }
   ]
 };
