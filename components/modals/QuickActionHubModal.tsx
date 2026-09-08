@@ -49,7 +49,7 @@ export default function QuickActionHubModal({
     <>
       {/* Primary Action Sheet */}
       {isOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 pt-[calc(env(safe-area-inset-top,0px)+16px)] pb-safe bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800/90 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
             
             {/* Header */}
@@ -180,11 +180,11 @@ export default function QuickActionHubModal({
                 <ArrowRight size={16} className="text-slate-500 group-hover:text-sky-300 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
               </button>
 
-              {/* Option 3: Enroll in Protocol Stack */}
+              {/* Option 3: Enroll in Protocol Stack -> Direct to Explore Protocols */}
               <button
                 onClick={() => {
                   onClose()
-                  setShowEnrollProtocol(true)
+                  router.push('/explore?tab=protocols')
                 }}
                 className="w-full text-left p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-sky-500/10 border border-emerald-500/30 hover:border-emerald-400/60 hover:bg-emerald-500/15 transition-all group flex items-center justify-between cursor-pointer"
               >
@@ -200,7 +200,7 @@ export default function QuickActionHubModal({
                       </span>
                     </div>
                     <div className="text-xs text-slate-400">
-                      Adopt verified stacks (Blueprint 2026, Huberman, Sinclair, Attia)
+                      Explore verified stacks sorted by popularity (Blueprint 2026, Huberman, Sinclair, Attia)
                     </div>
                   </div>
                 </div>

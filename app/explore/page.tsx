@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { format } from 'date-fns'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { 
@@ -40,12 +41,18 @@ import { StackFitResult } from '@/lib/synergy/stackFitEngine'
 import { semanticSearchModalities, SemanticSearchResult } from '@/app/actions/search'
 import { calculateModalityRelevance, calculateProtocolRelevance } from '@/lib/search/semanticRelevance'
 
-export default function ExplorePage() {
+function ExplorePageContent() {
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const sortParam = searchParams.get('sort')
+
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [modalities, setModalities] = useState<Modality[]>([])
   const [protocols, setProtocols] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'modalities' | 'protocols'>('modalities')
+  const [activeTab, setActiveTab] = useState<'modalities' | 'protocols'>(() => {
+    return tabParam === 'protocols' ? 'protocols' : 'modalities'
+  })
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   const [todayModalityIds, setTodayModalityIds] = useState<Set<string>>(new Set())
@@ -163,6 +170,18 @@ export default function ExplorePage() {
   const [searchSortMode, setSearchSortMode] = useState<'semantic' | 'hybrid'>('semantic')
   const [sortMode, setSortMode] = useState<'popularity' | 'nba' | 'evidence' | 'impact' | 'relevance'>('popularity')
   const [previousSortMode, setPreviousSortMode] = useState<'popularity' | 'nba' | 'evidence' | 'impact' | 'relevance' | null>(null)
+
+  useEffect(() => {
+    if (tabParam === 'protocols') {
+      setActiveTab('protocols')
+      setSortMode('popularity')
+    } else if (tabParam === 'modalities') {
+      setActiveTab('modalities')
+    }
+    if (sortParam && ['popularity', 'nba', 'evidence', 'impact', 'relevance'].includes(sortParam)) {
+      setSortMode(sortParam as any)
+    }
+  }, [tabParam, sortParam])
   const [transparencyModal, setTransparencyModal] = useState<{
     isOpen: boolean
     tab: 'popularity' | 'nba' | 'evidence' | 'impact' | 'relevance'
@@ -1762,5 +1781,17 @@ export default function ExplorePage() {
         />
       )}
     </div>
+  )
+}
+
+export default function ExplorePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-400 font-bold text-sm animate-pulse">
+        Loading Explore...
+      </div>
+    }>
+      <ExplorePageContent />
+    </Suspense>
   )
 }

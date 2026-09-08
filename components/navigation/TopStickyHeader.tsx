@@ -164,7 +164,7 @@ export default function TopStickyHeader() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 md:left-64 right-0 z-[9999] transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 md:left-64 right-0 z-40 transition-transform duration-300 ease-in-out ${
           isVisible ? 'translate-y-0' : '-translate-y-full'
         } bg-slate-950/85 backdrop-blur-xl border-b border-levl-border/80 shadow-lg shadow-black/20`}
         style={{
@@ -225,8 +225,8 @@ export default function TopStickyHeader() {
             )}
           </div>
 
-          {/* Center: View Selector Dropdown (No x/y badge, completely in front of all app elements) */}
-          <div className="flex items-center justify-center relative z-[9999]" ref={viewDropdownRef}>
+          {/* Center: View Selector Dropdown */}
+          <div className="flex items-center justify-center relative z-20" ref={viewDropdownRef}>
             <button
               type="button"
               onClick={() => setIsViewDropdownOpen(!isViewDropdownOpen)}
