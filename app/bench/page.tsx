@@ -79,11 +79,16 @@ export default function BenchPage() {
       }
     })
 
-    // Sort bench modalities by Next Best Action and compute protocol tags
+    // Filter to valid modalities and strictly deduplicate by modality_id
+    const seenModIds = new Set<string>()
+    const validModData: UserBenchItem[] = []
+
     modData.forEach(item => {
-      if (item.modality) {
-        item.modality.nba_result = calculateNextBestAction(item.modality, profileData)
-      }
+      if (!item.modality || !item.modality_id) return
+      if (seenModIds.has(item.modality_id)) return
+      seenModIds.add(item.modality_id)
+
+      item.modality.nba_result = calculateNextBestAction(item.modality, profileData)
 
       // Compute protocol tags for modalities that belong to a protocol active on Today's view (or enrolled)
       const associatedProtos = modalityToProtocolsMap.get(item.modality_id) || new Set<string>()
@@ -96,10 +101,12 @@ export default function BenchPage() {
         protocol_name: pName,
         color_hex: getColorForProtocol(pName)
       }))
+
+      validModData.push(item)
     })
-    modData.sort((a, b) => (b.modality?.nba_result?.score || 0) - (a.modality?.nba_result?.score || 0))
+    validModData.sort((a, b) => (b.modality?.nba_result?.score || 0) - (a.modality?.nba_result?.score || 0))
     
-    setItems(modData)
+    setItems(validModData)
     setBenchedProtocols(protoData)
     setProfile(profileData)
     setDraftModalities(draftModData)

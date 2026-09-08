@@ -144,15 +144,15 @@ export default function AdHocLoggerModal({
     return map
   }, [benchItems])
 
-  // Bench Modalities List (User's personal arsenal)
+  // Bench Modalities List (User's personal arsenal - strictly deduplicated)
   const userBenchModalities = useMemo(() => {
     const mods: Modality[] = []
+    const seenIds = new Set<string>()
     benchItems.forEach(b => {
-      if (b.modality) {
-        mods.push(b.modality)
-      } else if (b.modality_id) {
-        const found = allModalities.find(m => m.id === b.modality_id)
-        if (found) mods.push(found)
+      const mod = b.modality || (b.modality_id ? allModalities.find(m => m.id === b.modality_id) : null)
+      if (mod && !seenIds.has(mod.id)) {
+        seenIds.add(mod.id)
+        mods.push(mod)
       }
     })
     return mods
@@ -199,7 +199,15 @@ export default function AdHocLoggerModal({
     }
 
     const bMatches = userBenchModalities.filter(matchesModality).sort(sortFn)
-    const lMatches = allModalities.filter(m => !benchIds.has(m.id) && matchesModality(m)).sort(sortFn)
+    const seenLibIds = new Set<string>()
+    const lMatches: Modality[] = []
+    allModalities.forEach(m => {
+      if (!benchIds.has(m.id) && !seenLibIds.has(m.id) && matchesModality(m)) {
+        seenLibIds.add(m.id)
+        lMatches.push(m)
+      }
+    })
+    lMatches.sort(sortFn)
 
     return {
       benchMatches: bMatches,

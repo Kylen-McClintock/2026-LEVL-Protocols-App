@@ -715,19 +715,28 @@ export async function getBenchItems(localUserId: string): Promise<UserBenchItem[
     .select('*')
     .eq('local_user_id', localUserId)
     .not('modality_id', 'is', null)
+    .order('added_at', { ascending: false })
 
   if (error || !data) return []
   const items = data as UserBenchItem[]
   const allMods = await getModalities()
   const modsMap = new Map(allMods.map(m => [m.id, m]))
 
+  const deduplicatedItems: UserBenchItem[] = []
+  const seenModalityIds = new Set<string>()
+
   items.forEach(item => {
-    if (item.modality_id && modsMap.has(item.modality_id)) {
+    if (!item.modality_id) return
+    if (seenModalityIds.has(item.modality_id)) return
+
+    if (modsMap.has(item.modality_id)) {
       item.modality = modsMap.get(item.modality_id)
+      seenModalityIds.add(item.modality_id)
+      deduplicatedItems.push(item)
     }
   })
 
-  return items
+  return deduplicatedItems
 }
 
 export async function getBenchProtocols(localUserId: string): Promise<any[]> {
@@ -745,6 +754,19 @@ export async function getBenchProtocols(localUserId: string): Promise<any[]> {
 
 export async function addToBench(localUserId: string, modalityId: string, protocolId?: string) {
   if (!supabase) return null
+
+  // Check if modality is already on bench to prevent duplicates
+  const { data: existing } = await supabase
+    .from('user_bench_items')
+    .select('*')
+    .eq('local_user_id', localUserId)
+    .eq('modality_id', modalityId)
+    .limit(1)
+
+  if (existing && existing.length > 0) {
+    return existing[0]
+  }
+
   const { data, error } = await supabase
     .from('user_bench_items')
     .insert([{ local_user_id: localUserId, modality_id: modalityId, protocol_id: protocolId }])
@@ -827,18 +849,51 @@ export async function addProtocolToBench(localUserId: string, protocolId: string
     }
   }
   
-  const benchItems: any[] = steps.map(step => ({
-    local_user_id: localUserId,
-    modality_id: step.modality_id || step.modality?.id || null,
-    protocol_id: isProtocolUuid ? protocolId : null
-  })).filter(item => item.modality_id !== null)
+  // Fetch existing bench modalities for user to avoid duplicate entries
+  const { data: existingBench } = await supabase
+    .from('user_bench_items')
+    .select('modality_id')
+    .eq('local_user_id', localUserId)
+    .not('modality_id', 'is', null)
 
-  // Also add the protocol entry itself
-  benchItems.push({
-    local_user_id: localUserId,
-    modality_id: null as any,
-    protocol_id: isProtocolUuid ? protocolId : null
+  const existingModIds = new Set((existingBench || []).map(b => b.modality_id))
+
+  const newStepItems = steps
+    .map(step => ({
+      local_user_id: localUserId,
+      modality_id: step.modality_id || step.modality?.id || null,
+      protocol_id: isProtocolUuid ? protocolId : null
+    }))
+    .filter(item => item.modality_id !== null && !existingModIds.has(item.modality_id))
+
+  // Deduplicate among steps themselves
+  const seenStepModIds = new Set<string>()
+  const benchItems: any[] = []
+  newStepItems.forEach(item => {
+    if (!seenStepModIds.has(item.modality_id)) {
+      seenStepModIds.add(item.modality_id)
+      benchItems.push(item)
+    }
   })
+
+  // Check if protocol entry itself is already on bench
+  const { data: existingProto } = await supabase
+    .from('user_bench_items')
+    .select('id')
+    .eq('local_user_id', localUserId)
+    .is('modality_id', null)
+    .eq('protocol_id', protocolId)
+    .limit(1)
+
+  if (!existingProto || existingProto.length === 0) {
+    benchItems.push({
+      local_user_id: localUserId,
+      modality_id: null as any,
+      protocol_id: isProtocolUuid ? protocolId : null
+    })
+  }
+
+  if (benchItems.length === 0) return []
   
   const { data, error } = await supabase
     .from('user_bench_items')

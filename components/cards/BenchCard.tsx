@@ -40,6 +40,20 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
   const [showGeekMode, setShowGeekMode] = useState(false)
   const [showPersonalizeModal, setShowPersonalizeModal] = useState(false)
 
+  const [isPrimed, setIsPrimed] = useState(false)
+  const [sessionLogged, setSessionLogged] = useState(false)
+  const [customDoseVal, setCustomDoseVal] = useState(item.custom_dose || item.modality?.dose_or_exposure || '')
+  const [timingSlotVal, setTimingSlotVal] = useState('morning')
+  const [notesVal, setNotesVal] = useState(item.notes || '')
+
+  useEffect(() => {
+    const hour = new Date().getHours()
+    if (hour >= 5 && hour < 12) setTimingSlotVal('morning')
+    else if (hour >= 12 && hour < 17) setTimingSlotVal('afternoon')
+    else if (hour >= 17 && hour < 21) setTimingSlotVal('evening')
+    else if (hour >= 21 || hour < 5) setTimingSlotVal('pre_bed')
+  }, [])
+
   const modality = item.modality
   if (!modality) return null
 
@@ -51,20 +65,6 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
     (item.custom_timing || '').toLowerCase().includes('prn') ||
     (item.notes || '').toLowerCase().includes('as needed') ||
     (modality.timing_summary || '').toLowerCase().includes('as needed')
-
-  const [isPrimed, setIsPrimed] = useState(false)
-  const [sessionLogged, setSessionLogged] = useState(false)
-  const [customDoseVal, setCustomDoseVal] = useState(item.custom_dose || modality.dose_or_exposure || '')
-  const [timingSlotVal, setTimingSlotVal] = useState('morning')
-  const [notesVal, setNotesVal] = useState(item.notes || '')
-
-  useEffect(() => {
-    const hour = new Date().getHours()
-    if (hour >= 5 && hour < 12) setTimingSlotVal('morning')
-    else if (hour >= 12 && hour < 17) setTimingSlotVal('afternoon')
-    else if (hour >= 17 && hour < 21) setTimingSlotVal('evening')
-    else if (hour >= 21 || hour < 5) setTimingSlotVal('pre_bed')
-  }, [])
 
   const handleToday = async (e: React.MouseEvent) => {
     e.stopPropagation()
