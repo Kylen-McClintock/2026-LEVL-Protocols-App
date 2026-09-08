@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { UserProfile } from '@/lib/types'
-import { updateUserProfile } from '@/lib/data'
+import { updateUserProfile, sanitizeProfileTime } from '@/lib/data'
 import { Moon, Sun, Clock, Coffee, Eye, Sparkles, Check, Flame, ShieldAlert, CheckCircle2 } from 'lucide-react'
 import CircadianTimePickerInput from '@/components/ui/CircadianTimePickerInput'
 
@@ -28,13 +28,13 @@ const CHRONOTYPES = [
     id: 'wolf',
     label: 'Wolf / Night Owl',
     emoji: '🐺',
-    desc: 'Natural late riser (8:00–9:00 AM). Peak creative drive 5:00–10:00 PM; bedtime ~12:00–1:00 AM.'
+    desc: 'Struggles with early mornings (wakes 8:30–9:30 AM). Peak focus late afternoon & evening; late bedtime.'
   },
   {
     id: 'dolphin',
-    label: 'Dolphin / Light Sleeper',
+    label: 'Dolphin / Variable Sleeper',
     emoji: '🐬',
-    desc: 'Fragmented or light sleep patterns. Requires strict circadian light hygiene and consistent anchors.'
+    desc: 'Light sleeper, prone to insomnia. Needs strict wind-down routines and consistent wake anchors.'
   }
 ]
 
@@ -42,10 +42,10 @@ export default function CircadianAnchorsCard({ profile, onUpdated }: CircadianAn
   const prefs = profile.outcome_preference_scores || {}
 
   const [wakeTime, setWakeTime] = useState<string>(
-    profile.ideal_wake_time || prefs.ideal_wake_time || '06:30'
+    sanitizeProfileTime(profile.ideal_wake_time || prefs.ideal_wake_time) || '06:30'
   )
   const [bedTime, setBedTime] = useState<string>(
-    profile.ideal_bedtime || prefs.ideal_bedtime || '22:30'
+    sanitizeProfileTime(profile.ideal_bedtime || prefs.ideal_bedtime) || '22:30'
   )
   const [chronotype, setChronotype] = useState<string>(
     profile.chronotype || prefs.chronotype || 'bear'
@@ -55,8 +55,10 @@ export default function CircadianAnchorsCard({ profile, onUpdated }: CircadianAn
 
   // Calculate dynamic circadian milestones from wake & bed times
   const calculateMilestones = () => {
-    const [wakeH, wakeM] = wakeTime.split(':').map(Number)
-    const [bedH, bedM] = bedTime.split(':').map(Number)
+    const safeWake = (wakeTime && wakeTime.includes(':')) ? wakeTime : '06:30'
+    const safeBed = (bedTime && bedTime.includes(':')) ? bedTime : '22:30'
+    const [wakeH, wakeM] = safeWake.split(':').map(Number)
+    const [bedH, bedM] = safeBed.split(':').map(Number)
 
     const formatTime = (h: number, m: number) => {
       let normH = (h + 24) % 24

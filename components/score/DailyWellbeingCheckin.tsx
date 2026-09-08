@@ -16,9 +16,11 @@ import { fetchCurrentWeather, getCachedWeather, LocalWeatherData } from '@/lib/s
 import { ExternalConfounderData } from '@/lib/types'
 import CircadianTimePickerInput, { resolveCircadianLastMealTime } from '@/components/ui/CircadianTimePickerInput'
 
-function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: string = '22:30'): number {
+function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: any = '22:30'): number {
+  if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0
   const [h, m] = timeStr.split(':').map(Number)
-  const [bedH, bedM] = idealBedtime.split(':').map(Number)
+  const bedStr = String(idealBedtime || '22:30').trim()
+  const [bedH, bedM] = bedStr.includes(':') ? bedStr.split(':').map(Number) : [22, 30]
   
   let eventMins = (h || 0) * 60 + (m || 0)
   let bedMins = (bedH || 22) * 60 + (bedM || 30)
@@ -573,10 +575,15 @@ export default function DailyWellbeingCheckin({
     // Ideal bedtime from user profile (default to 22:00 / 10:00 PM)
     let bedHour = 22
     let bedMinute = 0
-    if (localProfile?.ideal_bedtime && localProfile.ideal_bedtime.includes(':')) {
-      const [h, m] = localProfile.ideal_bedtime.split(':').map(Number)
-      if (!isNaN(h)) bedHour = h
-      if (!isNaN(m)) bedMinute = m
+    if (localProfile?.ideal_bedtime != null) {
+      const bedStr = String(localProfile.ideal_bedtime).trim()
+      if (bedStr.includes(':')) {
+        const [h, m] = bedStr.split(':').map(Number)
+        if (!isNaN(h)) bedHour = h
+        if (!isNaN(m)) bedMinute = m
+      } else if (!isNaN(Number(bedStr))) {
+        bedHour = Math.floor(Number(bedStr))
+      }
     }
 
     const bedTotalMins = bedHour * 60 + bedMinute

@@ -444,16 +444,18 @@ export function getCircadianConfig(slotName: string): CircadianSlotConfig {
  */
 export function getAdaptiveCircadianConfig(
   slotName: string, 
-  actualWakeTimeStr?: string, 
+  actualWakeTimeStr?: string | null, 
   idealWakeTimeStr: string = '06:30'
 ): CircadianSlotConfig {
   const baseConfig = getCircadianConfig(slotName)
-  if (!actualWakeTimeStr || !actualWakeTimeStr.includes(':')) {
+  const actStr = actualWakeTimeStr != null ? String(actualWakeTimeStr).trim() : ''
+  const idStr = idealWakeTimeStr != null ? String(idealWakeTimeStr).trim() : '06:30'
+  if (!actStr || !actStr.includes(':')) {
     return baseConfig
   }
 
-  const [actH, actM] = actualWakeTimeStr.split(':').map(Number)
-  const [idH, idM] = idealWakeTimeStr.split(':').map(Number)
+  const [actH, actM] = actStr.split(':').map(Number)
+  const [idH, idM] = idStr.includes(':') ? idStr.split(':').map(Number) : [6, 30]
   if (isNaN(actH) || isNaN(idH)) return baseConfig
 
   const deltaMinutes = (actH * 60 + actM) - (idH * 60 + idM)
@@ -668,7 +670,7 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
  */
 export function isLateNightCarryoverWindow(
   now: Date = new Date(),
-  idealWakeTime?: string | null
+  idealWakeTime?: any
 ): boolean {
   const curHour = now.getHours()
   const curMinute = now.getMinutes()
@@ -677,11 +679,17 @@ export function isLateNightCarryoverWindow(
   // Default ideal wake time is 06:30 AM (390 mins)
   let wakeHour = 6
   let wakeMinute = 30
-  if (idealWakeTime && idealWakeTime.includes(':')) {
-    const [h, m] = idealWakeTime.split(':').map(Number)
-    if (!isNaN(h) && !isNaN(m)) {
-      wakeHour = h
-      wakeMinute = m
+  if (idealWakeTime != null) {
+    const wakeStr = String(idealWakeTime).trim()
+    if (wakeStr.includes(':')) {
+      const [h, m] = wakeStr.split(':').map(Number)
+      if (!isNaN(h) && !isNaN(m)) {
+        wakeHour = h
+        wakeMinute = m
+      }
+    } else if (!isNaN(Number(wakeStr))) {
+      wakeHour = Math.floor(Number(wakeStr))
+      wakeMinute = 0
     }
   }
 

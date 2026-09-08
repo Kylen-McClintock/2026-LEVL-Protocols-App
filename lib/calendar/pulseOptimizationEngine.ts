@@ -785,14 +785,39 @@ export function formatHourToTimeStr(decimalHour: number): string {
   return `${displayHour}:${displayMinutes} ${period}`
 }
 
+function parseProfileTimeString(val: any): { hour: number; minute: number } | null {
+  if (val == null) return null
+  let str = ''
+  if (typeof val === 'string') {
+    str = val.trim()
+  } else if (typeof val === 'number') {
+    const h = Math.floor(val)
+    const m = Math.round((val - h) * 60)
+    return { hour: h, minute: m }
+  } else {
+    str = String(val).trim()
+  }
+
+  if (str.includes(':')) {
+    const [hStr, mStr] = str.split(':')
+    const h = parseInt(hStr, 10)
+    const m = parseInt(mStr, 10)
+    if (!isNaN(h)) return { hour: h, minute: isNaN(m) ? 0 : m }
+  } else if (/^\d{1,2}$/.test(str)) {
+    const h = parseInt(str, 10)
+    if (!isNaN(h)) return { hour: h, minute: 0 }
+  }
+  return null
+}
+
 /**
  * Resolves a task's rough decimal hour based on scheduled_time or timing_slot
  */
 export function getTaskDecimalHour(task: DailyProtocolTask): number {
-  if (task.scheduled_time && task.scheduled_time.includes(':')) {
-    const parts = task.scheduled_time.split(':').map(Number)
-    if (!isNaN(parts[0]) && !isNaN(parts[1])) {
-      return parts[0] + parts[1] / 60
+  if (task.scheduled_time) {
+    const parsed = parseProfileTimeString(task.scheduled_time)
+    if (parsed) {
+      return parsed.hour + parsed.minute / 60
     }
   }
   const slot = (task.timing_slot || '').toLowerCase()
@@ -823,14 +848,14 @@ export function calculateDayPhasesAndTransitions(
   let wakeHour = 6.5 // 6:30 AM
   let bedHour = 23.0 // 11:00 PM
 
-  if (userProfile?.ideal_wake_time && userProfile.ideal_wake_time.includes(':')) {
-    const [h, m] = userProfile.ideal_wake_time.split(':').map(Number)
-    if (!isNaN(h)) wakeHour = h + (isNaN(m) ? 0 : m / 60)
+  const wakeParsed = parseProfileTimeString(userProfile?.ideal_wake_time)
+  if (wakeParsed) {
+    wakeHour = wakeParsed.hour + wakeParsed.minute / 60
   }
 
-  if (userProfile?.ideal_bedtime && userProfile.ideal_bedtime.includes(':')) {
-    const [h, m] = userProfile.ideal_bedtime.split(':').map(Number)
-    if (!isNaN(h)) bedHour = h + (isNaN(m) ? 0 : m / 60)
+  const bedParsed = parseProfileTimeString(userProfile?.ideal_bedtime)
+  if (bedParsed) {
+    bedHour = bedParsed.hour + bedParsed.minute / 60
   }
 
   // 2. Identify Growth & Recovery tasks
@@ -874,12 +899,10 @@ export function calculateDayPhasesAndTransitions(
   let growthStartHour = 11.0
   let growthTriggerText = '16:8 TRF Diurnal Feeding Onset & Baseline Anabolic Window'
 
-  if (userProfile?.eating_window_start && userProfile.eating_window_start.includes(':')) {
-    const [h, m] = userProfile.eating_window_start.split(':').map(Number)
-    if (!isNaN(h)) {
-      growthStartHour = h + (isNaN(m) ? 0 : m / 60)
-      growthTriggerText = `Personalized Eating Window Start (${formatHourToTimeStr(growthStartHour)})`
-    }
+  const startParsed = parseProfileTimeString(userProfile?.eating_window_start)
+  if (startParsed) {
+    growthStartHour = startParsed.hour + startParsed.minute / 60
+    growthTriggerText = `Personalized Eating Window Start (${formatHourToTimeStr(growthStartHour)})`
   }
 
   // If there is an earlier scheduled growth modality (e.g. morning lifting or early breakfast stack)
@@ -896,12 +919,11 @@ export function calculateDayPhasesAndTransitions(
   let recoveryStartHour = Math.max(growthStartHour + 4.0, bedHour - 3.5)
   let recoveryTriggerText = 'Evening Caloric Cutoff & Digestive Clearance Window'
 
-  if (userProfile?.eating_window_end && userProfile.eating_window_end.includes(':')) {
-    const [h, m] = userProfile.eating_window_end.split(':').map(Number)
-    if (!isNaN(h)) {
-      recoveryStartHour = Math.max(growthStartHour + 3.0, h + (isNaN(m) ? 0 : m / 60) + 0.5)
-      recoveryTriggerText = `Caloric Intake Window Closed at ${formatHourToTimeStr(h + (isNaN(m) ? 0 : m / 60))}`
-    }
+  const endParsed = parseProfileTimeString(userProfile?.eating_window_end)
+  if (endParsed) {
+    const endHour = endParsed.hour + endParsed.minute / 60
+    recoveryStartHour = Math.max(growthStartHour + 3.0, endHour + 0.5)
+    recoveryTriggerText = `Caloric Intake Window Closed at ${formatHourToTimeStr(endHour)}`
   }
 
   // Clamp recovery start hour nicely
@@ -1549,9 +1571,9 @@ export function assessProtocolForDeepOptimizations(
 
   // 1. Resolve Bedtime & Wake Time
   let bedHour = 23.0 // 11:00 PM
-  if (userProfile?.ideal_bedtime && userProfile.ideal_bedtime.includes(':')) {
-    const [h, m] = userProfile.ideal_bedtime.split(':').map(Number)
-    if (!isNaN(h)) bedHour = h + (isNaN(m) ? 0 : m / 60)
+  const bedParsed = parseProfileTimeString(userProfile?.ideal_bedtime)
+  if (bedParsed) {
+    bedHour = bedParsed.hour + bedParsed.minute / 60
   }
 
   // 2. Finding A: Move Last Meal Earlier (3+ Hours Before Bed)
@@ -1574,9 +1596,9 @@ export function assessProtocolForDeepOptimizations(
   })
 
   // Check profile eating_window_end if no task found
-  if (lastMealHour === null && userProfile?.eating_window_end && userProfile.eating_window_end.includes(':')) {
-    const [h, m] = userProfile.eating_window_end.split(':').map(Number)
-    if (!isNaN(h)) lastMealHour = h + (isNaN(m) ? 0 : m / 60)
+  const endParsed = parseProfileTimeString(userProfile?.eating_window_end)
+  if (lastMealHour === null && endParsed) {
+    lastMealHour = endParsed.hour + endParsed.minute / 60
   }
 
   const recommendedCutoffHour = bedHour - 3.5 // 3.5h before bed

@@ -21,7 +21,8 @@ import {
   getModalities,
   addToBench,
   upsertBenchItemOverride,
-  updateTaskExecutionDetails
+  updateTaskExecutionDetails,
+  normalizeUserProfile
 } from '@/lib/data'
 import { DailyProtocolTask, Modality, OutcomeDimension, UserProfile, UserBenchItem, DailyWellbeingCheckin as WellbeingType } from '@/lib/types'
 import { 
@@ -159,7 +160,7 @@ function TodayPageContent() {
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem('levl_cached_user_profile')
-        if (cached) return JSON.parse(cached)?.ideal_wake_time || null
+        if (cached) return normalizeUserProfile(JSON.parse(cached))?.ideal_wake_time || null
       } catch (e) {}
     }
     return null
@@ -180,7 +181,7 @@ function TodayPageContent() {
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem('levl_cached_user_profile')
-        if (cached) return JSON.parse(cached)
+        if (cached) return normalizeUserProfile(JSON.parse(cached))
       } catch (e) {}
     }
     return null

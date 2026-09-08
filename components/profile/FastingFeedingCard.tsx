@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { UserProfile } from '@/lib/types'
-import { updateUserProfile } from '@/lib/data'
+import { updateUserProfile, sanitizeProfileTime } from '@/lib/data'
 import { Utensils, Zap, Sparkles, Check, Clock, Droplets, CheckCircle2, ShieldCheck } from 'lucide-react'
 import CircadianTimePickerInput from '@/components/ui/CircadianTimePickerInput'
 
@@ -14,8 +14,8 @@ interface FastingFeedingCardProps {
 const FASTING_SCHEDULES = [
   {
     id: '16:8',
-    label: '16:8 Intermittent Fasting',
-    desc: '16h daily fast, 8h eating window. Optimal balance of cellular autophagy and metabolic flexibility.',
+    label: '16:8 Time-Restricted Feeding (Standard)',
+    desc: '16h daily fast, 8h eating window. Balances metabolic switching with muscle protein synthesis.',
     defaultStart: '12:00',
     defaultEnd: '20:00'
   },
@@ -63,10 +63,10 @@ export default function FastingFeedingCard({ profile, onUpdated }: FastingFeedin
     profile.fasting_schedule || prefs.fasting_schedule || '16:8'
   )
   const [windowStart, setWindowStart] = useState<string>(
-    profile.eating_window_start || prefs.eating_window_start || '12:00'
+    sanitizeProfileTime(profile.eating_window_start || prefs.eating_window_start) || '12:00'
   )
   const [windowEnd, setWindowEnd] = useState<string>(
-    profile.eating_window_end || prefs.eating_window_end || '20:00'
+    sanitizeProfileTime(profile.eating_window_end || prefs.eating_window_end) || '20:00'
   )
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)

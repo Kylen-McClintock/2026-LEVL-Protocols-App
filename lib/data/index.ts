@@ -393,6 +393,53 @@ export async function getCatalogMaps() {
   return { modsMap, stepsMap, protocolsMap }
 }
 
+export function sanitizeProfileTime(val: any): string | null {
+  if (val === null || val === undefined || val === '') return null
+  if (typeof val === 'number') {
+    if (isNaN(val)) return null
+    const h = Math.floor(val)
+    const m = Math.round((val - h) * 60)
+    const clampedH = Math.max(0, Math.min(23, h))
+    const clampedM = Math.max(0, Math.min(59, m))
+    return `${clampedH.toString().padStart(2, '0')}:${clampedM.toString().padStart(2, '0')}`
+  }
+  const str = String(val).trim()
+  if (!str) return null
+
+  // AM/PM format (e.g. "7:30 PM", "11:00 AM")
+  const ampmMatch = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
+  if (ampmMatch) {
+    let h = parseInt(ampmMatch[1], 10)
+    const m = parseInt(ampmMatch[2], 10)
+    const ampm = (ampmMatch[3] || '').toUpperCase()
+    if (ampm === 'PM' && h < 12) h += 12
+    if (ampm === 'AM' && h === 12) h = 0
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+  }
+
+  // 24h format "HH:MM" or "H:MM"
+  if (str.includes(':')) {
+    const [hStr, mStr] = str.split(':')
+    const h = parseInt(hStr, 10)
+    const m = parseInt(mStr, 10)
+    if (!isNaN(h)) {
+      const clampedH = Math.max(0, Math.min(23, h))
+      const clampedM = isNaN(m) ? 0 : Math.max(0, Math.min(59, m))
+      return `${clampedH.toString().padStart(2, '0')}:${clampedM.toString().padStart(2, '0')}`
+    }
+  }
+
+  // Pure integer hour e.g. "20", "8"
+  if (/^\d{1,2}$/.test(str)) {
+    const h = parseInt(str, 10)
+    if (!isNaN(h) && h >= 0 && h <= 23) {
+      return `${h.toString().padStart(2, '0')}:00`
+    }
+  }
+
+  return str
+}
+
 export function normalizeUserProfile(raw: any): UserProfile | null {
   if (!raw) return null
   const jsonPrefs = (typeof raw.outcome_preference_scores === 'object' && raw.outcome_preference_scores) ? raw.outcome_preference_scores : {}
@@ -401,8 +448,8 @@ export function normalizeUserProfile(raw: any): UserProfile | null {
     ...raw,
     // Top-level overrides with fallback to JSONB
     height_inches: raw.height_inches ?? jsonPrefs.height_inches ?? null,
-    ideal_wake_time: raw.ideal_wake_time ?? jsonPrefs.ideal_wake_time ?? null,
-    ideal_bedtime: raw.ideal_bedtime ?? jsonPrefs.ideal_bedtime ?? null,
+    ideal_wake_time: sanitizeProfileTime(raw.ideal_wake_time ?? jsonPrefs.ideal_wake_time),
+    ideal_bedtime: sanitizeProfileTime(raw.ideal_bedtime ?? jsonPrefs.ideal_bedtime),
     chronotype: raw.chronotype ?? jsonPrefs.chronotype ?? null,
     fitness_training_level: raw.fitness_training_level ?? jsonPrefs.fitness_training_level ?? null,
     resistance_training_days: raw.resistance_training_days ?? jsonPrefs.resistance_training_days ?? null,
@@ -412,8 +459,8 @@ export function normalizeUserProfile(raw: any): UserProfile | null {
     last_period_start_date: raw.last_period_start_date ?? jsonPrefs.last_period_start_date ?? null,
     average_cycle_length_days: raw.average_cycle_length_days ?? jsonPrefs.average_cycle_length_days ?? null,
     fasting_schedule: raw.fasting_schedule ?? jsonPrefs.fasting_schedule ?? null,
-    eating_window_start: raw.eating_window_start ?? jsonPrefs.eating_window_start ?? null,
-    eating_window_end: raw.eating_window_end ?? jsonPrefs.eating_window_end ?? null,
+    eating_window_start: sanitizeProfileTime(raw.eating_window_start ?? jsonPrefs.eating_window_start),
+    eating_window_end: sanitizeProfileTime(raw.eating_window_end ?? jsonPrefs.eating_window_end),
     age: raw.age ?? jsonPrefs.age ?? null,
     biological_sex: raw.biological_sex ?? jsonPrefs.biological_sex ?? null,
     weight_lbs: raw.weight_lbs ?? jsonPrefs.weight_lbs ?? null,
@@ -548,8 +595,8 @@ export async function updateUserProfile(localUserId: string, updates: Partial<Us
 
   // Explicitly mirror all extended attributes into JSONB
   if (updates.height_inches !== undefined) mergedPrefs.height_inches = updates.height_inches
-  if (updates.ideal_wake_time !== undefined) mergedPrefs.ideal_wake_time = updates.ideal_wake_time
-  if (updates.ideal_bedtime !== undefined) mergedPrefs.ideal_bedtime = updates.ideal_bedtime
+  if (updates.ideal_wake_time !== undefined) mergedPrefs.ideal_wake_time = sanitizeProfileTime(updates.ideal_wake_time)
+  if (updates.ideal_bedtime !== undefined) mergedPrefs.ideal_bedtime = sanitizeProfileTime(updates.ideal_bedtime)
   if (updates.chronotype !== undefined) mergedPrefs.chronotype = updates.chronotype
   if (updates.fitness_training_level !== undefined) mergedPrefs.fitness_training_level = updates.fitness_training_level
   if (updates.resistance_training_days !== undefined) mergedPrefs.resistance_training_days = updates.resistance_training_days
@@ -559,8 +606,8 @@ export async function updateUserProfile(localUserId: string, updates: Partial<Us
   if (updates.last_period_start_date !== undefined) mergedPrefs.last_period_start_date = updates.last_period_start_date
   if (updates.average_cycle_length_days !== undefined) mergedPrefs.average_cycle_length_days = updates.average_cycle_length_days
   if (updates.fasting_schedule !== undefined) mergedPrefs.fasting_schedule = updates.fasting_schedule
-  if (updates.eating_window_start !== undefined) mergedPrefs.eating_window_start = updates.eating_window_start
-  if (updates.eating_window_end !== undefined) mergedPrefs.eating_window_end = updates.eating_window_end
+  if (updates.eating_window_start !== undefined) mergedPrefs.eating_window_start = sanitizeProfileTime(updates.eating_window_start)
+  if (updates.eating_window_end !== undefined) mergedPrefs.eating_window_end = sanitizeProfileTime(updates.eating_window_end)
   if (updates.age !== undefined) mergedPrefs.age = updates.age
   if (updates.biological_sex !== undefined) mergedPrefs.biological_sex = updates.biological_sex
   if (updates.weight_lbs !== undefined) mergedPrefs.weight_lbs = updates.weight_lbs

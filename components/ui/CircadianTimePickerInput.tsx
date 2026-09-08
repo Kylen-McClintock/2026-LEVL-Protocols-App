@@ -71,20 +71,37 @@ export function resolveCircadianLastMealTime(profile?: any): string {
   }
 
   // 2. Check profile eating_window_end
-  if (profile.eating_window_end && profile.eating_window_end.includes(':')) {
-    const [h, m] = profile.eating_window_end.split(':')
-    return `${h.padStart(2, '0')}:${m}`
+  if (profile.eating_window_end != null) {
+    const endStr = String(profile.eating_window_end).trim()
+    if (endStr.includes(':')) {
+      const [h, m] = endStr.split(':')
+      return `${h.padStart(2, '0')}:${m}`
+    } else if (/^\d{1,2}$/.test(endStr)) {
+      return `${endStr.padStart(2, '0')}:00`
+    }
   }
 
   // 3. Adjusted circadian standard: 3 hours before ideal bedtime
-  const bed = profile.ideal_bedtime || (profile.preferences as any)?.ideal_bedtime || '22:30'
-  const [bH, bM] = bed.split(':').map(Number)
-  if (!isNaN(bH) && !isNaN(bM)) {
-    const bedTotal = bH * 60 + bM
-    const mealTotal = ((bedTotal - 180) % 1440 + 1440) % 1440
-    const mH = Math.floor(mealTotal / 60).toString().padStart(2, '0')
-    const mM = (mealTotal % 60).toString().padStart(2, '0')
-    return `${mH}:${mM}`
+  const rawBed = profile.ideal_bedtime || (profile.preferences as any)?.ideal_bedtime || '22:30'
+  const bedStr = String(rawBed).trim()
+  if (bedStr.includes(':')) {
+    const [bH, bM] = bedStr.split(':').map(Number)
+    if (!isNaN(bH) && !isNaN(bM)) {
+      const bedTotal = bH * 60 + bM
+      const mealTotal = ((bedTotal - 180) % 1440 + 1440) % 1440
+      const mH = Math.floor(mealTotal / 60).toString().padStart(2, '0')
+      const mM = (mealTotal % 60).toString().padStart(2, '0')
+      return `${mH}:${mM}`
+    }
+  } else if (/^\d{1,2}$/.test(bedStr)) {
+    const bH = parseInt(bedStr, 10)
+    if (!isNaN(bH)) {
+      const bedTotal = bH * 60
+      const mealTotal = ((bedTotal - 180) % 1440 + 1440) % 1440
+      const mH = Math.floor(mealTotal / 60).toString().padStart(2, '0')
+      const mM = (mealTotal % 60).toString().padStart(2, '0')
+      return `${mH}:${mM}`
+    }
   }
 
   return '19:30'
