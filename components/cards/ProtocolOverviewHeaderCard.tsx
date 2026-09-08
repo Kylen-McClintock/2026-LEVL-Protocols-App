@@ -278,34 +278,33 @@ export default function ProtocolOverviewHeaderCard({
         />
 
         {/* Header Preview Section */}
-        <div className="space-y-2 border-b border-white/10 pb-3 pt-0.5">
-          {/* Line 1: Detailed Protocol Avatar & Full-width protocol title as clickable link to protocol page */}
-          <div className="flex items-center gap-3">
-            <ProtocolAvatar 
-              protocolName={protocolName}
-              protocolInfo={protocolInfo}
-              groupTasksOrSteps={groupTasks}
-              themeOverride={visualTheme}
-              size={38}
-            />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base sm:text-lg font-extrabold text-white tracking-wide leading-snug break-words">
-                <Link 
-                  href={`/protocols/${encodeURIComponent(protocolInfo?.id || protocolName)}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="hover:underline hover:text-purple-300 transition-colors inline-flex items-center gap-1.5 flex-wrap max-w-full"
-                  title="Click to view full protocol focus page"
-                >
-                  <span className="break-words leading-tight">{protocolName}</span>
-                  <ExternalLink size={14} className="text-purple-400 opacity-80 shrink-0" />
-                </Link>
-              </h2>
-            </div>
+        <div className="space-y-2.5 border-b border-white/10 pb-3 pt-0.5">
+          {/* Line 1: Full-width protocol title as clickable link to protocol page */}
+          <div className="w-full">
+            <h2 className="text-base sm:text-lg font-extrabold text-white tracking-wide leading-snug break-words w-full">
+              <Link 
+                href={`/protocols/${encodeURIComponent(protocolInfo?.id || protocolName)}`}
+                onClick={(e) => e.stopPropagation()}
+                className="hover:underline hover:text-purple-300 transition-colors inline items-center gap-1.5 max-w-full"
+                title="Click to view full protocol focus page"
+              >
+                <span>{protocolName}</span>
+                <ExternalLink size={14} className="text-purple-400 opacity-80 inline-block ml-1.5 align-middle shrink-0" />
+              </Link>
+            </h2>
           </div>
 
-          {/* Line 2: Category Gradient Badges & Modalities count (Left), Status Badge & Expand Chevron (Right) */}
-          <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
+          {/* Line 2: Avatar, Category Gradient Badges & Modalities count (Left), Status Badge & Expand Chevron (Right) */}
+          <div className="flex items-center justify-between gap-3 pt-0.5 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <ProtocolAvatar 
+                protocolName={protocolName}
+                protocolInfo={protocolInfo}
+                groupTasksOrSteps={groupTasks}
+                themeOverride={visualTheme}
+                size={28}
+              />
+
               <ProtocolCategoryPills theme={visualTheme} />
 
               {isModified && (
@@ -323,7 +322,7 @@ export default function ProtocolOverviewHeaderCard({
               </span>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 ml-auto">
               {/* Status Badge in Header */}
               <button 
                 type="button"

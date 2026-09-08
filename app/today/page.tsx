@@ -2828,57 +2828,55 @@ function TodayPageContent() {
                 style={{ background: visualTheme.accentBorderCSS }} 
               />
 
-              <div className="flex items-center justify-between gap-3 relative z-10">
-                {/* Left: Avatar + Protocol Name (no truncate, wraps cleanly) */}
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <ProtocolAvatar 
-                    protocolName={groupName}
-                    protocolInfo={matchedProtocol as any}
-                    groupTasksOrSteps={groupTasks}
-                    themeOverride={visualTheme}
-                    size={36}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-base sm:text-lg font-bold text-white tracking-wide break-words leading-tight">
-                      <Link 
-                        href={`/protocols/${encodeURIComponent(matchedProtocol?.id || groupName)}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="hover:underline hover:text-purple-300 transition-colors inline-flex items-center gap-1.5 flex-wrap max-w-full"
-                        title="Click to view full protocol focus page"
-                      >
-                        <span className="break-words leading-tight">{groupName}</span>
-                        <ExternalLink size={14} className="text-purple-400 opacity-80 shrink-0" />
-                      </Link>
-                    </h2>
-                    <span className="text-[11px] text-slate-400 font-medium sm:hidden block mt-0.5">
-                      {totalCount} {totalCount === 1 ? 'Modality' : 'Modalities'} • Tap to expand
+              <div className="space-y-2.5 relative z-10">
+                {/* Line 1: Full-width protocol name as clickable link to protocol focus page */}
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-wide break-words leading-snug w-full">
+                  <Link 
+                    href={`/protocols/${encodeURIComponent(matchedProtocol?.id || groupName)}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hover:underline hover:text-purple-300 transition-colors inline items-center gap-1.5 max-w-full"
+                    title="Click to view full protocol focus page"
+                  >
+                    <span>{groupName}</span>
+                    <ExternalLink size={14} className="text-purple-400 opacity-80 inline-block ml-1.5 align-middle shrink-0" />
+                  </Link>
+                </h2>
+
+                {/* Line 2: Avatar + Modality count (Left), Completed Status Badge & Expand Chevron (Right) */}
+                <div className="flex items-center justify-between gap-3 pt-0.5 w-full flex-wrap">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <ProtocolAvatar 
+                      protocolName={groupName}
+                      protocolInfo={matchedProtocol as any}
+                      groupTasksOrSteps={groupTasks}
+                      themeOverride={visualTheme}
+                      size={28}
+                    />
+                    <span className="text-xs text-slate-400 font-medium tracking-wide">
+                      {totalCount} {totalCount === 1 ? 'Modality' : 'Modalities'} • <span className="text-purple-300/80">Tap to expand</span>
                     </span>
                   </div>
-                </div>
 
-                {/* Right: Completed Status Badge & Expand Chevron */}
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <div className="hidden sm:flex items-center gap-1.5 text-xs text-purple-300/80 font-medium">
-                    <span>{totalCount} {totalCount === 1 ? 'Modality' : 'Modalities'}</span>
+                  {/* Right: Completed Status Badge & Expand Chevron */}
+                  <div className="flex items-center gap-2 shrink-0 ml-auto">
+                    <span className="text-xs px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 flex items-center gap-1.5 font-semibold shadow-sm">
+                      <Check size={13} className="text-emerald-400 stroke-[3]" />
+                      <span>Completed ({completedCount}/{totalCount})</span>
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleProtocolCardCollapse(groupName)
+                      }}
+                      className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+                      title="Expand protocol details and modalities"
+                      aria-label="Expand protocol details and modalities"
+                    >
+                      <ChevronDown className="w-4 h-4 text-slate-300 group-hover:text-white transition-colors" />
+                    </button>
                   </div>
-
-                  <span className="text-xs px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 flex items-center gap-1.5 font-semibold shadow-sm">
-                    <Check size={13} className="text-emerald-400 stroke-[3]" />
-                    <span>Completed ({completedCount}/{totalCount})</span>
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleProtocolCardCollapse(groupName)
-                    }}
-                    className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-                    title="Expand protocol details and modalities"
-                    aria-label="Expand protocol details and modalities"
-                  >
-                    <ChevronDown className="w-4 h-4 text-slate-300 group-hover:text-white transition-colors" />
-                  </button>
                 </div>
               </div>
             </div>

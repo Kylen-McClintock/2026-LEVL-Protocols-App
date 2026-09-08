@@ -137,6 +137,19 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
         className="p-4 pt-4.5 cursor-pointer flex flex-col gap-3 hover:bg-white/5 transition-colors w-full min-w-0"
         onClick={() => setExpanded(!expanded)}
       >
+        {/* Full-width protocol name across top */}
+        <h3 className="font-bold text-base sm:text-lg text-white break-words w-full leading-snug">
+          <Link 
+            href={`/protocols/${encodeURIComponent(protocol.id || protocol.name)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="hover:underline hover:text-purple-300 transition-colors inline items-center gap-1.5 max-w-full"
+            title="Click to view full protocol focus page"
+          >
+            <span>{protocol.name}</span>
+            <ExternalLink size={14} className="text-purple-400 opacity-80 inline-block ml-1.5 align-middle shrink-0" />
+          </Link>
+        </h3>
+
         <div className="flex justify-between items-start gap-2.5 w-full min-w-0">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             <ProtocolAvatar 
@@ -148,18 +161,6 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
 
             <div className="w-full min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-bold text-base sm:text-lg text-white break-words">
-                  <Link 
-                    href={`/protocols/${encodeURIComponent(protocol.id || protocol.name)}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="hover:underline hover:text-purple-300 transition-colors flex items-center gap-1.5 inline-flex"
-                    title="Click to view full protocol focus page"
-                  >
-                    <span>{protocol.name}</span>
-                    <ExternalLink size={14} className="text-purple-400 opacity-80" />
-                  </Link>
-                </h3>
-
                 {/* Active Today / Bench Status Badges */}
                 {isCurrentlyActiveInToday && (
                   <button
