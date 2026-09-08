@@ -15,6 +15,7 @@ interface AuthContextType {
   isGuest: boolean
   localUserId: string
   signInWithGoogle: (customRedirect?: string) => Promise<{ error: AuthError | null }>
+  signInWithGoogleIdToken: (idToken: string) => Promise<{ data: any; error: AuthError | null }>
   signInWithMagicLink: (email: string, customRedirect?: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
   openAuthModal: () => void
@@ -140,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // 1-Tap Google Sign-In
+  // 1-Tap Google Sign-In (Legacy OAuth redirect fallback)
   const signInWithGoogle = useCallback(async (customRedirect?: string) => {
     if (!supabase) return { error: null }
     const redirectTo = getAuthRedirectUrl(customRedirect)
@@ -152,6 +153,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     return { error }
   }, [])
+
+  // Native Google Sign-In with ID Token (Google Identity Services - No Supabase URL redirect!)
+  const signInWithGoogleIdToken = useCallback(async (idToken: string) => {
+    if (!supabase) return { data: null, error: null }
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'google',
+      token: idToken,
+    })
+    if (!error && data?.user) {
+      setUser(data.user)
+      setSession(data.session)
+      // Link guest user data to logged-in user
+      const guestId = localUserId || (typeof window !== 'undefined' ? localStorage.getItem(LOCAL_USER_ID_KEY) || '' : '')
+      if (guestId && guestId !== data.user.id) {
+        try {
+          await linkGuestDataToAuthUser(guestId, data.user)
+        } catch (linkErr) {
+          console.error('Error linking guest data to auth user:', linkErr)
+        }
+      }
+    }
+    return { data, error }
+  }, [localUserId])
 
   // 1-Click Magic Link
   const signInWithMagicLink = useCallback(async (email: string, customRedirect?: string) => {
@@ -197,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isGuest,
         localUserId,
         signInWithGoogle,
+        signInWithGoogleIdToken,
         signInWithMagicLink,
         signOut,
         openAuthModal,

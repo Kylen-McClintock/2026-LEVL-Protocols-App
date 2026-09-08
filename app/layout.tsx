@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import BottomNav from "@/components/navigation/BottomNav";
 import InstallAppBanner from "@/components/ui/InstallAppBanner";
@@ -98,6 +99,7 @@ export default function RootLayout({
           </main>
 
           <InstallAppBanner />
+          <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
           <AuthModal />
           <BottomNav />
         </AuthProvider>
