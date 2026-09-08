@@ -22,7 +22,8 @@ import {
   addToBench,
   upsertBenchItemOverride,
   updateTaskExecutionDetails,
-  normalizeUserProfile
+  normalizeUserProfile,
+  getModalityScheduleConfig
 } from '@/lib/data'
 import { DailyProtocolTask, Modality, OutcomeDimension, UserProfile, UserBenchItem, DailyWellbeingCheckin as WellbeingType } from '@/lib/types'
 import { 
@@ -33,7 +34,7 @@ import {
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
-  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink
+  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search
 } from 'lucide-react'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
@@ -506,10 +507,13 @@ function TodayPageContent() {
       .filter(b => {
         const customTiming = (b.custom_timing || '').toLowerCase()
         const notes = (b.notes || '').toLowerCase()
+        const sched = getModalityScheduleConfig(b.modality_id, b.modality)
         return (
+          sched?.schedule_mode === 'as_needed' ||
           customTiming.includes('as needed') ||
           customTiming.includes('as-needed') ||
           customTiming.includes('prn') ||
+          customTiming.includes('spontaneous') ||
           notes.includes('as needed')
         )
       })
@@ -520,19 +524,13 @@ function TodayPageContent() {
 
     if (fromBench.length > 0) return fromBench.slice(0, 6)
 
-    if (benchItems.length > 0) {
-      return benchItems.slice(0, 5).map(b => ({
-        id: b.modality_id,
-        name: b.modality?.display_name || b.modality?.name || 'Modality'
-      }))
-    }
-
+    // Curated spontaneous / as-needed staples (no scheduled workout dump)
     return [
       { id: 'electrolytes', name: 'Electrolytes' },
       { id: 'cold_plunge', name: 'Cold Plunge' },
       { id: 'sauna', name: 'Sauna' },
       { id: 'melatonin', name: 'Melatonin' },
-      { id: 'breathwork', name: 'Cyclic Sighing' }
+      { id: 'breathwork', name: 'Box Breathing' }
     ]
   }, [benchItems])
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false)
@@ -3194,6 +3192,7 @@ function TodayPageContent() {
                 type="button"
                 onClick={() => {
                   setAsNeededSlot(groupName)
+                  setAsNeededModalityId(undefined)
                   setIsAdHocModalOpen(true)
                 }}
                 className="font-bold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg text-[11px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all active:scale-95 shrink-0 shadow-sm"
@@ -3757,6 +3756,22 @@ function TodayPageContent() {
               <Zap size={13} className="text-amber-400" />
               <span>As Needed:</span>
             </div>
+
+            {/* Prominent + Button in single row to immediately search and log */}
+            <button
+              type="button"
+              onClick={() => {
+                setAsNeededSlot(undefined)
+                setAsNeededModalityId(undefined)
+                setIsAdHocModalOpen(true)
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 hover:border-amber-400 text-amber-300 hover:text-amber-200 text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 shadow-sm shadow-amber-500/15 active:scale-95"
+              title="Search and log any As Needed modality"
+            >
+              <Plus size={13} className="stroke-[3]" />
+              <span>Log</span>
+            </button>
+
             {asNeededQuickPills.map(item => (
               <button
                 key={item.id}
@@ -3772,6 +3787,7 @@ function TodayPageContent() {
                 <span>{item.name}</span>
               </button>
             ))}
+
             <button
               type="button"
               onClick={() => {
@@ -3779,10 +3795,11 @@ function TodayPageContent() {
                 setAsNeededModalityId(undefined)
                 setIsAdHocModalOpen(true)
               }}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0"
+              title="Search all modalities"
             >
-              <Plus size={12} />
-              <span>All</span>
+              <Search size={11} />
+              <span>Search</span>
             </button>
           </div>
         )}

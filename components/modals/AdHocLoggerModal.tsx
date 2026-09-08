@@ -25,6 +25,8 @@ import {
 import { Modality, UserBenchItem, DailyProtocolTask } from '@/lib/types'
 import { 
   getModalities, 
+  getBenchItems,
+  getModalityScheduleConfig,
   createDailyTaskWithDetails, 
   createCustomModality,
   logAsNeededCompletedSession,
@@ -37,8 +39,8 @@ type AdHocLoggerModalProps = {
   onClose: () => void
   localUserId: string
   onLogged: () => void
-  benchItems: UserBenchItem[]
-  todayTasks: DailyProtocolTask[]
+  benchItems?: UserBenchItem[]
+  todayTasks?: DailyProtocolTask[]
   dateStr?: string
   initialTimingSlot?: string
   initialModalityId?: string
@@ -60,13 +62,14 @@ export default function AdHocLoggerModal({
   onClose,
   localUserId,
   onLogged,
-  benchItems,
-  todayTasks,
+  benchItems = [],
+  todayTasks = [],
   dateStr,
   initialTimingSlot,
   initialModalityId
 }: AdHocLoggerModalProps) {
   const [allModalities, setAllModalities] = useState<Modality[]>([])
+  const [internalBenchItems, setInternalBenchItems] = useState<UserBenchItem[]>([])
   const [query, setQuery] = useState('')
   
   // Two-Tap Complete inline state (keyed by modality id)
@@ -88,6 +91,12 @@ export default function AdHocLoggerModal({
 
   const searchInputRef = useRef<HTMLInputElement>(null)
 
+  // Unified bench items (use prop or fall back to internal query)
+  const effectiveBenchItems = useMemo(() => {
+    if (benchItems && benchItems.length > 0) return benchItems
+    return internalBenchItems
+  }, [benchItems, internalBenchItems])
+
   // Determine fallback circadian slot
   const currentCircadianSlot = useMemo(() => {
     if (initialTimingSlot) return initialTimingSlot
@@ -99,15 +108,27 @@ export default function AdHocLoggerModal({
     return 'anytime'
   }, [initialTimingSlot])
 
-  // Load modality catalog on open
+  // Load modality catalog and bench items on open
   useEffect(() => {
     if (isOpen) {
       getModalities().then(mods => {
         setAllModalities(mods || [])
       })
-      setTimeout(() => {
-        searchInputRef.current?.focus()
-      }, 120)
+      if ((!benchItems || benchItems.length === 0) && localUserId) {
+        getBenchItems(localUserId).then(items => {
+          if (items && items.length > 0) {
+            setInternalBenchItems(items)
+          }
+        })
+      }
+      // Instant auto-focus on open
+      const focusTimer = setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus()
+          searchInputRef.current.select?.()
+        }
+      }, 50)
+      return () => clearTimeout(focusTimer)
     } else {
       // Reset state on modal close
       setQuery('')
@@ -119,36 +140,46 @@ export default function AdHocLoggerModal({
       setIsLoggingId(null)
       setLoggedSuccessId(null)
     }
-  }, [isOpen])
+  }, [isOpen, benchItems, localUserId])
+
+  // Re-focus search input when returning from custom creation view
+  useEffect(() => {
+    if (isOpen && !isCreatingCustom) {
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus()
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [isOpen, isCreatingCustom])
 
   // Pre-prime initial modality if passed (e.g. from single-row quick pill tap)
   useEffect(() => {
     if (isOpen && initialModalityId && allModalities.length > 0) {
-      const target = allModalities.find(m => m.id === initialModalityId) || benchItems.find(b => b.modality_id === initialModalityId)?.modality
+      const target = allModalities.find(m => m.id === initialModalityId) || effectiveBenchItems.find(b => b.modality_id === initialModalityId)?.modality
       if (target) {
-        const benchMatch = benchItems.find(b => b.modality_id === target.id)
+        const benchMatch = effectiveBenchItems.find(b => b.modality_id === target.id)
         setPrimedModalityId(target.id)
         setPrimedDose(benchMatch?.custom_dose || target.dose_or_exposure || 'Standard Dose')
         setPrimedSlot(currentCircadianSlot)
         setPrimedNotes(benchMatch?.notes || '')
       }
     }
-  }, [isOpen, initialModalityId, allModalities, benchItems, currentCircadianSlot])
+  }, [isOpen, initialModalityId, allModalities, effectiveBenchItems, currentCircadianSlot])
 
   // Map of Bench Items by modality_id for O(1) lookup
   const benchMap = useMemo(() => {
     const map = new Map<string, UserBenchItem>()
-    benchItems.forEach(b => {
+    effectiveBenchItems.forEach(b => {
       if (b.modality_id) map.set(b.modality_id, b)
     })
     return map
-  }, [benchItems])
+  }, [effectiveBenchItems])
 
   // Bench Modalities List (User's personal arsenal - strictly deduplicated)
   const userBenchModalities = useMemo(() => {
     const mods: Modality[] = []
     const seenIds = new Set<string>()
-    benchItems.forEach(b => {
+    effectiveBenchItems.forEach(b => {
       const mod = b.modality || (b.modality_id ? allModalities.find(m => m.id === b.modality_id) : null)
       if (mod && !seenIds.has(mod.id)) {
         seenIds.add(mod.id)
@@ -156,22 +187,61 @@ export default function AdHocLoggerModal({
       }
     })
     return mods
-  }, [benchItems, allModalities])
+  }, [effectiveBenchItems, allModalities])
 
-  // Tiered Search Filtering
+  // Helper: Detect if a bench item is configured specifically as As Needed / Spontaneous
+  const isBenchItemAsNeeded = (b: UserBenchItem | undefined, m: Modality) => {
+    if (!b) return false
+    const customTiming = (b.custom_timing || '').toLowerCase()
+    const notes = (b.notes || '').toLowerCase()
+    const sched = getModalityScheduleConfig(m.id, m)
+    return (
+      sched?.schedule_mode === 'as_needed' ||
+      customTiming.includes('as needed') ||
+      customTiming.includes('as-needed') ||
+      customTiming.includes('prn') ||
+      customTiming.includes('spontaneous') ||
+      notes.includes('as needed')
+    )
+  }
+
+  // Tiered Search & Display Filtering:
+  // - When empty: ONLY show modalities configured as As Needed (or primed item) + Popular As Needed suggestions.
+  //   Never dump all bench modalities into the drawer!
+  // - When query has text: Semantically search across ALL bench modalities (Tier 1: From Your Bench),
+  //   followed by Library modalities (Tier 2).
   const { benchMatches, libraryMatches } = useMemo(() => {
     const q = query.trim().toLowerCase()
     const benchIds = new Set(userBenchModalities.map(m => m.id))
 
     if (!q) {
-      // Empty query: Show user's bench items first
+      // EMPTY QUERY: Do NOT dump all bench items!
+      // Only show items configured as "as_needed", or the primed item if selected.
+      const asNeededBench = userBenchModalities.filter(m => {
+        const benchItem = benchMap.get(m.id)
+        return isBenchItemAsNeeded(benchItem, m) || m.id === primedModalityId
+      })
+
+      // Curate popular spontaneous/as-needed suggestions from the library
+      const asNeededKeywords = [
+        'electrolyte', 'cold plunge', 'sauna', 'breath', 'sigh', 'melatonin', 
+        'magnesium', 'nsdr', 'nap', 'light therapy', 'hydration'
+      ]
+      const curatedLibrary = allModalities.filter(m => {
+        if (benchIds.has(m.id)) return false
+        const text = `${m.name} ${m.display_name || ''} ${m.category || ''} ${m.brief_description || ''}`.toLowerCase()
+        return asNeededKeywords.some(k => text.includes(k))
+      }).slice(0, 8)
+
       return {
-        benchMatches: userBenchModalities,
-        libraryMatches: allModalities.filter(m => !benchIds.has(m.id)).slice(0, 8)
+        benchMatches: asNeededBench,
+        libraryMatches: curatedLibrary.length > 0 
+          ? curatedLibrary 
+          : allModalities.filter(m => !benchIds.has(m.id)).slice(0, 8)
       }
     }
 
-    // Matching logic
+    // QUERY ACTIVE: Perform semantic search across ALL bench modalities first!
     const matchesModality = (m: Modality) => {
       const name = (m.name || '').toLowerCase()
       const disp = (m.display_name || '').toLowerCase()
@@ -189,8 +259,8 @@ export default function AdHocLoggerModal({
     }
 
     const sortFn = (a: Modality, b: Modality) => {
-      const aName = a.name.toLowerCase()
-      const bName = b.name.toLowerCase()
+      const aName = (a.display_name || a.name).toLowerCase()
+      const bName = (b.display_name || b.name).toLowerCase()
       const aStarts = aName.startsWith(q)
       const bStarts = bName.startsWith(q)
       if (aStarts && !bStarts) return -1
@@ -213,7 +283,7 @@ export default function AdHocLoggerModal({
       benchMatches: bMatches,
       libraryMatches: lMatches
     }
-  }, [query, userBenchModalities, allModalities])
+  }, [query, userBenchModalities, allModalities, benchMap, primedModalityId])
 
   const exactMatchExists = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -364,7 +434,7 @@ export default function AdHocLoggerModal({
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search As Needed (e.g. Electrolytes, Cold Plunge, Sauna, Melatonin)..."
+                  placeholder="Search modalities or bench items (e.g. Electrolytes, Sauna, Creatine, Zone 2)..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className="w-full bg-black/60 border border-slate-700/80 rounded-2xl pl-11 pr-10 py-3.5 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/40 transition-all shadow-inner"
@@ -411,9 +481,11 @@ export default function AdHocLoggerModal({
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                       <Bookmark size={12} className="text-amber-400" />
-                      <span>From Your Bench &amp; As-Needed ({benchMatches.length})</span>
+                      <span>{query.trim() ? `★ From Your Bench (${benchMatches.length})` : `From Your As-Needed Bench (${benchMatches.length})`}</span>
                     </span>
-                    <span className="text-[10px] text-slate-500 font-mono">Top Priority</span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {query.trim() ? 'Personal Stack Match' : 'Saved As-Needed'}
+                    </span>
                   </div>
 
                   <div className="space-y-2">
