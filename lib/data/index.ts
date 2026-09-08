@@ -4307,7 +4307,7 @@ export async function createDailyTaskWithDetails(
 }
 
 export interface ModalityScheduleConfig {
-  schedule_mode: 'days_of_week' | 'rest_interval' | 'sequence_rotation' | 'specific_dates'
+  schedule_mode: 'days_of_week' | 'rest_interval' | 'sequence_rotation' | 'specific_dates' | 'as_needed'
   days_of_week?: string[] // e.g. ['Mon', 'Wed', 'Fri']
   rest_days_between?: number // e.g. 1, 13, 29, 89, 179, 364
   interval_preset?: 'weekly' | 'bi_weekly' | 'monthly' | 'quarterly' | 'bi_annually' | 'annually' | 'custom_days' | 'specific_dates'
@@ -4338,7 +4338,20 @@ export function deriveAutomaticScheduleConfig(
   const desc = ((mod?.brief_description || '') + ' ' + (mod?.headline_benefit || '') + ' ' + (pStep?.instructions || '') + ' ' + (pStep?.dose_text || '')).toLowerCase()
   const fullText = `${nameId} ${freq} ${timingSummary} ${pattern} ${cadence} ${desc}`
 
-  // 0. Natural Language Frequency & Cadence Rule Matching
+  // 0. As-Needed / Spontaneous Cadence Rule Matching
+  if (
+    fullText.includes('as needed') || fullText.includes('as-needed') || fullText.includes('prn') ||
+    fullText.includes('spontaneous') || fullText.includes('one-off') || fullText.includes('occasional') ||
+    cadence.includes('as_needed') || pattern.includes('as_needed') || freq.includes('as needed')
+  ) {
+    return {
+      schedule_mode: 'as_needed',
+      skip_policy: 'roll_forward',
+      timing_slot: timingSlot || 'anytime'
+    }
+  }
+
+  // 0.1 Natural Language Frequency & Cadence Rule Matching
   if (
     fullText.includes('2x weekly') || fullText.includes('2x / week') || fullText.includes('2x/wk') ||
     fullText.includes('twice weekly') || fullText.includes('twice a week') || fullText.includes('2x per week') ||
@@ -4800,7 +4813,9 @@ export async function reconcileModalityScheduleAndFutureTasks(
   const activeDateStrings = new Set<string>()
   const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] // 0=Sun, 1=Mon...
 
-  if (scheduleConfig?.schedule_mode === 'specific_dates' && scheduleConfig.specific_dates?.length) {
+  if (scheduleConfig?.schedule_mode === 'as_needed') {
+    // As-Needed modalities have no fixed future schedule. Future uncompleted tasks are pruned.
+  } else if (scheduleConfig?.schedule_mode === 'specific_dates' && scheduleConfig.specific_dates?.length) {
     scheduleConfig.specific_dates.forEach(dStr => {
       if (dStr >= fromDateStr) activeDateStrings.add(dStr)
     })
@@ -4867,8 +4882,10 @@ export async function reconcileModalityScheduleAndFutureTasks(
     }
   }
 
-  // Always keep fromDate active if currently opened
-  activeDateStrings.add(fromDateStr)
+  // Always keep fromDate active if currently opened (unless cadence is explicitly As Needed)
+  if (scheduleConfig?.schedule_mode !== 'as_needed') {
+    activeDateStrings.add(fromDateStr)
+  }
 
   // 4. Fetch all existing tasks for this modality from fromDateStr to 30 days out
   const endDate = new Date(localStartDate)
@@ -6137,3 +6154,83 @@ export async function addSingleModalityToToday(localUserId: string, dateStr: str
   return data?.id || null
 }
 
+export async function logAsNeededCompletedSession(
+  localUserId: string,
+  modalityId: string,
+  dateStr: string,
+  details?: {
+    actual_dose?: string
+    dose?: string
+    timing_slot?: string
+    timingSlot?: string
+    notes?: string
+    water_oz?: number
+    sets_reps?: string
+  }
+) {
+  if (!supabase || !localUserId || !modalityId) return null
+  
+  const timingSlot = details?.timing_slot || details?.timingSlot || 'anytime'
+  const actualDose = details?.actual_dose || details?.dose
+  const completedAt = new Date().toISOString()
+  
+  const executionDetails: any = {
+    schedule_mode: 'as_needed',
+    is_as_needed: true,
+    ...(actualDose ? { actual_dose: actualDose } : {}),
+    ...(details?.notes ? { notes: details.notes } : {}),
+    ...(details?.water_oz !== undefined ? { water_oz: details.water_oz } : {}),
+    ...(details?.sets_reps ? { sets_reps: details.sets_reps } : {})
+  }
+
+  // 1. Create completed daily task on dateStr
+  const task = await createDailyTaskWithDetails(
+    localUserId,
+    dateStr,
+    modalityId,
+    timingSlot,
+    'completed',
+    completedAt,
+    executionDetails
+  )
+
+  // 2. Ensure bench item records custom dose & as_needed schedule config
+  await upsertBenchItemOverride(
+    localUserId,
+    modalityId,
+    actualDose,
+    'As Needed',
+    details?.notes
+  )
+
+  // 3. Save to localStorage for instant offline access
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`levl_modality_sched_${modalityId}`, JSON.stringify({
+        schedule_mode: 'as_needed',
+        timing_slot: timingSlot,
+        skip_policy: 'roll_forward'
+      }))
+    } catch (e) {}
+  }
+
+  clearUserHistoryCache()
+  return task
+}
+
+export async function getAsNeededBenchModalities(localUserId: string): Promise<UserBenchItem[]> {
+  const benchItems = await getBenchItems(localUserId)
+  return benchItems.filter(item => {
+    const customTiming = (item.custom_timing || '').toLowerCase()
+    const notes = (item.notes || '').toLowerCase()
+    const sched = getModalityScheduleConfig(item.modality_id, item.modality)
+    return (
+      sched?.schedule_mode === 'as_needed' ||
+      customTiming.includes('as needed') ||
+      customTiming.includes('as-needed') ||
+      customTiming.includes('prn') ||
+      customTiming.includes('spontaneous') ||
+      notes.includes('as needed')
+    )
+  })
+}

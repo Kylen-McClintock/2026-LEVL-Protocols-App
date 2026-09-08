@@ -210,7 +210,7 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
   const existingConfig = userSavedConfig || autoConfig
 
   // 1. Cadence & Schedule States
-  const [scheduleMode, setScheduleMode] = useState<'days_of_week' | 'rest_interval' | 'specific_dates'>(
+  const [scheduleMode, setScheduleMode] = useState<'days_of_week' | 'rest_interval' | 'specific_dates' | 'as_needed'>(
     existingConfig?.schedule_mode || 'days_of_week'
   )
   const [restDaysBetween, setRestDaysBetween] = useState<number>(
@@ -442,7 +442,9 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
       timingFormatted = `3x Daily: Dose 1 (${dose1Timing}) + Dose 2 (${dose2Timing}) + Dose 3 (${dose3Timing})`
     }
 
-    const customTimingString = `${daysToSave.length}x/wk • ${timingFormatted}`
+    const customTimingString = scheduleMode === 'as_needed'
+      ? 'As Needed'
+      : `${daysToSave.length}x/wk • ${timingFormatted}`
 
     const config: ModalityScheduleConfig = {
       schedule_mode: scheduleMode,
@@ -704,36 +706,49 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
                   <span>1. Cadence &amp; Scheduling Strategy</span>
                 </label>
 
-                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950/80 rounded-2xl border border-white/5">
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-950/80 rounded-2xl border border-white/5">
                   <button
                     type="button"
                     onClick={() => setScheduleMode('days_of_week')}
-                    className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    className={`py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       scheduleMode === 'days_of_week'
                         ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md shadow-cyan-500/25 border border-cyan-400/40'
                         : 'text-slate-400 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    <CalendarIcon size={14} />
+                    <CalendarIcon size={13} />
                     <span>Days of Week</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setScheduleMode('rest_interval')}
-                    className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    className={`py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       scheduleMode === 'rest_interval' || scheduleMode === 'specific_dates'
                         ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold shadow-md shadow-cyan-500/25 border border-cyan-400/40'
                         : 'text-slate-400 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    <ShieldCheck size={14} />
-                    <span>Recovery Rest &amp; Pulsed</span>
+                    <ShieldCheck size={13} />
+                    <span>Rest &amp; Pulsed</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setScheduleMode('as_needed')}
+                    className={`py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      scheduleMode === 'as_needed'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white font-extrabold shadow-md shadow-amber-500/25 border border-amber-400/40'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Zap size={13} className="text-amber-300" />
+                    <span>As Needed</span>
                   </button>
                 </div>
 
                 {/* Mode A: 7-Day Selector (LEVL BLUE STYLED) */}
-                {scheduleMode === 'days_of_week' ? (
+                {scheduleMode === 'days_of_week' && (
                   <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 space-y-3 animate-in fade-in">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
@@ -799,8 +814,10 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
                         : `Scheduled on ${selectedDays.join(', ')} (${selectedDays.length} days/week).`}
                     </p>
                   </div>
-                ) : (
-                  /* Mode B: Recovery Rest Interval with Dynamic Anchor, Progression Toggle & Calendar Picker */
+                )}
+
+                {/* Mode B: Recovery Rest Interval with Dynamic Anchor, Progression Toggle & Calendar Picker */}
+                {(scheduleMode === 'rest_interval' || scheduleMode === 'specific_dates') && (
                   <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 space-y-3.5 animate-in fade-in">
                     {/* 1. Quick Rest Days Selector */}
                     <div className="space-y-1.5">
@@ -1169,6 +1186,31 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* Mode C: As Needed (No Fixed Schedule) */}
+                {scheduleMode === 'as_needed' && (
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-slate-950/70 to-orange-500/10 border border-amber-500/30 space-y-3 animate-in fade-in">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 flex items-center justify-center font-bold text-sm shadow-sm">
+                        ⚡
+                      </div>
+                      <div>
+                        <div className="text-xs font-extrabold text-white flex items-center gap-2">
+                          As Needed Modality
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold uppercase border border-amber-500/30">
+                            No Fixed Schedule
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          Spontaneous, occasional, or context-driven intervention
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed bg-black/40 p-3 rounded-xl border border-white/5">
+                      This modality will never clutter your daily schedule with pending or overdue tasks. It is kept primed in your <strong>As Needed Modalities</strong> arsenal on your Bench and in the <strong>+</strong> menu for instant 2-tap logging whenever you take it.
+                    </p>
                   </div>
                 )}
               </div>

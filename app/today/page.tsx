@@ -498,6 +498,43 @@ function TodayPageContent() {
   }, [])
 
   const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false)
+  const [asNeededSlot, setAsNeededSlot] = useState<string | undefined>(undefined)
+  const [asNeededModalityId, setAsNeededModalityId] = useState<string | undefined>(undefined)
+
+  const asNeededQuickPills = useMemo(() => {
+    const fromBench = benchItems
+      .filter(b => {
+        const customTiming = (b.custom_timing || '').toLowerCase()
+        const notes = (b.notes || '').toLowerCase()
+        return (
+          customTiming.includes('as needed') ||
+          customTiming.includes('as-needed') ||
+          customTiming.includes('prn') ||
+          notes.includes('as needed')
+        )
+      })
+      .map(b => ({
+        id: b.modality_id,
+        name: b.modality?.display_name || b.modality?.name || 'Modality'
+      }))
+
+    if (fromBench.length > 0) return fromBench.slice(0, 6)
+
+    if (benchItems.length > 0) {
+      return benchItems.slice(0, 5).map(b => ({
+        id: b.modality_id,
+        name: b.modality?.display_name || b.modality?.name || 'Modality'
+      }))
+    }
+
+    return [
+      { id: 'electrolytes', name: 'Electrolytes' },
+      { id: 'cold_plunge', name: 'Cold Plunge' },
+      { id: 'sauna', name: 'Sauna' },
+      { id: 'melatonin', name: 'Melatonin' },
+      { id: 'breathwork', name: 'Cyclic Sighing' }
+    ]
+  }, [benchItems])
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false)
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false)
   const [studioModalData, setStudioModalData] = useState<{
@@ -3155,6 +3192,18 @@ function TodayPageContent() {
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
               <button
                 type="button"
+                onClick={() => {
+                  setAsNeededSlot(groupName)
+                  setIsAdHocModalOpen(true)
+                }}
+                className="font-bold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg text-[11px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all active:scale-95 shrink-0 shadow-sm"
+                title={`Log an As Needed modality for ${formatSlotName(groupName)}`}
+              >
+                <Plus size={12} className="stroke-[2.5]" />
+                <span className="hidden min-[420px]:inline">As Needed</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => handleStartGroupTracking(groupName, groupTasks)}
                 className={`font-semibold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition-colors ${
                   isAnytime 
@@ -3699,6 +3748,43 @@ function TodayPageContent() {
             localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
             userProfile={profile}
           />
+        )}
+
+        {/* As Needed Quick-Tap Strip (Single Row, Horizontal Scroll) */}
+        {calendarViewMode === 'today' && !isFocusMode && (
+          <div className="mb-4 -mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-none py-1 px-1">
+            <div className="flex items-center gap-1.5 shrink-0 text-amber-400 font-extrabold text-[11px] uppercase tracking-wider pl-0.5">
+              <Zap size={13} className="text-amber-400" />
+              <span>As Needed:</span>
+            </div>
+            {asNeededQuickPills.map(item => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setAsNeededSlot(undefined)
+                  setAsNeededModalityId(item.id)
+                  setIsAdHocModalOpen(true)
+                }}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-900/90 border border-amber-500/30 hover:border-amber-400 hover:bg-amber-500/10 text-slate-200 hover:text-white text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 shadow-sm active:scale-95"
+              >
+                <span className="text-amber-400 font-extrabold">+</span>
+                <span>{item.name}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setAsNeededSlot(undefined)
+                setAsNeededModalityId(undefined)
+                setIsAdHocModalOpen(true)
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0"
+            >
+              <Plus size={12} />
+              <span>All</span>
+            </button>
+          </div>
         )}
 
         {/* Infradian & Menstrual Cycle Adaptive Protocol Banner (When enabled for Female < 52) */}
@@ -4700,11 +4786,17 @@ function TodayPageContent() {
       {profile && (
         <AdHocLoggerModal 
           isOpen={isAdHocModalOpen}
-          onClose={() => setIsAdHocModalOpen(false)}
+          onClose={() => {
+            setIsAdHocModalOpen(false)
+            setAsNeededSlot(undefined)
+            setAsNeededModalityId(undefined)
+          }}
           localUserId={profile.local_user_id}
           benchItems={benchItems}
           todayTasks={tasks}
           dateStr={dateStr}
+          initialTimingSlot={asNeededSlot}
+          initialModalityId={asNeededModalityId}
           onLogged={async () => {
             await refreshTodayTasks()
             const bItems = await getBenchItems(profile.local_user_id)

@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { format } from 'date-fns'
 import { UserBenchItem, UserProfile } from '@/lib/types'
-import { Plus, Trash2, Check, Info, Activity, User, Sparkles, ExternalLink, CheckCircle2 } from 'lucide-react'
+import { Plus, Trash2, Check, Info, Activity, User, Sparkles, ExternalLink, CheckCircle2, Zap } from 'lucide-react'
 import GeekMode from './GeekMode'
 import PersonalizeModalityModal from '../modals/PersonalizeModalityModal'
 import { DosageDetailModal } from '../modals/DosageDetailModal'
 import ManageTaskModal from '../modals/ManageTaskModal'
-import { upsertBenchItemOverride } from '@/lib/data'
+import { upsertBenchItemOverride, logAsNeededCompletedSession } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getColorForProtocol } from '@/lib/utils/categories'
 import OutcomePill from '@/components/outcomes/OutcomePill'
@@ -26,9 +27,10 @@ type BenchCardProps = {
   protocolTags?: ProtocolTag[]
   onAddToToday: (modalityId: string) => Promise<void>
   onRemove: (modalityId: string) => Promise<void>
+  onSessionLogged?: () => void
 }
 
-export default function BenchCard({ item, userProfile, protocolTags = [], onAddToToday, onRemove }: BenchCardProps) {
+export default function BenchCard({ item, userProfile, protocolTags = [], onAddToToday, onRemove, onSessionLogged }: BenchCardProps) {
   const router = useRouter()
   const [addedToToday, setAddedToToday] = useState(false)
   const [removed, setRemoved] = useState(false)
@@ -41,6 +43,29 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
   const modality = item.modality
   if (!modality) return null
 
+  // Two-Tap Complete state for As Needed modalities
+  const isAsNeeded = 
+    item.schedule_config?.schedule_mode === 'as_needed' ||
+    (item.custom_timing || '').toLowerCase().includes('as needed') ||
+    (item.custom_timing || '').toLowerCase().includes('as-needed') ||
+    (item.custom_timing || '').toLowerCase().includes('prn') ||
+    (item.notes || '').toLowerCase().includes('as needed') ||
+    (modality.timing_summary || '').toLowerCase().includes('as needed')
+
+  const [isPrimed, setIsPrimed] = useState(false)
+  const [sessionLogged, setSessionLogged] = useState(false)
+  const [customDoseVal, setCustomDoseVal] = useState(item.custom_dose || modality.dose_or_exposure || '')
+  const [timingSlotVal, setTimingSlotVal] = useState('morning')
+  const [notesVal, setNotesVal] = useState(item.notes || '')
+
+  useEffect(() => {
+    const hour = new Date().getHours()
+    if (hour >= 5 && hour < 12) setTimingSlotVal('morning')
+    else if (hour >= 12 && hour < 17) setTimingSlotVal('afternoon')
+    else if (hour >= 17 && hour < 21) setTimingSlotVal('evening')
+    else if (hour >= 21 || hour < 5) setTimingSlotVal('pre_bed')
+  }, [])
+
   const handleToday = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (addedToToday) {
@@ -51,6 +76,41 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
     await onAddToToday(modality.id)
     setIsProcessing(false)
     setAddedToToday(true)
+  }
+
+  // Two-Tap Complete flow for As Needed modalities:
+  // Tap 1: Expands details & primes button to '✓ Complete (Click to Log Now)'
+  // Tap 2: Instantly logs completed session even without modifying any details
+  const handleAsNeededComplete = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (sessionLogged) {
+      router.push(`/today?modality=${encodeURIComponent(modality.id)}&name=${encodeURIComponent(modality.display_name || modality.name)}`)
+      return
+    }
+
+    if (!isPrimed) {
+      setIsPrimed(true)
+      return
+    }
+
+    setIsProcessing(true)
+    const localUserId = userProfile?.local_user_id || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+    const todayStr = format(new Date(), 'yyyy-MM-dd')
+    await logAsNeededCompletedSession(localUserId, modality.id, todayStr, {
+      actual_dose: customDoseVal || item.custom_dose || modality.dose_or_exposure || 'Standard Dose',
+      timing_slot: timingSlotVal,
+      notes: notesVal
+    })
+    setIsProcessing(false)
+    setSessionLogged(true)
+    setIsPrimed(false)
+    if (onSessionLogged) {
+      onSessionLogged()
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+      window.dispatchEvent(new CustomEvent('levl_today_tasks_stats'))
+    }
   }
 
   const handleRemove = async (e: React.MouseEvent) => {
@@ -75,10 +135,16 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
         className="p-4 cursor-pointer flex flex-col gap-3"
         onClick={() => setExpanded(!expanded)}
       >
-        {/* Protocol Lineage Badges */}
-        {protocolTags && protocolTags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-0.5">
-            {protocolTags.map((tag, idx) => {
+        {/* Protocol Lineage Badges & As-Needed Indicator */}
+        {(isAsNeeded || (protocolTags && protocolTags.length > 0)) && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+            {isAsNeeded && (
+              <span className="text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1 shadow-sm">
+                <Zap size={11} className="text-amber-400 fill-amber-400" />
+                <span>As Needed</span>
+              </span>
+            )}
+            {protocolTags && protocolTags.map((tag, idx) => {
               const color = tag.color_hex || getColorForProtocol(tag.protocol_name)
               return (
                 <Link
@@ -225,28 +291,131 @@ export default function BenchCard({ item, userProfile, protocolTags = [], onAddT
         />
       )}
 
-      <div className="flex items-center gap-2 p-4 pt-0 border-t border-white/5 mt-2">
-        <button 
-          onClick={handleToday}
-          disabled={isProcessing}
-          className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
-            addedToToday 
-              ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-pointer active:scale-95' 
-              : 'bg-levl-accent text-white hover:bg-levl-accent/90 shadow-md cursor-pointer'
-          }`}
+      {/* As Needed Two-Tap Inline Details Drawer */}
+      {isAsNeeded && isPrimed && !sessionLogged && (
+        <div 
+          onClick={(e) => e.stopPropagation()} 
+          className="p-3.5 bg-amber-950/25 border-t border-b border-amber-500/30 space-y-2.5 animate-in fade-in slide-in-from-top-2"
         >
-          {addedToToday ? (
-            <span className="flex items-center justify-center gap-1.5 truncate">
-              <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
-              <span className="truncate">In Today&apos;s Plan</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-extrabold text-amber-300 uppercase tracking-wider flex items-center gap-1">
+              <Zap size={12} className="text-amber-400 fill-amber-400" />
+              Log As Needed Session • Tap Complete to Confirm
             </span>
-          ) : (
-            <span className="flex items-center justify-center gap-1.5 truncate">
-              <Plus size={15} className="shrink-0" />
-              <span className="truncate">{isProcessing ? 'Adding...' : 'Add to Today'}</span>
-            </span>
-          )}
-        </button>
+            <button
+              type="button"
+              onClick={() => setIsPrimed(false)}
+              className="text-[10px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 mb-1">Dose / Exposure</label>
+              <input
+                type="text"
+                value={customDoseVal}
+                onChange={(e) => setCustomDoseVal(e.target.value)}
+                placeholder={item.custom_dose || modality.dose_or_exposure || 'Standard Dose'}
+                className="w-full bg-black/60 border border-amber-500/30 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-400 mb-1">Timing Block</label>
+              <div className="flex items-center gap-1">
+                {[
+                  { id: 'morning', label: 'Morn' },
+                  { id: 'afternoon', label: 'Aft' },
+                  { id: 'evening', label: 'Eve' },
+                  { id: 'pre_bed', label: 'Bed' }
+                ].map(s => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setTimingSlotVal(s.id)}
+                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${
+                      timingSlotVal === s.id
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                        : 'bg-black/40 text-slate-400 hover:text-white border border-white/5'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-semibold text-slate-400 mb-1">Context Notes (Optional)</label>
+            <input
+              type="text"
+              value={notesVal}
+              onChange={(e) => setNotesVal(e.target.value)}
+              placeholder="e.g. post-workout fatigue, high stress, travel..."
+              className="w-full bg-black/60 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 p-4 pt-0 border-t border-white/5 mt-2">
+        {isAsNeeded ? (
+          <button 
+            type="button"
+            onClick={handleAsNeededComplete}
+            disabled={isProcessing}
+            className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm cursor-pointer ${
+              sessionLogged
+                ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)] active:scale-95'
+                : isPrimed
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black shadow-[0_0_16px_rgba(16,185,129,0.4)] animate-pulse'
+                  : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+            }`}
+          >
+            {sessionLogged ? (
+              <span className="flex items-center justify-center gap-1.5 truncate">
+                <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                <span className="truncate">Logged to Today!</span>
+              </span>
+            ) : isPrimed ? (
+              <span className="flex items-center justify-center gap-1.5 truncate">
+                <Check size={16} strokeWidth={3} className="text-slate-950 shrink-0" />
+                <span className="truncate">{isProcessing ? 'Logging...' : '✓ Complete (Click to Log Now)'}</span>
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-1.5 truncate">
+                <Zap size={14} className="text-slate-950 fill-slate-950 shrink-0" />
+                <span className="truncate">⚡ Complete</span>
+              </span>
+            )}
+          </button>
+        ) : (
+          <button 
+            onClick={handleToday}
+            disabled={isProcessing}
+            className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
+              addedToToday 
+                ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-pointer active:scale-95' 
+                : 'bg-levl-accent text-white hover:bg-levl-accent/90 shadow-md cursor-pointer'
+            }`}
+          >
+            {addedToToday ? (
+              <span className="flex items-center justify-center gap-1.5 truncate">
+                <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                <span className="truncate">In Today&apos;s Plan</span>
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-1.5 truncate">
+                <Plus size={15} className="shrink-0" />
+                <span className="truncate">{isProcessing ? 'Adding...' : 'Add to Today'}</span>
+              </span>
+            )}
+          </button>
+        )}
         
         <button 
           onClick={handleRemove}

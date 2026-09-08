@@ -442,6 +442,7 @@ export type UserBenchItem = {
   notes?: string
   custom_dose?: string
   custom_timing?: string
+  schedule_config?: any
   elimination_reasons?: string[]
   protocolTags?: { protocol_name: string; color_hex?: string }[]
   added_at: string

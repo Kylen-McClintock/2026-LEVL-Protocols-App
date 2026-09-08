@@ -207,24 +207,27 @@ export default function QuickActionHubModal({
                 <ArrowRight size={16} className="text-slate-500 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
               </button>
 
-              {/* Option 4: Log Unscheduled / Ad-Hoc Dose */}
+              {/* Option 4: Log As Needed Modality */}
               <button
                 onClick={() => {
                   onClose()
                   setShowAdHocLog(true)
                 }}
-                className="w-full text-left p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-950 transition-all group flex items-center justify-between cursor-pointer"
+                className="w-full text-left p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-600/10 border border-amber-500/30 hover:border-amber-400/60 hover:bg-amber-500/15 transition-all group flex items-center justify-between cursor-pointer shadow-lg shadow-amber-500/5"
               >
                 <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 group-hover:scale-105 transition-transform shadow-md shadow-amber-500/10">
                     <Zap size={20} />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-white group-hover:text-amber-200 transition-colors">
-                      Log Ad-Hoc Protocol Dose
+                    <div className="text-sm font-semibold text-white group-hover:text-amber-200 transition-colors flex items-center gap-1.5">
+                      Log As Needed Modality
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/25 border border-amber-500/40 text-amber-300 font-mono font-bold">
+                        AS NEEDED
+                      </span>
                     </div>
                     <div className="text-xs text-slate-400">
-                      Add a one-time un-scheduled session or supplement to Today
+                      Quick-log occasional or spontaneous sessions (electrolytes, cold plunge, sauna, acute doses)
                     </div>
                   </div>
                 </div>

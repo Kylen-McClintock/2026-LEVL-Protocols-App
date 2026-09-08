@@ -1,17 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getBenchItems, getBenchProtocols, createDailyTask, addProtocolToToday, removeFromBench, getOrCreateUserProfile, getDraftModalities, getDraftProtocols, getProtocols, getDailyProtocolTasks } from '@/lib/data'
 import { UserBenchItem, UserProfile, Modality, Protocol } from '@/lib/types'
-import { Bookmark, Plus, Sparkles, HelpCircle, Clock } from 'lucide-react'
+import { Bookmark, Plus, Sparkles, HelpCircle, Clock, Zap, Calendar } from 'lucide-react'
 import BenchCard from '@/components/cards/BenchCard'
 import ProtocolCard from '@/components/cards/ProtocolCard'
 import DraftCard from '@/components/cards/DraftCard'
 import DraftEditorModal from '@/components/modals/DraftEditorModal'
 import CreateCustomModalityModal from '@/components/modals/CreateCustomModalityModal'
+import AdHocLoggerModal from '@/components/modals/AdHocLoggerModal'
 import { CategoryPills } from '@/components/ui/CategoryPills'
 import { getMacroCategory, MACRO_CATEGORIES, getColorForProtocol } from '@/lib/utils/categories'
 import { calculateNextBestAction } from '@/lib/ranking/nextBestAction'
@@ -28,7 +29,9 @@ export default function BenchPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'modalities' | 'protocols' | 'drafts'>('modalities')
   const [filterCategory, setFilterCategory] = useState('all')
+  const [cadenceFilter, setCadenceFilter] = useState<'all' | 'as_needed' | 'scheduled'>('all')
   const [sortMode, setSortMode] = useState<'nba' | 'recent'>('nba')
+  const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false)
 
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorItem, setEditorItem] = useState<Modality | Protocol | null>(null)
@@ -133,9 +136,34 @@ export default function BenchPage() {
 
   if (loading) return <div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">Loading bench...</div>
 
+  const asNeededCount = useMemo(() => {
+    return items.filter(item => 
+      item.schedule_config?.schedule_mode === 'as_needed' ||
+      (item.custom_timing || '').toLowerCase().includes('as needed') ||
+      (item.custom_timing || '').toLowerCase().includes('as-needed') ||
+      (item.custom_timing || '').toLowerCase().includes('prn') ||
+      (item.notes || '').toLowerCase().includes('as needed') ||
+      (item.modality?.timing_summary || '').toLowerCase().includes('as needed')
+    ).length
+  }, [items])
+
+  const scheduledCount = items.length - asNeededCount
+
   const filteredItems = items
     .filter(item => {
       if (filterCategory !== 'all' && getMacroCategory(item.modality?.category) !== filterCategory) return false
+
+      const isAsNeeded = 
+        item.schedule_config?.schedule_mode === 'as_needed' ||
+        (item.custom_timing || '').toLowerCase().includes('as needed') ||
+        (item.custom_timing || '').toLowerCase().includes('as-needed') ||
+        (item.custom_timing || '').toLowerCase().includes('prn') ||
+        (item.notes || '').toLowerCase().includes('as needed') ||
+        (item.modality?.timing_summary || '').toLowerCase().includes('as needed')
+
+      if (cadenceFilter === 'as_needed' && !isAsNeeded) return false
+      if (cadenceFilter === 'scheduled' && isAsNeeded) return false
+
       return true
     })
     .sort((a, b) => {
@@ -193,6 +221,57 @@ export default function BenchPage() {
 
       {activeTab === 'modalities' && (
         <>
+          {/* Single-Row Cadence Shelf Filter (Takes no more than one vertical row) */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1 mb-3 whitespace-nowrap">
+            <button
+              type="button"
+              onClick={() => setCadenceFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                cadenceFilter === 'all'
+                  ? 'bg-levl-accent text-white shadow-sm'
+                  : 'bg-black/40 text-gray-400 hover:text-white border border-white/5'
+              }`}
+            >
+              All Modalities ({items.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setCadenceFilter('as_needed')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                cadenceFilter === 'as_needed'
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black shadow-md shadow-amber-500/20'
+                  : 'bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/20'
+              }`}
+            >
+              <Zap size={13} className={cadenceFilter === 'as_needed' ? 'text-slate-950 fill-slate-950' : 'text-amber-400'} />
+              <span>As Needed ({asNeededCount})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCadenceFilter('scheduled')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                cadenceFilter === 'scheduled'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-black/40 text-gray-400 hover:text-white border border-white/5'
+              }`}
+            >
+              <Calendar size={13} />
+              <span>Scheduled ({scheduledCount})</span>
+            </button>
+
+            <div className="h-4 w-px bg-white/10 mx-1 shrink-0" />
+
+            <button
+              type="button"
+              onClick={() => setIsAdHocModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 hover:text-white transition-all cursor-pointer ml-auto shrink-0"
+              title="Quickly log any occasional or as-needed modality"
+            >
+              <Plus size={13} className="stroke-[3]" />
+              <span>+ Log As Needed</span>
+            </button>
+          </div>
+
           {/* Controls Bar: Category Filter & Sort Mode Toggle */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div className="flex-1 min-w-0">
@@ -259,6 +338,7 @@ export default function BenchPage() {
                     protocolTags={topBenchItem.protocolTags}
                     onAddToToday={handleAddToToday} 
                     onRemove={handleRemove} 
+                    onSessionLogged={load}
                   />
                 </div>
               </details>
@@ -267,8 +347,24 @@ export default function BenchPage() {
 
           {remainingBenchItems.length === 0 && !topBenchItem ? (
             <div className="glass-card p-8 rounded-xl text-center space-y-4">
-              <p className="text-levl-text-secondary">No benched modalities found for this category.</p>
-              <a href="/explore" className="inline-block bg-levl-accent text-white px-4 py-2 rounded-lg font-medium">Explore Modalities</a>
+              <p className="text-levl-text-secondary">
+                {cadenceFilter === 'as_needed' 
+                  ? 'No "As Needed" modalities found on your bench. Tap "+ Log As Needed" above or personalize any modality cadence to "As Needed".'
+                  : 'No benched modalities found for this filter.'}
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                {cadenceFilter === 'as_needed' ? (
+                  <button 
+                    onClick={() => setIsAdHocModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 px-4 py-2 rounded-lg font-bold text-sm cursor-pointer shadow-md shadow-amber-500/20"
+                  >
+                    <Plus size={15} className="stroke-[3]" />
+                    <span>Log As Needed</span>
+                  </button>
+                ) : (
+                  <a href="/explore" className="inline-block bg-levl-accent text-white px-4 py-2 rounded-lg font-medium">Explore Modalities</a>
+                )}
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -280,6 +376,7 @@ export default function BenchPage() {
                   protocolTags={item.protocolTags}
                   onAddToToday={handleAddToToday} 
                   onRemove={handleRemove} 
+                  onSessionLogged={load}
                 />
               ))}
             </div>
@@ -387,6 +484,16 @@ export default function BenchPage() {
         isOpen={isCreateModalityModalOpen}
         onClose={() => setIsCreateModalityModalOpen(false)}
         onCreated={load}
+      />
+
+      {/* As Needed Modalities Logger Modal */}
+      <AdHocLoggerModal
+        isOpen={isAdHocModalOpen}
+        onClose={() => setIsAdHocModalOpen(false)}
+        localUserId={authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()}
+        benchItems={items}
+        todayTasks={[]}
+        onLogged={load}
       />
     </div>
   )

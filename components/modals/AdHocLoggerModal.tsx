@@ -9,27 +9,28 @@ import {
   Sparkles, 
   Check, 
   Calendar, 
-  Inbox, 
-  ChevronRight, 
   Zap, 
   Tag, 
-  Dumbbell, 
-  Pill, 
-  Flame, 
-  Moon, 
-  Brain, 
-  Apple, 
-  Stethoscope,
-  Info
+  ChevronRight, 
+  CheckCircle2,
+  Bookmark,
+  Layers,
+  ArrowRight,
+  Flame,
+  Droplets,
+  Pill,
+  Moon,
+  Wind
 } from 'lucide-react'
 import { Modality, UserBenchItem, DailyProtocolTask } from '@/lib/types'
 import { 
   getModalities, 
-  logAdHocSession, 
   createDailyTaskWithDetails, 
-  moveModalityToBench, 
-  createCustomModality 
+  createCustomModality,
+  logAsNeededCompletedSession,
+  upsertBenchItemOverride
 } from '@/lib/data'
+import ModalityIcon from '@/components/ui/ModalityIcon'
 
 type AdHocLoggerModalProps = {
   isOpen: boolean
@@ -39,9 +40,9 @@ type AdHocLoggerModalProps = {
   benchItems: UserBenchItem[]
   todayTasks: DailyProtocolTask[]
   dateStr?: string
+  initialTimingSlot?: string
+  initialModalityId?: string
 }
-
-type DestinationTab = 'one_off' | 'today' | 'bench'
 
 const CATEGORY_OPTIONS = [
   'Supplements & Nootropics',
@@ -61,37 +62,44 @@ export default function AdHocLoggerModal({
   onLogged,
   benchItems,
   todayTasks,
-  dateStr
+  dateStr,
+  initialTimingSlot,
+  initialModalityId
 }: AdHocLoggerModalProps) {
   const [allModalities, setAllModalities] = useState<Modality[]>([])
   const [query, setQuery] = useState('')
-  const [selectedModality, setSelectedModality] = useState<Modality | null>(null)
   
-  // Custom Modality Creation Form state
+  // Two-Tap Complete inline state (keyed by modality id)
+  const [primedModalityId, setPrimedModalityId] = useState<string | null>(null)
+  const [primedDose, setPrimedDose] = useState<string>('')
+  const [primedSlot, setPrimedSlot] = useState<string>('anytime')
+  const [primedNotes, setPrimedNotes] = useState<string>('')
+  const [isLoggingId, setIsLoggingId] = useState<string | null>(null)
+  const [loggedSuccessId, setLoggedSuccessId] = useState<string | null>(null)
+
+  // Custom Modality Creation state
   const [isCreatingCustom, setIsCreatingCustom] = useState(false)
   const [customName, setCustomName] = useState('')
   const [customCategory, setCustomCategory] = useState('Supplements & Nootropics')
-  const [customTimingSlot, setCustomTimingSlot] = useState('morning')
+  const [customTimingSlot, setCustomTimingSlot] = useState('anytime')
   const [customDose, setCustomDose] = useState('')
   const [customNotes, setCustomNotes] = useState('')
-  
-  // Destination tab: one_off | today | bench
-  const [activeTab, setActiveTab] = useState<DestinationTab>('today')
-  
-  // Precision metrics inputs
-  const now = new Date()
-  const nowStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-  const [timeStr, setTimeStr] = useState(nowStr)
-  const [timingSlot, setTimingSlot] = useState('morning')
-  const [doseText, setDoseText] = useState('')
-  const [contextNotes, setContextNotes] = useState('')
-  const [waterMl, setWaterMl] = useState<number | ''>('')
-  const [setsReps, setSetsReps] = useState('')
-  
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmittingCustom, setIsSubmittingCustom] = useState(false)
+
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Load catalog on open
+  // Determine fallback circadian slot
+  const currentCircadianSlot = useMemo(() => {
+    if (initialTimingSlot) return initialTimingSlot
+    const hour = new Date().getHours()
+    if (hour >= 5 && hour < 12) return 'morning'
+    if (hour >= 12 && hour < 17) return 'afternoon'
+    if (hour >= 17 && hour < 21) return 'evening'
+    if (hour >= 21 || hour < 5) return 'pre_bed'
+    return 'anytime'
+  }, [initialTimingSlot])
+
+  // Load modality catalog on open
   useEffect(() => {
     if (isOpen) {
       getModalities().then(mods => {
@@ -99,47 +107,72 @@ export default function AdHocLoggerModal({
       })
       setTimeout(() => {
         searchInputRef.current?.focus()
-      }, 100)
+      }, 120)
     } else {
-      // Reset state
+      // Reset state on modal close
       setQuery('')
-      setSelectedModality(null)
+      setPrimedModalityId(null)
+      setPrimedDose('')
+      setPrimedSlot('anytime')
+      setPrimedNotes('')
       setIsCreatingCustom(false)
-      setActiveTab('today')
-      setTimeStr(nowStr)
-      setDoseText('')
-      setContextNotes('')
-      setWaterMl('')
-      setSetsReps('')
-      setIsSubmitting(false)
+      setIsLoggingId(null)
+      setLoggedSuccessId(null)
     }
   }, [isOpen])
 
-  // When modality is selected, infer default parameters
+  // Pre-prime initial modality if passed (e.g. from single-row quick pill tap)
   useEffect(() => {
-    if (selectedModality) {
-      setDoseText(selectedModality.dose_or_exposure || '')
-      const slot = selectedModality.default_timing_slot?.toLowerCase() || 'anytime'
-      if (['morning', 'afternoon', 'evening', 'pre_bed', 'anytime'].includes(slot)) {
-        setTimingSlot(slot)
-      } else {
-        setTimingSlot('morning')
+    if (isOpen && initialModalityId && allModalities.length > 0) {
+      const target = allModalities.find(m => m.id === initialModalityId) || benchItems.find(b => b.modality_id === initialModalityId)?.modality
+      if (target) {
+        const benchMatch = benchItems.find(b => b.modality_id === target.id)
+        setPrimedModalityId(target.id)
+        setPrimedDose(benchMatch?.custom_dose || target.dose_or_exposure || 'Standard Dose')
+        setPrimedSlot(currentCircadianSlot)
+        setPrimedNotes(benchMatch?.notes || '')
       }
     }
-  }, [selectedModality])
+  }, [isOpen, initialModalityId, allModalities, benchItems, currentCircadianSlot])
 
-  // Live real-time filtered results on each keystroke
-  const filteredModalities = useMemo(() => {
+  // Map of Bench Items by modality_id for O(1) lookup
+  const benchMap = useMemo(() => {
+    const map = new Map<string, UserBenchItem>()
+    benchItems.forEach(b => {
+      if (b.modality_id) map.set(b.modality_id, b)
+    })
+    return map
+  }, [benchItems])
+
+  // Bench Modalities List (User's personal arsenal)
+  const userBenchModalities = useMemo(() => {
+    const mods: Modality[] = []
+    benchItems.forEach(b => {
+      if (b.modality) {
+        mods.push(b.modality)
+      } else if (b.modality_id) {
+        const found = allModalities.find(m => m.id === b.modality_id)
+        if (found) mods.push(found)
+      }
+    })
+    return mods
+  }, [benchItems, allModalities])
+
+  // Tiered Search Filtering
+  const { benchMatches, libraryMatches } = useMemo(() => {
     const q = query.trim().toLowerCase()
+    const benchIds = new Set(userBenchModalities.map(m => m.id))
+
     if (!q) {
-      // Show suggestions from bench or popular items if search is empty
-      const benchModIds = new Set(benchItems.map(b => b.modality_id))
-      const benchList = allModalities.filter(m => benchModIds.has(m.id))
-      if (benchList.length > 0) return benchList.slice(0, 10)
-      return allModalities.slice(0, 10)
+      // Empty query: Show user's bench items first
+      return {
+        benchMatches: userBenchModalities,
+        libraryMatches: allModalities.filter(m => !benchIds.has(m.id)).slice(0, 8)
+      }
     }
 
-    return allModalities.filter(m => {
+    // Matching logic
+    const matchesModality = (m: Modality) => {
       const name = (m.name || '').toLowerCase()
       const disp = (m.display_name || '').toLowerCase()
       const cat = (m.category || '').toLowerCase()
@@ -153,7 +186,9 @@ export default function AdHocLoggerModal({
         desc.includes(q) ||
         dose.includes(q)
       )
-    }).sort((a, b) => {
+    }
+
+    const sortFn = (a: Modality, b: Modality) => {
       const aName = a.name.toLowerCase()
       const bName = b.name.toLowerCase()
       const aStarts = aName.startsWith(q)
@@ -161,127 +196,142 @@ export default function AdHocLoggerModal({
       if (aStarts && !bStarts) return -1
       if (!aStarts && bStarts) return 1
       return aName.localeCompare(bName)
-    })
-  }, [query, allModalities, benchItems])
+    }
 
-  // Check if current query is an exact match for an existing modality
+    const bMatches = userBenchModalities.filter(matchesModality).sort(sortFn)
+    const lMatches = allModalities.filter(m => !benchIds.has(m.id) && matchesModality(m)).sort(sortFn)
+
+    return {
+      benchMatches: bMatches,
+      libraryMatches: lMatches
+    }
+  }, [query, userBenchModalities, allModalities])
+
   const exactMatchExists = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return false
     return allModalities.some(m => m.name.toLowerCase() === q || m.display_name?.toLowerCase() === q)
   }, [query, allModalities])
 
-  // Handle custom modality creation
-  const handleCreateCustom = async () => {
+  // --------------------------------------------------------------------------
+  // TWO-TAP COMPLETION HANDLER
+  // Tap 1: Expands details (dose, timing, notes) & primes the button
+  // Tap 2: Instantly logs the session to Today as completed
+  // --------------------------------------------------------------------------
+  const handleTwoTapComplete = async (mod: Modality) => {
+    const isPrimed = primedModalityId === mod.id
+
+    if (!isPrimed) {
+      // CLICK 1: Prime for completion & open inline details drawer
+      const benchItem = benchMap.get(mod.id)
+      const defaultDose = benchItem?.custom_dose || mod.dose_or_exposure || ''
+      const defaultSlot = initialTimingSlot || mod.default_timing_slot || currentCircadianSlot
+
+      setPrimedModalityId(mod.id)
+      setPrimedDose(defaultDose)
+      setPrimedSlot(defaultSlot)
+      setPrimedNotes(benchItem?.notes || '')
+      return
+    }
+
+    // CLICK 2: Instantly execute and log completed session!
+    setIsLoggingId(mod.id)
+    const effectiveDate = dateStr || new Date().toISOString().split('T')[0]
+
+    try {
+      await logAsNeededCompletedSession(localUserId, mod.id, effectiveDate, {
+        actual_dose: primedDose.trim() || undefined,
+        timing_slot: primedSlot || currentCircadianSlot,
+        notes: primedNotes.trim() || undefined
+      })
+
+      // Trigger celebration checkmark
+      setLoggedSuccessId(mod.id)
+
+      // Dispatch real-time stats update so Today's header completion bar updates
+      window.dispatchEvent(new CustomEvent('levl_today_tasks_stats'))
+      window.dispatchEvent(new CustomEvent('levl_task_completed', {
+        detail: { modalityId: mod.id, date: effectiveDate }
+      }))
+
+      onLogged()
+
+      // Close modal smoothly after brief visual feedback
+      setTimeout(() => {
+        onClose()
+      }, 700)
+    } catch (err) {
+      console.error('Error logging As Needed session:', err)
+      setIsLoggingId(null)
+    }
+  }
+
+  // Handle custom modality creation & immediate log
+  const handleCreateCustomAndLog = async () => {
     if (!customName.trim()) return
-    setIsSubmitting(true)
+    setIsSubmittingCustom(true)
+
     try {
       const created = await createCustomModality(localUserId, {
         name: customName.trim(),
         category: customCategory,
-        default_timing_slot: customTimingSlot,
+        default_timing_slot: customTimingSlot || currentCircadianSlot,
         dose_or_exposure: customDose.trim() || undefined,
-        brief_description: customNotes.trim() || 'Custom user-created modality'
+        brief_description: customNotes.trim() || 'Custom As Needed Modality'
       })
 
       if (created) {
         setAllModalities(prev => [created, ...prev])
-        setSelectedModality(created)
-        setIsCreatingCustom(false)
+        // Log immediately as completed
+        const effectiveDate = dateStr || new Date().toISOString().split('T')[0]
+        await logAsNeededCompletedSession(localUserId, created.id, effectiveDate, {
+          actual_dose: customDose.trim() || undefined,
+          timing_slot: customTimingSlot || currentCircadianSlot,
+          notes: customNotes.trim() || undefined
+        })
+
+        setLoggedSuccessId(created.id)
+        window.dispatchEvent(new CustomEvent('levl_today_tasks_stats'))
+        onLogged()
+
+        setTimeout(() => {
+          onClose()
+        }, 700)
       }
-    } catch (e) {
-      console.error('Error creating custom modality:', e)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  // Handle execution / destination submission
-  const handleSubmitAction = async (completeImmediately: boolean = false) => {
-    if (!selectedModality) return
-    setIsSubmitting(true)
-
-    const effectiveDate = dateStr || new Date().toISOString().split('T')[0]
-    const executionDetails: any = {}
-    if (doseText.trim()) executionDetails.actual_dose = doseText.trim()
-    if (contextNotes.trim()) executionDetails.notes = contextNotes.trim()
-    if (waterMl !== '') executionDetails.water_oz = Number((Number(waterMl) / 29.5735).toFixed(1))
-    if (setsReps.trim()) executionDetails.sets_reps = setsReps.trim()
-
-    try {
-      if (activeTab === 'one_off') {
-        // Mode 1: Log One-Off Completed Session
-        const [hours, minutes] = timeStr.split(':')
-        const logDate = new Date()
-        logDate.setHours(parseInt(hours || '12', 10), parseInt(minutes || '0', 10), 0, 0)
-        
-        await logAdHocSession(
-          localUserId, 
-          selectedModality.id, 
-          logDate.toISOString(), 
-          Object.keys(executionDetails).length > 0 ? executionDetails : undefined
-        )
-      } else if (activeTab === 'today') {
-        // Mode 2: Add to Today's Timeline (either Pending or Immediately Completed!)
-        const status = completeImmediately ? 'completed' : 'pending'
-        const completedAt = completeImmediately ? new Date().toISOString() : undefined
-
-        await createDailyTaskWithDetails(
-          localUserId,
-          effectiveDate,
-          selectedModality.id,
-          timingSlot,
-          status,
-          completedAt,
-          Object.keys(executionDetails).length > 0 ? executionDetails : undefined
-        )
-      } else if (activeTab === 'bench') {
-        // Mode 3: Park on User Bench
-        await moveModalityToBench(localUserId, selectedModality.id)
-      }
-
-      onLogged()
-      onClose()
     } catch (err) {
-      console.error('Error processing modality action:', err)
+      console.error('Error creating & logging custom modality:', err)
     } finally {
-      setIsSubmitting(false)
+      setIsSubmittingCustom(false)
     }
   }
 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" 
-        onClick={onClose} 
-      />
-
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-3 sm:p-4 pt-[calc(env(safe-area-inset-top,0px)+16px)] pb-safe bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+      
       {/* Modal Container */}
-      <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700/80 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[90vh] z-10">
+      <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700/80 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[88vh] z-10">
         
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60 backdrop-blur-sm">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-800 bg-slate-950/70 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center justify-center font-bold shadow-[0_0_12px_rgba(245,158,11,0.25)] shrink-0">
               <Zap size={18} />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-white tracking-tight">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight">
+                  {isCreatingCustom ? 'Create As Needed Modality' : 'As Needed Modalities'}
+                </h2>
+                <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  AS NEEDED
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium">
                 {isCreatingCustom 
-                  ? 'Create Custom Modality' 
-                  : selectedModality 
-                    ? 'Configure Modality' 
-                    : 'Add / Log Modality'}
-              </h2>
-              <p className="text-xs text-slate-400">
-                {isCreatingCustom 
-                  ? 'Define your custom protocol component' 
-                  : selectedModality 
-                    ? selectedModality.name 
-                    : 'Search 150+ evidence-based longevity modalities'}
+                  ? 'Define your spontaneous protocol and log immediately' 
+                  : 'Tap complete once to adjust details, tap again to instantly log'}
               </p>
             </div>
           </div>
@@ -295,160 +345,409 @@ export default function AdHocLoggerModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 overflow-y-auto flex-1 space-y-5">
+        <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
           
-          {/* VIEW 1: SEARCH & SELECTION */}
-          {!selectedModality && !isCreatingCustom && (
+          {/* VIEW 1: SEARCH & RESULTS */}
+          {!isCreatingCustom && (
             <div className="space-y-4">
-              {/* Search Box */}
+              {/* Typeahead Search Input */}
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Type modality name (e.g. Cold Plunge, Creatine, Zone 2, Glycine)..."
+                  placeholder="Search As Needed (e.g. Electrolytes, Cold Plunge, Sauna, Melatonin)..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full bg-black/50 border border-slate-700/80 rounded-2xl pl-11 pr-10 py-3.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all shadow-inner"
+                  className="w-full bg-black/60 border border-slate-700/80 rounded-2xl pl-11 pr-10 py-3.5 text-xs sm:text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/40 transition-all shadow-inner"
                 />
                 {query && (
                   <button 
                     onClick={() => setQuery('')}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 cursor-pointer"
                   >
                     <X size={14} />
                   </button>
                 )}
               </div>
 
-              {/* Create Custom Modality Banner if query is typed */}
+              {/* Inline Custom Creator Trigger */}
               {query.trim().length > 0 && !exactMatchExists && (
                 <div 
                   onClick={() => {
                     setCustomName(query.trim())
                     setIsCreatingCustom(true)
                   }}
-                  className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-purple-950/40 border border-purple-500/40 hover:border-purple-400 cursor-pointer group transition-all shadow-md"
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/40 hover:border-amber-400 cursor-pointer group transition-all shadow-md"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 group-hover:scale-110 transition-transform">
-                      <Sparkles size={16} />
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 group-hover:scale-110 transition-transform">
+                      <Plus size={16} className="stroke-[2.5]" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-purple-200">
-                        Create Custom Modality: <span className="text-white font-extrabold underline decoration-purple-400">{query.trim()}</span>
+                      <div className="text-xs font-extrabold text-white group-hover:text-amber-200 transition-colors">
+                        Create &amp; Log: <span className="text-amber-300 underline underline-offset-2 font-bold">{query.trim()}</span>
                       </div>
-                      <div className="text-[11px] text-purple-300/70">
-                        Can't find it in library? Add your custom dose, timing, and category.
+                      <div className="text-[11px] text-slate-400">
+                        Add as a custom As Needed modality with your dosage
                       </div>
                     </div>
                   </div>
-                  <ChevronRight size={16} className="text-purple-400 group-hover:translate-x-1 transition-transform shrink-0" />
+                  <ChevronRight size={16} className="text-amber-400 group-hover:translate-x-1 transition-transform shrink-0" />
                 </div>
               )}
 
-              {/* Search Results List */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-extrabold uppercase tracking-wider text-slate-400 px-1">
-                  <span>{query.trim() ? `Matching Modalities (${filteredModalities.length})` : 'Popular & Bench Recommendations'}</span>
-                  {!query.trim() && (
-                    <button
-                      onClick={() => setIsCreatingCustom(true)}
-                      className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 normal-case text-xs sm:text-sm cursor-pointer"
-                    >
-                      <Plus size={15} /> Custom Modality
-                    </button>
-                  )}
-                </div>
-
-                {filteredModalities.length === 0 ? (
-                  <div className="text-center py-8 px-4 rounded-2xl bg-black/30 border border-slate-800 space-y-3">
-                    <p className="text-sm sm:text-base text-slate-300">No matching library modalities for <span className="text-white font-bold">"{query}"</span></p>
-                    <button
-                      onClick={() => {
-                        setCustomName(query.trim())
-                        setIsCreatingCustom(true)
-                      }}
-                      className="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs sm:text-sm font-bold transition-colors cursor-pointer shadow-lg shadow-purple-900/30"
-                    >
-                      <Plus size={16} /> Create "{query.trim()}" as Custom Modality
-                    </button>
+              {/* SECTION A: Bench & Previously Used Matches (Tier 1 Priority) */}
+              {benchMatches.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                      <Bookmark size={12} className="text-amber-400" />
+                      <span>From Your Bench &amp; As-Needed ({benchMatches.length})</span>
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">Top Priority</span>
                   </div>
-                ) : (
-                  <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                    {filteredModalities.map(mod => {
-                      const isOnBench = benchItems.some(b => b.modality_id === mod.id)
-                      const isScheduledToday = todayTasks.some(t => t.modality_id === mod.id || t.protocol_step?.modality_id === mod.id)
+
+                  <div className="space-y-2">
+                    {benchMatches.map(mod => {
+                      const benchItem = benchMap.get(mod.id)
+                      const isPrimed = primedModalityId === mod.id
+                      const isLogging = isLoggingId === mod.id
+                      const isLogged = loggedSuccessId === mod.id
 
                       return (
                         <div
                           key={mod.id}
-                          onClick={() => setSelectedModality(mod)}
-                          className="w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-slate-950/60 border border-slate-800/90 hover:border-slate-600 hover:bg-slate-800/60 transition-all cursor-pointer group text-left"
+                          className={`p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 ${
+                            isLogged
+                              ? 'bg-emerald-950/80 border-emerald-500 text-white'
+                              : isPrimed
+                                ? 'bg-slate-950 border-amber-500/80 shadow-lg shadow-amber-500/10 ring-1 ring-amber-500/40'
+                                : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+                          }`}
                         >
-                          <div className="space-y-1.5 flex-1 min-w-0 pr-3">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm sm:text-base font-extrabold text-white group-hover:text-emerald-400 transition-colors truncate">
-                                {mod.name}
-                              </span>
-                              {mod.category && (
-                                <span className="text-xs px-2.5 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 font-semibold">
-                                  {mod.category}
-                                </span>
-                              )}
-                              {isOnBench && (
-                                <span className="text-xs px-2 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60 font-bold">
-                                  On Bench
-                                </span>
-                              )}
-                              {isScheduledToday && (
-                                <span className="text-xs px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-bold">
-                                  Scheduled Today
-                                </span>
-                              )}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 min-w-0 flex-1">
+                              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-300 shrink-0 mt-0.5">
+                                <ModalityIcon modality={mod} size={18} className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-extrabold text-white truncate">
+                                    {mod.display_name || mod.name}
+                                  </span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/25 font-bold">
+                                    Bench
+                                  </span>
+                                </div>
+                                <div className="text-xs text-emerald-400 font-mono font-bold mt-0.5">
+                                  Dose: {benchItem?.custom_dose || mod.dose_or_exposure || 'Standard Dose'}
+                                </div>
+                              </div>
                             </div>
 
-                            {mod.dose_or_exposure && (
-                              <div className="text-xs sm:text-sm text-emerald-400 font-mono font-bold truncate">
-                                Standard Dose: {mod.dose_or_exposure}
+                            {/* Two-Tap Complete Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleTwoTapComplete(mod)}
+                              disabled={isLogging || isLogged}
+                              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm ${
+                                isLogged
+                                  ? 'bg-emerald-500 text-white'
+                                  : isPrimed
+                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-md shadow-emerald-500/30 scale-[1.03] animate-pulse ring-2 ring-emerald-400/60'
+                                    : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40'
+                              }`}
+                            >
+                              {isLogged ? (
+                                <>
+                                  <CheckCircle2 size={14} className="animate-bounce" />
+                                  <span>Logged!</span>
+                                </>
+                              ) : isLogging ? (
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              ) : isPrimed ? (
+                                <>
+                                  <Check size={14} strokeWidth={3} />
+                                  <span>✓ Log Now</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Zap size={13} />
+                                  <span>Complete</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Inline Details Drawer (Revealed on Click 1) */}
+                          {isPrimed && (
+                            <div className="mt-3.5 pt-3 border-t border-slate-800 space-y-2.5 animate-in fade-in slide-in-from-top-1">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                                    Dose / Exposure (Editable)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={primedDose}
+                                    onChange={(e) => setPrimedDose(e.target.value)}
+                                    placeholder="e.g. 500mg, 1 packet, 3 mins"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400 font-mono"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                                    Timing Slot
+                                  </label>
+                                  <select
+                                    value={primedSlot}
+                                    onChange={(e) => setPrimedSlot(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400 font-bold capitalize"
+                                  >
+                                    <option value="morning">🌅 Morning</option>
+                                    <option value="afternoon">☀️ Afternoon</option>
+                                    <option value="evening">🌆 Evening</option>
+                                    <option value="pre_bed">🌙 Bedtime</option>
+                                    <option value="anytime">⚡ Anytime</option>
+                                  </select>
+                                </div>
                               </div>
-                            )}
 
-                            {mod.brief_description && (
-                              <p className="text-xs sm:text-sm text-slate-300 line-clamp-1 leading-relaxed">
-                                {mod.brief_description}
-                              </p>
-                            )}
-                          </div>
+                              <div>
+                                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                                  Context / Notes (Optional)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={primedNotes}
+                                  onChange={(e) => setPrimedNotes(e.target.value)}
+                                  placeholder="e.g. Post-workout recovery, Feeling fatigued, Travel"
+                                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                                />
+                              </div>
 
-                          <div className="w-9 h-9 rounded-xl bg-white/5 group-hover:bg-emerald-500/20 text-slate-300 group-hover:text-emerald-300 flex items-center justify-center shrink-0 transition-colors">
-                            <Plus size={18} />
-                          </div>
+                              <div className="flex items-center justify-between pt-1">
+                                <span className="text-[11px] text-amber-300/80 font-medium">
+                                  💡 Tap <strong>"✓ Log Now"</strong> to record session immediately
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setPrimedModalityId(null)}
+                                  className="text-[11px] text-slate-400 hover:text-white underline cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+
+              {/* SECTION B: Library Matches */}
+              {libraryMatches.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <Layers size={12} className="text-slate-400" />
+                      <span>{query.trim() ? `Library Matches (${libraryMatches.length})` : 'Popular As Needed Suggestions'}</span>
+                    </span>
+                    {!query.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setIsCreatingCustom(true)}
+                        className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus size={13} /> Custom Modality
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {libraryMatches.map(mod => {
+                      const isPrimed = primedModalityId === mod.id
+                      const isLogging = isLoggingId === mod.id
+                      const isLogged = loggedSuccessId === mod.id
+
+                      return (
+                        <div
+                          key={mod.id}
+                          className={`p-3.5 rounded-2xl border transition-all duration-200 ${
+                            isLogged
+                              ? 'bg-emerald-950/80 border-emerald-500 text-white'
+                              : isPrimed
+                                ? 'bg-slate-950 border-amber-500/80 shadow-lg ring-1 ring-amber-500/40'
+                                : 'bg-slate-950/40 border-slate-800/80 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 min-w-0 flex-1">
+                              <div className="w-9 h-9 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-slate-300 shrink-0 mt-0.5">
+                                <ModalityIcon modality={mod} size={18} className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-extrabold text-white truncate">
+                                    {mod.display_name || mod.name}
+                                  </span>
+                                  {mod.category && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                                      {mod.category}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-slate-400 font-mono mt-0.5 truncate">
+                                  Standard: {mod.dose_or_exposure || 'Standard Dose'}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Two-Tap Complete Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleTwoTapComplete(mod)}
+                              disabled={isLogging || isLogged}
+                              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm ${
+                                isLogged
+                                  ? 'bg-emerald-500 text-white'
+                                  : isPrimed
+                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-md shadow-emerald-500/30 scale-[1.03] animate-pulse ring-2 ring-emerald-400/60'
+                                    : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
+                              }`}
+                            >
+                              {isLogged ? (
+                                <>
+                                  <CheckCircle2 size={14} className="animate-bounce" />
+                                  <span>Logged!</span>
+                                </>
+                              ) : isLogging ? (
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              ) : isPrimed ? (
+                                <>
+                                  <Check size={14} strokeWidth={3} />
+                                  <span>✓ Log Now</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Zap size={13} />
+                                  <span>Complete</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Inline Details Drawer (Revealed on Click 1) */}
+                          {isPrimed && (
+                            <div className="mt-3.5 pt-3 border-t border-slate-800 space-y-2.5 animate-in fade-in slide-in-from-top-1">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                                    Dose / Exposure (Editable)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={primedDose}
+                                    onChange={(e) => setPrimedDose(e.target.value)}
+                                    placeholder="e.g. 500mg, 1 packet, 3 mins"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400 font-mono"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                                    Timing Slot
+                                  </label>
+                                  <select
+                                    value={primedSlot}
+                                    onChange={(e) => setPrimedSlot(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400 font-bold capitalize"
+                                  >
+                                    <option value="morning">🌅 Morning</option>
+                                    <option value="afternoon">☀️ Afternoon</option>
+                                    <option value="evening">🌆 Evening</option>
+                                    <option value="pre_bed">🌙 Bedtime</option>
+                                    <option value="anytime">⚡ Anytime</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                                  Context / Notes (Optional)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={primedNotes}
+                                  onChange={(e) => setPrimedNotes(e.target.value)}
+                                  placeholder="e.g. Post-workout recovery, Feeling fatigued, Travel"
+                                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400"
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between pt-1">
+                                <span className="text-[11px] text-amber-300/80 font-medium">
+                                  💡 Tap <strong>"✓ Log Now"</strong> to record session immediately
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setPrimedModalityId(null)}
+                                  className="text-[11px] text-slate-400 hover:text-white underline cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state when search yields no matches */}
+              {query.trim().length > 0 && benchMatches.length === 0 && libraryMatches.length === 0 && (
+                <div className="text-center py-8 px-4 rounded-2xl bg-black/40 border border-slate-800 space-y-3">
+                  <p className="text-sm text-slate-300">
+                    No matching modalities found for <span className="text-white font-bold">"{query}"</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomName(query.trim())
+                      setIsCreatingCustom(true)
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs sm:text-sm font-extrabold transition-all cursor-pointer shadow-lg shadow-amber-500/20"
+                  >
+                    <Plus size={16} className="stroke-[2.5]" />
+                    <span>Create "{query.trim()}" As Custom</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
-          {/* VIEW 2: CUSTOM MODALITY BUILDER */}
+          {/* VIEW 2: CUSTOM AS NEEDED CREATOR */}
           {isCreatingCustom && (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
-              <div className="p-4 rounded-2xl bg-purple-950/20 border border-purple-500/30 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-purple-300 uppercase tracking-wider">
-                  <Sparkles size={14} /> New Custom Longevity Modality
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-300 uppercase tracking-wider">
+                  <Sparkles size={14} /> New Custom As Needed Modality
                 </div>
-                
+
                 <div>
                   <label className="text-xs font-bold text-slate-300 block mb-1">Modality Name *</label>
                   <input
                     type="text"
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
-                    placeholder="e.g. Red Light Therapy Bed, Liposomal Apigenin"
-                    className="w-full bg-black/60 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500"
+                    placeholder="e.g. Liposomal Apigenin, Salt Bath, Cold Plunge"
+                    className="w-full bg-black/60 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-bold"
                   />
                 </div>
 
@@ -458,7 +757,7 @@ export default function AdHocLoggerModal({
                     <select
                       value={customCategory}
                       onChange={(e) => setCustomCategory(e.target.value)}
-                      className="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500"
+                      className="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
                     >
                       {CATEGORY_OPTIONS.map(c => (
                         <option key={c} value={c}>{c}</option>
@@ -467,285 +766,68 @@ export default function AdHocLoggerModal({
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-slate-300 block mb-1">Default Timing Archetype</label>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">Default Timing</label>
                     <select
                       value={customTimingSlot}
                       onChange={(e) => setCustomTimingSlot(e.target.value)}
-                      className="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 capitalize"
+                      className="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 capitalize font-bold"
                     >
-                      <option value="morning">Morning</option>
-                      <option value="afternoon">Afternoon</option>
-                      <option value="evening">Evening</option>
-                      <option value="pre_bed">Pre-Bed</option>
-                      <option value="anytime">Anytime</option>
+                      <option value="morning">🌅 Morning</option>
+                      <option value="afternoon">☀️ Afternoon</option>
+                      <option value="evening">🌆 Evening</option>
+                      <option value="pre_bed">🌙 Bedtime</option>
+                      <option value="anytime">⚡ Anytime</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Default Dose / Protocol Instructions (Optional)</label>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Dose or Exposure (Optional)</label>
                   <input
                     type="text"
                     value={customDose}
                     onChange={(e) => setCustomDose(e.target.value)}
-                    placeholder="e.g. 500mg with 1 tbsp EVOO / 20 mins at 660nm"
-                    className="w-full bg-black/60 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500"
+                    placeholder="e.g. 500mg, 3 mins @ 50°F, 1 packet"
+                    className="w-full bg-black/60 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Context Notes (Optional)</label>
+                  <input
+                    type="text"
+                    value={customNotes}
+                    onChange={(e) => setCustomNotes(e.target.value)}
+                    placeholder="e.g. Post-workout rehydration"
+                    className="w-full bg-black/60 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setIsCreatingCustom(false)}
                   className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs transition-colors cursor-pointer"
                 >
-                  Cancel
+                  Back to Search
                 </button>
                 <button
                   type="button"
-                  onClick={handleCreateCustom}
-                  disabled={!customName.trim() || isSubmitting}
-                  className="flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all shadow-lg shadow-purple-900/40 disabled:opacity-50 cursor-pointer"
+                  onClick={handleCreateCustomAndLog}
+                  disabled={!customName.trim() || isSubmittingCustom}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-xs transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  {isSubmitting ? 'Creating...' : 'Save & Configure'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* VIEW 3: CONFIGURE & EXECUTE SELECTED MODALITY */}
-          {selectedModality && (
-            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
-              {/* Selected Modality Card */}
-              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 flex items-start justify-between gap-4 shadow-md">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base font-extrabold text-white">
-                      {selectedModality.name}
-                    </span>
-                    {selectedModality.category && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
-                        {selectedModality.category}
-                      </span>
-                    )}
-                  </div>
-                  {selectedModality.dose_or_exposure && (
-                    <div className="text-xs text-emerald-400 font-mono">
-                      Target: {selectedModality.dose_or_exposure}
-                    </div>
+                  {isSubmittingCustom ? (
+                    <div className="w-4 h-4 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Check size={15} strokeWidth={3} />
+                      <span>Save &amp; Log to Today</span>
+                    </>
                   )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedModality(null)}
-                  className="text-xs text-slate-400 hover:text-emerald-400 transition-colors font-semibold underline cursor-pointer"
-                >
-                  Change
                 </button>
               </div>
-
-              {/* Destination Mode Selector Tabs */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
-                  Action Destination
-                </label>
-                <div className="grid grid-cols-3 gap-2 bg-black/60 p-1.5 rounded-2xl border border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('today')}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      activeTab === 'today'
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Calendar size={14} />
-                    <span>Add to Today</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('one_off')}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      activeTab === 'one_off'
-                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-950'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Zap size={14} />
-                    <span>Log Session Now</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('bench')}
-                    className={`py-2.5 px-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      activeTab === 'bench'
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-950'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="Save to Bench to hold/research without adding to today's timeline"
-                  >
-                    <Inbox size={14} />
-                    <span>Save to Bench</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* TAB CONTENT A: ADD TO TODAY'S SCHEDULE */}
-              {activeTab === 'today' && (
-                <div className="space-y-4 p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-300 block mb-1.5">
-                      Schedule Timing Slot
-                    </label>
-                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                      {(['morning', 'afternoon', 'evening', 'pre_bed', 'anytime'] as const).map(slot => (
-                        <button
-                          key={slot}
-                          type="button"
-                          onClick={() => setTimingSlot(slot)}
-                          className={`py-2 px-1 rounded-xl text-xs font-bold capitalize transition-all border cursor-pointer ${
-                            timingSlot === slot
-                              ? 'bg-emerald-950 text-emerald-300 border-emerald-500 shadow-sm'
-                              : 'bg-black/40 text-slate-400 border-slate-800 hover:border-slate-700'
-                          }`}
-                        >
-                          {slot === 'pre_bed' ? 'Pre-Bed' : slot}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-slate-300 block mb-1">Dose / Exposure Details</label>
-                      <input
-                        type="text"
-                        value={doseText}
-                        onChange={(e) => setDoseText(e.target.value)}
-                        placeholder="e.g. 5g in water / 3 mins @ 50°F"
-                        className="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-300 block mb-1">Optional Execution Context</label>
-                      <input
-                        type="text"
-                        value={contextNotes}
-                        onChange={(e) => setContextNotes(e.target.value)}
-                        placeholder="e.g. Fasted, pre-workout, with dinner"
-                        className="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Dual Execution Choices: Pending vs Complete Right Now */}
-                  <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleSubmitAction(false)}
-                      disabled={isSubmitting}
-                      className="w-full py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs transition-colors border border-slate-700 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                    >
-                      <Calendar size={15} />
-                      <span>Add to Schedule (Pending)</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSubmitAction(true)}
-                      disabled={isSubmitting}
-                      className="w-full py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition-all shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                    >
-                      <Check size={16} className="text-emerald-200 stroke-[3]" />
-                      <span>Add & Complete Now</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB CONTENT B: LOG ONE-OFF SESSION NOW */}
-              {activeTab === 'one_off' && (
-                <div className="space-y-4 p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5 mb-1">
-                        <Clock size={14} className="text-purple-400" /> Time Completed
-                      </label>
-                      <input
-                        type="time"
-                        value={timeStr}
-                        onChange={(e) => setTimeStr(e.target.value)}
-                        className="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-300 block mb-1">Dose / Protocol Details</label>
-                      <input
-                        type="text"
-                        value={doseText}
-                        onChange={(e) => setDoseText(e.target.value)}
-                        placeholder="e.g. 500mg / 15 mins"
-                        className="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-300 block mb-1">Session Context & Notes</label>
-                    <input
-                      type="text"
-                      value={contextNotes}
-                      onChange={(e) => setContextNotes(e.target.value)}
-                      placeholder="e.g. Completed after morning lift, felt energized"
-                      className="w-full bg-black/60 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => handleSubmitAction(true)}
-                      disabled={isSubmitting}
-                      className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs transition-all shadow-lg shadow-purple-900/40 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                    >
-                      <Zap size={16} />
-                      <span>{isSubmitting ? 'Logging Session...' : 'Log Completed Session'}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB CONTENT C: SAVE TO BENCH */}
-              {activeTab === 'bench' && (
-                <div className="space-y-4 p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
-                  <div className="p-3.5 rounded-xl bg-blue-950/40 border border-blue-800/50 text-xs text-blue-300 space-y-1.5">
-                    <div className="font-bold flex items-center gap-1.5 text-blue-200">
-                      <Inbox size={15} /> Save to Research Bench (Hold for Later)
-                    </div>
-                    <p className="text-blue-200/80 text-[11px] leading-relaxed">
-                      This saves <strong>{selectedModality.name}</strong> directly to your personal <strong>Bench tab</strong> so you can track research, trial notes, and doses without adding it to today's schedule. You can activate or swap it into your daily protocols anytime.
-                    </p>
-                  </div>
-
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => handleSubmitAction(false)}
-                      disabled={isSubmitting}
-                      className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                    >
-                      <Inbox size={16} />
-                      <span>{isSubmitting ? 'Saving to Bench...' : 'Save Modality to Bench'}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
