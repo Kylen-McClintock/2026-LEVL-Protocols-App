@@ -315,7 +315,11 @@ export default function HubermanClient() {
       setActivatedSuccess(true)
 
       if (redirectAfter) {
-        router.push('/today')
+        if (typeof window !== 'undefined') {
+          window.location.href = '/today'
+        } else {
+          router.push('/today')
+        }
       }
     } catch (err) {
       console.error('Failed to activate protocol:', err)
@@ -396,7 +400,13 @@ export default function HubermanClient() {
           <div className="flex flex-wrap items-center gap-3.5 pt-1">
             {isProtocolFullyActiveToday ? (
               <button
-                onClick={() => router.push('/today')}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.location.href = '/today'
+                  } else {
+                    router.push('/today')
+                  }
+                }}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/25 transition-all transform active:scale-95"
               >
                 <CheckCircle2 className="w-4 h-4 text-slate-950" />
@@ -595,7 +605,11 @@ export default function HubermanClient() {
               <button
                 onClick={() => {
                   if (isProtocolFullyActiveToday) {
-                    router.push('/today')
+                    if (typeof window !== 'undefined') {
+                      window.location.href = '/today'
+                    } else {
+                      router.push('/today')
+                    }
                   } else {
                     handleActivateProtocol(true)
                   }

@@ -39,7 +39,7 @@ import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCa
 import ProtocolAvatar from '@/components/ui/ProtocolAvatar'
 import { getProtocolVisualTheme } from '@/lib/utils/protocolThemes'
 import { triggerHaptic } from '@/lib/utils/haptics'
-import { safeLocalStorageSet } from '@/lib/utils/storage'
+import { safeLocalStorageSet, safeLocalStorageGet } from '@/lib/utils/storage'
 import { PulsedModalityCard } from '@/components/cards/PulsedModalityCard'
 import ProactiveDiagnosticCard from '@/components/cards/ProactiveDiagnosticCard'
 import DailyWellbeingCheckin from '@/components/score/DailyWellbeingCheckin'
@@ -283,7 +283,7 @@ function TodayPageContent() {
 
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      const cachedTasks = localStorage.getItem(`levl_cached_tasks_${initialDateStr}`)
+      const cachedTasks = safeLocalStorageGet(`levl_cached_tasks_${initialDateStr}`)
       if (cachedTasks) {
         try {
           const parsed = JSON.parse(cachedTasks)
@@ -465,8 +465,8 @@ function TodayPageContent() {
   const [isSleepTriageDismissed, setIsSleepTriageDismissed] = useState(false)
 
   const isTriageStoredDismissed = typeof window !== 'undefined' && (
-    localStorage.getItem(`levl_sleep_triage_${dateStr}`) === 'dismissed' ||
-    localStorage.getItem(`levl_sleep_triage_${dateStr}`) === 'applied'
+    safeLocalStorageGet(`levl_sleep_triage_${dateStr}`) === 'dismissed' ||
+    safeLocalStorageGet(`levl_sleep_triage_${dateStr}`) === 'applied'
   )
 
   const shouldShowSleepTriage = !isPastDate && !isSleepTriageDismissed && !isTriageStoredDismissed && (
@@ -480,32 +480,20 @@ function TodayPageContent() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      try {
-        const completed = localStorage.getItem('levl_onboarding_completed') === 'true'
-        const dismissed = localStorage.getItem('levl_guest_banner_dismissed') === 'true'
-        setShowGuestOnboardingCard(!completed && !dismissed)
-      } catch (e) {
-        setShowGuestOnboardingCard(false)
-      }
+      const completed = safeLocalStorageGet('levl_onboarding_completed') === 'true'
+      const dismissed = safeLocalStorageGet('levl_guest_banner_dismissed') === 'true'
+      setShowGuestOnboardingCard(!completed && !dismissed)
     }
   }, [])
 
   const handleDismissGuestCard = useCallback(() => {
     setShowGuestOnboardingCard(false)
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('levl_guest_banner_dismissed', 'true')
-      } catch (e) {}
-    }
+    safeLocalStorageSet('levl_guest_banner_dismissed', 'true')
   }, [])
 
   const guestKickstartProtocol = useMemo(() => {
     if (typeof window === 'undefined') return null
-    try {
-      return localStorage.getItem('levl_active_protocol') || null
-    } catch (e) {
-      return null
-    }
+    return safeLocalStorageGet('levl_active_protocol') || null
   }, [])
 
   const [isAdHocModalOpen, setIsAdHocModalOpen] = useState(false)
@@ -598,7 +586,7 @@ function TodayPageContent() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedMode = localStorage.getItem('levl_completion_mode') as 'outcome' | 'fast'
+      const savedMode = safeLocalStorageGet('levl_completion_mode') as 'outcome' | 'fast'
       if (savedMode) setCompletionMode(savedMode)
     }
   }, [])
@@ -859,7 +847,7 @@ function TodayPageContent() {
 
     async function loadData() {
       const reqId = ++activeDateReqIdRef.current
-      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+      const localUserId = authUserId || safeLocalStorageGet('levl_local_user_id') || getLocalUserId()
       window.dispatchEvent(new CustomEvent('levl_sync_start'))
 
       try {
@@ -959,7 +947,7 @@ function TodayPageContent() {
     if (calendarViewMode === 'today' || authLoading) return
 
     async function loadMultiDay() {
-      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+      const localUserId = authUserId || safeLocalStorageGet('levl_local_user_id') || getLocalUserId()
       let datesToLoad: string[] = []
 
       if (calendarViewMode === '3day') {
@@ -1612,7 +1600,7 @@ function TodayPageContent() {
         const splitNumber = task.execution_details?.split_dose_number || 0
         const protoKey = `${pId}_${modalityKey}_split_${splitNumber}`
         const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
-        const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
+        const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id && b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
         const resolvedSlot = isSplitTask && task.timing_slot && task.timing_slot !== 'anytime'
           ? task.timing_slot
           : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
@@ -1647,7 +1635,7 @@ function TodayPageContent() {
       const baseKey = modalityId || modalityName || task.id
       const dedupeKey = splitNumber > 0 ? `${baseKey}-split-${splitNumber}` : baseKey
       const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
-      const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
+      const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id && b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
       const resolvedSlot = isSplitTask && task.timing_slot && task.timing_slot !== 'anytime'
         ? task.timing_slot
         : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
@@ -2433,7 +2421,7 @@ function TodayPageContent() {
 
   const isTipActedUpon = useMemo(() => {
     if (typeof window === 'undefined') return false
-    return Boolean(localStorage.getItem('levl_daily_tip_acted_' + dateStr))
+    return Boolean(safeLocalStorageGet('levl_daily_tip_acted_' + dateStr))
   }, [dateStr, dismissedTipIds])
 
   const threeDates = useMemo(() => {

@@ -723,8 +723,15 @@ export default function ProtocolTaskCard({
     }
   }
 
-  const modality = task.protocol_step?.modality || task.loose_modality
-  if (!modality) return null
+  const rawModality = task.protocol_step?.modality || task.loose_modality
+  const modality = rawModality || {
+    id: task.modality_id || task.protocol_step?.modality_id || 'unknown',
+    name: 'Scheduled Modality',
+    display_name: 'Scheduled Modality',
+    category: 'general',
+    default_timing_slot: task.timing_slot || 'morning',
+    functional_impacts: {}
+  } as any
 
   const isPeptideOrRiskyModality = useMemo(() => {
     const cat = (modality?.category || '').toLowerCase()
@@ -1324,7 +1331,7 @@ export default function ProtocolTaskCard({
   const displayLineages = useMemo(() => {
     if (!isProtocolGroupView || !protocolGroupName) return lineages
     const umbrellaLower = protocolGroupName.toLowerCase().trim()
-    return lineages.filter(l => l.protocol_name.toLowerCase().trim() !== umbrellaLower)
+    return lineages.filter(l => (l?.protocol_name || '').toLowerCase().trim() !== umbrellaLower)
   }, [isProtocolGroupView, protocolGroupName, lineages])
 
   const { formatText: formatTemp } = useTemperatureUnit()
@@ -1525,6 +1532,8 @@ export default function ProtocolTaskCard({
     touchStartRef.current = null
     isHorizontalSwipeRef.current = null
   }
+
+  if (!rawModality) return null
 
   return (
     <div 
@@ -3325,13 +3334,13 @@ export default function ProtocolTaskCard({
           {!isJustCompletedInline && modality.functional_impacts && Object.keys(modality.functional_impacts).some(k => modality.functional_impacts![k].score > 5) && (
             <div className="flex flex-wrap gap-1.5 mb-4">
               {Object.entries(modality.functional_impacts)
-                .filter(([_, impact]) => impact.score > 5)
-                .sort((a, b) => b[1].score - a[1].score)
-                .map(([outcome, impact]) => (
+                .filter(([_, impact]: [string, any]) => impact?.score > 5)
+                .sort((a: any, b: any) => (b[1]?.score || 0) - (a[1]?.score || 0))
+                .map(([outcome, impact]: [string, any]) => (
                   <OutcomePill
                     key={outcome}
                     outcome={outcome}
-                    score={impact.score}
+                    score={impact?.score || 0}
                     size="sm"
                   />
                 ))
