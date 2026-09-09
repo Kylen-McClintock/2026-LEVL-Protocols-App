@@ -3445,7 +3445,7 @@ function TodayPageContent() {
       <div className={`mx-auto px-3 sm:px-6 pt-4 sm:pt-6 ${calendarViewMode === 'today' ? 'max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl' : 'max-w-7xl'}`}>
         
         {/* Protocol Filter Header if specific protocol filtered */}
-        {selectedProtocolFilter !== 'all' && (
+        {selectedProtocolFilter !== 'all' && !isFocusMode && (
           <div className="mb-4">
             <ProtocolOverviewHeaderCard 
               protocolName={availableProtocols.find((p: any) => p.id === selectedProtocolFilter)?.name || 'Protocol'}
@@ -3459,7 +3459,7 @@ function TodayPageContent() {
         )}
 
         {/* Unified Category & Outcomes Filter at Top (Today, 3-Day, Week, and Month Views) */}
-        {calendarViewMode !== 'pulse' && (
+        {calendarViewMode !== 'pulse' && !isFocusMode && (
           <CategoryFiltersBar
             selectedMainCategories={selectedMainCategories}
             selectedSubCategories={selectedSubCategories}
@@ -4441,7 +4441,7 @@ function TodayPageContent() {
             )}
 
             {/* 80/20 Outcome Spotlight Bar (Ultra-minimalist collapsed by default, expandable for Next Best Action & Friction Buster) */}
-            {filterLens === 'outcomes' && selectedOutcomes.length > 0 && (
+            {filterLens === 'outcomes' && selectedOutcomes.length > 0 && !isFocusMode && (
               <div className="mb-3 sm:mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
                 <Outcome8020SpotlightCard
                   selectedOutcomeIds={selectedOutcomes}
