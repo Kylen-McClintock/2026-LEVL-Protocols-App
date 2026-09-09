@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Sun, Calendar, Compass, User, TrendingUp } from 'lucide-react'
+import { Sun, Compass, Sparkles, User, TrendingUp } from 'lucide-react'
 
 interface NavItem {
   label: string
@@ -13,8 +13,18 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Today', href: '/today', icon: Sun },
-  { label: 'Schedule', href: '/schedule', icon: Calendar },
-  { label: 'Explore', href: '/explore', icon: Compass },
+  { 
+    label: 'Explore', 
+    href: '/explore', 
+    icon: Compass,
+    matchPaths: ['/explore', '/protocols', '/modalities'] 
+  },
+  { 
+    label: 'AI Coach', 
+    href: '/coach', 
+    icon: Sparkles,
+    matchPaths: ['/coach'] 
+  },
   { 
     label: 'Insights', 
     href: '/tracking', 
