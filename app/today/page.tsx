@@ -3189,9 +3189,41 @@ function TodayPageContent() {
                       >
                         <span 
                           className="w-1.5 h-1.5 rounded-full shrink-0 shadow-sm" 
-                          style={{ backgroundColor: circadian.pulseBadge.dotColor }} 
+                          style={{ 
+                            background: circadian.pulseBadge.dotGradientCSS || undefined,
+                            backgroundColor: !circadian.pulseBadge.dotGradientCSS ? circadian.pulseBadge.dotColor : undefined 
+                          }} 
                         />
-                        <span>{circadian.pulseBadge.label}</span>
+                        {circadian.pulseBadge.fromPhase && circadian.pulseBadge.toPhase ? (
+                          <span className="flex items-center gap-1 font-bold">
+                            <span className={circadian.pulseBadge.fromPhase.textClass}>
+                              {circadian.pulseBadge.fromPhase.name}
+                            </span>
+                            <span 
+                              className="font-black text-[11px] px-0.5 select-none shrink-0"
+                              style={{
+                                backgroundImage: circadian.pulseBadge.arrowGradientCSS || 'linear-gradient(to right, #38BDF8, #34D399)',
+                                WebkitBackgroundClip: 'text',
+                                backgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                color: 'transparent',
+                                display: 'inline-block'
+                              }}
+                            >
+                              {circadian.pulseBadge.dividerChar || '➔'}
+                            </span>
+                            <span className={circadian.pulseBadge.toPhase.textClass}>
+                              {circadian.pulseBadge.toPhase.name}
+                              {circadian.pulseBadge.toPhase.subtitle && (
+                                <span className="opacity-80 font-normal ml-1 text-[9px]">
+                                  {circadian.pulseBadge.toPhase.subtitle}
+                                </span>
+                              )}
+                            </span>
+                          </span>
+                        ) : (
+                          <span>{circadian.pulseBadge.label}</span>
+                        )}
                       </span>
                     )}
                   </div>

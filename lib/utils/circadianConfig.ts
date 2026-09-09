@@ -21,14 +21,26 @@ export type PulsePhaseType =
   | 'overnight_dual' 
   | 'flexible'
 
+export interface SlotPulsePhaseSegment {
+  name: string
+  colorHex: string
+  textClass: string
+  subtitle?: string
+}
+
 export interface SlotPulseBadgeConfig {
   phaseType: PulsePhaseType
   label: string
   dotColor: string
+  dotGradientCSS?: string
   badgeBg: string
   badgeBorder: string
   badgeText: string
   badgeGradientCSS?: string
+  fromPhase?: SlotPulsePhaseSegment
+  toPhase?: SlotPulsePhaseSegment
+  dividerChar?: string
+  arrowGradientCSS?: string
 }
 
 export interface CircadianSlotConfig {
@@ -61,7 +73,7 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Astronomical & Nautical Dawn • Cortisol Awakening',
     pulseBadge: {
       phaseType: 'autophagy',
-      label: 'Fasted Autophagy (AMPK)',
+      label: 'Autophagy (AMPK)',
       dotColor: '#0284C7',
       badgeBg: 'bg-sky-500/10',
       badgeBorder: 'border-sky-500/30',
@@ -89,7 +101,7 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Golden Morning Sunrise & Hydration',
     pulseBadge: {
       phaseType: 'autophagy',
-      label: 'Fasted Autophagy (AMPK)',
+      label: 'Autophagy (AMPK)',
       dotColor: '#0284C7',
       badgeBg: 'bg-sky-500/10',
       badgeBorder: 'border-sky-500/30',
@@ -117,7 +129,7 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'High-Lux 480nm Light • Dopaminergic Focus',
     pulseBadge: {
       phaseType: 'autophagy',
-      label: 'Fasted Autophagy (AMPK)',
+      label: 'Autophagy (AMPK)',
       dotColor: '#0284C7',
       badgeBg: 'bg-sky-500/10',
       badgeBorder: 'border-sky-500/30',
@@ -145,12 +157,25 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Fasted AM / Post-Breakfast Bioavailability',
     pulseBadge: {
       phaseType: 'transition_fasted_to_growth',
-      label: 'Fasted ➔ Growth Shift',
+      label: 'Autophagy ➔ Growth',
       dotColor: '#10B981',
-      badgeBg: 'bg-gradient-to-r from-sky-500/15 to-emerald-500/15',
+      dotGradientCSS: 'linear-gradient(135deg, #0284C7, #10B981)',
+      badgeBg: 'bg-gradient-to-r from-sky-500/15 via-slate-900/50 to-emerald-500/15',
       badgeBorder: 'border-emerald-500/30',
       badgeText: 'text-emerald-300',
-      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.2), rgba(16,185,129,0.2))'
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(16,185,129,0.18) 100%)',
+      fromPhase: {
+        name: 'Autophagy',
+        colorHex: '#38BDF8',
+        textClass: 'text-sky-400'
+      },
+      toPhase: {
+        name: 'Growth',
+        colorHex: '#34D399',
+        textClass: 'text-emerald-400'
+      },
+      dividerChar: '➔',
+      arrowGradientCSS: 'linear-gradient(to right, #38BDF8, #34D399)'
     },
     skyColorHex: '#0EA5E9',
     startColorHex: '#F59E0B',
@@ -174,12 +199,26 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Late Morning Sky • Fat-Soluble Nutrient Uptake',
     pulseBadge: {
       phaseType: 'transition_fasted_to_growth',
-      label: 'Fasted ➔ Growth (mTOR)',
+      label: 'Autophagy ➔ Growth (mTOR)',
       dotColor: '#10B981',
-      badgeBg: 'bg-gradient-to-r from-sky-500/15 to-emerald-500/15',
+      dotGradientCSS: 'linear-gradient(135deg, #0284C7, #10B981)',
+      badgeBg: 'bg-gradient-to-r from-sky-500/15 via-slate-900/50 to-emerald-500/15',
       badgeBorder: 'border-emerald-500/30',
       badgeText: 'text-emerald-300',
-      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.2), rgba(16,185,129,0.2))'
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(16,185,129,0.18) 100%)',
+      fromPhase: {
+        name: 'Autophagy',
+        colorHex: '#38BDF8',
+        textClass: 'text-sky-400'
+      },
+      toPhase: {
+        name: 'Growth',
+        colorHex: '#34D399',
+        textClass: 'text-emerald-400',
+        subtitle: '(mTOR)'
+      },
+      dividerChar: '➔',
+      arrowGradientCSS: 'linear-gradient(to right, #38BDF8, #34D399)'
     },
     skyColorHex: '#0284C7',
     startColorHex: '#0EA5E9',
@@ -343,12 +382,25 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Post-Meal Window',
     pulseBadge: {
       phaseType: 'transition_growth_to_fasted',
-      label: 'Growth ➔ Autophagy Shift',
+      label: 'Growth ➔ Autophagy',
       dotColor: '#0284C7',
-      badgeBg: 'bg-gradient-to-r from-emerald-500/15 to-sky-500/15',
+      dotGradientCSS: 'linear-gradient(135deg, #10B981, #0284C7)',
+      badgeBg: 'bg-gradient-to-r from-emerald-500/15 via-slate-900/50 to-sky-500/15',
       badgeBorder: 'border-sky-500/30',
       badgeText: 'text-sky-300',
-      badgeGradientCSS: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(2,132,199,0.2))'
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(2,132,199,0.18) 100%)',
+      fromPhase: {
+        name: 'Growth',
+        colorHex: '#34D399',
+        textClass: 'text-emerald-400'
+      },
+      toPhase: {
+        name: 'Autophagy',
+        colorHex: '#38BDF8',
+        textClass: 'text-sky-400'
+      },
+      dividerChar: '➔',
+      arrowGradientCSS: 'linear-gradient(to right, #34D399, #38BDF8)'
     },
     skyColorHex: '#F87E38',
     startColorHex: '#F87E38',
@@ -400,12 +452,25 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Evening Stack',
     pulseBadge: {
       phaseType: 'transition_to_glymphatic',
-      label: 'Autophagy ➔ Glymphatic Prep',
+      label: 'Autophagy ➔ Glymphatic',
       dotColor: '#8B5CF6',
-      badgeBg: 'bg-gradient-to-r from-sky-500/15 to-purple-500/15',
+      dotGradientCSS: 'linear-gradient(135deg, #0284C7, #8B5CF6)',
+      badgeBg: 'bg-gradient-to-r from-sky-500/15 via-slate-900/50 to-purple-500/15',
       badgeBorder: 'border-purple-500/30',
       badgeText: 'text-purple-300',
-      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.2), rgba(139,92,246,0.2))'
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(139,92,246,0.18) 100%)',
+      fromPhase: {
+        name: 'Autophagy',
+        colorHex: '#38BDF8',
+        textClass: 'text-sky-400'
+      },
+      toPhase: {
+        name: 'Glymphatic',
+        colorHex: '#C084FC',
+        textClass: 'text-purple-400'
+      },
+      dividerChar: '➔',
+      arrowGradientCSS: 'linear-gradient(to right, #38BDF8, #C084FC)'
     },
     skyColorHex: '#A52D6A',
     startColorHex: '#DF5558',
@@ -431,10 +496,24 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
       phaseType: 'transition_to_glymphatic',
       label: 'Autophagy ➔ Glymphatic Prep',
       dotColor: '#8B5CF6',
-      badgeBg: 'bg-gradient-to-r from-sky-500/15 to-purple-500/15',
+      dotGradientCSS: 'linear-gradient(135deg, #0284C7, #8B5CF6)',
+      badgeBg: 'bg-gradient-to-r from-sky-500/15 via-slate-900/50 to-purple-500/15',
       badgeBorder: 'border-purple-500/30',
       badgeText: 'text-purple-300',
-      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.2), rgba(139,92,246,0.2))'
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(139,92,246,0.18) 100%)',
+      fromPhase: {
+        name: 'Autophagy',
+        colorHex: '#38BDF8',
+        textClass: 'text-sky-400'
+      },
+      toPhase: {
+        name: 'Glymphatic',
+        colorHex: '#C084FC',
+        textClass: 'text-purple-400',
+        subtitle: 'Prep'
+      },
+      dividerChar: '➔',
+      arrowGradientCSS: 'linear-gradient(to right, #38BDF8, #C084FC)'
     },
     skyColorHex: '#50236B',
     startColorHex: '#A52D6A',
@@ -486,12 +565,25 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Bedtime & Overnight',
     pulseBadge: {
       phaseType: 'overnight_dual',
-      label: 'Glymphatic Wash + Autophagy',
+      label: 'Glymphatic + Autophagy',
       dotColor: '#A855F7',
-      badgeBg: 'bg-gradient-to-r from-purple-500/20 to-sky-500/20',
-      badgeBorder: 'border-purple-500/30',
+      dotGradientCSS: 'linear-gradient(135deg, #A855F7, #0284C7)',
+      badgeBg: 'bg-gradient-to-r from-purple-500/20 via-slate-900/50 to-sky-500/20',
+      badgeBorder: 'border-purple-500/40',
       badgeText: 'text-purple-200',
-      badgeGradientCSS: 'linear-gradient(135deg, rgba(168,85,247,0.25), rgba(2,132,199,0.25))'
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(168,85,247,0.2) 0%, rgba(2,132,199,0.2) 100%)',
+      fromPhase: {
+        name: 'Glymphatic',
+        colorHex: '#C084FC',
+        textClass: 'text-purple-400'
+      },
+      toPhase: {
+        name: 'Autophagy',
+        colorHex: '#38BDF8',
+        textClass: 'text-sky-400'
+      },
+      dividerChar: '+',
+      arrowGradientCSS: 'linear-gradient(to right, #C084FC, #38BDF8)'
     },
     skyColorHex: '#1B1536',
     startColorHex: '#231A45',
