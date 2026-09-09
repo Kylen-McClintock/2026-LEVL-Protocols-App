@@ -3172,11 +3172,30 @@ function TodayPageContent() {
                     {completedCount > 0 ? `${completedCount}/${groupTasks.length}` : groupTasks.length}
                   </span>
                 </div>
-                <span className={`${isAnytime ? 'text-[10px] text-slate-500' : 'text-[11px]'} font-medium transition-colors ${
-                  isIgnited && !isAnytime ? 'text-slate-400' : 'text-slate-500'
-                }`}>
-                  {isAnytime ? 'Flexible window • Complete anytime today' : <>{circadian.timeRange} • <span className="text-slate-600">{circadian.circadianPhase}</span></>}
-                </span>
+                {isAnytime ? (
+                  <span className="text-[10px] text-slate-500 mt-0.5">Flexible window • Complete anytime today</span>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                    <span className={`text-[11px] font-semibold transition-colors ${
+                      isIgnited ? 'text-slate-300' : 'text-slate-400'
+                    }`}>
+                      {circadian.timeRange}
+                    </span>
+
+                    {circadian.pulseBadge && (
+                      <span 
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 transition-all shadow-sm ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
+                        style={circadian.pulseBadge.badgeGradientCSS ? { background: circadian.pulseBadge.badgeGradientCSS } : undefined}
+                      >
+                        <span 
+                          className="w-1.5 h-1.5 rounded-full shrink-0 shadow-sm" 
+                          style={{ backgroundColor: circadian.pulseBadge.dotColor }} 
+                        />
+                        <span>{circadian.pulseBadge.label}</span>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <ChevronDown 

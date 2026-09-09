@@ -284,12 +284,12 @@ export default function DailyVerticalPulseView({
                 <div className="w-full bg-black/50 h-1.5 rounded-full overflow-hidden flex border border-white/10">
                   <div
                     style={{ width: `${dayPulse.growthPercentage}%` }}
-                    className="bg-purple-500 h-full"
+                    className="bg-emerald-500 h-full"
                     title={`Growth: ${dayPulse.growthPercentage}%`}
                   />
                   <div
                     style={{ width: `${dayPulse.recoveryPercentage}%` }}
-                    className="bg-emerald-400 h-full"
+                    className="bg-sky-400 h-full"
                     title={`Recovery: ${dayPulse.recoveryPercentage}%`}
                   />
                 </div>
@@ -348,12 +348,12 @@ export default function DailyVerticalPulseView({
         {/* The Dual-Spectrum Biological Balance Dial */}
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between text-xs font-extrabold font-mono">
-            <span className="text-purple-400 flex items-center gap-1.5">
-              <Dumbbell size={14} />
-              <span>🟣 Growth Mode: {pulseBalance.growthPercentage}%</span>
-            </span>
             <span className="text-emerald-400 flex items-center gap-1.5">
-              <span>🟢 Recovery Mode: {pulseBalance.recoveryPercentage}%</span>
+              <Dumbbell size={14} />
+              <span>🟢 Growth Mode: {pulseBalance.growthPercentage}%</span>
+            </span>
+            <span className="text-sky-400 flex items-center gap-1.5">
+              <span>🔵 Recovery Mode: {pulseBalance.recoveryPercentage}%</span>
               <HeartPulse size={14} />
             </span>
           </div>
@@ -362,12 +362,12 @@ export default function DailyVerticalPulseView({
             {/* Growth Gradient Bar */}
             <div
               style={{ width: `${pulseBalance.growthPercentage}%` }}
-              className="h-full rounded-l-full bg-gradient-to-r from-purple-600 via-indigo-500 to-purple-400 transition-all duration-500 relative"
+              className="h-full rounded-l-full bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-400 transition-all duration-500 relative"
             />
             {/* Recovery Gradient Bar */}
             <div
               style={{ width: `${pulseBalance.recoveryPercentage}%` }}
-              className="h-full rounded-r-full bg-gradient-to-r from-teal-400 via-emerald-400 to-emerald-500 transition-all duration-500 relative"
+              className="h-full rounded-r-full bg-gradient-to-r from-sky-400 via-blue-500 to-sky-500 transition-all duration-500 relative"
             />
             {/* Center Dynamic Pivot Dot */}
             <div 
@@ -391,29 +391,29 @@ export default function DailyVerticalPulseView({
               setSelectedMechanismDetail(detail)
               setIsMechanismModalOpen(true)
             }}
-            className="p-3 rounded-xl bg-purple-950/20 hover:bg-purple-950/40 border border-purple-500/30 hover:border-purple-500/60 transition-all flex items-center justify-between gap-2 cursor-pointer text-left group shadow-sm"
+            className="p-3 rounded-xl bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-500/60 transition-all flex items-center justify-between gap-2 cursor-pointer text-left group shadow-sm"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono uppercase font-bold text-purple-300 block">
+                  <span className="text-[10px] font-mono uppercase font-bold text-emerald-300 block">
                     Growth Mode Begins
                   </span>
-                  <span className="text-[9px] font-mono text-purple-400/80 bg-purple-500/10 px-1 rounded border border-purple-500/20">
+                  <span className="text-[9px] font-mono text-emerald-400/80 bg-emerald-500/10 px-1 rounded border border-emerald-500/20">
                     Click to explore ➔
                   </span>
                 </div>
-                <span className="text-xs font-bold text-white truncate block group-hover:text-purple-200 mt-0.5">
+                <span className="text-xs font-bold text-white truncate block group-hover:text-emerald-200 mt-0.5">
                   {dayPhasesAndTransitions.growthTriggerText}
                 </span>
               </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-xs font-mono font-black text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">
+              <span className="text-xs font-mono font-black text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
                 {dayPhasesAndTransitions.growthStartTimeFormatted}
               </span>
-              <ChevronRight size={14} className="text-purple-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight size={14} className="text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </button>
 
@@ -424,29 +424,29 @@ export default function DailyVerticalPulseView({
               setSelectedMechanismDetail(detail)
               setIsMechanismModalOpen(true)
             }}
-            className="p-3 rounded-xl bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-500/60 transition-all flex items-center justify-between gap-2 cursor-pointer text-left group shadow-sm"
+            className="p-3 rounded-xl bg-sky-950/20 hover:bg-sky-950/40 border border-sky-500/30 hover:border-sky-500/60 transition-all flex items-center justify-between gap-2 cursor-pointer text-left group shadow-sm"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse shrink-0" />
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono uppercase font-bold text-emerald-300 block">
+                  <span className="text-[10px] font-mono uppercase font-bold text-sky-300 block">
                     Recovery Mode Begins
                   </span>
-                  <span className="text-[9px] font-mono text-emerald-400/80 bg-emerald-500/10 px-1 rounded border border-emerald-500/20">
+                  <span className="text-[9px] font-mono text-sky-400/80 bg-sky-500/10 px-1 rounded border border-sky-500/20">
                     Click to explore ➔
                   </span>
                 </div>
-                <span className="text-xs font-bold text-white truncate block group-hover:text-emerald-200 mt-0.5">
+                <span className="text-xs font-bold text-white truncate block group-hover:text-sky-200 mt-0.5">
                   {dayPhasesAndTransitions.recoveryTriggerText}
                 </span>
               </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-xs font-mono font-black text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+              <span className="text-xs font-mono font-black text-sky-300 bg-sky-500/20 px-2 py-0.5 rounded border border-sky-500/30">
                 {dayPhasesAndTransitions.recoveryStartTimeFormatted}
               </span>
-              <ChevronRight size={14} className="text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight size={14} className="text-sky-400 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </button>
         </div>
@@ -479,7 +479,7 @@ export default function DailyVerticalPulseView({
               onClick={() => setActiveOptimizationTab('growth')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeOptimizationTab === 'growth'
-                  ? 'bg-purple-600 text-white shadow-md'
+                  ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -492,7 +492,7 @@ export default function DailyVerticalPulseView({
               onClick={() => setActiveOptimizationTab('recovery')}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeOptimizationTab === 'recovery'
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-sky-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -518,8 +518,8 @@ export default function DailyVerticalPulseView({
         {/* TAB 1: GROWTH MODE OPTIMIZATION STACK */}
         {activeOptimizationTab === 'growth' && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/30 flex items-start gap-3 text-xs text-purple-200 leading-relaxed">
-              <Info size={16} className="text-purple-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-start gap-3 text-xs text-emerald-200 leading-relaxed">
+              <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
               <div>
                 <strong>Growth Mode Directive:</strong> Drive maximal mechanotransduction (p70S6K) and muscle protein synthesis during diurnal hours. Anchor with progressive mechanical loading, leucine-rich amino acid pulses, and satellite cell hydration.
               </div>
@@ -527,110 +527,6 @@ export default function DailyVerticalPulseView({
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
               {dayPhasesAndTransitions.criticalModalities.growth.map(mod => {
-                const isExpanded = expandedModalityId === mod.id
-
-                return (
-                  <div 
-                    key={mod.id} 
-                    className={`p-4 rounded-xl border transition-all space-y-3 ${
-                      mod.isScheduledToday
-                        ? 'bg-purple-950/20 border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)]'
-                        : 'bg-black/40 border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold text-white">{mod.name}</span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-purple-300 border border-purple-500/30">
-                            {mod.category}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Today's Schedule Status Badge */}
-                      {mod.isScheduledToday ? (
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shrink-0">
-                          <Check size={11} className="stroke-[3]" />
-                          <span>Active ({mod.matchedTiming})</span>
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10 shrink-0">
-                          Not Scheduled Today
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Exact Parameters (Mandatory Dosing Specs) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                      <div className="p-2 rounded-lg bg-black/50 border border-white/5 space-y-0.5">
-                        <span className="text-[10px] font-mono text-purple-300 uppercase font-bold block">
-                          Exact Dosing / Strain
-                        </span>
-                        <span className="text-slate-200 font-medium">{mod.exactDose}</span>
-                      </div>
-
-                      <div className="p-2 rounded-lg bg-black/50 border border-white/5 space-y-0.5">
-                        <span className="text-[10px] font-mono text-purple-300 uppercase font-bold block">
-                          Duration &amp; Cadence
-                        </span>
-                        <span className="text-slate-200 font-medium">{mod.durationAndFrequency}</span>
-                      </div>
-                    </div>
-
-                    {/* Administration Notes */}
-                    <div className="text-[11px] text-slate-300 bg-white/[0.02] p-2.5 rounded-lg border border-white/5">
-                      <strong className="text-purple-300">Synergy &amp; Administration: </strong>
-                      <span>{mod.administrationNotes}</span>
-                    </div>
-
-                    {/* Expandable Biological Mechanism & Verified PubMed Link */}
-                    <div className="pt-1 flex items-center justify-between text-[11px]">
-                      <a
-                        href={mod.pubMedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-cyan-400 hover:text-cyan-300 font-mono font-bold flex items-center gap-1 transition-colors"
-                      >
-                        <ExternalLink size={12} />
-                        <span>PubMed: {mod.citationText} (PMID: {mod.pmid})</span>
-                      </a>
-
-                      <button
-                        type="button"
-                        onClick={() => setExpandedModalityId(isExpanded ? null : mod.id)}
-                        className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>{isExpanded ? 'Less' : 'Mechanism'}</span>
-                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                      </button>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="p-3 rounded-lg bg-purple-950/40 border border-purple-500/30 text-xs text-purple-200 animate-in fade-in space-y-1.5">
-                        <strong className="font-bold text-white block">Molecular Mechanism:</strong>
-                        <p className="leading-relaxed">{mod.biologicalMechanism}</p>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: RECOVERY MODE OPTIMIZATION STACK */}
-        {activeOptimizationTab === 'recovery' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-start gap-3 text-xs text-emerald-200 leading-relaxed">
-              <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
-              <div>
-                <strong>Recovery Mode Directive:</strong> Activate hepatic AMPK, macroautophagy (ULK1), and vagal parasympathetic down-regulation. Cease caloric intake $\ge$3h before bed and protect deep Stage 3 Slow-Wave Sleep from late stimulants or thermal stress.
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-              {dayPhasesAndTransitions.criticalModalities.recovery.map(mod => {
                 const isExpanded = expandedModalityId === mod.id
 
                 return (
@@ -668,13 +564,10 @@ export default function DailyVerticalPulseView({
                     {/* Exact Parameters (Mandatory Dosing Specs) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                       <div className="p-2 rounded-lg bg-black/50 border border-white/5 space-y-0.5">
-                        <span className="text-[10px] font-mono text-emerald-300 uppercase font-bold block flex items-center gap-1">
-                          {mod.temperature && <Thermometer size={10} />}
-                          <span>{mod.temperature ? 'Dose & Temp' : 'Exact Protocol / Dose'}</span>
+                        <span className="text-[10px] font-mono text-emerald-300 uppercase font-bold block">
+                          Exact Dosing / Strain
                         </span>
-                        <span className="text-slate-200 font-medium">
-                          {mod.temperature ? `${mod.temperature} • ${mod.exactDose}` : mod.exactDose}
-                        </span>
+                        <span className="text-slate-200 font-medium">{mod.exactDose}</span>
                       </div>
 
                       <div className="p-2 rounded-lg bg-black/50 border border-white/5 space-y-0.5">
@@ -715,6 +608,113 @@ export default function DailyVerticalPulseView({
 
                     {isExpanded && (
                       <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-200 animate-in fade-in space-y-1.5">
+                        <strong className="font-bold text-white block">Molecular Mechanism:</strong>
+                        <p className="leading-relaxed">{mod.biologicalMechanism}</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: RECOVERY MODE OPTIMIZATION STACK */}
+        {activeOptimizationTab === 'recovery' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="p-3.5 rounded-xl bg-sky-950/30 border border-sky-500/30 flex items-start gap-3 text-xs text-sky-200 leading-relaxed">
+              <Info size={16} className="text-sky-400 shrink-0 mt-0.5" />
+              <div>
+                <strong>Recovery Mode Directive:</strong> Activate hepatic AMPK, macroautophagy (ULK1), and vagal parasympathetic down-regulation. Cease caloric intake $\ge$3h before bed and protect deep Stage 3 Slow-Wave Sleep from late stimulants or thermal stress.
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+              {dayPhasesAndTransitions.criticalModalities.recovery.map(mod => {
+                const isExpanded = expandedModalityId === mod.id
+
+                return (
+                  <div 
+                    key={mod.id} 
+                    className={`p-4 rounded-xl border transition-all space-y-3 ${
+                      mod.isScheduledToday
+                        ? 'bg-sky-950/20 border-sky-500/40 shadow-[0_0_15px_rgba(2,132,199,0.15)]'
+                        : 'bg-black/40 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-white">{mod.name}</span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-sky-300 border border-sky-500/30">
+                            {mod.category}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Today's Schedule Status Badge */}
+                      {mod.isScheduledToday ? (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shrink-0">
+                          <Check size={11} className="stroke-[3]" />
+                          <span>Active ({mod.matchedTiming})</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10 shrink-0">
+                          Not Scheduled Today
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Exact Parameters (Mandatory Dosing Specs) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2 rounded-lg bg-black/50 border border-white/5 space-y-0.5">
+                        <span className="text-[10px] font-mono text-sky-300 uppercase font-bold block flex items-center gap-1">
+                          {mod.temperature && <Thermometer size={10} />}
+                          <span>{mod.temperature ? 'Dose & Temp' : 'Exact Protocol / Dose'}</span>
+                        </span>
+                        <span className="text-slate-200 font-medium">
+                          {mod.temperature ? `${mod.temperature} • ${mod.exactDose}` : mod.exactDose}
+                        </span>
+                      </div>
+
+                      <div className="p-2 rounded-lg bg-black/50 border border-white/5 space-y-0.5">
+                        <span className="text-[10px] font-mono text-sky-300 uppercase font-bold block">
+                          Duration &amp; Cadence
+                        </span>
+                        <span className="text-slate-200 font-medium">{mod.durationAndFrequency}</span>
+                      </div>
+                    </div>
+
+                    {/* Administration Notes */}
+                    <div className="text-[11px] text-slate-300 bg-white/[0.02] p-2.5 rounded-lg border border-white/5">
+                      <strong className="text-sky-300">Synergy &amp; Administration: </strong>
+                      <span>{mod.administrationNotes}</span>
+                    </div>
+
+                    {/* Expandable Biological Mechanism & Verified PubMed Link */}
+                    <div className="pt-1 flex items-center justify-between text-[11px]">
+                      <a
+                        href={mod.pubMedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-cyan-400 hover:text-cyan-300 font-mono font-bold flex items-center gap-1 transition-colors"
+                      >
+                        <ExternalLink size={12} />
+                        <span>PubMed: {mod.citationText} (PMID: {mod.pmid})</span>
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => setExpandedModalityId(isExpanded ? null : mod.id)}
+                        className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>{isExpanded ? 'Less' : 'Mechanism'}</span>
+                        {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="p-3 rounded-lg bg-sky-950/40 border border-sky-500/30 text-xs text-sky-200 animate-in fade-in space-y-1.5">
                         <strong className="font-bold text-white block">Molecular Mechanism:</strong>
                         <p className="leading-relaxed">{mod.biologicalMechanism}</p>
                       </div>
@@ -983,14 +983,14 @@ export default function DailyVerticalPulseView({
                     {/* Glowing Circular Anchor on the Vertical Rail */}
                     <div className={`absolute -left-[23px] sm:-left-[35px] top-3.5 w-5 h-5 rounded-full border-2 border-slate-950 flex items-center justify-center shadow-lg z-10 ${
                       isGrowthOnset
-                        ? 'bg-purple-500 text-slate-950 shadow-[0_0_15px_#a855f7]'
+                        ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_#10b981]'
                         : isRecoveryOnset
-                        ? 'bg-emerald-400 text-slate-950 shadow-[0_0_15px_#34d399]'
+                        ? 'bg-sky-400 text-slate-950 shadow-[0_0_15px_#38bdf8]'
                         : isPostLift
-                        ? 'bg-indigo-500 text-white shadow-[0_0_12px_#6366f1]'
+                        ? 'bg-emerald-400 text-slate-950 shadow-[0_0_12px_#34d399]'
                         : isMorning
-                        ? 'bg-amber-400 text-slate-950 shadow-[0_0_12px_#fbbf24]'
-                        : 'bg-teal-500 text-slate-950'
+                        ? 'bg-sky-500 text-slate-950 shadow-[0_0_12px_#0ea5e9]'
+                        : 'bg-purple-500 text-slate-950 shadow-[0_0_12px_#a855f7]'
                     }`}>
                       <span className="text-[10px] font-black">
                         {isGrowthOnset ? '⚡' : isRecoveryOnset ? '🌙' : isPostLift ? '⚡' : isMorning ? '🌅' : '🌙'}
@@ -1002,20 +1002,20 @@ export default function DailyVerticalPulseView({
                       onClick={() => toggleTimelineKey(marker.id)}
                       className={`p-3.5 sm:p-4 rounded-2xl border transition-all relative overflow-hidden cursor-pointer hover:scale-[1.006] active:scale-[0.995] group/card ${
                       isGrowthOnset
-                        ? 'bg-gradient-to-br from-purple-950/60 via-slate-900 to-indigo-950/40 border-purple-500/50 hover:border-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.15)]'
-                        : isRecoveryOnset
                         ? 'bg-gradient-to-br from-emerald-950/60 via-slate-900 to-teal-950/40 border-emerald-500/50 hover:border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                        : isRecoveryOnset
+                        ? 'bg-gradient-to-br from-sky-950/60 via-slate-900 to-blue-950/40 border-sky-500/50 hover:border-sky-400 shadow-[0_0_20px_rgba(2,132,199,0.15)]'
                         : isPostLift
-                        ? 'bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border-indigo-500/40 hover:border-indigo-400'
+                        ? 'bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-900 border-emerald-500/40 hover:border-emerald-400'
                         : isMorning
-                        ? 'bg-gradient-to-br from-amber-950/35 via-slate-900 to-slate-900 border-amber-500/30 hover:border-amber-400'
-                        : 'bg-gradient-to-br from-teal-950/30 via-slate-900 to-slate-900 border-teal-500/30 hover:border-teal-400'
+                        ? 'bg-gradient-to-br from-sky-950/35 via-slate-900 to-slate-900 border-sky-500/30 hover:border-sky-400'
+                        : 'bg-gradient-to-br from-purple-950/30 via-slate-900 to-slate-900 border-purple-500/30 hover:border-purple-400'
                     }`}>
                       {/* Top Header Row - Compact & Concise */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0 flex-wrap">
                           <span className={`text-xs sm:text-sm font-black tracking-wide uppercase truncate ${
-                            isGrowthOnset ? 'text-purple-100' : isRecoveryOnset ? 'text-emerald-100' : 'text-white'
+                            isGrowthOnset ? 'text-emerald-100' : isRecoveryOnset ? 'text-sky-100' : 'text-white'
                           }`}>
                             {marker.title}
                           </span>
@@ -1144,8 +1144,8 @@ export default function DailyVerticalPulseView({
                   {/* Task Anchor Node on the Vertical Rail */}
                   <div className={`absolute -left-[20px] sm:-left-[32px] top-3.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 shadow-md transition-transform group-hover:scale-125 ${
                     isGrowth 
-                      ? 'bg-purple-500 shadow-[0_0_8px_#a855f7]' 
-                      : 'bg-emerald-400 shadow-[0_0_8px_#34d399]'
+                      ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' 
+                      : 'bg-sky-400 shadow-[0_0_8px_#38bdf8]'
                   }`} />
 
                   {/* Modality Card - Concise by default, Inspect button to expand */}
@@ -1153,8 +1153,8 @@ export default function DailyVerticalPulseView({
                     onClick={() => toggleTimelineKey(task.id)}
                     className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer hover:scale-[1.006] active:scale-[0.995] group/taskcard ${
                     isGrowth 
-                      ? 'bg-purple-950/20 border-purple-500/30 hover:border-purple-400 hover:bg-purple-950/30 shadow-sm' 
-                      : 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-950/30 shadow-sm'
+                      ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-950/30 shadow-sm' 
+                      : 'bg-sky-950/20 border-sky-500/30 hover:border-sky-400 hover:bg-sky-950/30 shadow-sm'
                   }`}>
                     {/* Header Row: Concise By Default */}
                     <div className="flex items-center justify-between gap-2">
@@ -1165,10 +1165,10 @@ export default function DailyVerticalPulseView({
                         <span className="text-xs font-black text-white truncate">{name}</span>
                         <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border shrink-0 ${
                           isGrowth 
-                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/30 font-bold' 
-                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 font-bold'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 font-bold' 
+                            : 'bg-sky-500/20 text-sky-300 border-sky-500/30 font-bold'
                         }`}>
-                          {isGrowth ? '🟣 Growth' : '🟢 Recovery'}
+                          {isGrowth ? '🟢 Growth' : '🔵 Recovery'}
                         </span>
 
                         {/* Merged Protocol Lineages Badges */}
@@ -1248,9 +1248,9 @@ export default function DailyVerticalPulseView({
                         >
                           <span className={`text-[11px] font-bold flex items-center gap-1.5 transition-colors ${
                             isGrowth 
-                              ? 'text-purple-300 group-hover/taskcard:text-purple-200' 
-                              : isRecovery 
                               ? 'text-emerald-300 group-hover/taskcard:text-emerald-200' 
+                              : isRecovery 
+                              ? 'text-sky-300 group-hover/taskcard:text-sky-200' 
                               : 'text-cyan-300 group-hover/taskcard:text-cyan-200'
                           }`}>
                             <Info size={12} />

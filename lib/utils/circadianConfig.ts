@@ -11,11 +11,32 @@ import {
   LucideIcon 
 } from 'lucide-react'
 
+export type PulsePhaseType = 
+  | 'growth' 
+  | 'autophagy' 
+  | 'glymphatic' 
+  | 'transition_fasted_to_growth' 
+  | 'transition_growth_to_fasted' 
+  | 'transition_to_glymphatic' 
+  | 'overnight_dual' 
+  | 'flexible'
+
+export interface SlotPulseBadgeConfig {
+  phaseType: PulsePhaseType
+  label: string
+  dotColor: string
+  badgeBg: string
+  badgeBorder: string
+  badgeText: string
+  badgeGradientCSS?: string
+}
+
 export interface CircadianSlotConfig {
   key: string
   label: string
   timeRange: string
   circadianPhase: string
+  pulseBadge: SlotPulseBadgeConfig
   skyColorHex: string         // Dominant/accent hex
   startColorHex: string       // Gradient start hex (links from previous block)
   endColorHex: string         // Gradient end hex (links into next block)
@@ -38,6 +59,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Waking & Early Dawn',
     timeRange: '5:30 AM – 7:30 AM',
     circadianPhase: 'Astronomical & Nautical Dawn • Cortisol Awakening',
+    pulseBadge: {
+      phaseType: 'autophagy',
+      label: 'Fasted Autophagy (AMPK)',
+      dotColor: '#0284C7',
+      badgeBg: 'bg-sky-500/10',
+      badgeBorder: 'border-sky-500/30',
+      badgeText: 'text-sky-300'
+    },
     skyColorHex: '#F59E0B',
     startColorHex: '#D97706',
     endColorHex: '#F59E0B',
@@ -58,6 +87,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Morning Routine',
     timeRange: '6:30 AM – 9:00 AM',
     circadianPhase: 'Golden Morning Sunrise & Hydration',
+    pulseBadge: {
+      phaseType: 'autophagy',
+      label: 'Fasted Autophagy (AMPK)',
+      dotColor: '#0284C7',
+      badgeBg: 'bg-sky-500/10',
+      badgeBorder: 'border-sky-500/30',
+      badgeText: 'text-sky-300'
+    },
     skyColorHex: '#FBBF24',
     startColorHex: '#F59E0B',
     endColorHex: '#38BDF8',
@@ -78,6 +115,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Morning Alertness',
     timeRange: '8:00 AM – 11:30 AM',
     circadianPhase: 'High-Lux 480nm Light • Dopaminergic Focus',
+    pulseBadge: {
+      phaseType: 'autophagy',
+      label: 'Fasted Autophagy (AMPK)',
+      dotColor: '#0284C7',
+      badgeBg: 'bg-sky-500/10',
+      badgeBorder: 'border-sky-500/30',
+      badgeText: 'text-sky-300'
+    },
     skyColorHex: '#38BDF8',
     startColorHex: '#F59E0B',
     endColorHex: '#0EA5E9',
@@ -98,6 +143,15 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Morning Stack',
     timeRange: '8:30 AM – 11:30 AM',
     circadianPhase: 'Fasted AM / Post-Breakfast Bioavailability',
+    pulseBadge: {
+      phaseType: 'transition_fasted_to_growth',
+      label: 'Fasted ➔ Growth Shift',
+      dotColor: '#10B981',
+      badgeBg: 'bg-gradient-to-r from-sky-500/15 to-emerald-500/15',
+      badgeBorder: 'border-emerald-500/30',
+      badgeText: 'text-emerald-300',
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.2), rgba(16,185,129,0.2))'
+    },
     skyColorHex: '#0EA5E9',
     startColorHex: '#F59E0B',
     endColorHex: '#0284C7',
@@ -118,6 +172,15 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'First Meal / Breakfast',
     timeRange: '9:00 AM – 11:30 AM',
     circadianPhase: 'Late Morning Sky • Fat-Soluble Nutrient Uptake',
+    pulseBadge: {
+      phaseType: 'transition_fasted_to_growth',
+      label: 'Fasted ➔ Growth (mTOR)',
+      dotColor: '#10B981',
+      badgeBg: 'bg-gradient-to-r from-sky-500/15 to-emerald-500/15',
+      badgeBorder: 'border-emerald-500/30',
+      badgeText: 'text-emerald-300',
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.2), rgba(16,185,129,0.2))'
+    },
     skyColorHex: '#0284C7',
     startColorHex: '#0EA5E9',
     endColorHex: '#0284C7',
@@ -138,6 +201,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Midday & Solar Noon',
     timeRange: '11:30 AM – 2:30 PM',
     circadianPhase: 'Peak Solar Noon • Maximum High-Lux Brilliance',
+    pulseBadge: {
+      phaseType: 'growth',
+      label: 'Growth Mode (mTOR)',
+      dotColor: '#10B981',
+      badgeBg: 'bg-emerald-500/10',
+      badgeBorder: 'border-emerald-500/30',
+      badgeText: 'text-emerald-300'
+    },
     skyColorHex: '#0284C7',
     startColorHex: '#0284C7',
     endColorHex: '#0284C7',
@@ -158,6 +229,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Midday Stack',
     timeRange: '12:00 PM – 3:00 PM',
     circadianPhase: 'Mitochondrial Co-factors • Solar Peak Bioavailability',
+    pulseBadge: {
+      phaseType: 'growth',
+      label: 'Growth Mode (mTOR)',
+      dotColor: '#10B981',
+      badgeBg: 'bg-emerald-500/10',
+      badgeBorder: 'border-emerald-500/30',
+      badgeText: 'text-emerald-300'
+    },
     skyColorHex: '#2563EB',
     startColorHex: '#2563EB',
     endColorHex: '#2563EB',
@@ -178,6 +257,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Afternoon / Workout',
     timeRange: '2:00 PM – 5:30 PM',
     circadianPhase: 'Deep Daylight Sky',
+    pulseBadge: {
+      phaseType: 'growth',
+      label: 'Growth Mode (mTOR)',
+      dotColor: '#10B981',
+      badgeBg: 'bg-emerald-500/10',
+      badgeBorder: 'border-emerald-500/30',
+      badgeText: 'text-emerald-300'
+    },
     skyColorHex: '#2563EB',
     startColorHex: '#0284C7',
     endColorHex: '#2563EB',
@@ -198,6 +285,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Late Afternoon',
     timeRange: '3:30 PM – 5:30 PM',
     circadianPhase: 'Late Afternoon Sky',
+    pulseBadge: {
+      phaseType: 'growth',
+      label: 'Growth Mode (mTOR)',
+      dotColor: '#10B981',
+      badgeBg: 'bg-emerald-500/10',
+      badgeBorder: 'border-emerald-500/30',
+      badgeText: 'text-emerald-300'
+    },
     skyColorHex: '#1D4ED8',
     startColorHex: '#2563EB',
     endColorHex: '#1D4ED8',
@@ -218,6 +313,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Pre-Meal',
     timeRange: '4:30 PM – 6:30 PM',
     circadianPhase: 'Pre-Meal Window • Glycemic Buffer',
+    pulseBadge: {
+      phaseType: 'growth',
+      label: 'Growth Mode (mTOR)',
+      dotColor: '#10B981',
+      badgeBg: 'bg-emerald-500/10',
+      badgeBorder: 'border-emerald-500/30',
+      badgeText: 'text-emerald-300'
+    },
     skyColorHex: '#F87E38',
     startColorHex: '#F59E0B',
     endColorHex: '#F87E38',
@@ -238,6 +341,15 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Post-Meal',
     timeRange: '5:00 PM – 7:30 PM',
     circadianPhase: 'Post-Meal Window',
+    pulseBadge: {
+      phaseType: 'transition_growth_to_fasted',
+      label: 'Growth ➔ Autophagy Shift',
+      dotColor: '#0284C7',
+      badgeBg: 'bg-gradient-to-r from-emerald-500/15 to-sky-500/15',
+      badgeBorder: 'border-sky-500/30',
+      badgeText: 'text-sky-300',
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(2,132,199,0.2))'
+    },
     skyColorHex: '#F87E38',
     startColorHex: '#F87E38',
     endColorHex: '#F87E38',
@@ -258,6 +370,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Evening / Sunset',
     timeRange: '5:30 PM – 8:30 PM',
     circadianPhase: 'Evening & Sunset',
+    pulseBadge: {
+      phaseType: 'autophagy',
+      label: 'Autophagy & Reset',
+      dotColor: '#0284C7',
+      badgeBg: 'bg-sky-500/10',
+      badgeBorder: 'border-sky-500/30',
+      badgeText: 'text-sky-300'
+    },
     skyColorHex: '#DF5558',
     startColorHex: '#F87E38',
     endColorHex: '#DF5558',
@@ -278,6 +398,15 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Evening Stack',
     timeRange: '7:30 PM – 9:30 PM',
     circadianPhase: 'Evening Stack',
+    pulseBadge: {
+      phaseType: 'transition_to_glymphatic',
+      label: 'Autophagy ➔ Glymphatic Prep',
+      dotColor: '#8B5CF6',
+      badgeBg: 'bg-gradient-to-r from-sky-500/15 to-purple-500/15',
+      badgeBorder: 'border-purple-500/30',
+      badgeText: 'text-purple-300',
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.2), rgba(139,92,246,0.2))'
+    },
     skyColorHex: '#A52D6A',
     startColorHex: '#DF5558',
     endColorHex: '#A52D6A',
@@ -298,6 +427,15 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Wind Down',
     timeRange: '8:30 PM – 10:30 PM',
     circadianPhase: 'Evening Wind-Down',
+    pulseBadge: {
+      phaseType: 'transition_to_glymphatic',
+      label: 'Autophagy ➔ Glymphatic Prep',
+      dotColor: '#8B5CF6',
+      badgeBg: 'bg-gradient-to-r from-sky-500/15 to-purple-500/15',
+      badgeBorder: 'border-purple-500/30',
+      badgeText: 'text-purple-300',
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.2), rgba(139,92,246,0.2))'
+    },
     skyColorHex: '#50236B',
     startColorHex: '#A52D6A',
     endColorHex: '#50236B',
@@ -318,6 +456,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Pre-Bed',
     timeRange: '9:30 PM – 11:00 PM',
     circadianPhase: 'Pre-Bed Preparation',
+    pulseBadge: {
+      phaseType: 'glymphatic',
+      label: 'Glymphatic Induction',
+      dotColor: '#8B5CF6',
+      badgeBg: 'bg-purple-500/10',
+      badgeBorder: 'border-purple-500/30',
+      badgeText: 'text-purple-300'
+    },
     skyColorHex: '#231A45',
     startColorHex: '#50236B',
     endColorHex: '#231A45',
@@ -338,6 +484,15 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Bedtime / Overnight',
     timeRange: '10:00 PM – 5:30 AM',
     circadianPhase: 'Bedtime & Overnight',
+    pulseBadge: {
+      phaseType: 'overnight_dual',
+      label: 'Glymphatic Wash + Autophagy',
+      dotColor: '#A855F7',
+      badgeBg: 'bg-gradient-to-r from-purple-500/20 to-sky-500/20',
+      badgeBorder: 'border-purple-500/30',
+      badgeText: 'text-purple-200',
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(168,85,247,0.25), rgba(2,132,199,0.25))'
+    },
     skyColorHex: '#1B1536',
     startColorHex: '#231A45',
     endColorHex: '#0B132B',
@@ -358,6 +513,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     label: 'Anytime / Flexible Window',
     timeRange: 'Flexible Timing',
     circadianPhase: 'Throughout Today • Habit Synergy & Vitality',
+    pulseBadge: {
+      phaseType: 'flexible',
+      label: 'Flexible Window',
+      dotColor: '#94A3B8',
+      badgeBg: 'bg-slate-800/40',
+      badgeBorder: 'border-slate-700/40',
+      badgeText: 'text-slate-300'
+    },
     skyColorHex: '#8B5CF6',
     startColorHex: '#8B5CF6',
     endColorHex: '#8B5CF6',
@@ -437,6 +600,20 @@ export function getCircadianConfig(slotName: string): CircadianSlotConfig {
   }
 
   return CIRCADIAN_SLOTS.anytime
+}
+
+/**
+ * Returns the biological pulse badge metadata for a slot configuration
+ */
+export function getSlotPulseBadge(slotConfig: CircadianSlotConfig): SlotPulseBadgeConfig {
+  return slotConfig.pulseBadge || {
+    phaseType: 'flexible',
+    label: 'Flexible Window',
+    dotColor: '#94A3B8',
+    badgeBg: 'bg-slate-800/40',
+    badgeBorder: 'border-slate-700/40',
+    badgeText: 'text-slate-300'
+  }
 }
 
 /**

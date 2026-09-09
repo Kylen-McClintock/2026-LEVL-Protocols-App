@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Sparkles, ChevronDown, ChevronUp, Zap, Activity, ShieldCheck, Dumbbell, HeartPulse, BookOpen, ExternalLink, Compass } from 'lucide-react'
+import { Sparkles, ChevronDown, ChevronUp, Zap, Activity, ShieldCheck, Dumbbell, HeartPulse, BookOpen, ExternalLink, Compass, Moon } from 'lucide-react'
 
 export default function PulsingPhilosophyGuide() {
   const [isOpen, setIsOpen] = useState(false)
@@ -46,66 +46,90 @@ export default function PulsingPhilosophyGuide() {
           <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-2">
             <h4 className="text-sm font-black text-white flex items-center gap-2">
               <Sparkles size={15} className="text-amber-400" />
-              <span>The Longevity Paradox: Neither Constant Growth Nor Constant Fasting Works</span>
+              <span>The Triphasic Longevity Architecture: Growth, Autophagy, and Glymphatic Wash</span>
             </h4>
             <p>
-              In cellular biology, aging is governed by the oscillation between two opposing biological axes: 
-              <strong className="text-purple-300"> Anabolic Growth (mTORC1)</strong> and 
-              <strong className="text-emerald-300"> Autophagic Clearance (AMPK)</strong>.
+              In human longevity biology, optimal healthspan is governed by three distinct, non-overlapping circadian phases: 
+              <strong className="text-emerald-300"> Anabolic Growth (mTORC1)</strong>, 
+              <strong className="text-sky-300"> Autophagic Clearance (AMPK)</strong>, and 
+              <strong className="text-purple-300"> Glymphatic Washing (SWS Sleep)</strong>.
             </p>
             <p>
-              If you remain in perpetual <strong>Growth Mode</strong>, cellular waste accumulates, senescence accelerates, and cancer risk rises. 
-              Conversely, if you remain in perpetual <strong>Clearance/Fasting Mode</strong>, you suffer sarcopenia, bone density loss, and hormonal collapse.
-              <strong> The clinical gold standard is Biological Pulsing</strong>: triggering sharp, acute bursts of growth, cleanly bracketed by deep windows of restorative clearance.
+              Perpetual <strong>Growth Mode</strong> causes toxic proteomic waste buildup and accelerated cellular senescence. Perpetual <strong>Fasting/Clearance</strong> causes sarcopenia, osteopenia, and hormonal exhaustion.
+              <strong> Biological Longevity Pulsing</strong> orchestrates sharp, focused anabolic spikes cleanly separated from deep autophagic clearance and nocturnal glymphatic neuro-restoration.
             </p>
           </div>
 
-          {/* 2. Side-by-Side Comparison of the Two Arms */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* 2. Triphasic Comparison */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {/* GROWTH MODE (mTOR) */}
-            <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-3">
-              <div className="flex items-center gap-2 text-purple-300">
+            <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-2.5">
+              <div className="flex items-center gap-2 text-emerald-300">
                 <Dumbbell size={16} />
-                <h5 className="font-extrabold text-xs uppercase tracking-wider text-purple-200">
-                  🟣 Growth Mode (Anabolic / mTORC1 Axis)
+                <h5 className="font-extrabold text-xs uppercase tracking-wider text-emerald-200">
+                  🟢 Growth Mode (mTORC1 Axis)
                 </h5>
               </div>
               <ul className="space-y-1.5 text-[11px] text-slate-300">
                 <li className="flex items-start gap-1.5">
-                  <span className="text-purple-400 font-bold">•</span>
-                  <span><strong>Primary Drivers</strong>: Mechanical load, resistance training, leucine, dietary protein, creatine, and cellular ATP turnover.</span>
+                  <span className="text-emerald-400 font-bold">•</span>
+                  <span><strong>Drivers</strong>: Mechanical tension, resistance training, leucine, dietary protein, creatine, and cellular ATP turnover.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="text-purple-400 font-bold">•</span>
-                  <span><strong>Benefits</strong>: Skeletal muscle hypertrophy, osteogenic remodeling, cognitive drive, hormonal robustness.</span>
+                  <span className="text-emerald-400 font-bold">•</span>
+                  <span><strong>Benefits</strong>: Skeletal muscle hypertrophy, osteogenic remodeling, cognitive drive, hormonal vigor.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="text-purple-400 font-bold">•</span>
-                  <span><strong>Ideal Window</strong>: Midday to afternoon (11:00 AM – 4:00 PM), when core body temperature and muscular torque peak.</span>
+                  <span className="text-emerald-400 font-bold">•</span>
+                  <span><strong>Window</strong>: Midday to afternoon (11:00 AM – 4:30 PM), when core body temperature and torque peak.</span>
                 </li>
               </ul>
             </div>
 
-            {/* RECOVERY MODE (AMPK / VAGAL) */}
-            <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-3">
-              <div className="flex items-center gap-2 text-emerald-300">
+            {/* AUTOPHAGY & RECOVERY (AMPK) */}
+            <div className="p-4 rounded-xl bg-sky-950/20 border border-sky-500/30 space-y-2.5">
+              <div className="flex items-center gap-2 text-sky-300">
                 <HeartPulse size={16} />
-                <h5 className="font-extrabold text-xs uppercase tracking-wider text-emerald-200">
-                  🟢 Recovery Mode (Catabolic / AMPK Axis)
+                <h5 className="font-extrabold text-xs uppercase tracking-wider text-sky-200">
+                  🔵 Autophagy &amp; Recovery (AMPK)
                 </h5>
               </div>
               <ul className="space-y-1.5 text-[11px] text-slate-300">
                 <li className="flex items-start gap-1.5">
-                  <span className="text-emerald-400 font-bold">•</span>
-                  <span><strong>Primary Drivers</strong>: Fasting (glycogen depletion), Zone 2 cardio, sauna heat shock proteins, cold plunge, deep slow-wave sleep.</span>
+                  <span className="text-sky-400 font-bold">•</span>
+                  <span><strong>Drivers</strong>: Glycogen depletion, intermittent fasting, Zone 2 cardio, cold plunge, heat shock sauna.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="text-emerald-400 font-bold">•</span>
-                  <span><strong>Benefits</strong>: Macroautophagy, mitochondrial biogenesis (PGC-1α), peripheral vasodilation, vagal HRV recovery.</span>
+                  <span className="text-sky-400 font-bold">•</span>
+                  <span><strong>Benefits</strong>: Macroautophagy, mitophagy, AMPK upregulation, insulin sensitization, mitochondrial biogenesis.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="text-emerald-400 font-bold">•</span>
-                  <span><strong>Ideal Window</strong>: Overnight to early morning (fasting + Zone 2/cold) and evening wind-down (sauna + breathwork).</span>
+                  <span className="text-sky-400 font-bold">•</span>
+                  <span><strong>Window</strong>: Morning fasted hours and evening post-digestive wind-down.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* GLYMPHATIC CLEARANCE (SLEEP) */}
+            <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2.5">
+              <div className="flex items-center gap-2 text-purple-300">
+                <Moon size={16} />
+                <h5 className="font-extrabold text-xs uppercase tracking-wider text-purple-200">
+                  🟣 Glymphatic Clearance (Sleep)
+                </h5>
+              </div>
+              <ul className="space-y-1.5 text-[11px] text-slate-300">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-purple-400 font-bold">•</span>
+                  <span><strong>Drivers</strong>: Stage 3 Slow-Wave Sleep (SWS), interstitial fluid flow, nocturnal melatonin, core cooling.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-purple-400 font-bold">•</span>
+                  <span><strong>Benefits</strong>: Beta-amyloid and tau clearance, pulsatile Growth Hormone (GH) release, memory consolidation.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-purple-400 font-bold">•</span>
+                  <span><strong>Window</strong>: Nocturnal sleep window (10:00 PM – 5:30 AM).</span>
                 </li>
               </ul>
             </div>

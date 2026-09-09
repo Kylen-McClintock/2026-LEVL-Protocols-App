@@ -479,15 +479,15 @@ export function calculateDailyPulseBalance(tasks: DailyProtocolTask[], dateStr: 
   if (growthPercentage >= 65) {
     archetype = 'Hypertrophic Anabolic Anchor'
     archetypeSubtitle = 'High mechanical tension, mTORC1 activation & nutrient surplus. Prioritize post-strain sleep hygiene.'
-    archetypeColor = 'text-purple-400'
+    archetypeColor = 'text-emerald-400'
   } else if (recoveryPercentage >= 65) {
     archetype = 'Cellular Autophagy & Reset'
     archetypeSubtitle = 'Dominant AMPK clearance, mitochondrial biogenesis, and deep parasympathetic restoration.'
-    archetypeColor = 'text-emerald-400'
+    archetypeColor = 'text-sky-400'
   } else if (dayTasks.length <= 2 && rawGrowth < 5) {
     archetype = 'Deep Somatic Recovery'
     archetypeSubtitle = 'Active recovery protocols prioritized to allow structural and neural repair.'
-    archetypeColor = 'text-blue-400'
+    archetypeColor = 'text-purple-400'
   }
 
   // 3. Partition Driver Items (Only genuine, deduplicated Growth & Recovery drivers)
@@ -958,11 +958,11 @@ export function calculateDayPhasesAndTransitions(
       endHour: recoveryStartHour,
       startTimeFormatted: formatHourToTimeStr(growthStartHour),
       endTimeFormatted: formatHourToTimeStr(recoveryStartHour),
-      title: '🟣 Diurnal Growth Mode (mTORC1 Axis)',
+      title: '🟢 Diurnal Growth Mode (mTORC1 Axis)',
       description: 'Peak muscular torque, amino acid sensing, mechanical tension, protein synthesis, and cellular remodeling.',
-      bgGradient: 'from-purple-950/25 via-indigo-950/20 to-purple-950/30',
-      borderGlow: 'border-purple-500/30',
-      textAccent: 'text-purple-400'
+      bgGradient: 'from-emerald-950/25 via-teal-950/20 to-emerald-950/30',
+      borderGlow: 'border-emerald-500/30',
+      textAccent: 'text-emerald-400'
     },
     {
       id: 'evening_recovery',
@@ -972,11 +972,11 @@ export function calculateDayPhasesAndTransitions(
       endHour: bedHour,
       startTimeFormatted: formatHourToTimeStr(recoveryStartHour),
       endTimeFormatted: formatHourToTimeStr(bedHour),
-      title: '🟢 Evening Recovery & Vagal Transition',
+      title: '🔵 Evening Recovery & Vagal Transition',
       description: 'Caloric cutoff, postprandial glucose clearance, Heat Shock Protein induction, and parasympathetic sleep preparation.',
-      bgGradient: 'from-emerald-950/25 via-teal-950/20 to-slate-900/80',
-      borderGlow: 'border-emerald-500/30',
-      textAccent: 'text-emerald-400'
+      bgGradient: 'from-sky-950/25 via-blue-950/20 to-slate-900/80',
+      borderGlow: 'border-sky-500/30',
+      textAccent: 'text-sky-400'
     },
     {
       id: 'nocturnal_sleep',
@@ -986,11 +986,11 @@ export function calculateDayPhasesAndTransitions(
       endHour: wakeHour + 24,
       startTimeFormatted: formatHourToTimeStr(bedHour),
       endTimeFormatted: formatHourToTimeStr(wakeHour),
-      title: '🌙 Nocturnal Somatic Recovery & Delta Sleep',
+      title: '🟣✦🔵 Nocturnal Sleep (Glymphatic Wash + Autophagy)',
       description: 'Stage 3 Slow-Wave Sleep, pulsatile Growth Hormone (GH) release, deep cellular autophagy, and cerebral glymphatic waste clearance.',
-      bgGradient: 'from-slate-950 via-indigo-950/30 to-slate-950',
-      borderGlow: 'border-indigo-500/20',
-      textAccent: 'text-indigo-400'
+      bgGradient: 'from-purple-950/30 via-indigo-950/30 to-sky-950/20',
+      borderGlow: 'border-purple-500/30',
+      textAccent: 'text-purple-300'
     }
   ]
 
@@ -1002,8 +1002,8 @@ export function calculateDayPhasesAndTransitions(
       hour: wakeHour,
       timeFormatted: formatHourToTimeStr(wakeHour),
       title: 'Morning Awakening & Fasted Activation',
-      badgeText: '🌅 Fasted AMPK Active',
-      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      badgeText: '🔵 Fasted AMPK Active',
+      badgeColor: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
       triggerText: 'Circadian Awakening & Cortisol Awakening Response (CAR)',
       biologicalMechanism: 'Awakening in a glycogen-depleted state sustains cellular autophagy and AMPK signaling until first diurnal mechanical strain or caloric intake.',
       keyActions: [
@@ -1019,8 +1019,8 @@ export function calculateDayPhasesAndTransitions(
       hour: growthStartHour,
       timeFormatted: formatHourToTimeStr(growthStartHour),
       title: '⚡ Growth Mode Begins (mTORC1 Anabolism Switch)',
-      badgeText: '🟣 Growth Mode Onset',
-      badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.3)]',
+      badgeText: '🟢 Growth Mode Onset',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)]',
       triggerText: growthTriggerText,
       biologicalMechanism: 'Nutrient sensing (leucine/essential amino acids) and mechanical loading trigger mTORC1 and p70S6K phosphorylation, shifting cells out of autophagic clearance into muscle protein synthesis and osteogenic remodeling.',
       keyActions: [
@@ -1041,8 +1041,8 @@ export function calculateDayPhasesAndTransitions(
       hour: postLiftHour,
       timeFormatted: formatHourToTimeStr(postLiftHour),
       title: '⚡ Post-Strain Hypertrophic Anabolic Window',
-      badgeText: '🟣 Peak MPS Window (3–4h)',
-      badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+      badgeText: '🟢 Peak MPS Window (3–4h)',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
       triggerText: `${(resistanceTask as any).name} Completed`,
       biologicalMechanism: 'Muscle Protein Synthesis (MPS) rates peak at 3 hours post-mechanical strain and remain elevated for 12 hours. Cold water immersion within 4 hours is contraindicated due to blunting of ribosomal biogenesis.',
       keyActions: [
@@ -1061,8 +1061,8 @@ export function calculateDayPhasesAndTransitions(
     hour: recoveryStartHour,
     timeFormatted: formatHourToTimeStr(recoveryStartHour),
     title: '🌙 Recovery Mode Begins (Autophagy & Vagal Switch)',
-    badgeText: '🟢 Recovery Mode Onset',
-    badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)]',
+    badgeText: '🔵 Recovery Mode Onset',
+    badgeColor: 'bg-sky-500/20 text-sky-300 border-sky-500/30 shadow-[0_0_10px_rgba(2,132,199,0.3)]',
     triggerText: recoveryTriggerText,
     biologicalMechanism: 'Caloric and mechanical strain cease. Postprandial insulin drops, activating hepatic AMPK, Heat Shock Proteins (HSP70), and central vagal parasympathetic down-regulation to prepare for restorative delta sleep.',
     keyActions: [
@@ -1080,8 +1080,8 @@ export function calculateDayPhasesAndTransitions(
     hour: bedHour,
     timeFormatted: formatHourToTimeStr(bedHour),
     title: '🌙 Nocturnal Somatic Recovery & Deep Delta Sleep',
-    badgeText: '🟢 Somatic Repair & GH Pulse',
-    badgeColor: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
+    badgeText: '🟣✦🔵 Glymphatic Wash & GH Pulse',
+    badgeColor: 'bg-gradient-to-r from-purple-500/20 to-sky-500/20 text-purple-200 border-purple-500/30',
     triggerText: 'Circadian Melatonin Peak & Core Body Temperature Nadir',
     biologicalMechanism: 'Stage 3 Slow-Wave Sleep (SWS) drives pulsatile Growth Hormone (GH) release for structural tissue repair, macroautophagy, and glymphatic clearance of cerebral metabolic waste (amyloid-beta).',
     keyActions: [
