@@ -10,6 +10,7 @@ import { logPulsedExecution } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import GeekMode from '@/components/cards/GeekMode'
 import { resolvePubMedCitation } from '@/lib/tracking/scientificCitations'
+import { getSafeEfficacyStats } from '@/lib/utils/efficacyStats'
 
 export interface PulsedItemContext {
   modality: Modality
@@ -71,8 +72,10 @@ export const PulsedModalityCard: React.FC<PulsedModalityCardProps> = ({
   }
 
   const citation = resolvePubMedCitation(mod.id, mod.name)
-  const pubmedUrl = (mod.efficacy_stats?.find((e: any) => e.source_url)?.source_url && mod.efficacy_stats?.find((e: any) => e.source_url)?.source_url !== 'https://pubmed.ncbi.nlm.nih.gov/')
-    ? mod.efficacy_stats?.find((e: any) => e.source_url)?.source_url
+  const statsArray = getSafeEfficacyStats(mod)
+  const firstStatsUrl = statsArray.find((e: any) => e?.source_url)?.source_url
+  const pubmedUrl = (firstStatsUrl && firstStatsUrl !== 'https://pubmed.ncbi.nlm.nih.gov/')
+    ? firstStatsUrl
     : (mod as any).relationships?.dosage_profile?.sourceUrl && (mod as any).relationships?.dosage_profile?.sourceUrl !== 'https://pubmed.ncbi.nlm.nih.gov/'
     ? (mod as any).relationships?.dosage_profile?.sourceUrl
     : citation.pubMedUrl

@@ -13,6 +13,7 @@ import {
   UserModalityHabit
 } from '../types'
 import { resolveOptimalTimingSlot, resolveSlotFromTimingString, parseMultiDoseTimingSlots } from './resolveOptimalTiming'
+import { getSafeEfficacyStats } from '../utils/efficacyStats'
 
 // Persistent Catalog Cache Configuration (24 Hours TTL with SWR)
 const CATALOG_CACHE_PREFIX = 'levl_cat_v1_'
@@ -151,7 +152,10 @@ function mergeBuiltInModalities(fetched: Modality[]): Modality[] {
     if (key && !seen.has(key)) {
       seen.add(key)
       if (slugKey) seen.add(slugKey)
-      result.push(m)
+      result.push({
+        ...m,
+        efficacy_stats: getSafeEfficacyStats(m.efficacy_stats)
+      })
     }
   })
 
@@ -162,7 +166,10 @@ function mergeBuiltInModalities(fetched: Modality[]): Modality[] {
     if (key && !seen.has(key) && (!slugKey || !seen.has(slugKey))) {
       seen.add(key)
       if (slugKey) seen.add(slugKey)
-      result.push(m)
+      result.push({
+        ...m,
+        efficacy_stats: getSafeEfficacyStats(m.efficacy_stats)
+      })
     }
   })
 
@@ -975,6 +982,22 @@ function hydrateTasksInMemory(
           t.protocol_step = step
           break
         }
+      }
+    }
+
+    if (t.protocol_step?.modality) {
+      t.protocol_step = {
+        ...t.protocol_step,
+        modality: {
+          ...t.protocol_step.modality,
+          efficacy_stats: getSafeEfficacyStats(t.protocol_step.modality.efficacy_stats)
+        }
+      }
+    }
+    if (t.loose_modality) {
+      t.loose_modality = {
+        ...t.loose_modality,
+        efficacy_stats: getSafeEfficacyStats(t.loose_modality.efficacy_stats)
       }
     }
 

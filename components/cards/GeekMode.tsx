@@ -6,6 +6,7 @@ import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecomm
 import MedicalDisclaimerBanner from '../ui/MedicalDisclaimerBanner'
 import ModalityLongevityDrawer from './ModalityLongevityDrawer'
 import { LONGEVITY_VECTORS_METADATA } from '@/lib/data/longevityKnowledgeBase'
+import { getSafeEfficacyStats } from '@/lib/utils/efficacyStats'
 
 type GeekModeProps = {
   modality: Modality
@@ -222,13 +223,16 @@ export default function GeekMode({ modality }: GeekModeProps) {
         </div>
       )}
 
-      {modality.efficacy_stats && modality.efficacy_stats.length > 0 && (
-        <div className="pt-4 border-t border-white/10 mt-2">
-          <div className="flex items-center gap-2 text-[10px] text-yellow-400 uppercase block mb-2 font-bold">
-            <Target size={12} className="text-yellow-400" /> Interesting Facts & Efficacy Stats
-          </div>
-          <div className="space-y-3">
-            {modality.efficacy_stats.map((stat, idx) => (
+      {(() => {
+        const safeStats = getSafeEfficacyStats(modality)
+        if (safeStats.length === 0) return null
+        return (
+          <div className="pt-4 border-t border-white/10 mt-2">
+            <div className="flex items-center gap-2 text-[10px] text-yellow-400 uppercase block mb-2 font-bold">
+              <Target size={12} className="text-yellow-400" /> Interesting Facts & Efficacy Stats
+            </div>
+            <div className="space-y-3">
+              {safeStats.map((stat, idx) => (
               <div key={idx} className="bg-yellow-900/10 p-3 rounded-lg border border-yellow-700/30">
                 <p className="text-gray-200 text-xs italic mb-2">"{stat.fact}"</p>
                 {stat.source && (
@@ -247,7 +251,7 @@ export default function GeekMode({ modality }: GeekModeProps) {
             ))}
           </div>
         </div>
-      )}
+      )})()}
 
       {/* 🧬 Clinical Longevity & Biomarkers Expandable Evidence */}
       <ModalityLongevityDrawer modality={modality} defaultExpanded={false} />

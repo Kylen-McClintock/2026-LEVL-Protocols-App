@@ -1,4 +1,5 @@
 import { Modality, UserProfile } from '../types'
+import { getSafeEfficacyStats } from './efficacyStats'
 
 export interface ProtocolDosePreset {
   protocolId?: string
@@ -175,7 +176,8 @@ export function getProtocolSourceDetails(protoName?: string, modality?: Modality
   // Fallback to modality's efficacy stats PubMed URL or verified scientific citation
   const { resolvePubMedCitation } = require('@/lib/tracking/scientificCitations')
   const citation = resolvePubMedCitation(modality?.id, modality?.name)
-  const firstPubMedUrl = modality?.efficacy_stats?.find((e: any) => e.source_url)?.source_url || citation.pubMedUrl
+  const statsArray = getSafeEfficacyStats(modality)
+  const firstPubMedUrl = statsArray.find((e: any) => e?.source_url)?.source_url || citation.pubMedUrl
   return {
     sourceUrl: firstPubMedUrl,
     fullProtocolInstructions: `${modName}: Prescribed at ${modDose}. ${modNotes}`

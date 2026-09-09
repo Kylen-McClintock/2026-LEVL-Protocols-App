@@ -6,6 +6,7 @@
  * Adheres strictly to Modality & Protocol Dosing Standards.
  */
 
+import { getSafeEfficacyStats } from '@/lib/utils/efficacyStats'
 export interface ScientificStudyReference {
   pmid: string
   title: string
@@ -2928,7 +2929,7 @@ export function getAllModalityLongevityImpacts(mod: any): CompleteModalityLongev
     vectors,
     neutralVectors,
     hallmarks: hallmarkList,
-    totalStudyCount: Math.max(studyPmids.size, (mod.efficacy_stats || []).length)
+    totalStudyCount: Math.max(studyPmids.size, getSafeEfficacyStats(mod).length)
   }
 }
 
