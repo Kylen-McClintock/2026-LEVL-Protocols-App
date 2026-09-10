@@ -610,3 +610,54 @@ export const HallmarkOfAgingIcon: React.FC<HallmarkOfAgingIconProps> = ({ hallma
 }
 
 export default HallmarkOfAgingIcon
+
+// -----------------------------------------------------------------------------
+// OPTIONAL BADGE WRAPPER COMPONENT (With or without text label!)
+// -----------------------------------------------------------------------------
+
+export interface HallmarkOfAgingBadgeProps {
+  hallmark: HallmarkOfAgingId | string
+  showLabel?: boolean // Set to false for standalone icon badge without text!
+  size?: number
+  glow?: boolean
+  className?: string
+  onClick?: () => void
+}
+
+export const HallmarkOfAgingBadge: React.FC<HallmarkOfAgingBadgeProps> = ({
+  hallmark,
+  showLabel = true,
+  size = 20,
+  glow = true,
+  className = '',
+  onClick
+}) => {
+  const meta = HALLMARKS_OF_AGING_METADATA[hallmark as HallmarkOfAgingId] || {
+    name: hallmark,
+    shortLabel: hallmark,
+    colorHex: '#3B82F6',
+    bgGlow: 'rgba(59, 130, 246, 0.25)',
+    borderColor: 'border-blue-500/40',
+    textColor: 'text-blue-400'
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-xl border bg-slate-900/80 transition-all ${meta.borderColor} ${
+        onClick ? 'cursor-pointer hover:scale-105 active:scale-95' : ''
+      } ${className}`}
+      style={{
+        boxShadow: glow ? `0 0 12px ${meta.bgGlow}` : undefined
+      }}
+      title={meta.name}
+    >
+      <HallmarkOfAgingIcon hallmark={hallmark} size={size} glow={glow} />
+      {showLabel && (
+        <span className={`text-xs font-semibold whitespace-nowrap ${meta.textColor}`}>
+          {meta.shortLabel || meta.name}
+        </span>
+      )}
+    </div>
+  )
+}

@@ -677,3 +677,53 @@ export const LongevityVectorIcon: React.FC<LongevityVectorIconProps> = ({ vector
 }
 
 export default LongevityVectorIcon
+
+// -----------------------------------------------------------------------------
+// OPTIONAL BADGE WRAPPER COMPONENT (With or without text label!)
+// -----------------------------------------------------------------------------
+
+export interface LongevityVectorBadgeProps {
+  vector: LongevityVectorId | string
+  showLabel?: boolean // Set to false for standalone icon badge without text!
+  size?: number
+  glow?: boolean
+  className?: string
+  onClick?: () => void
+}
+
+export const LongevityVectorBadge: React.FC<LongevityVectorBadgeProps> = ({
+  vector,
+  showLabel = true,
+  size = 20,
+  glow = true,
+  className = '',
+  onClick
+}) => {
+  const meta = LONGEVITY_VECTOR_METADATA[vector as LongevityVectorId] || {
+    name: vector,
+    colorHex: '#C084FC',
+    bgGlow: 'rgba(192, 132, 252, 0.25)',
+    borderColor: 'border-purple-400/40',
+    textColor: 'text-purple-300'
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-xl border bg-slate-900/80 transition-all ${meta.borderColor} ${
+        onClick ? 'cursor-pointer hover:scale-105 active:scale-95' : ''
+      } ${className}`}
+      style={{
+        boxShadow: glow ? `0 0 12px ${meta.bgGlow}` : undefined
+      }}
+      title={meta.name}
+    >
+      <LongevityVectorIcon vector={vector} size={size} glow={glow} />
+      {showLabel && (
+        <span className={`text-xs font-semibold whitespace-nowrap ${meta.textColor}`}>
+          {meta.name}
+        </span>
+      )}
+    </div>
+  )
+}
