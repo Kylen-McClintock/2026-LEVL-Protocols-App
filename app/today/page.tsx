@@ -3207,63 +3207,25 @@ function TodayPageContent() {
                           }
                         }}
                         title="Click to explore Daily Pulse"
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 hover:shadow-md hover:ring-1 hover:ring-purple-400/50 active:scale-95 group/pulse-badge ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
-                        style={circadian.pulseBadge.badgeGradientCSS ? { background: circadian.pulseBadge.badgeGradientCSS } : undefined}
+                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 hover:shadow-md active:scale-95 ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
                       >
                         <span 
                           className="w-1.5 h-1.5 rounded-full shrink-0 shadow-sm" 
                           style={{ 
-                            background: circadian.pulseBadge.dotGradientCSS || undefined,
-                            backgroundColor: !circadian.pulseBadge.dotGradientCSS ? circadian.pulseBadge.dotColor : undefined 
+                            backgroundColor: circadian.pulseBadge.dotColor || '#10B981' 
                           }} 
                         />
-                        {circadian.pulseBadge.fromPhase && circadian.pulseBadge.toPhase ? (
-                          <span className="flex items-center gap-1 font-bold">
-                            <span className={circadian.pulseBadge.fromPhase.textClass}>
-                              {circadian.pulseBadge.fromPhase.name}
-                              {!isCollapsed && circadian.pulseBadge.fromPhase.mechanism && (
-                                <span className="opacity-80 font-mono text-[9px] ml-1">
-                                  ({circadian.pulseBadge.fromPhase.mechanism})
-                                </span>
-                              )}
-                            </span>
-                            <span 
-                              className="font-black text-[11px] px-0.5 select-none shrink-0"
-                              style={{
-                                backgroundImage: circadian.pulseBadge.arrowGradientCSS || 'linear-gradient(to right, #38BDF8, #34D399)',
-                                WebkitBackgroundClip: 'text',
-                                backgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                                color: 'transparent',
-                                display: 'inline-block'
-                              }}
-                            >
-                              {circadian.pulseBadge.dividerChar || '➔'}
-                            </span>
-                            <span className={circadian.pulseBadge.toPhase.textClass}>
-                              {circadian.pulseBadge.toPhase.name}
-                              {!isCollapsed && circadian.pulseBadge.toPhase.mechanism ? (
-                                <span className="opacity-80 font-mono text-[9px] ml-1">
-                                  ({circadian.pulseBadge.toPhase.mechanism})
-                                </span>
-                              ) : (
-                                circadian.pulseBadge.toPhase.subtitle && (
-                                  <span className="opacity-80 font-normal ml-1 text-[9px]">
-                                    {circadian.pulseBadge.toPhase.subtitle}
-                                  </span>
-                                )
-                              )}
-                            </span>
-                          </span>
-                        ) : (
-                          <span>
-                            {!isCollapsed
-                              ? (circadian.pulseBadge.expandedLabel || (circadian.pulseBadge.mechanism ? `${circadian.pulseBadge.label} (${circadian.pulseBadge.mechanism})` : circadian.pulseBadge.label))
+                        <span>
+                          {circadian.pulseBadge.fromPhase && circadian.pulseBadge.toPhase ? (
+                            !isCollapsed && circadian.pulseBadge.fromPhase.mechanism && circadian.pulseBadge.toPhase.mechanism
+                              ? `${circadian.pulseBadge.fromPhase.name} (${circadian.pulseBadge.fromPhase.mechanism}) ➔ ${circadian.pulseBadge.toPhase.name} (${circadian.pulseBadge.toPhase.mechanism})`
+                              : `${circadian.pulseBadge.fromPhase.name} ➔ ${circadian.pulseBadge.toPhase.name}`
+                          ) : (
+                            !isCollapsed && circadian.pulseBadge.mechanism
+                              ? `${circadian.pulseBadge.label} (${circadian.pulseBadge.mechanism})`
                               : circadian.pulseBadge.label
-                            }
-                          </span>
-                        )}
-                        <Activity size={10} className="shrink-0 opacity-70 group-hover/pulse-badge:opacity-100 group-hover/pulse-badge:text-purple-300 transition-opacity ml-0.5" />
+                          )}
+                        </span>
                       </span>
                     )}
                   </div>
@@ -3415,7 +3377,7 @@ function TodayPageContent() {
                       <ModalityIcon modality={mod} modalityName={name} size={13} className={`shrink-0 ${isDone ? 'opacity-70' : 'opacity-90'}`} glow={false} />
                       <span className={isDone ? 'line-through opacity-80' : 'text-white'}>{name}</span>
                       {dose && (
-                        <span className={`text-[10px] font-mono font-normal ${isDone ? 'text-emerald-400/80' : 'text-purple-300/90'}`}>
+                        <span className={`text-[10px] font-mono font-normal ${isDone ? 'text-emerald-400/80' : 'text-slate-400'}`}>
                           • {dose}
                         </span>
                       )}
@@ -3436,81 +3398,11 @@ function TodayPageContent() {
             </div>
           ) : (
             <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
-              {/* Expanded Time Block Circadian & Biological Mechanism Strip */}
-              <div 
-                onClick={() => switchToDailyPulse()}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    switchToDailyPulse()
-                  }
-                }}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-900 border border-purple-500/20 hover:border-purple-400/50 transition-all duration-200 cursor-pointer group/phase-strip shadow-sm mb-1"
-                title="Click to explore the Daily Pulse longevity balance"
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-300 font-medium min-w-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0 shadow-sm" />
-                    <span className="text-slate-400 font-normal">Biological Window:</span>
-                    <span className="text-slate-200 font-semibold truncate">{circadian.circadianPhase}</span>
-                  </div>
-
-                  {circadian.pulseBadge && (
-                    <span 
-                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1.5 shrink-0 ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
-                      style={circadian.pulseBadge.badgeGradientCSS ? { background: circadian.pulseBadge.badgeGradientCSS } : undefined}
-                    >
-                      <span 
-                        className="w-1.5 h-1.5 rounded-full shrink-0 shadow-sm" 
-                        style={{ 
-                          background: circadian.pulseBadge.dotGradientCSS || undefined,
-                          backgroundColor: !circadian.pulseBadge.dotGradientCSS ? circadian.pulseBadge.dotColor : undefined 
-                        }} 
-                      />
-                      {circadian.pulseBadge.fromPhase && circadian.pulseBadge.toPhase ? (
-                        <span className="flex items-center gap-1 font-bold">
-                          <span className={circadian.pulseBadge.fromPhase.textClass}>
-                            {circadian.pulseBadge.fromPhase.name} <span className="opacity-80 font-mono text-[9px]">({circadian.pulseBadge.fromPhase.mechanism})</span>
-                          </span>
-                          <span 
-                            className="font-black text-[11px] px-0.5 select-none shrink-0"
-                            style={{
-                              backgroundImage: circadian.pulseBadge.arrowGradientCSS || 'linear-gradient(to right, #38BDF8, #34D399)',
-                              WebkitBackgroundClip: 'text',
-                              backgroundClip: 'text',
-                              WebkitTextFillColor: 'transparent',
-                              color: 'transparent',
-                              display: 'inline-block'
-                            }}
-                          >
-                            {circadian.pulseBadge.dividerChar || '➔'}
-                          </span>
-                          <span className={circadian.pulseBadge.toPhase.textClass}>
-                            {circadian.pulseBadge.toPhase.name} <span className="opacity-80 font-mono text-[9px]">({circadian.pulseBadge.toPhase.mechanism})</span>
-                          </span>
-                        </span>
-                      ) : (
-                        <span>
-                          {circadian.pulseBadge.expandedLabel || (
-                            circadian.pulseBadge.mechanism 
-                              ? `${circadian.pulseBadge.label} (${circadian.pulseBadge.mechanism})` 
-                              : circadian.pulseBadge.label
-                          )}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1 text-[11px] font-bold text-purple-300 group-hover/phase-strip:text-purple-200 transition-colors shrink-0 self-end sm:self-center">
-                  <span className="px-2 py-0.5 rounded-lg bg-purple-500/15 border border-purple-500/30 group-hover/phase-strip:bg-purple-500/25 flex items-center gap-1 shadow-sm">
-                    <Activity size={11} className="text-purple-400 group-hover/phase-strip:text-purple-200 transition-colors" />
-                    <span>Daily Pulse</span>
-                    <ChevronRight size={11} className="group-hover/phase-strip:translate-x-0.5 transition-transform" />
-                  </span>
-                </div>
+              {/* Expanded Time Block Biological Window */}
+              <div className="flex items-center gap-1.5 text-xs text-slate-300 font-medium px-3.5 py-2 rounded-xl bg-slate-900/60 border border-slate-800/80 mb-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+                <span className="text-slate-400 font-normal">Biological Window:</span>
+                <span className="text-slate-200 font-semibold truncate">{circadian.circadianPhase}</span>
               </div>
 
               {groupTasks
