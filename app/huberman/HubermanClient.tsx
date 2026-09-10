@@ -55,10 +55,14 @@ import {
   Award,
   Microscope,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Calendar,
+  ListChecks
 } from 'lucide-react'
 import CyclicSighingApplet from '@/components/applets/CyclicSighingApplet'
 import { DosageDetailModal } from '@/components/modals/DosageDetailModal'
+import ModalityIcon from '@/components/ui/ModalityIcon'
+import ProtocolAvatar, { ProtocolCategoryPills } from '@/components/ui/ProtocolAvatar'
 import { Modality, DailyProtocolTask, UserProfile, ProtocolStep } from '@/lib/types'
 
 // Tab definitions for top protocols
@@ -80,7 +84,7 @@ const PROTOCOL_TABS: ProtocolTab[] = [
     label: 'Complete 10-Protocol Operating System',
     shortLabel: 'Full System',
     icon: '⚡',
-    accentColor: 'from-amber-500/20 via-orange-500/10 to-transparent border-amber-500/40 text-amber-400',
+    accentColor: 'from-purple-500/20 via-indigo-500/10 to-transparent border-purple-500/40 text-purple-300',
     badgeText: '10 Core Daily Anchors',
     description: 'The master 24-hour routine from Dr. Huberman\'s Diary of a CEO masterclass. Covers waking hydration, light entrainment, delayed caffeine, cold tenacity, deep focus, and nocturnal sleep rescue.'
   },
@@ -146,6 +150,103 @@ const PROTOCOL_TABS: ProtocolTab[] = [
   }
 ]
 
+// Circadian Window mapping helper for diurnal grouping
+interface CircadianWindowDef {
+  id: string
+  title: string
+  subtitle: string
+  icon: string
+  badgeColor: string
+  slots: string[]
+}
+
+const CIRCADIAN_WINDOWS: CircadianWindowDef[] = [
+  {
+    id: 'waking',
+    title: 'Dawn & Waking Fasted (0–60m)',
+    subtitle: 'Cortisol awakening pulse, hydration vagal trigger, and low solar-angle photon entrainment',
+    icon: '🌅',
+    badgeColor: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+    slots: ['waking', 'upon_waking', 'fasted', 'early_morning', 'dawn', 'sunrise']
+  },
+  {
+    id: 'morning_tenacity',
+    title: 'Morning Focus & Tenacity (60–120m+)',
+    subtitle: 'Adenosine receptor clearance, aMCC willpower hypertrophy & sustained dopamine',
+    icon: '⚡',
+    badgeColor: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300',
+    slots: ['morning']
+  },
+  {
+    id: 'midday_performance',
+    title: 'Midday Ultradian Focus & Metabolic Ambulation',
+    subtitle: '90-minute single-task focus bouts and GLUT4 insulin-independent glucose disposal',
+    icon: '🍽️',
+    badgeColor: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+    slots: ['midday', 'afternoon', 'lunch', 'meal', 'post_meal']
+  },
+  {
+    id: 'realtime_control',
+    title: 'Anytime Autonomic Reset',
+    subtitle: 'Instant vagal parasympathetic activation via dual-inhalation physiological sighs',
+    icon: '🫁',
+    badgeColor: 'border-sky-500/40 bg-sky-500/10 text-sky-300',
+    slots: ['anytime', 'flexible', 'as_needed']
+  },
+  {
+    id: 'evening_sanctuary',
+    title: 'Evening Sunset & Sleep Sanctuary',
+    subtitle: 'Sunset photopic buffering, 65°F core thermal drop, and 2 AM wake rescue',
+    icon: '🌙',
+    badgeColor: 'border-indigo-500/40 bg-indigo-500/10 text-indigo-300',
+    slots: ['evening', 'sunset', 'pre_bed', 'bedtime', 'night', 'sleep', 'overnight']
+  }
+]
+
+const getCircadianTimingBadge = (slot: string) => {
+  const norm = (slot || '').toLowerCase().replace(/[-\s]/g, '_')
+  if (norm.includes('wake') || norm.includes('upon_waking') || norm.includes('fasted')) {
+    return {
+      label: 'Waking / Fasted',
+      icon: '🌅',
+      color: 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+    }
+  }
+  if (norm.includes('morning') || norm.includes('sunrise') || norm.includes('dawn')) {
+    return {
+      label: 'Morning Focus',
+      icon: '☀️',
+      color: 'bg-sky-500/10 text-sky-300 border-sky-500/30'
+    }
+  }
+  if (norm.includes('midday') || norm.includes('afternoon') || norm.includes('meal') || norm.includes('walk') || norm.includes('lunch') || norm.includes('post_meal')) {
+    return {
+      label: 'Midday / Fuel',
+      icon: '🍽️',
+      color: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+    }
+  }
+  if (norm.includes('evening') || norm.includes('sunset') || norm.includes('dusk') || norm.includes('wind_down')) {
+    return {
+      label: 'Evening Wind-Down',
+      icon: '🌙',
+      color: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30'
+    }
+  }
+  if (norm.includes('bed') || norm.includes('sleep') || norm.includes('night') || norm.includes('rescue')) {
+    return {
+      label: 'Bedtime & Sleep',
+      icon: '🛌',
+      color: 'bg-purple-500/10 text-purple-300 border-purple-500/30'
+    }
+  }
+  return {
+    label: slot.replace(/_/g, ' ') || 'Daily Routine',
+    icon: '⚡',
+    color: 'bg-slate-800 text-slate-300 border-slate-700'
+  }
+}
+
 export default function HubermanClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -162,6 +263,7 @@ export default function HubermanClient() {
   const [todayTasks, setTodayTasks] = useState<DailyProtocolTask[]>([])
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [hasAutoActivated, setHasAutoActivated] = useState(false)
+  const [viewMode, setViewMode] = useState<'checklist' | 'circadian'>('checklist')
   
   // Modals & Applets
   const [isBreathworkOpen, setIsBreathworkOpen] = useState(false)
@@ -366,32 +468,327 @@ export default function HubermanClient() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-28">
-      {/* Hero Header */}
-      <div className="relative border-b border-slate-800/80 bg-gradient-to-b from-slate-900/90 via-slate-950 to-slate-950 px-4 pt-6 pb-8 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
-          {/* Top Pill Badges */}
-          <div className="flex flex-wrap items-center gap-2.5 mb-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30 tracking-wide uppercase">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              The Diary of a CEO Exclusive
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
-              <Brain className="w-3.5 h-3.5 text-sky-400" />
-              Dr. Andrew Huberman, Ph.D.
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
-              <Clock className="w-3.5 h-3.5 text-emerald-400" />
-              24-Hour Daily Operating System
-            </span>
+  // Helper to determine category-specific active styling for protocol tabs
+  const getTabActiveStyle = (slug: string, isSelected: boolean) => {
+    if (!isSelected) {
+      return 'bg-slate-900/60 text-slate-400 border-slate-800/80 hover:border-slate-700 hover:text-slate-200'
+    }
+    switch (slug) {
+      case 'morning-circadian':
+        return 'bg-slate-900 text-white border-amber-400/60 shadow-lg shadow-amber-500/15 ring-1 ring-amber-400/30'
+      case 'stress-reset':
+        return 'bg-slate-900 text-white border-cyan-400/60 shadow-lg shadow-cyan-500/15 ring-1 ring-cyan-400/30'
+      case 'cold-tenacity':
+        return 'bg-slate-900 text-white border-blue-400/60 shadow-lg shadow-blue-500/15 ring-1 ring-blue-400/30'
+      case 'metabolic-walk':
+        return 'bg-slate-900 text-white border-emerald-400/60 shadow-lg shadow-emerald-500/15 ring-1 ring-emerald-400/30'
+      case 'focus-neuroplasticity':
+        return 'bg-slate-900 text-white border-purple-400/60 shadow-lg shadow-purple-500/15 ring-1 ring-purple-400/30'
+      case 'sleep-rescue':
+        return 'bg-slate-900 text-white border-indigo-400/60 shadow-lg shadow-indigo-500/15 ring-1 ring-indigo-400/30'
+      case 'all':
+      default:
+        return 'bg-slate-900 text-white border-purple-400/60 shadow-lg shadow-purple-500/15 ring-1 ring-purple-400/30'
+    }
+  }
+
+  const getTabDotColor = (slug: string) => {
+    switch (slug) {
+      case 'morning-circadian': return 'bg-amber-400'
+      case 'stress-reset': return 'bg-cyan-400'
+      case 'cold-tenacity': return 'bg-blue-400'
+      case 'metabolic-walk': return 'bg-emerald-400'
+      case 'focus-neuroplasticity': return 'bg-purple-400'
+      case 'sleep-rescue': return 'bg-indigo-400'
+      case 'all':
+      default: return 'bg-purple-400'
+    }
+  }
+
+  // Render a single high-fidelity LEVL modality card
+  const renderModalityCard = (step: ProtocolStep, idx: number) => {
+    const stepModId = step.modality_id || step.modality?.id || ''
+    const fromCatalog = catalogModalities.find(m => m.id === stepModId || m.slug === stepModId)
+    const fromDoac = HUBERMAN_DOAC_MODALITIES.find(m => m.id === stepModId)
+    const fromBuiltIn = BUILT_IN_LONGEVITY_MODALITIES.find(m => m.id === stepModId)
+    const fromStep = step.modality
+
+    const baseMod = fromCatalog || fromDoac || fromBuiltIn || fromStep || ({ id: stepModId, name: step.instructions } as Modality)
+    const fallbackMod = fromDoac || fromBuiltIn || fromStep
+
+    const fullMod: Modality = {
+      ...fallbackMod,
+      ...baseMod,
+      scientific_references: (baseMod.scientific_references && baseMod.scientific_references.length > 0)
+        ? baseMod.scientific_references
+        : (fallbackMod?.scientific_references && fallbackMod.scientific_references.length > 0)
+          ? fallbackMod.scientific_references
+          : (modalityReferences[stepModId] || []),
+      functional_impacts: baseMod.functional_impacts || fallbackMod?.functional_impacts || {},
+      mechanism_of_action: baseMod.mechanism_of_action || fallbackMod?.mechanism_of_action || '',
+      evidence_summary: baseMod.evidence_summary || fallbackMod?.evidence_summary || ''
+    }
+
+    const isStepActiveToday = todayTasks.some(t => t.modality_id === stepModId || t.modality_id === fullMod.id)
+    const isSigh = stepModId === 'physiological_sigh' || stepModId === 'cyclic_sighing' || fullMod.id === 'physiological_sigh' || fullMod.id === 'cyclic_sighing'
+    const stepKey = step.id || `${stepModId}-${idx}`
+    const isGeekOpen = expandedGeekStepId === stepKey
+    const isDescExpanded = !!expandedDescStepIds[stepKey]
+    const descriptionText = step.instructions || fullMod.brief_description || ''
+    const hasLongDescription = descriptionText.length > 120 || Boolean(step.notes)
+    const circadian = getCircadianTimingBadge(step.timing_slot || fullMod.timing_summary || '')
+    const targetModId = stepModId || fullMod.id || fullMod.slug || ''
+
+    return (
+      <div
+        key={stepKey}
+        className="group relative rounded-2xl border border-slate-800/90 hover:border-purple-500/40 bg-slate-900/70 backdrop-blur-md p-4 sm:p-5 transition-all duration-200 shadow-lg hover:shadow-xl space-y-3.5"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+          
+          {/* Left: Icon + Title + Badges + Dosing + Instructions */}
+          <div className="flex items-start gap-3.5 flex-1 min-w-0">
+            {/* Custom Modality Vector Icon with Glowing Halo */}
+            <div className="shrink-0 mt-0.5">
+              <ModalityIcon 
+                modality={fullMod} 
+                size={24} 
+                glow={true} 
+                isIgnited={true}
+                className="shrink-0"
+              />
+            </div>
+
+            <div className="space-y-2 flex-1 min-w-0">
+              
+              {/* Header Meta: Step Number, Title, Diurnal Timing & Today Status */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700/80 shrink-0">
+                  #{String(idx + 1).padStart(2, '0')}
+                </span>
+
+                <h5 className="text-base sm:text-lg font-extrabold text-white group-hover:text-purple-300 transition-colors leading-snug">
+                  {fullMod.display_name || fullMod.name || step.instructions}
+                </h5>
+
+                {/* Circadian Sky Beacon Badge */}
+                {step.timing_slot && (
+                  <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${circadian.color}`}>
+                    <span>{circadian.icon}</span>
+                    <span>{circadian.label}</span>
+                  </span>
+                )}
+
+                {/* Thermal Temperature Pill */}
+                {step.temperature && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-cyan-950/60 text-cyan-300 border border-cyan-800/60">
+                    🌡️ {step.temperature}
+                  </span>
+                )}
+
+                {/* Schedule Status or Quick-Add */}
+                {isStepActiveToday ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 shadow-[0_0_10px_rgba(16,185,129,0.25)]">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>In Today’s Plan</span>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => handleAddSingleStepToToday(stepModId, step.timing_slot)}
+                    disabled={isActivating}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 border border-purple-500/40 transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-95"
+                  >
+                    <Plus className="w-3 h-3 stroke-[3]" />
+                    <span>Add to Today</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Dosing Specs Pills Row (Structured instead of plain text) */}
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                {step.dose_text && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-800 text-xs font-mono font-medium text-slate-200 shadow-xs">
+                    <span className="text-teal-400">💊 Dose:</span>
+                    <span className="text-slate-300 font-sans">{step.dose_text}</span>
+                  </span>
+                )}
+                {step.duration && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-800 text-xs font-mono font-medium text-slate-200 shadow-xs">
+                    <span className="text-sky-400">⏱️ Duration:</span>
+                    <span className="text-slate-300 font-sans">{step.duration}</span>
+                  </span>
+                )}
+                {step.frequency && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-800 text-xs font-mono font-medium text-slate-200 shadow-xs">
+                    <span className="text-purple-400">🔄 Cadence:</span>
+                    <span className="text-slate-300 font-sans">{step.frequency}</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Protocol Instructions & DOAC Masterclass Note */}
+              <div className="space-y-2 pt-1">
+                {!hasLongDescription ? (
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                    {descriptionText}
+                  </p>
+                ) : isDescExpanded ? (
+                  <>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans animate-in fade-in duration-150">
+                      {descriptionText}
+                    </p>
+                    {step.notes && (
+                      <div className="p-3 rounded-xl bg-slate-950/90 border border-cyan-500/30 text-xs text-slate-300 leading-relaxed shadow-sm animate-in fade-in duration-150">
+                        <div className="flex items-center gap-1.5 text-cyan-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                          <span>💡</span>
+                          <span>Diary of a CEO Masterclass Protocol Note</span>
+                        </div>
+                        <p className="italic text-slate-200/90">{step.notes}</p>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDescStepIds(prev => ({ ...prev, [stepKey]: false }))}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-slate-200 transition-colors pt-0.5 cursor-pointer"
+                    >
+                      <span>Collapse protocol instructions</span>
+                      <ChevronUp className="w-3 h-3" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans line-clamp-2">
+                      {descriptionText}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDescStepIds(prev => ({ ...prev, [stepKey]: true }))}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-400 hover:text-purple-300 transition-colors pt-0.5 cursor-pointer"
+                    >
+                      <span>Read full protocol instructions &amp; DOAC note</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Main Title & Teaser */}
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white mb-3">
-            Andrew Huberman’s Daily Operating System
-          </h1>
-          <p className="text-base sm:text-lg text-slate-300 max-w-3xl leading-relaxed mb-6">
+          {/* Right: Quick Action Controls & Deep Links */}
+          <div className="flex flex-wrap lg:flex-col items-center lg:items-end gap-2 shrink-0 pt-2 lg:pt-0">
+            {isSigh && (
+              <button
+                onClick={() => setIsBreathworkOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-md shadow-cyan-500/20 transition-all cursor-pointer active:scale-95"
+              >
+                <Play className="w-3 h-3 fill-current" />
+                <span>Run Pacer (5m)</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setExpandedGeekStepId(isGeekOpen ? null : stepKey)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                isGeekOpen 
+                  ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
+                  : 'bg-slate-800/80 text-purple-300 hover:bg-slate-700/80 border-slate-700 hover:text-purple-200'
+              }`}
+            >
+              <Microscope className="w-3.5 h-3.5" />
+              <span>{isGeekOpen ? 'Hide Science' : '🔬 Geek Mode'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedModalityForDetail(fullMod)
+                setIsDosageModalOpen(true)
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800/90 hover:bg-slate-700 hover:text-white border border-slate-700 transition-colors shadow-xs cursor-pointer"
+            >
+              <Sliders className="w-3.5 h-3.5 text-slate-400" />
+              <span>Inspect Modality</span>
+            </button>
+
+            {/* LongevityReviews PubMed Consensus Bridge */}
+            {targetModId && (
+              <a
+                href={`https://longevityreviews.org/modalities/${targetModId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-400 hover:text-purple-300 transition-colors pt-1 group/bridge"
+              >
+                <span>View PubMed Consensus &amp; Studies</span>
+                <ExternalLink className="w-3 h-3 opacity-70 group-hover/bridge:opacity-100 transition-opacity" />
+              </a>
+            )}
+
+            {/* Direct PubMed Paper Link (if available) */}
+            {(fullMod.scientific_references?.[0]?.url || modalityReferences[stepModId]?.[0]?.url) && (
+              <a
+                href={fullMod.scientific_references?.[0]?.url || modalityReferences[stepModId]?.[0]?.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 transition-colors"
+              >
+                <BookOpen className="w-3 h-3" />
+                <span>Primary Paper</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Inline Expandable Geek Mode Card */}
+        {isGeekOpen && (
+          <div className="mt-4 pt-3 border-t border-slate-800 animate-in fade-in duration-200">
+            <GeekMode modality={fullMod} />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 pb-28 selection:bg-purple-500/30">
+      
+      {/* Hero Header */}
+      <div className="relative border-b border-slate-800/80 bg-gradient-to-b from-slate-900/90 via-slate-950 to-slate-950 px-4 pt-7 pb-8 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          
+          {/* Header Row: ProtocolAvatar, Creator Pills, Title */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
+            <ProtocolAvatar
+              protocolName={currentProtocol.name}
+              protocolInfo={currentProtocol}
+              size={54}
+              roundedClass="rounded-2xl"
+            />
+            
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30 tracking-wide uppercase">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  The Diary of a CEO Masterclass
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-900 text-slate-300 border border-slate-800">
+                  <Brain className="w-3.5 h-3.5 text-cyan-400" />
+                  Dr. Andrew Huberman, Ph.D.
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-900 text-slate-300 border border-slate-800">
+                  <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                  24-Hour Daily Arc
+                </span>
+              </div>
+              
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
+                Andrew Huberman’s Daily Operating System
+              </h1>
+            </div>
+          </div>
+
+          <p className="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed mb-6 font-sans">
             From his masterclass on <em className="text-white font-medium not-italic">The Diary of a CEO</em> and his clinical handbook <em className="text-white font-medium not-italic">Protocols: An Operating Manual for the Human Body</em>. 
             Zero-cost, science-grounded interventions sequenced along the 24-hour circadian arc to master morning cortisol, peak dopamine, sustained focus, and deep slow-wave sleep.
           </p>
@@ -407,7 +804,7 @@ export default function HubermanClient() {
                     router.push('/today')
                   }
                 }}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/25 transition-all transform active:scale-95"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/25 transition-all transform active:scale-95 cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4 text-slate-950" />
                 <span>All {protocolStepModalityIds.length} Modalities Active in Today • Open Today</span>
@@ -417,22 +814,23 @@ export default function HubermanClient() {
               <button
                 onClick={() => handleActivateProtocol(true)}
                 disabled={isActivating}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/25 transition-all transform active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600 via-indigo-600 to-teal-500 hover:from-purple-500 hover:to-teal-400 text-white shadow-lg shadow-purple-500/25 transition-all transform active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 {isActivating ? (
                   <>
-                    <Activity className="w-4 h-4 animate-spin text-slate-950" />
+                    <Activity className="w-4 h-4 animate-spin text-white" />
                     <span>Adding to Today’s Schedule...</span>
                   </>
                 ) : (
                   <>
-                    <Zap className="w-4 h-4 text-slate-950 fill-current" />
+                    <Zap className="w-4 h-4 text-amber-300 fill-current" />
                     <span>
                       {activeModalityCount > 0 
                         ? `Add Remaining ${missingStepModalityIds.length} Modalities to Today (${activeModalityCount}/${protocolStepModalityIds.length} Active)`
                         : `Start This Protocol Now • Add All ${protocolStepModalityIds.length} Modalities`
                       }
                     </span>
+                    <ArrowRight className="w-4 h-4 text-white" />
                   </>
                 )}
               </button>
@@ -441,12 +839,12 @@ export default function HubermanClient() {
             {/* Copy Share Link */}
             <button
               onClick={() => handleCopyLink(activeTab.slug)}
-              className="inline-flex items-center gap-2 px-4 py-3 rounded-xl font-medium text-sm bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 transition-all active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-3.5 rounded-xl font-semibold text-sm bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 transition-all active:scale-95 cursor-pointer"
               title="Copy custom direct link for this protocol"
             >
               {copiedLink === activeTab.slug ? (
                 <>
-                  <Check className="w-4 h-4 text-emerald-400" />
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
                   <span className="text-emerald-300 font-semibold">Custom Link Copied!</span>
                 </>
               ) : (
@@ -460,7 +858,7 @@ export default function HubermanClient() {
             {/* Quick Sigh Breathwork Trigger */}
             <button
               onClick={() => setIsBreathworkOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-3 rounded-xl font-medium text-sm bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-700/50 transition-all active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-3.5 rounded-xl font-semibold text-sm bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-700/50 transition-all active:scale-95 cursor-pointer"
             >
               <Wind className="w-4 h-4 text-cyan-400" />
               <span>Launch Physiological Sigh Applet (5m)</span>
@@ -502,7 +900,7 @@ export default function HubermanClient() {
                 <>
                   <button
                     onClick={openAuthModal}
-                    className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm bg-sky-500 hover:bg-sky-400 text-slate-950 shadow-md transition-all active:scale-95"
+                    className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm bg-sky-500 hover:bg-sky-400 text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
                   >
                     <span>Sign In / Save Progress</span>
                     <ChevronRight className="w-4 h-4 text-slate-950" />
@@ -533,7 +931,7 @@ export default function HubermanClient() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <span>Top Protocols & Modality Anchors</span>
+                <span>Top Protocols &amp; Modality Anchors</span>
               </h2>
               <p className="text-xs sm:text-sm text-slate-400">
                 Select any protocol below to inspect exact steps, clinical dosing, and launch its custom link.
@@ -552,16 +950,12 @@ export default function HubermanClient() {
                 <button
                   key={tab.slug}
                   onClick={() => handleSelectTab(tab.slug)}
-                  className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium border transition-all ${
-                    isSelected
-                      ? 'bg-slate-800 text-white border-amber-500/60 shadow-lg shadow-amber-500/10'
-                      : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
-                  }`}
+                  className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium border transition-all cursor-pointer ${getTabActiveStyle(tab.slug, isSelected)}`}
                 >
                   <span className="text-base">{tab.icon}</span>
                   <span className="font-semibold">{tab.shortLabel}</span>
                   {isSelected && (
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse ml-0.5" />
+                    <span className={`w-2 h-2 rounded-full ${getTabDotColor(tab.slug)} animate-pulse ml-0.5`} />
                   )}
                 </button>
               )
@@ -579,7 +973,7 @@ export default function HubermanClient() {
                   {currentProtocol.name}
                 </h3>
               </div>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl font-sans">
                 {currentProtocol.description}
               </p>
             </div>
@@ -587,7 +981,7 @@ export default function HubermanClient() {
             <div className="flex items-center gap-2.5 flex-shrink-0">
               <button
                 onClick={() => handleCopyLink(activeTab.slug)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all cursor-pointer"
               >
                 {copiedLink === activeTab.slug ? (
                   <>
@@ -597,7 +991,7 @@ export default function HubermanClient() {
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Copy Custom Link</span>
+                    <span>Copy Link</span>
                   </>
                 )}
               </button>
@@ -615,10 +1009,10 @@ export default function HubermanClient() {
                   }
                 }}
                 disabled={isActivating}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ${
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer ${
                   isProtocolFullyActiveToday
                     ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
-                    : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                    : 'bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-500 hover:to-teal-400 text-white'
                 }`}
               >
                 {isProtocolFullyActiveToday ? (
@@ -657,219 +1051,106 @@ export default function HubermanClient() {
             </div>
             <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3">
               <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Steps Count</div>
-              <div className="text-xs sm:text-sm font-semibold text-amber-400">{currentProtocol.steps?.length || 0} Modalities</div>
+              <div className="text-xs sm:text-sm font-semibold text-purple-400">{currentProtocol.steps?.length || 0} Modalities</div>
             </div>
           </div>
 
-          {/* Protocol Steps Checklist */}
+          {/* Protocol Steps Checklist & Circadian Arc View Mode Switcher */}
           <div className="space-y-4 pt-2">
-            <h4 className="text-sm font-bold text-slate-200 tracking-wide uppercase flex items-center justify-between">
-              <span>Sequenced Protocol Steps & Dosing Parameters</span>
-              <span className="text-xs text-slate-400 font-normal">Click any step for clinical paper & dosing</span>
-            </h4>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h4 className="text-sm font-bold text-slate-200 tracking-wide uppercase flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-teal-400" />
+                  <span>Sequenced Protocol Steps &amp; Dosing Parameters</span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Click any step for clinical paper, custom dosing, or 🔬 Geek Mode science.
+                </p>
+              </div>
 
-            <div className="space-y-3">
-              {(currentProtocol.steps || []).map((step: ProtocolStep, idx: number) => {
-                const stepModId = step.modality_id || step.modality?.id || ''
-                const fromCatalog = catalogModalities.find(m => m.id === stepModId || m.slug === stepModId)
-                const fromDoac = HUBERMAN_DOAC_MODALITIES.find(m => m.id === stepModId)
-                const fromBuiltIn = BUILT_IN_LONGEVITY_MODALITIES.find(m => m.id === stepModId)
-                const fromStep = step.modality
+              {/* View Switcher: Steps Checklist vs 24-Hour Circadian Arc */}
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 self-start sm:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('checklist')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    viewMode === 'checklist'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <ListChecks className="w-3.5 h-3.5" />
+                  <span>Checklist ({currentProtocol.steps?.length || 0})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('circadian')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    viewMode === 'circadian'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>24-Hour Arc</span>
+                </button>
+              </div>
+            </div>
 
-                const baseMod = fromCatalog || fromDoac || fromBuiltIn || fromStep || ({ id: stepModId, name: step.instructions } as Modality)
-                const fallbackMod = fromDoac || fromBuiltIn || fromStep
+            {/* Checklist View */}
+            {viewMode === 'checklist' && (
+              <div className="space-y-3.5 animate-in fade-in duration-150">
+                {(currentProtocol.steps || []).map((step: ProtocolStep, idx: number) => 
+                  renderModalityCard(step, idx)
+                )}
+              </div>
+            )}
 
-                const fullMod: Modality = {
-                  ...fallbackMod,
-                  ...baseMod,
-                  scientific_references: (baseMod.scientific_references && baseMod.scientific_references.length > 0)
-                    ? baseMod.scientific_references
-                    : (fallbackMod?.scientific_references && fallbackMod.scientific_references.length > 0)
-                      ? fallbackMod.scientific_references
-                      : (modalityReferences[stepModId] || []),
-                  functional_impacts: baseMod.functional_impacts || fallbackMod?.functional_impacts || {},
-                  mechanism_of_action: baseMod.mechanism_of_action || fallbackMod?.mechanism_of_action || '',
-                  evidence_summary: baseMod.evidence_summary || fallbackMod?.evidence_summary || ''
-                }
+            {/* 24-Hour Circadian Arc Diurnal View */}
+            {viewMode === 'circadian' && (
+              <div className="space-y-6 animate-in fade-in duration-150 pt-1">
+                {CIRCADIAN_WINDOWS.map((win) => {
+                  const windowSteps = (currentProtocol.steps || []).filter((s: ProtocolStep) => {
+                    const slotNorm = (s.timing_slot || s.timing_anchor || '').toLowerCase().replace(/[-\s]/g, '_')
+                    return win.slots.some(slotPattern => slotNorm.includes(slotPattern))
+                  })
 
-                const isStepActiveToday = todayTasks.some(t => t.modality_id === stepModId || t.modality_id === fullMod.id)
-                const isSigh = stepModId === 'physiological_sigh' || stepModId === 'cyclic_sighing' || fullMod.id === 'physiological_sigh' || fullMod.id === 'cyclic_sighing'
-                const stepKey = step.id || `${stepModId}-${idx}`
-                const isGeekOpen = expandedGeekStepId === stepKey
+                  if (windowSteps.length === 0) return null
 
-                return (
-                  <div
-                    key={stepKey}
-                    className="group relative rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-950/60 p-4 transition-all"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5 border border-slate-700">
-                          {idx + 1}
-                        </div>
-                        <div className="space-y-1.5 flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h5 className="text-sm sm:text-base font-bold text-white group-hover:text-amber-300 transition-colors">
-                              {fullMod.display_name || fullMod.name || step.instructions}
-                            </h5>
-                            {step.timing_slot && (
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 uppercase">
-                                {step.timing_slot}
+                  return (
+                    <div key={win.id} className="space-y-3">
+                      {/* Window Header */}
+                      <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-xl">{win.icon}</span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h5 className="text-sm font-extrabold text-white">
+                                {win.title}
+                              </h5>
+                              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold ${win.badgeColor}`}>
+                                {windowSteps.length} {windowSteps.length === 1 ? 'Modality' : 'Modalities'}
                               </span>
-                            )}
-                            {step.temperature && (
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-950/60 text-blue-300 border border-blue-800/60">
-                                🌡️ {step.temperature}
-                              </span>
-                            )}
-                            {isStepActiveToday ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                                <span>In Today’s Schedule</span>
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => handleAddSingleStepToToday(stepModId, step.timing_slot)}
-                                disabled={isActivating}
-                                className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-all disabled:opacity-50 cursor-pointer"
-                              >
-                                <Plus className="w-2.5 h-2.5 stroke-[3]" />
-                                <span>Add to Today</span>
-                              </button>
-                            )}
+                            </div>
+                            <p className="text-[11px] text-slate-400 font-sans mt-0.5">
+                              {win.subtitle}
+                            </p>
                           </div>
-
-                          {/* Dosing Specs */}
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-amber-400 font-medium">
-                            {step.dose_text && (
-                              <span>Dose: {step.dose_text}</span>
-                            )}
-                            {step.duration && (
-                              <span>• Duration: {step.duration}</span>
-                            )}
-                            {step.frequency && (
-                              <span>• Frequency: {step.frequency}</span>
-                            )}
-                          </div>
-
-                          {/* Modality Instructions & DOAC Note: Collapsed by Default for Longer Descriptions */}
-                          {(() => {
-                            const descriptionText = step.instructions || fullMod.brief_description || ''
-                            const hasLongDescription = descriptionText.length > 110 || Boolean(step.notes)
-                            const isDescExpanded = !!expandedDescStepIds[stepKey]
-
-                            if (!hasLongDescription) {
-                              return (
-                                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed pt-0.5">
-                                  {descriptionText}
-                                </p>
-                              )
-                            }
-
-                            return (
-                              <div className="space-y-1.5 pt-0.5">
-                                {isDescExpanded ? (
-                                  <>
-                                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed animate-in fade-in duration-150">
-                                      {descriptionText}
-                                    </p>
-                                    {step.notes && (
-                                      <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200/90 italic animate-in fade-in duration-150">
-                                        💡 <span className="font-semibold text-amber-300 not-italic">Huberman DOAC Note:</span> {step.notes}
-                                      </div>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => setExpandedDescStepIds(prev => ({ ...prev, [stepKey]: false }))}
-                                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-slate-300 transition-colors pt-0.5 cursor-pointer"
-                                    >
-                                      <span>Collapse protocol instructions</span>
-                                      <ChevronUp className="w-3 h-3" />
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-2">
-                                      {descriptionText}
-                                    </p>
-                                    <button
-                                      type="button"
-                                      onClick={() => setExpandedDescStepIds(prev => ({ ...prev, [stepKey]: true }))}
-                                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors pt-0.5 cursor-pointer"
-                                    >
-                                      <span>Read full protocol instructions &amp; DOAC note</span>
-                                      <ChevronDown className="w-3 h-3" />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            )
-                          })()}
                         </div>
                       </div>
 
-                      {/* Right-Side Actions: Launch Breathwork Applet, Inline Geek Mode, or Inspect Dose */}
-                      <div className="flex flex-wrap sm:flex-col items-center sm:items-end gap-2 flex-shrink-0 pt-2 sm:pt-0">
-                        {isSigh && (
-                          <button
-                            onClick={() => setIsBreathworkOpen(true)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow transition-all cursor-pointer"
-                          >
-                            <Play className="w-3 h-3 fill-current" />
-                            <span>Run Pacer (5m)</span>
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => setExpandedGeekStepId(isGeekOpen ? null : stepKey)}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                            isGeekOpen 
-                              ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
-                              : 'bg-purple-950/40 text-purple-300 hover:bg-purple-900/60 border-purple-800/60'
-                          }`}
-                        >
-                          <Microscope className="w-3.5 h-3.5" />
-                          <span>{isGeekOpen ? 'Hide Science' : '🔬 Geek Mode'}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedModalityForDetail(fullMod)
-                            setIsDosageModalOpen(true)
-                          }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-200 bg-slate-800/90 hover:bg-slate-700 hover:text-white border border-slate-700 transition-colors shadow-sm cursor-pointer"
-                        >
-                          <Info className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Inspect Modality</span>
-                        </button>
-
-                        {(fullMod.scientific_references?.[0]?.url || modalityReferences[stepModId]?.[0]?.url) && (
-                          <a
-                            href={fullMod.scientific_references?.[0]?.url || modalityReferences[stepModId]?.[0]?.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 transition-colors"
-                          >
-                            <BookOpen className="w-3 h-3" />
-                            <span>PubMed Paper</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
-                        )}
+                      {/* Window Steps with vertical circadian connecting rail */}
+                      <div className="relative pl-4 sm:pl-6 space-y-3 before:absolute before:left-2 sm:before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-purple-500/80 before:to-teal-500/80">
+                        {windowSteps.map((step: ProtocolStep) => {
+                          const originalIdx = (currentProtocol.steps || []).findIndex(s => s.id === step.id)
+                          return renderModalityCard(step, originalIdx >= 0 ? originalIdx : 0)
+                        })}
                       </div>
                     </div>
-
-                    {/* Inline Expandable Geek Mode Card */}
-                    {isGeekOpen && (
-                      <div className="mt-4 pt-3 border-t border-slate-800/80 animate-in fade-in duration-200">
-                        <GeekMode modality={fullMod} />
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -877,8 +1158,8 @@ export default function HubermanClient() {
         <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 sm:p-7 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
             <div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">
-                <Award className="w-4 h-4 text-amber-400" />
+              <div className="flex items-center gap-2 text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">
+                <Award className="w-4 h-4 text-purple-400" />
                 Evidence-Anchored Longevity Profile
               </div>
               <h3 className="text-xl font-bold text-white">
@@ -910,40 +1191,40 @@ export default function HubermanClient() {
               <div className="w-full bg-slate-800 rounded-full h-1.5">
                 <div className="bg-rose-500 h-1.5 rounded-full" style={{ width: '88%' }} />
               </div>
-              <p className="text-[11px] text-slate-400">Resting HRV elevation, autonomic baroreflex restoration, and Zone 2 mitochondrial capillarization.</p>
+              <p className="text-[11px] text-slate-400">Zone 2 mitochondrial respiration, left ventricular stroke volume, and vagal tone.</p>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-semibold text-emerald-400">⚡ Metabolic Health</span>
-                <span className="text-xs font-bold text-white">85 / 100</span>
+                <span className="text-xs font-bold text-white">90 / 100</span>
               </div>
               <div className="w-full bg-slate-800 rounded-full h-1.5">
-                <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: '85%' }} />
+                <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: '90%' }} />
               </div>
-              <p className="text-[11px] text-slate-400">Postprandial GLUT4 non-insulin glucose clearance and brown adipose tissue UCP-1 thermogenesis.</p>
+              <p className="text-[11px] text-slate-400">GLUT4 glucose disposal walks, brown adipose tissue thermogenesis, and insulin sensitivity.</p>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-semibold text-amber-400">🛡️ Inflammation & HPA</span>
+                <span className="text-xs font-semibold text-amber-400">🛡️ Inflammation &amp; HPA</span>
                 <span className="text-xs font-bold text-white">86 / 100</span>
               </div>
               <div className="w-full bg-slate-800 rounded-full h-1.5">
                 <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: '86%' }} />
               </div>
-              <p className="text-[11px] text-slate-400">Cortisol awakening synchronization, vagal cholinergic anti-inflammatory reflex, and hs-CRP reduction.</p>
+              <p className="text-[11px] text-slate-400">Autonomic vagal sigh resetting, delayed caffeine adenosine buffering, and stress resilience.</p>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-semibold text-sky-400">💪 Testosterone / Hormonal</span>
+                <span className="text-xs font-semibold text-blue-400">⚡ Testosterone &amp; Endocrine</span>
                 <span className="text-xs font-bold text-white">84 / 100</span>
               </div>
               <div className="w-full bg-slate-800 rounded-full h-1.5">
-                <div className="bg-sky-500 h-1.5 rounded-full" style={{ width: '84%' }} />
+                <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: '84%' }} />
               </div>
-              <p className="text-[11px] text-slate-400">Preserves nocturnal LH pulses through slow-wave sleep protection; heavy compound resistance loading.</p>
+              <p className="text-[11px] text-slate-400">Compound resistance mechanical tension, deep NREM pulsatile LH release, and cold dopamine.</p>
             </div>
 
             <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-1.5">
@@ -986,7 +1267,7 @@ export default function HubermanClient() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-amber-400" />
+                <Share2 className="w-4 h-4 text-sky-400" />
                 <span>Direct Protocol Links (Shareable)</span>
               </h3>
               <p className="text-xs text-slate-400">
@@ -1013,7 +1294,7 @@ export default function HubermanClient() {
 
                 <button
                   onClick={() => handleCopyLink(tab.slug)}
-                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white transition-colors"
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
                 >
                   {copiedLink === tab.slug ? (
                     <>

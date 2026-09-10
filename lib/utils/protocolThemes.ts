@@ -48,6 +48,42 @@ export interface ProtocolVisualTheme {
 
 // Curated signature visual themes for known protocols in the library
 export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
+  // 0. Andrew Huberman Diary of a CEO 10-Protocol Operating System
+  'andrew_huberman_doac_operating_system': {
+    id: 'andrew_huberman_doac_operating_system',
+    name: "Dr. Andrew Huberman's Diary of a CEO 10-Protocol Operating System",
+    iconName: 'Brain',
+    categories: ['mind', 'thermal', 'fitness', 'sleep'],
+    categoryBadges: [
+      { type: 'mind', label: 'Neuroscience', colorHex: '#A855F7', bgTint: 'rgba(168, 85, 247, 0.2)' },
+      { type: 'thermal', label: 'Thermal Cold', colorHex: '#06B6D4', bgTint: 'rgba(6, 182, 212, 0.2)' },
+      { type: 'sleep', label: 'Circadian Arc', colorHex: '#6366F1', bgTint: 'rgba(99, 102, 241, 0.2)' }
+    ],
+    primaryColorHex: '#A855F7',
+    secondaryColorHex: '#06B6D4',
+    gradientCSS: 'linear-gradient(135deg, #A855F7 0%, #06B6D4 50%, #6366F1 100%)',
+    glowColor: 'rgba(168, 85, 247, 0.4)',
+    accentBorderCSS: 'linear-gradient(90deg, #A855F7, #06B6D4, #6366F1)',
+    subtleBgTint: 'rgba(168, 85, 247, 0.08)'
+  },
+  'huberman-doac': {
+    id: 'huberman-doac',
+    name: "Dr. Andrew Huberman's Diary of a CEO 10-Protocol Operating System",
+    iconName: 'Brain',
+    categories: ['mind', 'thermal', 'fitness', 'sleep'],
+    categoryBadges: [
+      { type: 'mind', label: 'Neuroscience', colorHex: '#A855F7', bgTint: 'rgba(168, 85, 247, 0.2)' },
+      { type: 'thermal', label: 'Thermal Cold', colorHex: '#06B6D4', bgTint: 'rgba(6, 182, 212, 0.2)' },
+      { type: 'sleep', label: 'Circadian Arc', colorHex: '#6366F1', bgTint: 'rgba(99, 102, 241, 0.2)' }
+    ],
+    primaryColorHex: '#A855F7',
+    secondaryColorHex: '#06B6D4',
+    gradientCSS: 'linear-gradient(135deg, #A855F7 0%, #06B6D4 50%, #6366F1 100%)',
+    glowColor: 'rgba(168, 85, 247, 0.4)',
+    accentBorderCSS: 'linear-gradient(90deg, #A855F7, #06B6D4, #6366F1)',
+    subtleBgTint: 'rgba(168, 85, 247, 0.08)'
+  },
+
   // 1. Bryan Johnson Blueprint Core
   'bryan_johnson_blueprint_protocol': {
     id: 'bryan_johnson_blueprint_protocol',
