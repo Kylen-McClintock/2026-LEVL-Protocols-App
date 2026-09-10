@@ -684,5 +684,82 @@ export const COMPREHENSIVE_CONFLICT_RULES: BiochemicalConflictRule[] = [
     pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/29072822/',
     targetPathway: 'Suprachiasmatic Nucleus (SCN) MT1/MT2 Phase Shifting',
     clinicalEffectDelta: 'Circadian Phase Confusion & Suppressed Awakening Cortisol'
+  },
+
+  // 19. Piperine / Berberine + Rapamycin / Statins (CYP3A4 & P-gp Blockade)
+  {
+    id: 'cyp3a4_inhibition_rapamycin_statins',
+    triggers: ['piperine', 'bioperine', 'blackpepperextract', 'grapefruitextract', 'naringin'],
+    targets: ['rapamycin', 'sirolimus', 'atorvastatin', 'simvastatin', 'lipitor'],
+    type: 'absorption_competition',
+    severity: 'critical',
+    headline: 'CYP3A4 & P-gp Blockade Spikes Serum Drug Levels 200–400%',
+    rationale: 'Piperine and naringin potently inhibit intestinal and hepatic Cytochrome P450 3A4 (CYP3A4) and P-glycoprotein efflux pumps. Co-administering with Rapamycin (Sirolimus) or lipophilic statins impairs hepatic clearance, driving uncontrollable 3x–4x blood AUC spikes and increasing risk of toxicity.',
+    mitigationRecommendation: 'Strictly separate high-dose Piperine / BioPerine by at least 4–6 hours from Rapamycin or prescription statins, or omit piperine on pulse medication days.',
+    autoResolutionTiming: {
+      spacingHours: 6,
+      recommendedTimeSlot: 'Separate by 6+ hours or separate day',
+      description: 'Do not co-ingest piperine with rapamycin or statins'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/23625327/',
+    targetPathway: 'Cytochrome P450 3A4 (CYP3A4) & P-Glycoprotein Efflux',
+    clinicalEffectDelta: '+300% Drug AUC Spike & Severe Toxicity Risk'
+  },
+
+  // 20. Evening / Night NAD+ Precursors (NMN / NR Clock Desynchrony)
+  {
+    id: 'circadian_nad_precursor_night',
+    triggers: ['nmn', 'nicotinamidemononucleotide', 'nr', 'nicotinamideriboside', 'nad', 'nadivtherapy'],
+    targets: ['darkcoolsleepenvironment', 'sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop', '478breathing', 'magnesiumglycinate'],
+    type: 'circadian_disruption',
+    severity: 'timing',
+    headline: 'Late-Day NAD+ Precursors Disrupt Peripheral Circadian Clocks',
+    rationale: 'In mammals, cellular NAD+ biosynthesis is naturally coupled to the daylight phase by the CLOCK:BMAL1 transcriptional loop and NAMPT. Ingesting high-dose NMN or NR in the evening or before bed stimulates nocturnal SIRT1 deacetylation of PER2, desynchronizing peripheral liver/muscle circadian clocks from the central SCN and delaying melatonin release.',
+    mitigationRecommendation: 'Take all NAD+ precursors (NMN, NR) upon waking or before 12:00 PM.',
+    autoResolutionTiming: {
+      recommendedTimeSlot: 'Morning (Waking / Early Day)',
+      description: 'Shift NMN/NR to morning for circadian alignment'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/23817539/',
+    targetPathway: 'CLOCK:BMAL1 / SIRT1 Molecular Oscillator',
+    clinicalEffectDelta: 'Peripheral Circadian Desynchrony & Delayed Melatonin'
+  },
+
+  // 21. Protein / Leucine Inside Autophagy Fasting Window (AMPK vs. mTOR Clash)
+  {
+    id: 'ampk_mtor_anabolic_catabolic_clash',
+    triggers: ['wheyprotein', 'leucine', 'essentialaminoacids', 'attiaproteindistribution'],
+    targets: ['intermittentfasting168', 'intermittentfasting186', 'intermittentfasting204', 'omadfasting', 'waterfast24h', 'prolongedautophagyfast72h', 'spermidine'],
+    type: 'autophagy_anabolism_antagonism',
+    severity: 'timing',
+    headline: 'Anabolic Amino Acids Shut Down Autophagic Flux & AMPK',
+    rationale: 'Leucine and branched-chain amino acids bind Sestrin2 to activate the Rag GTPase machinery, instantly translocating mTORC1 to the lysosomal membrane and phosphorylating ULK1 to shut down autophagosome formation. Taking protein or EAAs during a targeted autophagy fast completely blunts cellular renewal.',
+    mitigationRecommendation: 'Strictly preserve zero-calorie water/electrolytes during your fasting autophagy window; concentrate protein into your dedicated eating/refeed window.',
+    autoResolutionTiming: {
+      recommendedTimeSlot: 'Eating / Refeed Window',
+      description: 'Consume protein only inside your eating window'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/31631026/',
+    targetPathway: 'Sestrin2 / Rag GTPase / ULK1 Autophagy Switch',
+    clinicalEffectDelta: '-100% Autophagic Clearance & Sestrin2 mTORC1 Activation'
+  },
+
+  // 22. Magnesium Malate Pre-Bedtime (Krebs Cycle Stimulation)
+  {
+    id: 'magnesium_malate_prebed_insomnia',
+    triggers: ['magnesiummalate', 'malate'],
+    targets: ['sleep', 'darkcoolsleepenvironment', 'blueprintsleeparchitecture', 'walker65fthermaldrop'],
+    type: 'circadian_disruption',
+    severity: 'timing',
+    headline: 'Magnesium Malate Stimulates Krebs Cycle ATP Prior to Bedtime',
+    rationale: 'Malic acid is an intermediate in the citric acid (Krebs) cycle that directly stimulates ATP production and cellular energy metabolism. Taking Magnesium Malate within 3 hours of sleep can induce alertness and insomnia rather than sedation.',
+    mitigationRecommendation: 'Move Magnesium Malate to morning or pre-workout; use Magnesium Glycinate or L-Threonate for evening sleep.',
+    autoResolutionTiming: {
+      recommendedTimeSlot: 'Morning (with breakfast)',
+      description: 'Shift Magnesium Malate to morning; use Glycinate for sleep'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/23853635/',
+    targetPathway: 'Citric Acid Cycle Malate-Aspartate Shuttle',
+    clinicalEffectDelta: 'Nocturnal ATP Stimulation & Delayed Sleep Onset'
   }
 ]

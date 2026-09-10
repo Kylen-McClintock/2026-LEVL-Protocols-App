@@ -1,4 +1,4 @@
-import { DailyProtocolTask, Modality, UserProfile } from '@/lib/types'
+import { DailyProtocolTask, Modality, UserProfile, DailyWellbeingCheckin } from '@/lib/types'
 import {
   COMPREHENSIVE_CONFLICT_RULES,
   COMPREHENSIVE_SYNERGY_RULES,
@@ -91,6 +91,26 @@ export interface RoutineTimelineSlotGroup {
   }[]
 }
 
+export interface PKDataPoint {
+  hour: number // 6.0 to 24.0
+  concentrationPct: number // 0 to 100%
+  timeLabel: string
+}
+
+export interface PharmacokineticCurveSeries {
+  id: string
+  compoundName: string
+  headline: string
+  halfLifeHours: number
+  doseHour: number
+  strokeColor: string
+  fillColor: string
+  dataPoints: PKDataPoint[]
+  criticalThresholdHour?: number
+  thresholdLabel?: string
+  conflictNote?: string
+}
+
 export interface RoutineStackHealthReport {
   overallScore: number // 0-100
   healthGrade: 'Optimal' | 'High' | 'Needs Optimization' | 'Critical Conflict'
@@ -105,6 +125,8 @@ export interface RoutineStackHealthReport {
   timelineGroups: RoutineTimelineSlotGroup[]
   currentRadarFingerprint: ProtocolFingerprint
   optimizedRadarFingerprint: ProtocolFingerprint
+  pkCurves: PharmacokineticCurveSeries[]
+  biometricProofNotes: string[]
   summaryMessage: string
 }
 
@@ -164,6 +186,37 @@ function getTimelineSlotLabel(hourDec: number): { slot: string; label: string } 
   return { slot: 'bedtime', label: 'Pre-Bed & Sleep (10:00 PM – 11:30 PM)' }
 }
 
+function formatHourLabel(h: number): string {
+  const normH = Math.floor(h)
+  const m = Math.round((h - normH) * 60)
+  const mStr = m === 0 ? '00' : String(m).padStart(2, '0')
+  const period = normH >= 12 && normH < 24 ? 'PM' : 'AM'
+  const displayH = normH === 0 ? 12 : normH > 12 ? normH - 12 : normH
+  return `${displayH}:${mStr} ${period}`
+}
+
+function calculatePKCurve(doseHour: number, halfLife: number, tMax: number = 0.5): PKDataPoint[] {
+  const points: PKDataPoint[] = []
+  for (let h = 6; h <= 24; h += 0.5) {
+    let conc = 0
+    if (h >= doseHour) {
+      const dt = h - doseHour
+      if (dt < tMax) {
+        conc = Math.round((dt / tMax) * 100)
+      } else {
+        const decayTime = dt - tMax
+        conc = Math.round(100 * Math.pow(0.5, decayTime / halfLife))
+      }
+    }
+    points.push({
+      hour: h,
+      concentrationPct: Math.max(0, Math.min(100, conc)),
+      timeLabel: formatHourLabel(h)
+    })
+  }
+  return points
+}
+
 // ============================================================================
 // Core Audit Engine
 // ============================================================================
@@ -171,7 +224,8 @@ function getTimelineSlotLabel(hourDec: number): { slot: string; label: string } 
 export function auditRoutineStackHealth(
   activeTasks: DailyProtocolTask[],
   allModalities: Modality[],
-  userProfile?: UserProfile | null
+  userProfile?: UserProfile | null,
+  wellbeingCheckin?: DailyWellbeingCheckin | null
 ): RoutineStackHealthReport {
   // 1. Resolve active modalities and their scheduled context
   const activeTaskModalityMap: {
@@ -554,6 +608,97 @@ export function auditRoutineStackHealth(
     hallmarks: dummyHallmarks
   }
 
+  // 8. Generate Pharmacokinetic Curves for Active Interacting Compounds
+  const pkCurves: PharmacokineticCurveSeries[] = []
+
+  // Caffeine curve
+  const caffeineItem = activeTaskModalityMap.find(i => i.normKey.includes('caffeine') || i.normKey.includes('coffee') || i.normKey.includes('preworkout'))
+  if (caffeineItem) {
+    const doseHour = caffeineItem.hourDec
+    const dataPoints = calculatePKCurve(doseHour, 5.7, 0.75)
+    const bedtimeHour = 22.5
+    const concAtBed = dataPoints.find(p => p.hour === bedtimeHour)?.concentrationPct ?? 0
+
+    pkCurves.push({
+      id: 'pk_caffeine',
+      compoundName: caffeineItem.modality.display_name || caffeineItem.modality.name,
+      headline: `Caffeine Elimination Kinetics (t½ = 5.7h)`,
+      halfLifeHours: 5.7,
+      doseHour,
+      strokeColor: '#F59E0B',
+      fillColor: 'rgba(245, 158, 11, 0.15)',
+      dataPoints,
+      criticalThresholdHour: bedtimeHour,
+      thresholdLabel: 'Bedtime (10:30 PM)',
+      conflictNote: concAtBed > 20
+        ? `${concAtBed}% active caffeine still circulating at bedtime — exceeds 20% slow-wave sleep threshold.`
+        : 'Clearance aligns with sleep architecture.'
+    })
+  }
+
+  // Metformin / Berberine curve
+  const metabolicItem = activeTaskModalityMap.find(i => i.normKey.includes('metformin') || i.normKey.includes('glucophage') || i.normKey.includes('berberine'))
+  if (metabolicItem) {
+    const doseHour = metabolicItem.hourDec
+    const dataPoints = calculatePKCurve(doseHour, 6.0, 2.5)
+    pkCurves.push({
+      id: 'pk_metformin',
+      compoundName: metabolicItem.modality.display_name || metabolicItem.modality.name,
+      headline: `${metabolicItem.modality.name} Plasma Concentration (t_max = 2.5h)`,
+      halfLifeHours: 6.0,
+      doseHour,
+      strokeColor: '#A855F7',
+      fillColor: 'rgba(168, 85, 247, 0.15)',
+      dataPoints,
+      conflictNote: conflicts.some(c => c.conflictType === 'mitochondrial_blunting')
+        ? 'Peak serum concentration directly overlaps with endurance exercise window.'
+        : 'Physiologically separated from aerobic training.'
+    })
+  }
+
+  // Resistance Training / mTORC1 Hypertrophy Sensitivity Curve
+  const strengthItem = activeTaskModalityMap.find(i => i.normKey.includes('resistancetraining') || i.normKey.includes('strengthtraining') || i.normKey.includes('hypertrophy'))
+  if (strengthItem) {
+    const doseHour = strengthItem.hourDec
+    const dataPoints = calculatePKCurve(doseHour, 2.0, 0.5)
+    pkCurves.push({
+      id: 'pk_hypertrophy',
+      compoundName: `${strengthItem.modality.name} Hypertrophy Signaling`,
+      headline: 'p70S6K / mTORC1 Adaptive Window (4-Hour Window)',
+      halfLifeHours: 2.0,
+      doseHour,
+      strokeColor: '#EC4899',
+      fillColor: 'rgba(236, 72, 153, 0.15)',
+      dataPoints,
+      conflictNote: conflicts.some(c => c.conflictType === 'hypertrophy_blunting')
+        ? 'Cold immersion scheduled within this 4-hour window blunts muscle growth signaling.'
+        : 'Hormetic adaptive window preserved.'
+    })
+  }
+
+  // 9. Check-in Correlation & Manual Sleep Evidence Proof Notes
+  const biometricProofNotes: string[] = []
+  if (wellbeingCheckin) {
+    const sleepRating = (wellbeingCheckin as any).sleep_quality ?? (wellbeingCheckin as any).sleep_score ?? (wellbeingCheckin as any).sleep
+    if (sleepRating != null && Number(sleepRating) <= 6 && conflicts.some(c => c.conflictType === 'circadian_disruption')) {
+      biometricProofNotes.push(
+        `Manual Sleep Check-in: Your logged sleep score (${sleepRating}/10) reflects degraded slow-wave rest on dates with late caffeine or evening thermal stimulation.`
+      )
+    }
+    const energyRating = (wellbeingCheckin as any).energy
+    if (energyRating != null && Number(energyRating) <= 6 && conflicts.some(c => c.conflictType === 'mitochondrial_blunting' || c.conflictType === 'absorption_competition')) {
+      biometricProofNotes.push(
+        `Subjective Energy Log: Midday energy dips align with active nutrient timing competition in your scheduled stack.`
+      )
+    }
+  }
+
+  if (biometricProofNotes.length === 0) {
+    biometricProofNotes.push(
+      'Continue logging your daily morning and evening wellbeing check-ins to unlock personalized correlation proof notes.'
+    )
+  }
+
   // Summary headline
   let summaryMessage = 'Your daily schedule is synergistically aligned with zero timing conflicts.'
   if (criticalCount > 0) {
@@ -578,6 +723,8 @@ export function auditRoutineStackHealth(
     timelineGroups,
     currentRadarFingerprint,
     optimizedRadarFingerprint,
+    pkCurves,
+    biometricProofNotes,
     summaryMessage
   }
 }

@@ -49,6 +49,8 @@ import { getPeakOnsetGuidance } from '@/lib/utils/peakOnsetGuidance'
 import { getCircadianConfig } from '@/lib/utils/circadianConfig'
 import { resolveOptimalTimingSlot } from '@/lib/data/resolveOptimalTiming'
 import { getModalityArchetype } from '@/lib/data/modalityArchetypes'
+import { detectPreFlightSpacingNudge } from '@/lib/synergy/preFlightSpacingNudge'
+import PreFlightSpacingNudgeBanner from './PreFlightSpacingNudgeBanner'
 import dynamic from 'next/dynamic'
 
 const CyclicSighingApplet = dynamic(() => import('../applets/CyclicSighingApplet'), {
@@ -509,6 +511,39 @@ export default function ProtocolTaskCard({
   const [showRedLightApplet, setShowRedLightApplet] = useState(false)
   const lastCheckClickTimeRef = useRef<number>(0)
   const isFastMode = completionMode === 'fast'
+  const [isNudgeDismissed, setIsNudgeDismissed] = useState(false)
+
+  const preFlightNudge = useMemo(() => {
+    return detectPreFlightSpacingNudge(task, recentTasks, userProfile)
+  }, [task, recentTasks, userProfile])
+
+  const handleApplyNudgeDelay = async (targetTimeStr?: string, targetSlot?: string) => {
+    const localUserId = getLocalUserId()
+    const fromDate = task.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+    const modalityId = task.modality_id || task.protocol_step?.modality_id || task.loose_modality?.id
+    if (!modalityId) return
+
+    const timingToApply = targetTimeStr || (targetSlot ? targetSlot.charAt(0).toUpperCase() + targetSlot.slice(1) : 'Evening')
+
+    await reconcileModalityScheduleAndFutureTasks(localUserId, modalityId, {
+      customTiming: timingToApply,
+      fromDate,
+      protocolStepId: task.protocol_step_id || undefined,
+      scheduleConfig: task.execution_details?.schedule_config
+    })
+
+    if (onStatusChange) {
+      onStatusChange(task.id, 'pending', `Delayed to ${timingToApply}`, undefined, undefined, {
+        ...(task.execution_details || {}),
+        custom_timing: timingToApply
+      })
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+      window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+    }
+  }
 
   const cardModalityId = task.modality_id || task.protocol_step?.modality_id || task.loose_modality?.id
 
@@ -1690,6 +1725,16 @@ export default function ProtocolTaskCard({
                 <h3 className="font-extrabold text-sm sm:text-base text-white leading-snug hover:text-purple-300 transition-colors">
                   {modality.display_name || modality.name}
                 </h3>
+                {preFlightNudge && !isNudgeDismissed && (
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 flex items-center gap-1 ${
+                    preFlightNudge.severity === 'critical' 
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                      : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  }`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                    <span>{preFlightNudge.severity === 'critical' ? 'Conflict' : 'Spacing'}</span>
+                  </span>
+                )}
                 <div onClick={(e) => e.stopPropagation()} className="min-w-0 max-w-full">
                 <DosageBadgeButton
                   modality={modality}
@@ -1799,33 +1844,44 @@ export default function ProtocolTaskCard({
             </div>
           </div>
 
-          {/* Fast Mode Inline Skip Reason */}
-          {showSkipReason && (
-            <div className="mt-2 pt-2 border-t border-white/10 flex items-center gap-2 animate-in fade-in" onClick={e => e.stopPropagation()}>
-              <input 
-                type="text" 
-                value={skipReason}
-                onChange={e => setSkipReason(e.target.value)}
-                placeholder="Reason for skipping today..."
-                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-purple-400"
-                autoFocus
-              />
-              <button 
-                type="button"
-                onClick={handleSkipSubmit}
-                className="px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 text-xs font-bold border border-red-500/30 cursor-pointer"
-              >
-                Skip
-              </button>
-              <button 
-                type="button"
-                onClick={() => setShowSkipReason(false)}
-                className="p-1 text-gray-400 hover:text-white cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
+              {/* Fast Mode Inline Skip Reason */}
+              {showSkipReason && (
+                <div className="mt-2 pt-2 border-t border-white/10 flex items-center gap-2 animate-in fade-in" onClick={e => e.stopPropagation()}>
+                  <input 
+                    type="text" 
+                    value={skipReason}
+                    onChange={e => setSkipReason(e.target.value)}
+                    placeholder="Reason for skipping today..."
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-purple-400"
+                    autoFocus
+                  />
+                  <button 
+                    type="button"
+                    onClick={handleSkipSubmit}
+                    className="px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 text-xs font-bold border border-red-500/30 cursor-pointer"
+                  >
+                    Skip
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setShowSkipReason(false)}
+                    className="p-1 text-gray-400 hover:text-white cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Fast Mode Pre-Flight Spacing & Conflict Nudge */}
+              {preFlightNudge && !isNudgeDismissed && (
+                <PreFlightSpacingNudgeBanner
+                  nudge={preFlightNudge}
+                  task={task}
+                  onApplyDelay={handleApplyNudgeDelay}
+                  onOpenReschedule={onOpenRescheduleModal}
+                  onDismiss={() => setIsNudgeDismissed(true)}
+                />
+              )}
         </div>
       ) : (
         /* PENDING & OTHER STATUSES HEADER */
@@ -1881,6 +1937,16 @@ export default function ProtocolTaskCard({
             <div className="min-w-0 flex-1">
               <h3 className="font-extrabold text-base sm:text-lg leading-tight text-white inline-flex flex-wrap items-center gap-2">
                 <span>{modality.display_name || modality.name}</span>
+                {preFlightNudge && !isNudgeDismissed && (
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                    preFlightNudge.severity === 'critical'
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                      : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  }`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                    <span>{preFlightNudge.severity === 'critical' ? 'Biochemical Conflict' : 'Cooldown Spacing'}</span>
+                  </span>
+                )}
                 {isRecentlyCompleted && (
                   <span className="text-xs font-extrabold text-emerald-300 bg-emerald-950/90 border border-emerald-500/60 px-2.5 py-0.5 rounded-full flex items-center gap-1 animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_12px_rgba(16,185,129,0.6)]">
                     <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-400" />
@@ -2121,6 +2187,17 @@ export default function ProtocolTaskCard({
             )}
           </div>
         </div>
+
+        {/* Pre-Flight Spacing & Conflict Nudge */}
+        {preFlightNudge && !isNudgeDismissed && (
+          <PreFlightSpacingNudgeBanner
+            nudge={preFlightNudge}
+            task={task}
+            onApplyDelay={handleApplyNudgeDelay}
+            onOpenReschedule={onOpenRescheduleModal}
+            onDismiss={() => setIsNudgeDismissed(true)}
+          />
+        )}
 
         {/* Live Warning Example */}
         {task.protocol_step?.safety_notes && (

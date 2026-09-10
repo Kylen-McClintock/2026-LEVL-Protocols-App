@@ -19,9 +19,10 @@ import {
   Sun,
   Moon,
   Info,
-  Scale
+  Scale,
+  Activity
 } from 'lucide-react'
-import { DailyProtocolTask, Modality, UserProfile } from '@/lib/types'
+import { DailyProtocolTask, Modality, UserProfile, DailyWellbeingCheckin } from '@/lib/types'
 import {
   auditRoutineStackHealth,
   RoutineStackHealthReport
@@ -36,6 +37,7 @@ export interface StackHealthOptimizerModalProps {
   activeTasks: DailyProtocolTask[]
   allModalities: Modality[]
   userProfile?: UserProfile | null
+  wellbeingCheckin?: DailyWellbeingCheckin | null
   onOptimizationsApplied?: () => void
 }
 
@@ -45,9 +47,10 @@ export const StackHealthOptimizerModal: React.FC<StackHealthOptimizerModalProps>
   activeTasks,
   allModalities,
   userProfile,
+  wellbeingCheckin,
   onOptimizationsApplied
 }) => {
-  const [activeTab, setActiveTab] = useState<'conflicts' | 'synergies' | 'radar' | 'timeline'>('conflicts')
+  const [activeTab, setActiveTab] = useState<'conflicts' | 'synergies' | 'radar' | 'timeline' | 'pk'>('conflicts')
   const [selectedConflictFixes, setSelectedConflictFixes] = useState<Record<string, boolean>>({})
   const [selectedSynergyFixes, setSelectedSynergyFixes] = useState<Record<string, boolean>>({})
   const [isApplying, setIsApplying] = useState(false)
@@ -55,8 +58,8 @@ export const StackHealthOptimizerModal: React.FC<StackHealthOptimizerModalProps>
 
   // 1. Run live Stack Health Audit
   const auditReport: RoutineStackHealthReport = useMemo(() => {
-    return auditRoutineStackHealth(activeTasks, allModalities, userProfile)
-  }, [activeTasks, allModalities, userProfile])
+    return auditRoutineStackHealth(activeTasks, allModalities, userProfile, wellbeingCheckin)
+  }, [activeTasks, allModalities, userProfile, wellbeingCheckin])
 
   // 2. Initialize default fix selections (all checked on)
   React.useEffect(() => {
@@ -309,6 +312,24 @@ export const StackHealthOptimizerModal: React.FC<StackHealthOptimizerModalProps>
           >
             <Clock size={14} />
             <span>24h Routine Flow</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('pk')}
+            className={`px-3 py-2 text-xs font-bold rounded-t-xl transition-all border-b-2 whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'pk'
+                ? 'border-indigo-400 text-indigo-300 bg-zinc-800/60'
+                : 'border-transparent text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Activity size={14} />
+            <span>Pharmacokinetics (PK)</span>
+            {auditReport.pkCurves.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-500/20 text-indigo-300 font-mono">
+                {auditReport.pkCurves.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -655,6 +676,121 @@ export const StackHealthOptimizerModal: React.FC<StackHealthOptimizerModalProps>
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: PHARMACOKINETICS (PK) & BIOMETRIC PROOF */}
+          {activeTab === 'pk' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
+                    <Activity size={14} className="text-indigo-400" />
+                    <span>24-Hour Pharmacokinetic Serum Decay Curves</span>
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Mathematical serum concentration models illustrating compound clearance and receptor binding over time.
+                  </p>
+                </div>
+              </div>
+
+              {auditReport.pkCurves.length === 0 ? (
+                <div className="p-6 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800 text-zinc-400 text-xs">
+                  No active pharmacokinetic conflict compounds (caffeine, metformin, acute resistance training) detected in today's active schedule.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {auditReport.pkCurves.map(curve => {
+                    const svgW = 540
+                    const svgH = 120
+                    const startH = 6
+                    const endH = 24
+                    const rangeH = endH - startH
+
+                    const getX = (h: number) => ((h - startH) / rangeH) * (svgW - 40) + 20
+                    const getY = (conc: number) => svgH - 20 - (conc / 100) * (svgH - 40)
+
+                    const pathPoints = curve.dataPoints.map(pt => `${getX(pt.hour).toFixed(1)},${getY(pt.concentrationPct).toFixed(1)}`).join(' ')
+                    const fillPoints = `20,${svgH - 20} ${pathPoints} ${getX(24).toFixed(1)},${svgH - 20}`
+
+                    return (
+                      <div key={curve.id} className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-3">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div>
+                            <span className="text-xs font-bold text-white block">{curve.headline}</span>
+                            <span className="text-[11px] text-zinc-400 font-mono">{curve.compoundName} • Elimination Half-Life {curve.halfLifeHours}h</span>
+                          </div>
+                          {curve.conflictNote && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-950 border border-zinc-700 text-zinc-300">
+                              {curve.conflictNote}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* SVG Curve Canvas */}
+                        <div className="w-full bg-zinc-950/80 rounded-xl p-2 border border-zinc-800/60 overflow-x-auto">
+                          <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-28 overflow-visible">
+                            <line x1="20" y1={getY(0)} x2={svgW - 20} y2={getY(0)} stroke="#27272A" strokeWidth="1" />
+                            <line x1="20" y1={getY(50)} x2={svgW - 20} y2={getY(50)} stroke="#27272A" strokeWidth="1" strokeDasharray="3,3" />
+                            <line x1="20" y1={getY(100)} x2={svgW - 20} y2={getY(100)} stroke="#27272A" strokeWidth="1" strokeDasharray="3,3" />
+
+                            {curve.criticalThresholdHour && (
+                              <>
+                                <line
+                                  x1={getX(curve.criticalThresholdHour)}
+                                  y1="10"
+                                  x2={getX(curve.criticalThresholdHour)}
+                                  y2={svgH - 20}
+                                  stroke="#F43F5E"
+                                  strokeWidth="1.5"
+                                  strokeDasharray="4,4"
+                                />
+                                <text
+                                  x={getX(curve.criticalThresholdHour) - 4}
+                                  y="16"
+                                  fill="#FDA4AF"
+                                  fontSize="9"
+                                  textAnchor="end"
+                                  fontFamily="monospace"
+                                >
+                                  {curve.thresholdLabel || 'Bedtime'}
+                                </text>
+                              </>
+                            )}
+
+                            <polygon points={fillPoints} fill={curve.fillColor} />
+                            <polyline points={pathPoints} fill="none" stroke={curve.strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                            {[6, 9, 12, 15, 18, 21, 24].map(h => (
+                              <text key={h} x={getX(h)} y={svgH - 6} fill="#71717A" fontSize="9" textAnchor="middle" fontFamily="monospace">
+                                {h === 12 ? '12 PM' : h === 24 ? '12 AM' : h > 12 ? `${h - 12} PM` : `${h} AM`}
+                              </text>
+                            ))}
+                          </svg>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Personal Check-in Evidence Card */}
+              <div className="p-4 rounded-2xl bg-indigo-950/25 border border-indigo-500/30 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-indigo-400" />
+                  <h4 className="text-xs font-bold text-indigo-200 uppercase tracking-wider font-mono">
+                    Personalized Check-in &amp; Sleep Verification
+                  </h4>
+                </div>
+                <div className="space-y-1.5">
+                  {auditReport.biometricProofNotes.map((note, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-xs text-zinc-300 leading-relaxed">
+                      <span className="text-indigo-400 font-bold">•</span>
+                      <span>{note}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

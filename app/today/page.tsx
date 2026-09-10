@@ -405,11 +405,6 @@ function TodayPageContent() {
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([])
   const [isStackHealthModalOpen, setIsStackHealthModalOpen] = useState(false)
 
-  // Continuous Live Stack Health & Biochemical Conflict Audit
-  const routineAudit = useMemo(() => {
-    return auditRoutineStackHealth(tasks, allModalities, profile)
-  }, [tasks, allModalities, profile])
-
   // Bidirectional View Mode sync with TopStickyHeader
   useEffect(() => {
     const handleSetViewMode = (e: any) => {
@@ -479,6 +474,11 @@ function TodayPageContent() {
   const userActualWakeTime = wellbeingCheckin?.actual_wake_time || wellbeingCheckin?.custom_outcomes_jsonb?._actual_wake_time || undefined
   const userActualSleepMinutes = wellbeingCheckin?.actual_sleep_minutes ?? wellbeingCheckin?.custom_outcomes_jsonb?._actual_sleep_minutes
   const userSubjectiveSleep = wellbeingCheckin?.subjective_sleep_0_10
+
+  // Continuous Live Stack Health & Biochemical Conflict Audit
+  const routineAudit = useMemo(() => {
+    return auditRoutineStackHealth(tasks, allModalities, profile, wellbeingCheckin)
+  }, [tasks, allModalities, profile, wellbeingCheckin])
 
   const [isSleepTriageDismissed, setIsSleepTriageDismissed] = useState(false)
 
@@ -5078,6 +5078,7 @@ function TodayPageContent() {
         activeTasks={tasks}
         allModalities={allModalities}
         userProfile={profile}
+        wellbeingCheckin={wellbeingCheckin}
         onOptimizationsApplied={async () => {
           await refreshTodayTasks()
         }}
