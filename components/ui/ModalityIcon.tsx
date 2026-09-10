@@ -194,6 +194,22 @@ const CATEGORY_GRADIENTS: Record<string, GradientConfig> = {
     glow: 'rgba(244, 63, 94, 0.75)', 
     ambient: 'rgba(225, 29, 72, 0.35)' 
   },
+
+  // Rapid Arterial Compliance & Endothelial NO (Arterial Crimson / Rose)
+  arterial: {
+    from: '#EF4444', 
+    to: '#B91C1C', 
+    glow: 'rgba(239, 68, 68, 0.75)', 
+    ambient: 'rgba(185, 28, 28, 0.35)' 
+  },
+
+  // Bone Mineral Density & Mechanotransduction (Solar Mineral Gold / Amber)
+  bone_density: {
+    from: '#F59E0B', 
+    to: '#D97706', 
+    glow: 'rgba(245, 158, 11, 0.75)', 
+    ambient: 'rgba(217, 119, 6, 0.35)' 
+  },
   
   // Fallback / General Longevity
   default: { 
@@ -308,6 +324,22 @@ function resolveGradient(nameLower: string, catLower: string, customHex?: string
     return CATEGORY_GRADIENTS.circadian
   }
 
+  if (nameLower.includes('arterial') || nameLower.includes('blood pressure') || nameLower.includes('imst') || nameLower.includes('handgrip') || nameLower.includes('endothelial')) {
+    return CATEGORY_GRADIENTS.arterial
+  }
+  if (nameLower.includes('liftmor') || nameLower.includes('bone density') || nameLower.includes('osteogenic') || nameLower.includes('mcha') || nameLower.includes('trabecular') || nameLower.includes('hops')) {
+    return CATEGORY_GRADIENTS.bone_density
+  }
+  if (nameLower.includes('akkermansia') || nameLower.includes('tributyrin') || nameLower.includes('fermented') || nameLower.includes('microbiome') || nameLower.includes('gut barrier')) {
+    return CATEGORY_GRADIENTS.microbiome
+  }
+  if (nameLower.includes('glymphatic') || nameLower.includes('lateral decubitus') || nameLower.includes('gamma 40') || nameLower.includes('mouth tape') || nameLower.includes('tpbm')) {
+    return CATEGORY_GRADIENTS.glymphatic
+  }
+  if (nameLower.includes('670nm') || nameLower.includes('retinal') || nameLower.includes('macular') || nameLower.includes('astaxanthin') || nameLower.includes('20-20-20')) {
+    return CATEGORY_GRADIENTS.retinal
+  }
+
   // Category matching
   if (catLower.includes('thermal') || catLower.includes('recovery')) {
     return CATEGORY_GRADIENTS.thermal_cold
@@ -388,6 +420,42 @@ function RetinalMitoGlyph({ stroke, size }: { stroke: string; size: number }) {
       {/* 670nm Deep-Red Incident Photon Waves Entering Pupil */}
       <path d="M7 10c.5-.8 1-.8 1.5 0s1 .8 1.5 0" />
       <path d="M7 14c.5-.8 1-.8 1.5 0s1 .8 1.5 0" />
+    </svg>
+  )
+}
+
+/** Rapid Arterial Compliance & Endothelial NO: Branching arterial vessel with pulsating concentric compliance wave rings & laminar shear flow lines */
+function ArterialPulseGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      {/* Arterial Lumen Muscular Wall Contours */}
+      <path d="M3 6c3 0 4.5 2 6 6s3 6 6 6h6" />
+      <path d="M3 10c2 0 3 1.5 4.5 4.5s2.5 3.5 5.5 3.5h8" />
+      {/* Pulsatile Arterial Expansion Wave Rings */}
+      <path d="M12 4a5 5 0 0 1 5 5" strokeDasharray="1.5 1.5" />
+      <path d="M14 2a7.5 7.5 0 0 1 7.5 7.5" strokeDasharray="2 2" />
+      {/* Endothelial Shear Flow Velocity Dots */}
+      <circle cx="9" cy="9" r="1" fill={stroke} />
+      <circle cx="15" cy="14" r="1" fill={stroke} />
+    </svg>
+  )
+}
+
+/** Bone Mineral Density & Trabecular Architecture: Cortical bone structure with internal cancellous honeycomb trabecular micro-lattice and axial mechanical strain arrows */
+function BoneTrabecularGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      {/* Anatomical Long Bone Condyle & Shaft Silhouette */}
+      <path d="M6 3.5c-1.5 0-2.5 1-2.5 2.2 0 1.2 1 2 2 2.3v8c-1 .3-2 1.1-2 2.3 0 1.2 1 2.2 2.5 2.2s2.5-1 2.5-2.2c0-.5-.2-1-.5-1.3.3-.3.5-.7.5-1.2V8.5c0-.5-.2-.9-.5-1.2.3-.3.5-.8.5-1.3 0-1.2-1-2.5-2.5-2.5z" />
+      {/* Trabecular Cancellous Honeycomb Micro-Lattice Lines */}
+      <line x1="12" y1="7" x2="17" y2="7" />
+      <line x1="14" y1="11" x2="19" y2="11" />
+      <line x1="12" y1="15" x2="17" y2="15" />
+      <line x1="15" y1="5" x2="15" y2="17" strokeDasharray="1.5 1.5" />
+      {/* Axial Mechanotransduction Compression Force Vectors */}
+      <path d="M20.5 3l-1.5 2.5h3l-1.5-2.5z" fill={stroke} />
+      <path d="M20.5 21l-1.5-2.5h3l-1.5 2.5z" fill={stroke} />
+      <line x1="20.5" y1="5.5" x2="20.5" y2="18.5" />
     </svg>
   )
 }
@@ -1000,6 +1068,13 @@ export default function ModalityIcon({
         return renderCustom(GlymphaticBrainGlyph)
       case 'retinal':
         return renderCustom(RetinalMitoGlyph)
+      case 'arterial':
+      case 'vascular':
+        return renderCustom(ArterialPulseGlyph)
+      case 'bone':
+      case 'osteogenic':
+      case 'trabecular':
+        return renderCustom(BoneTrabecularGlyph)
       case 'eye':
         return renderLucide(Eye)
       case 'zap':
@@ -1126,6 +1201,29 @@ export default function ModalityIcon({
     nameLower.includes('zinc carnosine')
   ) {
     return renderCustom(MicrobiomeGutGlyph)
+  }
+
+  if (
+    nameLower.includes('imst') ||
+    nameLower.includes('inspiratory muscle') ||
+    nameLower.includes('arterial compliance') ||
+    nameLower.includes('endothelial no') ||
+    nameLower.includes('isometric handgrip') ||
+    nameLower.includes('pulse wave velocity')
+  ) {
+    return renderCustom(ArterialPulseGlyph)
+  }
+
+  if (
+    nameLower.includes('liftmor') ||
+    nameLower.includes('bone density') ||
+    nameLower.includes('trabecular') ||
+    nameLower.includes('hydroxyapatite') ||
+    nameLower.includes('impact hops') ||
+    nameLower.includes('osteogenic vibration') ||
+    nameLower.includes('liov')
+  ) {
+    return renderCustom(BoneTrabecularGlyph)
   }
 
   // 3. THERMAL / RECOVERY
