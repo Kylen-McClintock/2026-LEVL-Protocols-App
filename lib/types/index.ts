@@ -33,6 +33,10 @@ export type UserProfile = {
   morning_checkin_dimensions?: string[]
   evening_checkin_dimensions?: string[]
   anytime_checkin_dimensions?: string[]
+  // Wearables & Biometric Trackers
+  has_wearable?: boolean
+  primary_wearable?: string
+  wearable_devices?: string[]
   // Infradian & Menstrual Cycle Optimization
   infradian_cycle_enabled?: boolean
   last_period_start_date?: string // 'YYYY-MM-DD'
@@ -494,6 +498,9 @@ export type DailyWellbeingCheckin = {
   stress_0_10?: number
   subjective_sleep_0_10?: number
   sleep_score_0_100?: number
+  wearable_readiness_score?: number
+  wearable_device_type?: string
+  daily_bandwidth_mode?: 'survival_80_20' | 'standard' | 'peak_surge'
   actual_bedtime?: string
   actual_wake_time?: string
   actual_sleep_minutes?: number

@@ -34,8 +34,11 @@ import {
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
-  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search, Scale, ShieldAlert
+  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search, Scale, Shield, ShieldAlert
 } from 'lucide-react'
+
+import { evaluateDailyBandwidth, DailyBandwidthMode, BandwidthEvaluation } from '@/lib/adaptive/dailyBandwidthEngine'
+import AdaptiveRoutineAdjustmentModal from '@/components/modals/AdaptiveRoutineAdjustmentModal'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
 import ProtocolAvatar from '@/components/ui/ProtocolAvatar'
@@ -465,15 +468,74 @@ function TodayPageContent() {
     })
   }, [])
 
+  // Daily Bandwidth & Adaptive Routine Governor State
+  const [dailyBandwidthMode, setDailyBandwidthMode] = useState<DailyBandwidthMode>('standard')
+  const [isAdaptiveModalOpen, setIsAdaptiveModalOpen] = useState(false)
+  const [adaptiveEvaluation, setAdaptiveEvaluation] = useState<BandwidthEvaluation | null>(null)
+  const [isShieldActive, setIsShieldActive] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(`levl_8020_protected_${initialDateStr}`) === 'true'
+    }
+    return false
+  })
+
+  // Synchronize Adherence Shield state whenever dateStr changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsShieldActive(localStorage.getItem(`levl_8020_protected_${dateStr}`) === 'true')
+    }
+  }, [dateStr])
+
+  // Listen for Adherence Shield activation event
+  useEffect(() => {
+    const handleShieldActivated = (e: any) => {
+      if (e.detail?.date === dateStr || !e.detail?.date) {
+        setIsShieldActive(true)
+      }
+    }
+    window.addEventListener('levl_adherence_shield_activated', handleShieldActivated)
+    return () => window.removeEventListener('levl_adherence_shield_activated', handleShieldActivated)
+  }, [dateStr])
+
   const [layoutOrientation, setLayoutOrientation] = useState<LayoutOrientation>('columns')
   const [multiDayTasks, setMultiDayTasks] = useState<Record<string, DailyProtocolTask[]>>({})
-
   const [availableProtocols, setAvailableProtocols] = useState<{ id: string; name: string; colorHex?: string }[]>([])
   const [dismissedTipIds, setDismissedTipIds] = useState<string[]>([])
+
   const [wellbeingCheckin, setWellbeingCheckin] = useState<WellbeingType | null>(null)
   const userActualWakeTime = wellbeingCheckin?.actual_wake_time || wellbeingCheckin?.custom_outcomes_jsonb?._actual_wake_time || undefined
   const userActualSleepMinutes = wellbeingCheckin?.actual_sleep_minutes ?? wellbeingCheckin?.custom_outcomes_jsonb?._actual_sleep_minutes
   const userSubjectiveSleep = wellbeingCheckin?.subjective_sleep_0_10
+
+  // Open Adaptive Routine Governor Modal
+  const handleOpenAdaptiveGovernor = useCallback((targetMode?: DailyBandwidthMode) => {
+    const loggedReadiness = (wellbeingCheckin as any)?.wearable_readiness_score 
+      ?? (wellbeingCheckin as any)?.custom_outcomes_jsonb?.wearable_readiness_score 
+      ?? (wellbeingCheckin as any)?.custom_outcomes_jsonb?._wearable_readiness 
+      ?? null
+
+    const evalResult = evaluateDailyBandwidth({
+      wearableReadiness: loggedReadiness,
+      todayTasks: tasks,
+      subjectiveSleep: wellbeingCheckin?.subjective_sleep_0_10 ?? null,
+      actualSleepMinutes: (wellbeingCheckin as any)?.actual_sleep_minutes ?? (wellbeingCheckin as any)?.custom_outcomes_jsonb?._actual_sleep_minutes ?? null,
+      subjectiveEnergy: wellbeingCheckin?.energy_0_10 ?? null,
+      forcedMode: targetMode || null
+    })
+
+    setAdaptiveEvaluation(evalResult)
+    setIsAdaptiveModalOpen(true)
+  }, [wellbeingCheckin, tasks])
+
+  // Listen for external open modal events (e.g. from DailyWellbeingCheckin)
+  useEffect(() => {
+    const handleOpenModalEvent = (e: any) => {
+      const target = e.detail?.targetMode as DailyBandwidthMode | undefined
+      handleOpenAdaptiveGovernor(target)
+    }
+    window.addEventListener('levl_open_adaptive_modal', handleOpenModalEvent)
+    return () => window.removeEventListener('levl_open_adaptive_modal', handleOpenModalEvent)
+  }, [handleOpenAdaptiveGovernor])
 
   // Continuous Live Stack Health & Biochemical Conflict Audit
   const routineAudit = useMemo(() => {
@@ -1123,7 +1185,12 @@ function TodayPageContent() {
 
     // Check if this completion achieves 100% adherence for the day
     const willBeCompleted = status === 'completed'
-    const pendingOtherTasks = tasks.filter(t => t.id !== id && !uuidSet.has(t.id) && t.status === 'pending')
+    const pendingOtherTasks = tasks.filter(t => {
+      if (t.id === id || uuidSet.has(t.id)) return false
+      if (t.status !== 'pending') return false
+      if (isShieldActive && (t.status_reason?.toLowerCase().includes('80/20') || t.execution_details?.adaptive_muted)) return false
+      return true
+    })
     const achieves100Percent = willBeCompleted && pendingOtherTasks.length === 0 && tasks.length > 0
 
     // Tactile feedback on mobile devices (transfers to native iOS & Android apps via triggerHaptic)
@@ -2083,10 +2150,16 @@ function TodayPageContent() {
   useEffect(() => {
     if (dedupedTasks.length > 0) {
       const completedCount = allCompletedTasks.length
-      const totalCount = dedupedTasks.length
-      const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
-      const statsPayload = { completed: completedCount, total: totalCount, percentage }
+      // If 80/20 Adherence Shield is active, tasks muted or deferred due to 80/20 are excluded from target denominator
+      const activeDenominatorTasks = isShieldActive
+        ? dedupedTasks.filter(t => !t.status_reason?.toLowerCase().includes('80/20') && !t.execution_details?.adaptive_muted)
+        : dedupedTasks
+
+      const totalCount = activeDenominatorTasks.length
+      const percentage = totalCount > 0 ? Math.min(100, Math.round((completedCount / totalCount) * 100)) : (completedCount > 0 ? 100 : 0)
+
+      const statsPayload = { completed: completedCount, total: totalCount, percentage, isShieldProtected: isShieldActive }
 
       if (isCurrentDay) {
         try {
@@ -2098,7 +2171,7 @@ function TodayPageContent() {
         window.dispatchEvent(new CustomEvent('levl_today_tasks_stats', { detail: statsPayload }))
       }
     }
-  }, [dedupedTasks.length, allCompletedTasks.length, isCurrentDay])
+  }, [dedupedTasks.length, allCompletedTasks.length, isCurrentDay, isShieldActive])
 
   const chronologicalGroups = useMemo(() => {
     const groups: Record<string, DedupedTask[]> = {}
@@ -4644,6 +4717,91 @@ function TodayPageContent() {
               </div>
             )}
 
+            {/* Daily Bandwidth & Routine Adaptation Governor Bar */}
+            <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90 border border-slate-800/90 p-2 sm:p-2.5 rounded-2xl mb-2 sm:mb-3 backdrop-blur-md shadow-sm gap-2 sm:gap-3">
+              {/* Left: Mode Switcher Pills */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-black/60 p-1 rounded-xl border border-white/10 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAdaptiveGovernor('survival_80_20')}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                      isShieldActive
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                        : 'text-slate-400 hover:text-amber-300'
+                    }`}
+                    title="Survival 80/20: Cut high-strain protocols, keep Minimum Effective Dose"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-amber-400" />
+                    <span>80/20<span className="hidden min-[420px]:inline"> Survival</span></span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isShieldActive) {
+                        safeLocalStorageSet(`levl_8020_protected_${dateStr}`, 'false')
+                        setIsShieldActive(false)
+                        refreshTodayTasks()
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                      !isShieldActive
+                        ? 'bg-purple-600/30 text-purple-200 border border-purple-500/40 shadow-sm'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Standard: Complete scheduled routine"
+                  >
+                    <Activity className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Standard</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAdaptiveGovernor('peak_surge')}
+                    className="px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 text-slate-400 hover:text-cyan-300"
+                    title="Peak Surge: Add high-yield expansion protocols"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                    <span><span className="hidden min-[420px]:inline">Peak </span>Surge</span>
+                  </button>
+                </div>
+
+                {isShieldActive && (
+                  <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-mono font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+                    🛡️ 100% Adherence Shield Active
+                  </span>
+                )}
+              </div>
+
+              {/* Right: Action & Customization Trigger */}
+              <div className="flex items-center justify-between sm:justify-end gap-2 text-xs">
+                {isShieldActive ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-emerald-400 font-mono font-medium md:hidden">
+                      🛡️ Shield Active
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAdaptiveGovernor('survival_80_20')}
+                      className="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline underline-offset-2 cursor-pointer"
+                    >
+                      Modify 80/20 Plan
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAdaptiveGovernor()}
+                    className="text-[11px] font-bold text-purple-300 hover:text-purple-200 flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3 text-purple-400" />
+                    <span>Adaptive Governor</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Timeline Layout Mode & Completion Mode Toggle Bar (Single Non-Scrolling Row) */}
             <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 p-1 sm:p-1.5 md:p-2.5 rounded-2xl mb-2 sm:mb-3 backdrop-blur-md shadow-sm gap-1 sm:gap-2 md:gap-4">
               {/* Left: Timeline Layout Mode (Time Blocks vs Protocols) */}
@@ -5083,6 +5241,24 @@ function TodayPageContent() {
           await refreshTodayTasks()
         }}
       />
+
+      {/* Adaptive Routine Adjustment Modal (80/20 Governor & Peak Surge) */}
+      {adaptiveEvaluation && (
+        <AdaptiveRoutineAdjustmentModal
+          isOpen={isAdaptiveModalOpen}
+          onClose={() => setIsAdaptiveModalOpen(false)}
+          evaluation={adaptiveEvaluation}
+          todayTasks={tasks}
+          dateStr={dateStr}
+          localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
+          onApplied={async (appliedCount, mode) => {
+            if (mode === 'survival_80_20') {
+              setIsShieldActive(true)
+            }
+            await refreshTodayTasks()
+          }}
+        />
+      )}
     </div>
   )
 }

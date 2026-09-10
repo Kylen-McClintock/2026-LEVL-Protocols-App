@@ -5,7 +5,7 @@ import { DailyWellbeingCheckin as WellbeingType, UserProfile, OutcomeDimension }
 import { isFuture, isPast, isSameDay, format } from 'date-fns'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getRecentOutcomeSnapshot, getLatestOutcomeLiveState, OutcomeLiveState } from '@/lib/utils/outcomeRecency'
-import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sunrise, Sparkles, ArrowUpRight, ArrowDownRight, ArrowDown, Radio, Activity, FileText, CloudSun, RefreshCw, Briefcase, Users, Target, CheckCircle2, Zap } from 'lucide-react'
+import { Moon, Sliders, ChevronUp, ChevronDown, Leaf, Clock, Utensils, Coffee, Smartphone, Sun, Sunrise, Sparkles, ArrowUpRight, ArrowDownRight, ArrowDown, ArrowRight, Shield, Radio, Activity, FileText, CloudSun, RefreshCw, Briefcase, Users, Target, CheckCircle2, Zap } from 'lucide-react'
 import CustomizeCheckinOutcomesModal from '@/components/modals/CustomizeCheckinOutcomesModal'
 import QuickOutcomeUpdateModal from '@/components/modals/QuickOutcomeUpdateModal'
 import { safeLocalStorageSet } from '@/lib/utils/storage'
@@ -402,6 +402,13 @@ export default function DailyWellbeingCheckin({
   const [stress, setStress] = useState(5)
   const [subjectiveSleep, setSubjectiveSleep] = useState(5)
   const [sleepScore, setSleepScore] = useState<string>('')
+  const [wearableReadinessScore, setWearableReadinessScore] = useState<number | null>(() => {
+    if ((initialData as any)?.wearable_readiness_score != null) return Number((initialData as any).wearable_readiness_score)
+    const custom = (initialData as any)?.custom_outcomes_jsonb
+    if (custom?.wearable_readiness_score != null) return Number(custom.wearable_readiness_score)
+    if (custom?._wearable_readiness != null) return Number(custom._wearable_readiness)
+    return null
+  })
 
   // Sleep Timing & Actual Duration (Initialized from profile ideal bedtime/waketime with 15m adjusters)
   const defaultBedtime = (initialData as any)?.actual_bedtime || (initialData as any)?.custom_outcomes_jsonb?._actual_bedtime || profile?.ideal_bedtime || '22:30'
@@ -1037,15 +1044,18 @@ export default function DailyWellbeingCheckin({
       energy_0_10: touchedOutcomes.energy || hasSavedMorning ? energy : (initialData?.energy_0_10 ?? null),
       stress_0_10: touchedOutcomes.stress || hasSavedMorning ? stress : (initialData?.stress_0_10 ?? null),
       subjective_sleep_0_10: touchedOutcomes.sleep || hasSavedMorning ? subjectiveSleep : (initialData?.subjective_sleep_0_10 ?? null),
+      wearable_readiness_score: wearableReadinessScore ?? (initialData as any)?.wearable_readiness_score ?? (initialData as any)?.custom_outcomes_jsonb?.wearable_readiness_score ?? null,
       custom_outcomes_jsonb: {
         ...customJSON,
+        wearable_readiness_score: wearableReadinessScore ?? customJSON.wearable_readiness_score,
+        _wearable_readiness: wearableReadinessScore ?? customJSON._wearable_readiness,
         notes: notes || customJSON.notes,
         freeform_notes: notes || customJSON.freeform_notes,
         _evening_notes: eveningNotes || customJSON._evening_notes,
         evening_notes: eveningNotes || customJSON.evening_notes
       },
     } as WellbeingType
-  }, [initialData, mood, energy, stress, subjectiveSleep, skinClarity, focusScore, notes, eveningNotes, customOutcomeValues, touchedOutcomes, isSaved, date, localProfile, localAnytimeLogs, daytimeMood, daytimeEnergy, daytimeStress, daytimeFocus, daytimeSkin, daytimeCustomValues, daytimeTouchedOutcomes])
+  }, [initialData, mood, energy, stress, subjectiveSleep, skinClarity, focusScore, notes, eveningNotes, customOutcomeValues, touchedOutcomes, isSaved, date, localProfile, localAnytimeLogs, daytimeMood, daytimeEnergy, daytimeStress, daytimeFocus, daytimeSkin, daytimeCustomValues, daytimeTouchedOutcomes, wearableReadinessScore])
 
   // Real-time live outcome state map aggregating latest readings across all sources
   const liveStateMap = useMemo(() => {
@@ -1092,6 +1102,15 @@ export default function DailyWellbeingCheckin({
       setLastFoodTime(hydratedLastFood)
       
       const customJSON = (initialData as any).custom_outcomes_jsonb || {}
+      const hydratedReadiness = (initialData as any).wearable_readiness_score != null
+        ? Number((initialData as any).wearable_readiness_score)
+        : customJSON.wearable_readiness_score != null
+          ? Number(customJSON.wearable_readiness_score)
+          : customJSON._wearable_readiness != null
+            ? Number(customJSON._wearable_readiness)
+            : null
+      setWearableReadinessScore(hydratedReadiness)
+
       const hydratedBedtime = (initialData as any).actual_bedtime || customJSON._actual_bedtime || profile?.ideal_bedtime || '22:30'
       const hydratedWaketime = (initialData as any).actual_wake_time || customJSON._actual_wake_time || profile?.ideal_wake_time || '06:30'
       setActualBedtime(hydratedBedtime)
@@ -1191,6 +1210,7 @@ export default function DailyWellbeingCheckin({
       setStress(5)
       setSubjectiveSleep(5)
       setSleepScore('')
+      setWearableReadinessScore(null)
       setLastFoodTime(defaultCircadianLastMeal)
       setSkinClarity(5)
       setFocusScore(5)
@@ -1237,6 +1257,14 @@ export default function DailyWellbeingCheckin({
     combinedCustomOutcomes._actual_sleep_minutes = actualSleepMinutes
     combinedCustomOutcomes._sleep_source = sleepSource
 
+    if (wearableReadinessScore !== null && wearableReadinessScore !== undefined) {
+      combinedCustomOutcomes.wearable_readiness_score = wearableReadinessScore
+      combinedCustomOutcomes._wearable_readiness = wearableReadinessScore
+      if (profile?.primary_wearable) {
+        combinedCustomOutcomes.wearable_device_type = profile.primary_wearable
+      }
+    }
+
     onSave(
       mood, 
       energy, 
@@ -1255,6 +1283,15 @@ export default function DailyWellbeingCheckin({
     if (typeof window !== 'undefined' && date) {
       const dStr = format(date, 'yyyy-MM-dd')
       safeLocalStorageSet('levl_checkin_saved_' + dStr, 'true')
+      if (wearableReadinessScore !== null) {
+        window.dispatchEvent(new CustomEvent('levl_readiness_logged', {
+          detail: {
+            score: wearableReadinessScore,
+            date: dStr,
+            device: profile?.primary_wearable || 'wearable'
+          }
+        }))
+      }
     }
   }
 
@@ -1312,6 +1349,20 @@ export default function DailyWellbeingCheckin({
     if (lateMeal !== 'skip') combinedCustomOutcomes.late_meal = lateMeal
     if (blueLight !== 'skip') combinedCustomOutcomes.blue_light = blueLight
     if (processedSugar !== 'skip') combinedCustomOutcomes.processed_sugar = processedSugar
+
+    if (wearableReadinessScore !== null && wearableReadinessScore !== undefined) {
+      combinedCustomOutcomes.wearable_readiness_score = wearableReadinessScore
+      combinedCustomOutcomes._wearable_readiness = wearableReadinessScore
+      if (profile?.primary_wearable) {
+        combinedCustomOutcomes.wearable_device_type = profile.primary_wearable
+      }
+    } else if ((initialData as any)?.custom_outcomes_jsonb?.wearable_readiness_score != null) {
+      combinedCustomOutcomes.wearable_readiness_score = (initialData as any).custom_outcomes_jsonb.wearable_readiness_score
+      combinedCustomOutcomes._wearable_readiness = (initialData as any).custom_outcomes_jsonb._wearable_readiness
+      if ((initialData as any).custom_outcomes_jsonb.wearable_device_type) {
+        combinedCustomOutcomes.wearable_device_type = (initialData as any).custom_outcomes_jsonb.wearable_device_type
+      }
+    }
 
     onSave(
       mood, 
@@ -2621,6 +2672,152 @@ export default function DailyWellbeingCheckin({
                 placeholder="e.g. 85 (from Oura, Apple Health, Whoop)" 
                 className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-levl-accent font-mono" 
               />
+            </div>
+
+            {/* Wearable Recovery / Readiness Score (0-100) */}
+            <div className="space-y-2.5 bg-gradient-to-br from-black/60 to-slate-900/60 p-3.5 rounded-xl border border-cyan-500/20 shadow-sm relative overflow-hidden">
+              <div className="flex justify-between items-center text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-bold flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                    Wearable Readiness & Recovery
+                  </span>
+                  {profile?.primary_wearable ? (
+                    <span className="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-full capitalize">
+                      ⌚ {profile.primary_wearable.replace(/_/g, ' ')}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono font-semibold text-slate-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                      Manual Input
+                    </span>
+                  )}
+                </div>
+                {wearableReadinessScore != null && (
+                  <span className={`font-mono font-black text-xs px-2.5 py-0.5 rounded-md border ${
+                    wearableReadinessScore < 50
+                      ? 'text-rose-400 bg-rose-950/50 border-rose-500/30'
+                      : wearableReadinessScore < 80
+                      ? 'text-amber-300 bg-amber-950/50 border-amber-500/30'
+                      : 'text-emerald-400 bg-emerald-950/50 border-emerald-500/30'
+                  }`}>
+                    {wearableReadinessScore}%
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <input 
+                  type="number" 
+                  min="0" 
+                  max="100" 
+                  value={wearableReadinessScore !== null ? wearableReadinessScore : ''} 
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? null : Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
+                    setWearableReadinessScore(val)
+                  }} 
+                  placeholder="e.g. 78 (from Oura, Whoop, Garmin, Galaxy, Pixel, etc.)" 
+                  className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-cyan-400 font-mono" 
+                />
+                {wearableReadinessScore !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setWearableReadinessScore(null)}
+                    className="px-2.5 py-2 text-[11px] font-bold text-slate-400 hover:text-slate-200 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors cursor-pointer shrink-0"
+                    title="Clear readiness score"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Presets */}
+              <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                <span className="text-[10px] text-slate-400 font-medium">Quick Set:</span>
+                <div className="flex items-center gap-1">
+                  {[
+                    { label: 'Low 40%', val: 40, cls: 'hover:border-rose-400 text-rose-300' },
+                    { label: 'Fair 65%', val: 65, cls: 'hover:border-amber-400 text-amber-300' },
+                    { label: 'Good 82%', val: 82, cls: 'hover:border-emerald-400 text-emerald-300' },
+                    { label: 'Peak 95%', val: 95, cls: 'hover:border-cyan-400 text-cyan-300' },
+                  ].map(preset => (
+                    <button
+                      key={preset.val}
+                      type="button"
+                      onClick={() => setWearableReadinessScore(preset.val)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white/5 border border-white/10 transition-all cursor-pointer ${preset.cls} ${
+                        wearableReadinessScore === preset.val ? 'bg-white/20 border-white/50 text-white' : ''
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dynamic Readiness Banner & 80/20 Routine CTA */}
+              {wearableReadinessScore !== null && (
+                <div className={`p-2.5 rounded-lg border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
+                  wearableReadinessScore < 50
+                    ? 'bg-rose-950/40 border-rose-500/40 text-rose-200'
+                    : wearableReadinessScore < 80
+                    ? 'bg-amber-950/40 border-amber-500/40 text-amber-200'
+                    : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base shrink-0">
+                      {wearableReadinessScore < 50 ? '⚠️' : wearableReadinessScore < 80 ? '⚖️' : '⚡'}
+                    </span>
+                    <span className="text-[11px] leading-snug">
+                      {wearableReadinessScore < 50
+                        ? 'Low recovery / nervous system fatigue detected. Survival 80/20 routine recommended.'
+                        : wearableReadinessScore < 80
+                        ? 'Balanced autonomic recovery. Standard protocol load is well-tolerated.'
+                        : 'Peak readiness primed! Autonomic nervous system ready for heavy allostatic load.'}
+                    </span>
+                  </div>
+
+                  {wearableReadinessScore < 50 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('levl_open_adaptive_modal', {
+                            detail: { targetMode: 'survival_80_20' }
+                          }))
+                        }
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-bold bg-rose-500 hover:bg-rose-400 text-slate-950 rounded-md transition-all cursor-pointer font-mono shrink-0 shadow-sm flex items-center justify-center gap-1 active:scale-95"
+                    >
+                      <Shield className="w-3 h-3" />
+                      <span>Adjust Routine (80/20)</span>
+                    </button>
+                  )}
+
+                  {wearableReadinessScore >= 80 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('levl_open_adaptive_modal', {
+                            detail: { targetMode: 'peak_surge' }
+                          }))
+                        }
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-md transition-all cursor-pointer font-mono shrink-0 shadow-sm flex items-center justify-center gap-1 active:scale-95"
+                    >
+                      <Zap className="w-3 h-3" />
+                      <span>Explore Surge</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {!profile?.has_wearable && (
+                <div className="text-[10px] text-slate-400 flex items-center gap-1 pt-0.5">
+                  <span>💡 Track with Oura, Whoop, Apple, Garmin or Galaxy? Enable in</span>
+                  <a href="/settings" className="text-cyan-400 hover:underline font-semibold">Settings → Wearables</a>
+                </div>
+              )}
             </div>
 
             {/* 🚫 Expandable Last Night's Exposures & Lifestyle Factors (Morning Check-in) */}

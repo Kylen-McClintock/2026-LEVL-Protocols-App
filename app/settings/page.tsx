@@ -14,6 +14,7 @@ import QuickHotkeysProfileCard from '@/components/profile/QuickHotkeysProfileCar
 import CircadianAnchorsCard from '@/components/profile/CircadianAnchorsCard'
 import FastingFeedingCard from '@/components/profile/FastingFeedingCard'
 import PhysicalTrainingRecoveryCard from '@/components/profile/PhysicalTrainingRecoveryCard'
+import WearableDevicesCard from '@/components/profile/WearableDevicesCard'
 import HardwareAccessCard from '@/components/profile/HardwareAccessCard'
 import BloodworkProfileCard from '@/components/profile/BloodworkProfileCard'
 import NegativeLongevityFactorsCard from '@/components/profile/NegativeLongevityFactorsCard'
@@ -366,6 +367,13 @@ export default function SettingsPage() {
 
         {profile && (
           <PhysicalTrainingRecoveryCard 
+            profile={profile} 
+            onUpdated={(updated) => setProfile(updated)} 
+          />
+        )}
+
+        {profile && (
+          <WearableDevicesCard 
             profile={profile} 
             onUpdated={(updated) => setProfile(updated)} 
           />
