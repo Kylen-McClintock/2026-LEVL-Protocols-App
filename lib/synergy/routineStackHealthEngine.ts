@@ -289,6 +289,16 @@ export function auditRoutineStackHealth(
       if (seenConflictPairs.has(pairKeyForward) || seenConflictPairs.has(pairKeyReverse)) continue
 
       for (const rule of COMPREHENSIVE_CONFLICT_RULES) {
+        if (rule.id === 'late_caffeine_sleep') {
+          // A cutoff or curfew habit (e.g. Walker 10-Hour Caffeine Cutoff) is sleep hygiene, not caffeine intake
+          if (
+            itemA.normKey.includes('cutoff') || itemA.normKey.includes('curfew') || itemA.normKey.includes('cessation') ||
+            itemB.normKey.includes('cutoff') || itemB.normKey.includes('curfew') || itemB.normKey.includes('cessation')
+          ) {
+            continue
+          }
+        }
+
         const aIsTrigger = rule.triggers.some(t => itemA.normKey.includes(t) || t.includes(itemA.normKey))
         const bIsTarget = rule.targets.some(t => itemB.normKey.includes(t) || t.includes(itemB.normKey))
         const bIsTrigger = rule.triggers.some(t => itemB.normKey.includes(t) || t.includes(itemB.normKey))
@@ -306,6 +316,29 @@ export function auditRoutineStackHealth(
         }
 
         if (triggerItem && targetItem) {
+          // Adenosine receptor blockade conflict:
+          // Never trigger conflict if caffeine is scheduled during midday or earlier time blocks (or <= 1:00 PM)
+          if (rule.id === 'late_caffeine_sleep') {
+            const slot = (triggerItem.resolvedSlot || '').toLowerCase()
+            const isMiddayOrEarlier = 
+              slot === 'morning' || 
+              slot === 'early_morning' || 
+              slot === 'waking' || 
+              slot === 'wake_up' || 
+              slot === 'breakfast' || 
+              slot === 'midday' || 
+              slot === 'lunch' ||
+              slot.includes('morning') ||
+              slot.includes('midday') ||
+              slot.includes('wake') ||
+              slot.includes('breakfast') ||
+              slot.includes('lunch') ||
+              triggerItem.hourDec <= 13.0
+            if (isMiddayOrEarlier) {
+              continue // Valid early intake; no conflict!
+            }
+          }
+
           const hourDiff = Math.abs(triggerItem.hourDec - targetItem.hourDec)
           const requiredSpacing = rule.autoResolutionTiming?.spacingHours || 2.5
 

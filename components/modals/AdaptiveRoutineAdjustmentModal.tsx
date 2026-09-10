@@ -67,45 +67,107 @@ export default function AdaptiveRoutineAdjustmentModal({
 
     try {
       for (const item of evaluation.adjustments) {
-        if (!selectedItems[item.id]) continue // User unchecked this item
+        const isChecked = selectedItems[item.id]
 
         if (item.type === 'cut' && item.affectedTaskId) {
-          await updateDailyTaskStatus(
-            item.affectedTaskId,
-            'skipped',
-            '80/20 Survival: Deferred to protect autonomic recovery'
-          )
-          appliedCount++
-        } else if (item.type === 'downgrade' && item.affectedTaskId) {
-          await updateTaskExecutionDetails(item.affectedTaskId, {
-            swap_name: item.swapModalityName,
-            swap_dose: item.swapDoseText,
-            is_downgraded: true,
-            downgrade_reason: '80/20 Minimum Effective Dose'
-          })
-          appliedCount++
-        } else if ((item.type === 'add_restorative' || item.type === 'add_surge') && item.swapModalityId) {
-          // Check if already present today
-          const alreadyExists = todayTasks.some(t => t.modality_id === item.swapModalityId)
-          if (!alreadyExists) {
-            await createDailyTask(localUserId, dateStr, item.swapModalityId)
+          if (isChecked) {
+            await updateDailyTaskStatus(
+              item.affectedTaskId,
+              'skipped',
+              '80/20 Survival: Deferred to protect autonomic recovery'
+            )
             appliedCount++
+          } else {
+            // User unchecked: restore to pending if it was previously skipped by 80/20
+            const existing = todayTasks.find(t => t.id === item.affectedTaskId)
+            if (existing && existing.status === 'skipped' && existing.status_reason?.includes('80/20')) {
+              await updateDailyTaskStatus(item.affectedTaskId, 'pending', undefined)
+              appliedCount++
+            }
+          }
+        } else if (item.type === 'downgrade' && item.affectedTaskId) {
+          if (isChecked) {
+            await updateTaskExecutionDetails(item.affectedTaskId, {
+              swap_name: item.swapModalityName,
+              swap_dose: item.swapDoseText,
+              is_downgraded: true,
+              downgrade_reason: '80/20 Minimum Effective Dose'
+            })
+            appliedCount++
+          } else {
+            // User unchecked: restore original parameters
+            const existing = todayTasks.find(t => t.id === item.affectedTaskId)
+            if (existing?.execution_details?.is_downgraded) {
+              await updateTaskExecutionDetails(item.affectedTaskId, {
+                swap_name: undefined,
+                swap_dose: undefined,
+                is_downgraded: false,
+                downgrade_reason: undefined
+              })
+              appliedCount++
+            }
+          }
+        } else if ((item.type === 'add_restorative' || item.type === 'add_surge') && item.swapModalityId) {
+          if (isChecked) {
+            const alreadyExists = todayTasks.some(t => t.modality_id === item.swapModalityId)
+            if (!alreadyExists) {
+              await createDailyTask(localUserId, dateStr, item.swapModalityId)
+              appliedCount++
+            }
           }
         }
       }
 
-      // Activate Adherence Shield for today
+      // Activate Adherence Shield for today if in survival mode
       if (isSurvival) {
         safeLocalStorageSet(`levl_8020_protected_${dateStr}`, 'true')
+        safeLocalStorageSet(`levl_bandwidth_mode_${dateStr}`, 'survival_80_20')
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('levl_adherence_shield_activated', { detail: { date: dateStr } }))
         }
+      } else if (isSurge) {
+        safeLocalStorageSet(`levl_bandwidth_mode_${dateStr}`, 'peak_surge')
       }
 
       onApplied(appliedCount, evaluation.suggestedMode)
       onClose()
     } catch (err) {
       console.error('Error applying routine adjustments:', err)
+    } finally {
+      setIsApplying(false)
+    }
+  }
+
+  const handleRevertToStandard = async () => {
+    setIsApplying(true)
+    try {
+      for (const item of evaluation.adjustments) {
+        if (item.affectedTaskId) {
+          const existing = todayTasks.find(t => t.id === item.affectedTaskId)
+          if (existing && existing.status === 'skipped' && existing.status_reason?.includes('80/20')) {
+            await updateDailyTaskStatus(item.affectedTaskId, 'pending', undefined)
+          }
+          if (existing?.execution_details?.is_downgraded) {
+            await updateTaskExecutionDetails(item.affectedTaskId, {
+              swap_name: undefined,
+              swap_dose: undefined,
+              is_downgraded: false,
+              downgrade_reason: undefined
+            })
+          }
+        }
+      }
+
+      safeLocalStorageSet(`levl_8020_protected_${dateStr}`, 'false')
+      safeLocalStorageSet(`levl_bandwidth_mode_${dateStr}`, 'standard')
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('levl_adherence_shield_deactivated', { detail: { date: dateStr } }))
+      }
+
+      onApplied(0, 'standard')
+      onClose()
+    } catch (err) {
+      console.error('Error reverting to standard routine:', err)
     } finally {
       setIsApplying(false)
     }
@@ -244,17 +306,23 @@ export default function AdaptiveRoutineAdjustmentModal({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={onClose}
-              className="w-1/3 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition-colors text-center"
+              onClick={handleRevertToStandard}
+              disabled={isApplying}
+              className="w-1/3 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition-colors text-center cursor-pointer"
+              title="Reset all adjustments and return to standard scheduled routine"
             >
-              Keep Full Routine
+              Revert to Standard
             </button>
 
             <button
               type="button"
               onClick={handleApplyChanges}
               disabled={isApplying || selectedCount === 0}
-              className="w-2/3 py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className={`w-2/3 py-2.5 px-4 rounded-xl text-white font-bold text-xs sm:text-sm shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] ${
+                isSurvival
+                  ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500'
+                  : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500'
+              }`}
             >
               {isApplying ? (
                 'Applying Changes...'

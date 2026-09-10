@@ -3490,8 +3490,13 @@ export default function DailyWellbeingCheckin({
         />
       </div>
 
-      <button onClick={handleMorningSave} className="w-full bg-levl-accent text-white rounded-lg py-3 text-sm font-bold hover:bg-levl-accent/90 transition-colors mt-2 shadow-lg shadow-levl-accent/20 cursor-pointer">
-        {isSaved ? `Edit Morning Check-in` : `Log Morning Check-in`}
+      <button 
+        type="button"
+        onClick={handleMorningSave} 
+        className="w-full bg-levl-accent text-white rounded-lg py-3 text-sm font-bold hover:bg-levl-accent/90 transition-colors mt-2 shadow-lg shadow-levl-accent/20 cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
+      >
+        <CheckCircle2 size={16} />
+        <span>Save</span>
       </button>
     </div>
   ))}
@@ -4407,9 +4412,10 @@ export default function DailyWellbeingCheckin({
             <button
               type="button"
               onClick={handleNightlySave}
-              className="w-full bg-rose-600 hover:bg-rose-500 text-white rounded-lg py-2.5 text-xs font-bold transition-all shadow-lg shadow-rose-600/20 cursor-pointer"
+              className="w-full bg-rose-600 hover:bg-rose-500 text-white rounded-lg py-2.5 text-xs font-bold transition-all shadow-lg shadow-rose-600/20 cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
             >
-              {isNightlySaved ? (isPastDate ? "Save Updated Evening Check-in" : "Edit Evening Check-in") : "Log Evening Check-in"}
+              <CheckCircle2 size={16} />
+              <span>Save</span>
             </button>
           </div>
         ) : null}

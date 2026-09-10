@@ -403,7 +403,7 @@ export const COMPREHENSIVE_CONFLICT_RULES: BiochemicalConflictRule[] = [
   {
     id: 'late_caffeine_sleep',
     triggers: ['caffeine', 'coffee', 'preworkout'],
-    targets: ['darkcoolsleepenvironment', 'sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop', 'magnesiumglycinate', '478breathing', 'walkercaffeinecutoff'],
+    targets: ['darkcoolsleepenvironment', 'sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop', 'magnesiumglycinate', '478breathing'],
     type: 'circadian_disruption',
     severity: 'timing',
     headline: 'Adenosine Receptor Blockade Degrades Slow-Wave Deep Sleep',

@@ -232,14 +232,37 @@ export function detectPreFlightSpacingNudge(
   // -------------------------------------------------------------
   // 4. CAFFEINE / STIMULANTS vs. BEDTIME (t½ = 5.7h)
   // -------------------------------------------------------------
-  const isCaffeine = 
-    taskText.includes('caffeine') || 
-    taskText.includes('coffee') || 
-    taskText.includes('pre-workout') || 
-    taskText.includes('preworkout') || 
-    taskText.includes('energy drink')
+  const isCutoffHabit = 
+    taskText.includes('cutoff') || 
+    taskText.includes('curfew') || 
+    taskText.includes('cessation')
 
-  if (isCaffeine && hoursUntilBed > 0 && hoursUntilBed < 9.5) {
+  const isCaffeine = 
+    !isCutoffHabit && (
+      taskText.includes('caffeine') || 
+      taskText.includes('coffee') || 
+      taskText.includes('pre-workout') || 
+      taskText.includes('preworkout') || 
+      taskText.includes('energy drink')
+    )
+
+  const isMiddayOrEarlierSlot = 
+    currentSlot === 'morning' ||
+    currentSlot === 'early_morning' ||
+    currentSlot === 'waking' ||
+    currentSlot === 'wake_up' ||
+    currentSlot === 'breakfast' ||
+    currentSlot === 'midday' ||
+    currentSlot === 'lunch' ||
+    currentSlot.includes('morning') ||
+    currentSlot.includes('midday') ||
+    currentSlot.includes('wake') ||
+    currentSlot.includes('breakfast') ||
+    currentSlot.includes('lunch') ||
+    now.getHours() <= 13
+
+  // The adenosine receptor blockade conflict warning should not come up for 10-hour caffeine cutoff when it's during midday or earlier time blocks
+  if (isCaffeine && !isMiddayOrEarlierSlot && hoursUntilBed > 0 && hoursUntilBed < 10.0) {
     return {
       id: 'nudge_late_caffeine',
       type: 'chrono_circadian',

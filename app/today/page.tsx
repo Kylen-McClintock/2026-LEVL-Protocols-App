@@ -34,7 +34,8 @@ import {
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
-  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search, Scale, Shield, ShieldAlert
+  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search, Scale, Shield, ShieldAlert,
+  Flame
 } from 'lucide-react'
 
 import { evaluateDailyBandwidth, DailyBandwidthMode, BandwidthEvaluation } from '@/lib/adaptive/dailyBandwidthEngine'
@@ -469,7 +470,14 @@ function TodayPageContent() {
   }, [])
 
   // Daily Bandwidth & Adaptive Routine Governor State
-  const [dailyBandwidthMode, setDailyBandwidthMode] = useState<DailyBandwidthMode>('standard')
+  const [dailyBandwidthMode, setDailyBandwidthMode] = useState<DailyBandwidthMode>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`levl_bandwidth_mode_${initialDateStr}`) as DailyBandwidthMode
+      if (saved === 'survival_80_20' || saved === 'peak_surge') return saved
+      if (localStorage.getItem(`levl_8020_protected_${initialDateStr}`) === 'true') return 'survival_80_20'
+    }
+    return 'standard'
+  })
   const [isAdaptiveModalOpen, setIsAdaptiveModalOpen] = useState(false)
   const [adaptiveEvaluation, setAdaptiveEvaluation] = useState<BandwidthEvaluation | null>(null)
   const [isShieldActive, setIsShieldActive] = useState<boolean>(() => {
@@ -479,22 +487,51 @@ function TodayPageContent() {
     return false
   })
 
-  // Synchronize Adherence Shield state whenever dateStr changes
+  // Synchronize Adherence Shield and Daily Bandwidth Mode state whenever dateStr changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setIsShieldActive(localStorage.getItem(`levl_8020_protected_${dateStr}`) === 'true')
+      const isShield = localStorage.getItem(`levl_8020_protected_${dateStr}`) === 'true'
+      setIsShieldActive(isShield)
+      const savedMode = localStorage.getItem(`levl_bandwidth_mode_${dateStr}`) as DailyBandwidthMode
+      if (savedMode === 'survival_80_20' || savedMode === 'peak_surge') {
+        setDailyBandwidthMode(savedMode)
+      } else if (isShield) {
+        setDailyBandwidthMode('survival_80_20')
+      } else {
+        setDailyBandwidthMode('standard')
+      }
     }
   }, [dateStr])
 
-  // Listen for Adherence Shield activation event
+  // Listen for Adherence Shield & Bandwidth Mode lifecycle events
   useEffect(() => {
     const handleShieldActivated = (e: any) => {
       if (e.detail?.date === dateStr || !e.detail?.date) {
         setIsShieldActive(true)
+        setDailyBandwidthMode('survival_80_20')
+      }
+    }
+    const handleShieldDeactivated = (e: any) => {
+      if (e.detail?.date === dateStr || !e.detail?.date) {
+        setIsShieldActive(false)
+        setDailyBandwidthMode('standard')
+      }
+    }
+    const handleBandwidthChanged = (e: any) => {
+      if (e.detail?.date === dateStr || !e.detail?.date) {
+        const mode = e.detail?.mode || (localStorage.getItem(`levl_bandwidth_mode_${dateStr}`) as DailyBandwidthMode) || 'standard'
+        setDailyBandwidthMode(mode)
+        setIsShieldActive(mode === 'survival_80_20')
       }
     }
     window.addEventListener('levl_adherence_shield_activated', handleShieldActivated)
-    return () => window.removeEventListener('levl_adherence_shield_activated', handleShieldActivated)
+    window.addEventListener('levl_adherence_shield_deactivated', handleShieldDeactivated)
+    window.addEventListener('levl_bandwidth_mode_changed', handleBandwidthChanged)
+    return () => {
+      window.removeEventListener('levl_adherence_shield_activated', handleShieldActivated)
+      window.removeEventListener('levl_adherence_shield_deactivated', handleShieldDeactivated)
+      window.removeEventListener('levl_bandwidth_mode_changed', handleBandwidthChanged)
+    }
   }, [dateStr])
 
   const [layoutOrientation, setLayoutOrientation] = useState<LayoutOrientation>('columns')
@@ -3771,6 +3808,40 @@ function TodayPageContent() {
               </button>
             )}
 
+            {/* Survival Mode (80/20 Routine) Active Pill */}
+            {calendarViewMode === 'today' && (dailyBandwidthMode === 'survival_80_20' || isShieldActive) && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  handleOpenAdaptiveGovernor('survival_80_20')
+                }}
+                className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 bg-amber-950/80 hover:bg-amber-900/90 border border-amber-500/80 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.35)] ring-1 ring-amber-500/40"
+                title="Survival Mode (80/20 Routine Active) — Click to review changes, why they were made, or adjust your routine"
+                aria-label="Open Survival Mode Routine Adjustments"
+              >
+                <Shield size={13} className="text-amber-400 fill-amber-400/20 animate-pulse" />
+                <span>Survival Mode</span>
+              </button>
+            )}
+
+            {/* Peak Mode (High Readiness Expansion) Active Pill */}
+            {calendarViewMode === 'today' && dailyBandwidthMode === 'peak_surge' && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  handleOpenAdaptiveGovernor('peak_surge')
+                }}
+                className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 bg-cyan-950/80 hover:bg-cyan-900/90 border border-cyan-500/80 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.35)] ring-1 ring-cyan-500/40"
+                title="Peak Mode Active — Click to review added high-capacity adaptations, why they were added, or adjust your routine"
+                aria-label="Open Peak Mode Routine Adjustments"
+              >
+                <Flame size={13} className="text-cyan-400 fill-cyan-400/20 animate-pulse" />
+                <span>Peak Mode</span>
+              </button>
+            )}
+
             {/* Stack Health & Conflict Optimizer Pill */}
             {calendarViewMode === 'today' && dedupedTasks.length > 0 && (
               <button
@@ -5252,9 +5323,8 @@ function TodayPageContent() {
           dateStr={dateStr}
           localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
           onApplied={async (appliedCount, mode) => {
-            if (mode === 'survival_80_20') {
-              setIsShieldActive(true)
-            }
+            setDailyBandwidthMode(mode)
+            setIsShieldActive(mode === 'survival_80_20')
             await refreshTodayTasks()
           }}
         />
