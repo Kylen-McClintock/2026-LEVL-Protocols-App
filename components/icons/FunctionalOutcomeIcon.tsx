@@ -35,6 +35,7 @@ export interface OutcomeIconProps extends React.SVGProps<SVGSVGElement> {
   size?: number
   glow?: boolean
   className?: string
+  variant?: 'detailed' | 'compact'
 }
 
 export interface FunctionalOutcomeMeta {
@@ -962,64 +963,352 @@ export const PainIcon: React.FC<OutcomeIconProps> = ({ size = 24, glow = true, c
 // UNIFIED DYNAMIC FUNCTIONAL OUTCOME ICON COMPONENT
 // -----------------------------------------------------------------------------
 
+
+// -----------------------------------------------------------------------------
+// OPTIONAL BADGE WRAPPER COMPONENT (With or without text label!)
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// ULTRA-SIMPLIFIED EXPRESSIVE GLYPHS (Designed specifically for 12px–20px small areas)
+// Clean single/dual-line vector strokes matching exact canonical color schemes
+// -----------------------------------------------------------------------------
+
+export interface CompactOutcomeIconProps extends React.SVGProps<SVGSVGElement> {
+  outcome: FunctionalOutcomeId | string
+  size?: number
+  color?: string
+  glow?: boolean
+  className?: string
+}
+
+export const CompactOutcomeIcon: React.FC<CompactOutcomeIconProps> = ({
+  outcome,
+  size = 16,
+  color,
+  glow = false,
+  className = '',
+  ...props
+}) => {
+  const normOutcome = (outcome || '').toLowerCase().replace(/[-\s]/g, '_').trim() as FunctionalOutcomeId
+  const meta = FUNCTIONAL_OUTCOMES_METADATA[normOutcome]
+  const iconColor = color || meta?.colorHex || '#10B981'
+
+  const svgProps = {
+    width: size,
+    height: size,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: iconColor,
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    className,
+    style: glow ? { filter: `drop-shadow(0 0 3px ${iconColor})` } : undefined,
+    ...props
+  }
+
+  switch (normOutcome) {
+    case 'focus':
+      // Concentric target reticle with centered laser point
+      return (
+        <svg {...svgProps}>
+          <circle cx="12" cy="12" r="7" />
+          <circle cx="12" cy="12" r="1.5" fill={iconColor} stroke="none" />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+        </svg>
+      )
+
+    case 'sleep_quality':
+      // Crescent moon resting peacefully
+      return (
+        <svg {...svgProps}>
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      )
+
+    case 'deep_sleep':
+      // Low-frequency slow delta brainwaves
+      return (
+        <svg {...svgProps}>
+          <path d="M2 11c3-5 5-5 8 0s5 5 8 0 3-2 4-2" />
+          <path d="M2 16c3-3 5-3 8 0s5 3 8 0 3-1 4-1" opacity="0.45" />
+        </svg>
+      )
+
+    case 'energy':
+      // High-voltage lightning bolt
+      return (
+        <svg {...svgProps}>
+          <path d="M13 2L4 14h7v8l9-12h-7l2-8z" />
+        </svg>
+      )
+
+    case 'skin_clarity':
+      // 4-point radiant diamond sparkle
+      return (
+        <svg {...svgProps}>
+          <path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2z" />
+        </svg>
+      )
+
+    case 'libido':
+      // Endocrine vitality flame
+      return (
+        <svg {...svgProps}>
+          <path d="M12 2c1.5 3 4.5 5 4.5 9a6 6 0 1 1-12 0c0-4 3-6 4.5-9 1 2 2 3 3 3s2-1 0-3z" />
+        </svg>
+      )
+
+    case 'stress':
+      // Calming autonomic pulse entering steady state
+      return (
+        <svg {...svgProps}>
+          <path d="M2 12h4l2-4 4 8 3-5 3 1h4" />
+        </svg>
+      )
+
+    case 'mood':
+      // Uplifted smile curve with radiant sun crest
+      return (
+        <svg {...svgProps}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M8 14c1.5 2 4.5 2 6 0" />
+          <circle cx="9" cy="9" r="1" fill={iconColor} stroke="none" />
+          <circle cx="15" cy="9" r="1" fill={iconColor} stroke="none" />
+        </svg>
+      )
+
+    case 'joint_comfort':
+      // Smooth interlocking joint articulation rings
+      return (
+        <svg {...svgProps}>
+          <circle cx="9" cy="12" r="4.5" />
+          <circle cx="15" cy="12" r="4.5" />
+        </svg>
+      )
+
+    case 'muscle_hypertrophy':
+      // Flexed bicep muscle contour
+      return (
+        <svg {...svgProps}>
+          <path d="M6 18c0-5 3-9 8-9h1a5 5 0 0 1 5 5v1a3 3 0 0 1-3 3h-8a3 3 0 0 1-3-3z" />
+          <path d="M10 9c0-3 2-5 4-5" />
+        </svg>
+      )
+
+    case 'strength':
+      // Heavy iron dumbbell barbell
+      return (
+        <svg {...svgProps}>
+          <path d="M6 5v14M18 5v14M2 9v6M22 9v6M6 12h12" />
+        </svg>
+      )
+
+    case 'athletic_endurance':
+      // Cardiorespiratory stopwatch with running hand
+      return (
+        <svg {...svgProps}>
+          <circle cx="12" cy="13" r="8" />
+          <path d="M12 9v4l3 2M12 2v3M9 2h6" />
+        </svg>
+      )
+
+    case 'digestive_comfort':
+      // Smooth enteric gut loop
+      return (
+        <svg {...svgProps}>
+          <path d="M10 3c-4 0-6 3-6 7 0 6 8 6 8 10 0 1-1 2-2 2s-2-1-2-2" />
+          <path d="M14 6c2 1 3 3 3 5" />
+        </svg>
+      )
+
+    case 'waking_restedness':
+      // Morning dawn sunrise over clean horizon
+      return (
+        <svg {...svgProps}>
+          <path d="M3 18h18M12 5v3M6.3 7.3l2.1 2.1M17.7 7.3l-2.1 2.1M7 18a5 5 0 0 1 10 0" />
+        </svg>
+      )
+
+    case 'calmness':
+      // Concentric serene water ripple rings
+      return (
+        <svg {...svgProps}>
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="4" />
+        </svg>
+      )
+
+    case 'immune_resilience':
+      // Immunological defense shield with centered medical cross
+      return (
+        <svg {...svgProps}>
+          <path d="M12 2L4 5v6c0 5.5 3.5 10.5 8 12 4.5-1.5 8-6.5 8-12V5l-8-3z" />
+          <path d="M12 8v8M8 12h8" />
+        </svg>
+      )
+
+    case 'brain_fog':
+      // Clarity lightbulb filament
+      return (
+        <svg {...svgProps}>
+          <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-5 11.9V16h10v-2.1A7 7 0 0 0 12 2z" />
+        </svg>
+      )
+
+    case 'satiety':
+      // Balanced fulcrum scale in equilibrium
+      return (
+        <svg {...svgProps}>
+          <path d="M12 3v18M5 7l7-3 7 3M2 13l3-6 3 6a3 3 0 0 1-6 0zM16 13l3-6 3 6a3 3 0 0 1-6 0z" />
+        </svg>
+      )
+
+    case 'soreness':
+      // Anti-inflammatory cryo snowflake crystal
+      return (
+        <svg {...svgProps}>
+          <path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19" />
+        </svg>
+      )
+
+    case 'sleep_latency':
+      // Swift sleep onset countdown clock
+      return (
+        <svg {...svgProps}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+      )
+
+    case 'emotional_resilience':
+      // Unbreakable diamond facet
+      return (
+        <svg {...svgProps}>
+          <path d="M6 3h12l4 6-10 12L2 9l4-6z" />
+        </svg>
+      )
+
+    case 'motivation':
+      // Upward surge launch rocket
+      return (
+        <svg {...svgProps}>
+          <path d="M4 20l5-1 9-9-4-4-9 9-1 5z" />
+          <path d="M14 6l4 4M21 3l-2 2" />
+        </svg>
+      )
+
+    case 'physical_fatigue':
+      // Fully replenished battery cell
+      return (
+        <svg {...svgProps}>
+          <rect x="2" y="6" width="17" height="12" rx="3" />
+          <path d="M22 10v4M6 12h6" />
+        </svg>
+      )
+
+    case 'productivity':
+      // Completed deep work check badge
+      return (
+        <svg {...svgProps}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M8 12l3 3 5-5" />
+        </svg>
+      )
+
+    case 'pain':
+      // Comfort relief wrap / crossed bandage
+      return (
+        <svg {...svgProps}>
+          <rect x="4" y="9" width="16" height="6" rx="3" transform="rotate(-45 12 12)" />
+          <circle cx="12" cy="12" r="1" fill={iconColor} stroke="none" />
+        </svg>
+      )
+
+    default:
+      return (
+        <svg {...svgProps}>
+          <circle cx="12" cy="12" r="7" />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+        </svg>
+      )
+  }
+}
+
+// -----------------------------------------------------------------------------
+// PRIMARY ICON COMPONENT (Automatically uses compact glyph if size <= 20 or variant="compact")
+// -----------------------------------------------------------------------------
+
 export interface FunctionalOutcomeIconProps extends OutcomeIconProps {
   outcome: FunctionalOutcomeId | string
 }
 
-export const FunctionalOutcomeIcon: React.FC<FunctionalOutcomeIconProps> = ({ outcome, ...props }) => {
-  switch (outcome) {
+export const FunctionalOutcomeIcon: React.FC<FunctionalOutcomeIconProps> = ({
+  outcome,
+  variant,
+  size = 24,
+  ...props
+}) => {
+  const normOutcome = (outcome || '').toLowerCase().replace(/[-\s]/g, '_').trim() as FunctionalOutcomeId
+
+  // If explicitly requested as compact, or if rendering at small sizes (<= 20px), use the ultra-clean simplified glyph!
+  if (variant === 'compact' || (variant !== 'detailed' && size <= 20)) {
+    return <CompactOutcomeIcon outcome={normOutcome} size={size} {...props} />
+  }
+
+  switch (normOutcome) {
     case 'focus':
-      return <FocusIcon {...props} />
+      return <FocusIcon size={size} {...props} />
     case 'sleep_quality':
-      return <SleepQualityIcon {...props} />
+      return <SleepQualityIcon size={size} {...props} />
     case 'deep_sleep':
-      return <DeepSleepIcon {...props} />
+      return <DeepSleepIcon size={size} {...props} />
     case 'energy':
-      return <EnergyIcon {...props} />
+      return <EnergyIcon size={size} {...props} />
     case 'skin_clarity':
-      return <SkinClarityIcon {...props} />
+      return <SkinClarityIcon size={size} {...props} />
     case 'libido':
-      return <LibidoIcon {...props} />
+      return <LibidoIcon size={size} {...props} />
     case 'stress':
-      return <StressIcon {...props} />
+      return <StressIcon size={size} {...props} />
     case 'mood':
-      return <MoodIcon {...props} />
+      return <MoodIcon size={size} {...props} />
     case 'joint_comfort':
-      return <JointComfortIcon {...props} />
+      return <JointComfortIcon size={size} {...props} />
     case 'muscle_hypertrophy':
-      return <MuscleHypertrophyIcon {...props} />
+      return <MuscleHypertrophyIcon size={size} {...props} />
     case 'strength':
-      return <StrengthIcon {...props} />
+      return <StrengthIcon size={size} {...props} />
     case 'athletic_endurance':
-      return <AthleticEnduranceIcon {...props} />
+      return <AthleticEnduranceIcon size={size} {...props} />
     case 'digestive_comfort':
-      return <DigestiveComfortIcon {...props} />
+      return <DigestiveComfortIcon size={size} {...props} />
     case 'waking_restedness':
-      return <WakingRestednessIcon {...props} />
+      return <WakingRestednessIcon size={size} {...props} />
     case 'calmness':
-      return <CalmnessIcon {...props} />
+      return <CalmnessIcon size={size} {...props} />
     case 'immune_resilience':
-      return <ImmuneResilienceIcon {...props} />
+      return <ImmuneResilienceIcon size={size} {...props} />
     case 'brain_fog':
-      return <BrainFogIcon {...props} />
+      return <BrainFogIcon size={size} {...props} />
     case 'satiety':
-      return <SatietyIcon {...props} />
+      return <SatietyIcon size={size} {...props} />
     case 'soreness':
-      return <SorenessIcon {...props} />
+      return <SorenessIcon size={size} {...props} />
     case 'sleep_latency':
-      return <SleepLatencyIcon {...props} />
+      return <SleepLatencyIcon size={size} {...props} />
     case 'emotional_resilience':
-      return <EmotionalResilienceIcon {...props} />
+      return <EmotionalResilienceIcon size={size} {...props} />
     case 'motivation':
-      return <MotivationIcon {...props} />
+      return <MotivationIcon size={size} {...props} />
     case 'physical_fatigue':
-      return <PhysicalFatigueIcon {...props} />
+      return <PhysicalFatigueIcon size={size} {...props} />
     case 'productivity':
-      return <ProductivityIcon {...props} />
+      return <ProductivityIcon size={size} {...props} />
     case 'pain':
-      return <PainIcon {...props} />
+      return <PainIcon size={size} {...props} />
     default:
-      return <FocusIcon {...props} />
+      return <FocusIcon size={size} {...props} />
   }
 }
 
@@ -1030,6 +1319,7 @@ export const FunctionalOutcomeIcon: React.FC<FunctionalOutcomeIconProps> = ({ ou
 export interface FunctionalOutcomeBadgeProps {
   outcome: FunctionalOutcomeId | string
   showLabel?: boolean // Set to false for standalone icon badge without text!
+  variant?: 'detailed' | 'compact'
   size?: number
   glow?: boolean
   className?: string
@@ -1039,12 +1329,14 @@ export interface FunctionalOutcomeBadgeProps {
 export const FunctionalOutcomeBadge: React.FC<FunctionalOutcomeBadgeProps> = ({
   outcome,
   showLabel = true,
+  variant,
   size = 20,
   glow = true,
   className = '',
   onClick
 }) => {
-  const meta = FUNCTIONAL_OUTCOMES_METADATA[outcome as FunctionalOutcomeId] || {
+  const normOutcome = (outcome || '').toLowerCase().replace(/[-\s]/g, '_').trim() as FunctionalOutcomeId
+  const meta = FUNCTIONAL_OUTCOMES_METADATA[normOutcome] || {
     name: outcome,
     colorHex: '#10B981',
     bgGlow: 'rgba(16, 185, 129, 0.2)',
@@ -1063,7 +1355,7 @@ export const FunctionalOutcomeBadge: React.FC<FunctionalOutcomeBadgeProps> = ({
       }}
       title={meta.name}
     >
-      <FunctionalOutcomeIcon outcome={outcome} size={size} glow={glow} />
+      <FunctionalOutcomeIcon outcome={normOutcome} size={size} glow={glow} variant={variant} />
       {showLabel && (
         <span className={`text-xs font-semibold whitespace-nowrap ${meta.textColor}`}>
           {meta.name}

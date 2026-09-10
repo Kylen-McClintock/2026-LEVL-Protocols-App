@@ -11,6 +11,7 @@ import {
   HALLMARKS_OF_AGING_METADATA,
   HallmarkOfAgingBadge,
   FunctionalOutcomeIcon,
+  CompactOutcomeIcon,
   FunctionalOutcomeId,
   FUNCTIONAL_OUTCOMES_METADATA,
   FunctionalOutcomeBadge,
@@ -23,6 +24,7 @@ export default function LongevityVectorsAndHallmarksShowcase() {
   const [iconSize, setIconSize] = useState<number>(32)
   const [isGlowEnabled, setIsGlowEnabled] = useState<boolean>(true)
   const [showLabels, setShowLabels] = useState<boolean>(true)
+  const [iconVariant, setIconVariant] = useState<'compact' | 'detailed'>('compact')
   const [selectedVector, setSelectedVector] = useState<LongevityVectorId>('heart_health')
   const [selectedHallmark, setSelectedHallmark] = useState<HallmarkOfAgingId>('mitochondrial_dysfunction')
   const [selectedOutcome, setSelectedOutcome] = useState<FunctionalOutcomeId>('focus')
@@ -54,8 +56,13 @@ export default function LongevityVectorsAndHallmarksShowcase() {
         ? `<HallmarkOfAgingBadge hallmark="${selectedHallmark}" size={${iconSize}} showLabel={true} />`
         : `<HallmarkOfAgingIcon hallmark="${selectedHallmark}" size={${iconSize}} glow={${isGlowEnabled}} />`
     }
+    if (iconVariant === 'compact') {
+      return showLabels
+        ? `<FunctionalOutcomeBadge outcome="${selectedOutcome}" size={${iconSize}} variant="compact" showLabel={true} />`
+        : `<CompactOutcomeIcon outcome="${selectedOutcome}" size={${iconSize}} />`
+    }
     return showLabels
-      ? `<FunctionalOutcomeBadge outcome="${selectedOutcome}" size={${iconSize}} showLabel={true} />`
+      ? `<FunctionalOutcomeBadge outcome="${selectedOutcome}" size={${iconSize}} variant="detailed" showLabel={true} />`
       : `<FunctionalOutcomeIcon outcome="${selectedOutcome}" size={${iconSize}} glow={${isGlowEnabled}} />`
   }
 
@@ -166,6 +173,21 @@ export default function LongevityVectorsAndHallmarksShowcase() {
           >
             Glow: {isGlowEnabled ? 'ON' : 'OFF'}
           </button>
+
+          {/* Style Variant Toggle (for outcomes) */}
+          {activeTab === 'outcomes' && (
+            <button
+              type="button"
+              onClick={() => setIconVariant(iconVariant === 'compact' ? 'detailed' : 'compact')}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                iconVariant === 'compact'
+                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                  : 'bg-purple-500/20 border-purple-500/50 text-purple-300'
+              }`}
+            >
+              Style: {iconVariant === 'compact' ? 'Simple Glyphs (Small Areas)' : 'Detailed Clinical'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -224,6 +246,7 @@ export default function LongevityVectorsAndHallmarksShowcase() {
                   >
                     <FunctionalOutcomeIcon
                       outcome={oKey}
+                      variant={iconVariant}
                       size={iconSize}
                       glow={isGlowEnabled}
                     />
@@ -251,6 +274,7 @@ export default function LongevityVectorsAndHallmarksShowcase() {
                     <div className="py-2 flex flex-col items-center text-center">
                       <FunctionalOutcomeBadge
                         outcome={oKey}
+                        variant={iconVariant}
                         size={20}
                         showLabel={false}
                         glow={isGlowEnabled}
