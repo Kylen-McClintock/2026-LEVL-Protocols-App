@@ -7,6 +7,8 @@ export interface BiochemicalSynergyRule {
   rationale: string
   actionableTip: string
   pubmedUrl: string
+  targetPathway?: string
+  clinicalEffectDelta?: string
 }
 
 export interface BiochemicalConflictRule {
@@ -34,6 +36,8 @@ export interface BiochemicalConflictRule {
     description: string
   }
   pubmedUrl: string
+  targetPathway?: string
+  clinicalEffectDelta?: string
 }
 
 export const COMPREHENSIVE_SYNERGY_RULES: BiochemicalSynergyRule[] = [
@@ -298,7 +302,65 @@ export const COMPREHENSIVE_SYNERGY_RULES: BiochemicalSynergyRule[] = [
     headline: 'Renal Sodium Sparing & Cellular Autophagy Potentiation',
     rationale: 'Fasting drops insulin, triggering renal natriuresis (sodium wasting). Supplementing unflavored electrolytes sustains vascular tone, prevents fatigue/cramps, and supports autophagy flux.',
     actionableTip: 'Sip unflavored sodium and potassium electrolytes in water throughout your morning fast.',
-    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/29086496/'
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/29086496/',
+    targetPathway: 'Renal ENaC Transporters & Autophagy Flux',
+    clinicalEffectDelta: 'Prevents vascular volume depletion & fatigue'
+  },
+
+  // 23. Fat-Soluble Vitamins (D3, K2, CoQ10, Curcumin) + First Meal / Dietary Lipids
+  {
+    id: 'fat_soluble_vitamins_meal',
+    triggers: ['vitamind', 'vitamind3', 'd3', 'vitamink', 'vitamink2', 'mk7', 'coq10', 'ubiquinol', 'astaxanthin'],
+    targets: ['extravirginoliveoil', 'evoo', 'omega3', 'epadhaomega3', 'healthyfats', 'firstmeal', 'lunch', 'dinner'],
+    type: 'bioavailability',
+    headline: 'Lipid Micellar Transport for Fat-Soluble Micronutrients',
+    rationale: 'Vitamins D3, K2, CoQ10, and carotenoids are highly hydrophobic and require dietary bile acids and mixed micelle formation for enterocyte uptake. Ingestion during an empty-stomach fast reduces absorption by up to 50% compared to co-ingestion with a lipid-containing meal.',
+    actionableTip: 'Schedule fat-soluble vitamins with your First Meal or a meal containing healthy fats (EVOO, eggs, avocado).',
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/24500150/',
+    targetPathway: 'Intestinal Mixed Micelle Diffusion',
+    clinicalEffectDelta: '+30% to +50% Higher Plasma 25(OH)D & Tissue Absorption'
+  },
+
+  // 24. Curcumin + Piperine (Black Pepper Extract)
+  {
+    id: 'curcumin_piperine',
+    triggers: ['curcumin', 'turmeric'],
+    targets: ['piperine', 'blackpepper', 'bioperine', 'extravirginoliveoil'],
+    type: 'bioavailability',
+    headline: 'Hepatic Glucuronidation Blockade & Curcumin Bioavailability Surge',
+    rationale: 'Curcumin undergoes rapid intestinal sulfation and hepatic glucuronidation, yielding almost zero free plasma curcumin. 20mg Piperine temporarily inhibits UDP-glucuronosyltransferase, boosting bioavailability by 2,000%.',
+    actionableTip: 'Ensure your Curcumin extract includes 20mg Piperine (BioPerine) or take with black pepper and dietary fats.',
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/9619120/',
+    targetPathway: 'UDP-Glucuronosyltransferase (UGT) Inhibition',
+    clinicalEffectDelta: '+2,000% Bioavailability & Active Serum Levels'
+  },
+
+  // 25. Collagen Peptides + Vitamin C (Prolyl Hydroxylase Cofactor)
+  {
+    id: 'collagen_vitc_tendon',
+    triggers: ['collagen', 'collagenpeptides'],
+    targets: ['vitaminc', 'ascorbicacid'],
+    type: 'cofactor',
+    headline: 'Prolyl 4-Hydroxylase Triple-Helix Tendon Synthesis',
+    rationale: 'Vitamin C is an obligatory electron donor cofactor for prolyl and lysyl hydroxylase, which cross-link the collagen triple helix. Ingesting 15g gelatin/collagen with 50mg Vitamin C 30–60 minutes before loading doubles tendon amino acid uptake and collagen cross-linking.',
+    actionableTip: 'Consume 10–15g Collagen Peptides with 50–100mg Vitamin C 45 minutes prior to resistance training or joint rehabilitation.',
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/27927634/',
+    targetPathway: 'Prolyl 4-Hydroxylase Cross-Linking',
+    clinicalEffectDelta: '+100% Ligamentous Collagen Synthesis Rate'
+  },
+
+  // 26. Fasted Zone 2 Cardio + Electrolytes
+  {
+    id: 'fasted_zone2_electrolytes',
+    triggers: ['zone2cardio'],
+    targets: ['hydrationelectrolytes', 'sodium', 'potassium', 'waterfast24h', 'intermittentfasting168'],
+    type: 'cellular_pathway',
+    headline: 'Fatty Acid Beta-Oxidation & Plasma Volume Maintenance',
+    rationale: 'Fasted Zone 2 training stimulates intramuscular CPT-1 and maximizes mitochondrial lipid oxidation while insulin is suppressed. Supplementing sodium and water prevents hemoconcentration and elevates parasympathetic recovery speed post-session.',
+    actionableTip: 'Hydrate with 500ml water and electrolytes 15 minutes before fasted Zone 2 cardio.',
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/29086496/',
+    targetPathway: 'Carnitine Palmitoyltransferase-1 (CPT-1) & Intravascular Hydration',
+    clinicalEffectDelta: '+25% Peak Fat Oxidation & Reduced Cardiac Drift'
   }
 ]
 
@@ -503,6 +565,124 @@ export const COMPREHENSIVE_CONFLICT_RULES: BiochemicalConflictRule[] = [
       recommendedTimeSlot: 'Polarized 80/20 weekly cadence',
       description: 'Cap HIIT at 1–2 sessions weekly, paired with 80% Zone 2 aerobic volume'
     },
-    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/24790484/'
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/24790484/',
+    targetPathway: 'Autonomic Balance & Mitochondrial Uncoupling',
+    clinicalEffectDelta: 'Overreaching & Suppressed Nocturnal HRV'
+  },
+
+  // 13. Berberine + Zone 2 Aerobic Cardio (Complex I Blunting)
+  {
+    id: 'berberine_vs_zone2',
+    triggers: ['berberine', 'berberinehcl', 'meansberberinegda'],
+    targets: ['zone2cardio', 'vo2maxhiittraining', 'endurancetraining', 'cpet'],
+    type: 'mitochondrial_blunting',
+    severity: 'timing',
+    headline: 'Berberine Complex I Inhibition Blunts Aerobic Mitochondrial Adaptations',
+    rationale: 'Like metformin, Berberine acutely inhibits mitochondrial Complex I in skeletal muscle. Taking berberine within 2 hours of endurance exercise suppresses physiological PGC-1alpha upregulation, blunting mitochondrial density and VO2 max training responses.',
+    mitigationRecommendation: 'Move Berberine to post-workout lunch or evening meal, separated by at least 2–3 hours from endurance training.',
+    autoResolutionTiming: {
+      spacingHours: 3,
+      recommendedTimeSlot: 'Evening Stack (post-workout meal)',
+      description: 'Shift Berberine 3+ hours after endurance training'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/32087535/',
+    targetPathway: 'Complex I / PGC-1alpha Mitochondrial Respiration',
+    clinicalEffectDelta: '-35% Mitochondrial Density Adaptation'
+  },
+
+  // 14. Late-Night Cold Plunge (<2h Before Bed)
+  {
+    id: 'evening_cold_plunge_sleep',
+    triggers: ['coldwaterimmersion', 'coldplunge', 'icebath', 'wimhofcoldshockimmersion'],
+    targets: ['darkcoolsleepenvironment', 'sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop', '478breathing', 'magnesiumglycinate'],
+    type: 'circadian_disruption',
+    severity: 'timing',
+    headline: 'Late-Night Cold Plunge Re-Warming Elevates Core Body Temp & Latency',
+    rationale: 'Per the Søberg Principle, the body responds to cold immersion with prolonged endogenous metabolic heat generation to re-warm core organs. Performing cold plunges within 2 hours of bedtime opposes the natural 1°F core temperature drop required for sleep onset, delaying sleep latency and spiking nocturnal norepinephrine.',
+    mitigationRecommendation: 'Perform cold plunge in the morning or early afternoon; avoid within 3–4 hours of sleep.',
+    autoResolutionTiming: {
+      recommendedTimeSlot: 'Morning (Waking / Early Day)',
+      description: 'Shift Cold Plunge to morning for circadian wakefulness'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/35147574/',
+    targetPathway: 'Thermoregulatory Core Cooling & Norepinephrine Clearance',
+    clinicalEffectDelta: '+45m Sleep Latency & Fragmented Slow-Wave Sleep'
+  },
+
+  // 15. Creatine + High Acute Caffeine Competition
+  {
+    id: 'creatine_vs_high_caffeine',
+    triggers: ['creatine', 'creatinemonohydrate'],
+    targets: ['caffeine', 'coffee', 'preworkout'],
+    type: 'antagonistic_receptors',
+    severity: 'timing',
+    headline: 'Simultaneous High-Dose Caffeine Blunts Creatine Muscle Saturation',
+    rationale: 'Ingesting high-dose caffeine (>300mg) simultaneously with creatine monohydrate exerts antagonistic effects on muscle relaxation time and inhibits localized phosphocreatine resynthesis, in addition to increasing gastrointestinal motility and excretion before uptake.',
+    mitigationRecommendation: 'Separate daily creatine (5g with post-workout meal or lunch) from acute morning pre-workout caffeine.',
+    autoResolutionTiming: {
+      spacingHours: 2,
+      recommendedTimeSlot: 'Post-Workout Meal / Lunch',
+      description: 'Take Creatine with a meal away from morning caffeine'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/12439084/',
+    targetPathway: 'Muscle Relaxation Phase & Intramuscular Phosphagen Kinetics',
+    clinicalEffectDelta: '-20% Ergogenic Force Gains & Pharmacokinetic Competition'
+  },
+
+  // 16. High Calcium + Magnesium TRPM6 Competition
+  {
+    id: 'high_calcium_vs_magnesium',
+    triggers: ['calcium', 'calciumcarbonate', 'calciumcitrate'],
+    targets: ['magnesium', 'magnesiumglycinate', 'magnesiumlthreonate', 'magnesiumbreakthrough'],
+    type: 'absorption_competition',
+    severity: 'timing',
+    headline: 'High Divalent Calcium Competes with Magnesium TRPM6 Absorption',
+    rationale: 'High calcium intakes (>600–800mg) competitively inhibit magnesium uptake across the intestinal lumen via the TRPM6 and TRPM7 transport channels, reducing systemic magnesium bioavailability by up to 40%.',
+    mitigationRecommendation: 'Separate supplemental calcium from magnesium by at least 2 hours, reserving magnesium for evening.',
+    autoResolutionTiming: {
+      spacingHours: 2,
+      recommendedTimeSlot: 'Evening / Wind Down',
+      description: 'Take Magnesium in evening, separated from daytime Calcium'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/29774636/',
+    targetPathway: 'Intestinal TRPM6/TRPM7 Divalent Cation Channels',
+    clinicalEffectDelta: '-40% Intestinal Magnesium Uptake'
+  },
+
+  // 17. Statin / PCSK9 Inhibitor Depletes CoQ10
+  {
+    id: 'statin_without_coq10',
+    triggers: ['atorvastatin', 'rosuvastatin', 'simvastatin', 'pravastatin', 'statin', 'lipitor', 'crestor', 'bempedoicacid'],
+    targets: ['coq10', 'ubiquinol'],
+    type: 'mitochondrial_blunting',
+    severity: 'moderate',
+    headline: 'HMG-CoA Reductase Blockade Depletes Endogenous CoQ10',
+    rationale: 'Statins inhibit HMG-CoA reductase, the rate-limiting enzyme in both cholesterol and mevalonate synthesis. Because mevalonate is also the essential precursor to Ubiquinone (CoQ10), statin therapy reduces serum and muscle CoQ10 by 40–50%, contributing to mitochondrial uncoupling and statin-associated muscle symptoms (SAMS).',
+    mitigationRecommendation: 'Stack 100–200mg Ubiquinol (CoQ10) with fat-containing meal to maintain mitochondrial electron transport.',
+    autoResolutionTiming: {
+      description: 'Add 100-200mg Ubiquinol with lunch or dinner'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/17493470/',
+    targetPathway: 'Mevalonate Pathway & Complex I/II Electron Shuttling',
+    clinicalEffectDelta: '-45% Endogenous CoQ10 Depletion & Statin Myopathy Risk'
+  },
+
+  // 18. Melatonin During Circadian Light Entrainment
+  {
+    id: 'melatonin_bright_light_conflict',
+    triggers: ['melatonin'],
+    targets: ['morningsunlight', 'brightlighttherapy', 'redlight', 'lightbox'],
+    type: 'circadian_disruption',
+    severity: 'timing',
+    headline: 'Exogenous Melatonin During Circadian Light Entrainment Phase',
+    rationale: 'Melatonin binds MT1/MT2 suprachiasmatic receptors to signal biological night. Taking melatonin in proximity to bright light or morning sunlight produces contradictory central circadian clock signals, attenuating the cortisol awakening response and producing daytime grogginess.',
+    mitigationRecommendation: 'Strictly reserve micro-dose Melatonin (0.3–1mg) for 30–60 minutes before scheduled sleep in dim lighting.',
+    autoResolutionTiming: {
+      recommendedTimeSlot: 'Pre-Bed (30-60m before sleep)',
+      description: 'Schedule Melatonin 30m before bed in dark environment'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/29072822/',
+    targetPathway: 'Suprachiasmatic Nucleus (SCN) MT1/MT2 Phase Shifting',
+    clinicalEffectDelta: 'Circadian Phase Confusion & Suppressed Awakening Cortisol'
   }
 ]

@@ -2,21 +2,24 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Calendar as CalendarIcon, Clock, Activity, CalendarDays, Bookmark, Target, TrendingUp, HelpCircle } from 'lucide-react'
+import { Calendar as CalendarIcon, Clock, Activity, CalendarDays, Bookmark, Target, TrendingUp, HelpCircle, Scale } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
-import { getProtocolTasksHistory, getOrCreateUserProfile, getDailyWellbeingHistory } from '@/lib/data'
-import { DailyProtocolTask, UserProfile, DailyWellbeingCheckin } from '@/lib/types'
+import { getProtocolTasksHistory, getOrCreateUserProfile, getDailyWellbeingHistory, getModalities } from '@/lib/data'
+import { DailyProtocolTask, UserProfile, DailyWellbeingCheckin, Modality } from '@/lib/types'
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, addWeeks, subWeeks } from 'date-fns'
 import BiologicalRhythmDashboard from '@/components/calendar/BiologicalRhythmDashboard'
+import StackHealthOptimizerModal from '@/components/modals/StackHealthOptimizerModal'
 
 export default function SchedulePage() {
   const { localUserId: authUserId, loading: authLoading } = useAuth()
   const [tasks, setTasks] = useState<DailyProtocolTask[]>([])
+  const [allModalities, setAllModalities] = useState<Modality[]>([])
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [wellbeingLogs, setWellbeingLogs] = useState<DailyWellbeingCheckin[]>([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [isStackHealthOpen, setIsStackHealthOpen] = useState(false)
 
   useEffect(() => {
     if (authLoading) return
@@ -28,15 +31,17 @@ export default function SchedulePage() {
       const weekStartStr = format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'yyyy-MM-dd')
       const weekEndStr = format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'yyyy-MM-dd')
       
-      const [fetchedProfile, weekData, logs] = await Promise.all([
+      const [fetchedProfile, weekData, logs, mods] = await Promise.all([
         getOrCreateUserProfile(localUserId),
         getProtocolTasksHistory(localUserId, weekStartStr, weekEndStr),
-        getDailyWellbeingHistory(localUserId, weekStartStr, weekEndStr)
+        getDailyWellbeingHistory(localUserId, weekStartStr, weekEndStr),
+        getModalities()
       ])
 
       setProfile(fetchedProfile)
       setTasks(weekData)
       setWellbeingLogs(logs)
+      if (mods) setAllModalities(mods)
       setLoading(false)
 
       // Phase 2: Asynchronously expand to full month window in background
@@ -89,6 +94,14 @@ export default function SchedulePage() {
 
           {/* Quick Hub Navigation Chips */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsStackHealthOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              title="Audit Stack Health & Optimize Conflicts"
+            >
+              <Scale size={13} className="text-amber-400" /> Stack Health
+            </button>
             <Link
               href="/guide#schedule"
               className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
@@ -132,6 +145,19 @@ export default function SchedulePage() {
           onPrevMonth={prevWeek}
         />
       )}
+
+      {/* Stack Health & Conflict Optimizer Modal */}
+      <StackHealthOptimizerModal
+        isOpen={isStackHealthOpen}
+        onClose={() => setIsStackHealthOpen(false)}
+        activeTasks={tasks}
+        allModalities={allModalities}
+        userProfile={profile}
+        onOptimizationsApplied={() => {
+          // Re-trigger auth user change event to reload schedule
+          window.dispatchEvent(new CustomEvent('levl_auth_user_changed'))
+        }}
+      />
     </div>
   )
 }

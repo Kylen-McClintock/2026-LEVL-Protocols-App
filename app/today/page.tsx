@@ -34,7 +34,7 @@ import {
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
-  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search
+  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search, Scale, ShieldAlert
 } from 'lucide-react'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
@@ -59,6 +59,8 @@ import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolOverviewHeaderCard from '@/components/cards/ProtocolOverviewHeaderCard'
 import AdHocLoggerModal from '@/components/modals/AdHocLoggerModal'
 import EnrollProtocolModal from '@/components/modals/EnrollProtocolModal'
+import StackHealthOptimizerModal from '@/components/modals/StackHealthOptimizerModal'
+import { auditRoutineStackHealth } from '@/lib/synergy/routineStackHealthEngine'
 import { SmartRescheduleModal, RescheduleActionType } from '@/components/modals/SmartRescheduleModal'
 import CustomizeModalityOutcomesModal from '@/components/modals/CustomizeModalityOutcomesModal'
 import CreateCustomModalityModal, { CustomModalityInitialData } from '@/components/modals/CreateCustomModalityModal'
@@ -399,9 +401,14 @@ function TodayPageContent() {
   const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([])
   const [selectedIsolatedOutcome, setSelectedIsolatedOutcome] = useState<string | null>(null)
 
-  // Master Filter Lens (Category vs Outcomes)
   const [filterLens, setFilterLens] = useState<FilterLens>('category')
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([])
+  const [isStackHealthModalOpen, setIsStackHealthModalOpen] = useState(false)
+
+  // Continuous Live Stack Health & Biochemical Conflict Audit
+  const routineAudit = useMemo(() => {
+    return auditRoutineStackHealth(tasks, allModalities, profile)
+  }, [tasks, allModalities, profile])
 
   // Bidirectional View Mode sync with TopStickyHeader
   useEffect(() => {
@@ -3691,6 +3698,37 @@ function TodayPageContent() {
               </button>
             )}
 
+            {/* Stack Health & Conflict Optimizer Pill */}
+            {calendarViewMode === 'today' && dedupedTasks.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  setIsStackHealthModalOpen(true)
+                }}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
+                  routineAudit.criticalCount > 0
+                    ? 'bg-rose-950/70 hover:bg-rose-900/80 border border-rose-500/80 text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.35)] animate-pulse'
+                    : routineAudit.conflictCount > 0
+                    ? 'bg-amber-950/70 hover:bg-amber-900/80 border border-amber-500/80 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                    : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
+                }`}
+                title="Audit My Routine — Live conflict & synergy optimizer"
+                aria-label="Audit Routine Stack Health"
+              >
+                <Scale size={13} className={routineAudit.conflictCount > 0 ? "text-amber-400" : "text-emerald-400"} />
+                <span className="hidden xs:inline">Stack Health</span>
+                <span className={`px-1.5 py-0.2 rounded-md font-mono text-[10px] ${
+                  routineAudit.conflictCount > 0 ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
+                }`}>
+                  {routineAudit.overallScore}%
+                </span>
+                {routineAudit.conflictCount > 0 && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping shrink-0" />
+                )}
+              </button>
+            )}
+
             {calendarViewMode !== 'today' && calendarViewMode !== 'pulse' && multiDayStats && multiDayStats.total > 0 && (
               <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center gap-1">
                 <span>{multiDayStats.completed}/{multiDayStats.total}</span>
@@ -5032,6 +5070,18 @@ function TodayPageContent() {
           }}
         />
       )}
+
+      {/* Routine Stack Health & Biochemical Conflict Optimizer Modal */}
+      <StackHealthOptimizerModal
+        isOpen={isStackHealthModalOpen}
+        onClose={() => setIsStackHealthModalOpen(false)}
+        activeTasks={tasks}
+        allModalities={allModalities}
+        userProfile={profile}
+        onOptimizationsApplied={async () => {
+          await refreshTodayTasks()
+        }}
+      />
     </div>
   )
 }
