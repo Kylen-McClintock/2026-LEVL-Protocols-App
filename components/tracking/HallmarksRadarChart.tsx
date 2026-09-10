@@ -8,6 +8,7 @@ import {
   BENCHMARK_PROFILES,
   HallmarkTier
 } from '@/lib/tracking/hallmarkCoverageEngine'
+import { HallmarkOfAgingIcon } from '@/components/icons'
 import {
   Sparkles,
   Info,
@@ -704,8 +705,8 @@ export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
                     </h3>
                   </div>
 
-                  <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center font-bold shrink-0">
-                    <Dna size={18} />
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center font-bold shrink-0 p-1.5">
+                    <HallmarkOfAgingIcon hallmark={activeHallmarkItem.meta.id} size={26} glow={true} />
                   </div>
                 </div>
 

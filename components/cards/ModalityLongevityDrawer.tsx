@@ -25,6 +25,32 @@ import {
   CheckCircle2
 } from 'lucide-react'
 import { LongevityAnalysisModal } from '../modals/LongevityAnalysisModal'
+import {
+  LongevityVectorIcon,
+  HallmarkOfAgingIcon,
+  HallmarkOfAgingId,
+  HALLMARKS_OF_AGING_METADATA
+} from '@/components/icons'
+
+function resolveHallmarkId(name: string): HallmarkOfAgingId {
+  const norm = name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+  if (norm in HALLMARKS_OF_AGING_METADATA) {
+    return norm as HallmarkOfAgingId
+  }
+  if (norm.includes('autophagy')) return 'disabled_macroautophagy'
+  if (norm.includes('telomere')) return 'telomere_attrition'
+  if (norm.includes('mitochondri')) return 'mitochondrial_dysfunction'
+  if (norm.includes('senescen')) return 'cellular_senescence'
+  if (norm.includes('epigenetic')) return 'epigenetic_alterations'
+  if (norm.includes('genomic') || norm.includes('dna_repair') || norm.includes('instability')) return 'genomic_instability'
+  if (norm.includes('proteostasis')) return 'loss_of_proteostasis'
+  if (norm.includes('nutrient')) return 'deregulated_nutrient_sensing'
+  if (norm.includes('stem_cell')) return 'stem_cell_exhaustion'
+  if (norm.includes('intercellular') || norm.includes('communication')) return 'altered_intercellular_communication'
+  if (norm.includes('inflammation') || norm.includes('inflammaging')) return 'chronic_inflammation'
+  if (norm.includes('dysbiosis') || norm.includes('microbiome')) return 'dysbiosis'
+  return 'mitochondrial_dysfunction'
+}
 
 interface ModalityLongevityDrawerProps {
   modality: Modality
@@ -64,7 +90,11 @@ export const ModalityLongevityDrawer: React.FC<ModalityLongevityDrawerProps> = (
       >
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
           <div className="w-6 h-6 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center shrink-0">
-            <Dna size={14} />
+            {primaryVector ? (
+              <LongevityVectorIcon vector={primaryVector.outcomeId} size={15} glow={false} />
+            ) : (
+              <Dna size={14} />
+            )}
           </div>
           
           <div className="min-w-0 flex-1">
@@ -183,10 +213,9 @@ export const ModalityLongevityDrawer: React.FC<ModalityLongevityDrawerProps> = (
                     {/* Vector Header */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span 
-                          className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
-                          style={{ backgroundColor: colorConfig.hex }}
-                        />
+                        <div className="shrink-0">
+                          <LongevityVectorIcon vector={vec.outcomeId} size={18} glow={true} />
+                        </div>
                         <span className="font-bold text-white text-xs sm:text-sm truncate">
                           {vec.outcomeName}
                         </span>
@@ -344,10 +373,9 @@ export const ModalityLongevityDrawer: React.FC<ModalityLongevityDrawerProps> = (
                       >
                         <div className="flex items-center justify-between gap-1.5">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span 
-                              className="w-2 h-2 rounded-full shrink-0 opacity-60"
-                              style={{ backgroundColor: colorConfig.hex }}
-                            />
+                            <div className="shrink-0 opacity-70">
+                              <LongevityVectorIcon vector={nv.outcomeId} size={15} glow={false} />
+                            </div>
                             <span className="text-[11px] font-semibold text-slate-300 truncate">
                               {nv.outcomeName}
                             </span>
@@ -376,35 +404,43 @@ export const ModalityLongevityDrawer: React.FC<ModalityLongevityDrawerProps> = (
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {report.hallmarks.map((h, hIdx) => (
-                  <div 
-                    key={hIdx}
-                    className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-1"
-                  >
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="text-[11px] font-extrabold text-white">
-                        {h.name}
-                      </span>
-                      {h.pmid && (
-                        <a
-                          href={h.url || `https://pubmed.ncbi.nlm.nih.gov/${h.pmid}/`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-[9px] font-mono text-purple-300 hover:underline flex items-center gap-0.5"
-                        >
-                          <span>PMID:{h.pmid}</span>
-                          <ExternalLink size={9} />
-                        </a>
+                {report.hallmarks.map((h, hIdx) => {
+                  const hId = resolveHallmarkId(h.name)
+                  return (
+                    <div 
+                      key={hIdx}
+                      className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="shrink-0">
+                            <HallmarkOfAgingIcon hallmark={hId} size={20} glow={true} />
+                          </div>
+                          <span className="text-[11px] font-extrabold text-white truncate">
+                            {h.name}
+                          </span>
+                        </div>
+                        {h.pmid && (
+                          <a
+                            href={h.url || `https://pubmed.ncbi.nlm.nih.gov/${h.pmid}/`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[9px] font-mono text-purple-300 hover:underline flex items-center gap-0.5 shrink-0"
+                          >
+                            <span>PMID:{h.pmid}</span>
+                            <ExternalLink size={9} />
+                          </a>
+                        )}
+                      </div>
+                      {h.mechanism && (
+                        <p className="text-[10px] text-slate-300/80 leading-relaxed">
+                          {h.mechanism}
+                        </p>
                       )}
                     </div>
-                    {h.mechanism && (
-                      <p className="text-[10px] text-slate-300/80 leading-relaxed">
-                        {h.mechanism}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}

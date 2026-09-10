@@ -5,6 +5,7 @@ import {
   BioGapRecommendation,
   HallmarkCoverageReport
 } from '@/lib/tracking/hallmarkCoverageEngine'
+import { HallmarkOfAgingIcon } from '@/components/icons'
 import {
   Sparkles,
   Zap,
@@ -180,13 +181,18 @@ export const BioGapSolverSection: React.FC<BioGapSolverSectionProps> = ({
               {/* Top Details */}
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-                      {gap.hallmark.tierLabel}
-                    </span>
-                    <h4 className="text-base font-black text-white flex items-center gap-1.5 mt-0.5">
-                      {gap.hallmark.name}
-                    </h4>
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="shrink-0 mt-0.5">
+                      <HallmarkOfAgingIcon hallmark={gap.hallmark.id} size={24} glow={true} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                        {gap.hallmark.tierLabel}
+                      </span>
+                      <h4 className="text-base font-black text-white truncate mt-0.5">
+                        {gap.hallmark.name}
+                      </h4>
+                    </div>
                   </div>
                   <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
                     isCritical

@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { CalendarDays, ChevronDown, Check, Filter, LayoutGrid, Calendar, Columns, Rows, AlignJustify, Zap, Activity, HelpCircle, Bookmark, Target, X, Search, Sparkles } from 'lucide-react'
+import { LongevityVectorIcon } from '@/components/icons'
 import { UserProfile, OutcomeDimension } from '@/lib/types'
 
 export type CalendarViewMode = 'today' | 'pulse' | '3day' | 'week' | 'month'
@@ -880,7 +881,13 @@ export const CategoryFiltersBar: React.FC<{
                         }`}
                       >
                         <div className="flex items-start gap-1.5 min-w-0 flex-1">
-                          <span className="text-base shrink-0 leading-tight">{item.icon}</span>
+                          {item.category === 'longevity' ? (
+                            <div className="shrink-0 mt-0.5">
+                              <LongevityVectorIcon vector={item.id} size={16} glow={isChecked} />
+                            </div>
+                          ) : (
+                            <span className="text-base shrink-0 leading-tight">{item.icon}</span>
+                          )}
                           <div className="flex flex-col min-w-0 flex-1">
                             <span className="font-bold text-[11px] sm:text-xs leading-snug line-clamp-2">
                               {item.name}
@@ -916,8 +923,9 @@ export const CategoryFiltersBar: React.FC<{
                       {/* Section 1: Biological Longevity & Clinical Biomarkers */}
                       {longevityOutcomes.length > 0 && (
                         <div className="space-y-1.5">
-                          <div className="flex items-center gap-1 px-1 text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300">
-                            <span>🧬 Biological Longevity &amp; Biomarkers</span>
+                          <div className="flex items-center gap-1.5 px-1 text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300">
+                            <Sparkles size={12} className="text-purple-400" />
+                            <span>Biological Longevity &amp; Biomarkers (8 Vectors)</span>
                           </div>
                           <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                             {longevityOutcomes.map(renderButton)}

@@ -30,6 +30,7 @@ import {
   ScientificStudyReference
 } from '@/lib/data/longevityKnowledgeBase'
 import { getOutcomeColor } from '@/lib/outcomes/outcomeColors'
+import { LongevityVectorIcon, LONGEVITY_VECTOR_METADATA as CANONICAL_VECTOR_META } from '@/components/icons'
 import { Modality, DailyProtocolTask } from '@/lib/types'
 import { BiomarkerSyncDrawer } from './BiomarkerSyncDrawer'
 import { getLatestBiomarkerMeasurements } from '@/lib/data/bloodworkData'
@@ -180,7 +181,11 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
                 color: colorConfig.hex
               }}
             >
-              <Info size={22} />
+              {normOutcomeId in CANONICAL_VECTOR_META ? (
+                <LongevityVectorIcon vector={normOutcomeId} size={28} glow={true} />
+              ) : (
+                <Info size={22} />
+              )}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">

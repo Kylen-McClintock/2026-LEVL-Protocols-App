@@ -12,6 +12,7 @@ import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import { evaluateStackFit, StackFitResult } from '@/lib/synergy/stackFitEngine'
 import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
 import OutcomePill from '@/components/outcomes/OutcomePill'
+import { LongevityVectorIcon } from '@/components/icons'
 import ModalityIcon from '../ui/ModalityIcon'
 import { detectContraindications } from '@/lib/safety/contraindicationEngine'
 
@@ -367,7 +368,7 @@ export default function ExploreCard({
                   ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
                   : 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
               }`}>
-                <Dna size={10} className={longevityReport.primaryVector.tier === 'foundational' ? 'text-emerald-400' : 'text-cyan-400'} />
+                <LongevityVectorIcon vector={longevityReport.primaryVector.outcomeId} size={13} glow={false} />
                 <span>{longevityReport.primaryVector.tier === 'foundational' ? 'Tier-1' : 'Tier-2'}: {longevityReport.primaryVector.outcomeName.split('&')[0].trim()} ({longevityReport.primaryVector.score})</span>
               </span>
             )}
