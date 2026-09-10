@@ -151,8 +151,6 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   initialShowGeekMode,
   initialShowLongevityDrawer
 }) => {
-  if (!isOpen) return null
-
   const resolved = resolveRecommendedDose(modality, userProfile, protocolContext)
   const [selectedSource, setSelectedSource] = useState<string>(resolved.sourceLabel)
   const [customValue, setCustomValue] = useState<number>(resolved.recommendedValue)
@@ -171,7 +169,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   const [isTimingSectionExpanded, setIsTimingSectionExpanded] = useState<boolean>(false)
 
   // Smart timing matching based on modality & active protocol
-  const initialTimingText = modality.frequency || resolved.activeProtocolPreset?.notes || 'Daily as needed'
+  const initialTimingText = modality?.frequency || resolved.activeProtocolPreset?.notes || 'Daily as needed'
   const timingMatch = matchDefaultTimingPreset(initialTimingText)
   
   // Separate time windows for 1x, 2x, and 3x daily doses
@@ -183,7 +181,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   const [isCustomTimingSelected, setIsCustomTimingSelected] = useState<boolean>(timingMatch.isCustom)
 
   // Unique Modality AI Circadian Tip
-  const circadianTip = getCircadianTipForModality(modality.name, modality.category)
+  const circadianTip = getCircadianTipForModality(modality?.name || '', modality?.category)
 
   // Personal Notes state
   const [personalNotes, setPersonalNotes] = useState<string>('')
@@ -420,6 +418,8 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   const activeColor = getColorClasses(resolved.badgeColor)
   const activeProtoPreset = resolved.activeProtocolPreset
   const comparisonProtocols = resolved.allProtocolPresets.filter(p => p.protocolName !== activeProtoPreset?.protocolName)
+
+  if (!isOpen || !modality) return null
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 md:p-6 animate-in fade-in duration-200 overflow-y-auto">

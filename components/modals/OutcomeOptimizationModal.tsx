@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { 
   X, 
@@ -44,13 +44,21 @@ export const OutcomeOptimizationModal: React.FC<OutcomeOptimizationModalProps> =
   onUpdateTarget,
   onAutoFixClash
 }) => {
-  if (!isOpen || !outcomeState) return null
-
   // Local interactive target slider states
-  const [localTargetDialedIn, setLocalTargetDialedIn] = useState<number>(outcomeState.targetConfig.targetDialedIn)
-  const [localMaxEffort, setLocalMaxEffort] = useState<number>(outcomeState.targetConfig.maxEffortAllowance)
+  const [localTargetDialedIn, setLocalTargetDialedIn] = useState<number>(outcomeState?.targetConfig?.targetDialedIn ?? 80)
+  const [localMaxEffort, setLocalMaxEffort] = useState<number>(outcomeState?.targetConfig?.maxEffortAllowance ?? 60)
   const [isSavingTarget, setIsSavingTarget] = useState(false)
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false)
+
+  // Keep local states synced if outcomeState changes
+  useEffect(() => {
+    if (outcomeState?.targetConfig) {
+      setLocalTargetDialedIn(outcomeState.targetConfig.targetDialedIn)
+      setLocalMaxEffort(outcomeState.targetConfig.maxEffortAllowance)
+    }
+  }, [outcomeState])
+
+  if (!isOpen || !outcomeState) return null
 
   // Live dynamic evaluation as user adjusts sliders
   const liveTargetConfig: OutcomeTargetConfig = {

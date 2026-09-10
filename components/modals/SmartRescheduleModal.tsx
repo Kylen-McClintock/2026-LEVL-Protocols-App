@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { DailyProtocolTask, Modality } from '@/lib/types'
 import { X, Calendar, FastForward, ArrowRightLeft, Clock, SkipForward, Sparkles, Check, Archive, Trash2 } from 'lucide-react'
 
@@ -51,18 +51,16 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
   isPastMissedTask = false,
   onExecuteReschedule
 }) => {
-  if (!isOpen || !task || !modality) return null
-
-  const modName = modality.name
-  const isPulsed = (modality as any).is_pulsed || 
-                  ['weekly', 'biweekly', 'monthly', 'quarterly', 'pulsed', 'cyclical', 'infrequent'].includes((modality.cadence_layer || '').toLowerCase()) ||
-                  Boolean(modality.frequency?.toLowerCase().includes('weekly') || modality.frequency?.toLowerCase().includes('monthly'))
+  const modName = modality?.name || ''
+  const isPulsed = (modality as any)?.is_pulsed || 
+                  ['weekly', 'biweekly', 'monthly', 'quarterly', 'pulsed', 'cyclical', 'infrequent'].includes((modality?.cadence_layer || '').toLowerCase()) ||
+                  Boolean(modality?.frequency?.toLowerCase().includes('weekly') || modality?.frequency?.toLowerCase().includes('monthly'))
   
-  const category = (modality.category || '').toLowerCase()
-  const isDailySupplement = category.includes('supplement') || category.includes('nutrition') || modality.cadence_layer === 'daily'
+  const category = (modality?.category || '').toLowerCase()
+  const isDailySupplement = category.includes('supplement') || category.includes('nutrition') || modality?.cadence_layer === 'daily'
 
   // Determine current slot and future slots for today
-  const currentSlot = (task.timing_slot || 'morning').toLowerCase()
+  const currentSlot = (task?.timing_slot || 'morning').toLowerCase()
   const currentSlotOrder = useMemo(() => {
     if (currentSlot.includes('waking') || currentSlot.includes('morning')) return 1
     if (currentSlot.includes('midday') || currentSlot.includes('first_meal')) return 2
@@ -83,6 +81,7 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
 
   // Derive recommended slot based on modality biology
   const recommendedSlot = useMemo(() => {
+    if (!modality) return 'evening'
     const searchStr = `${modality.name} ${modality.category || ''} ${modality.timing_summary || ''} ${(modality as any).default_timing || ''}`.toLowerCase()
     if (searchStr.includes('sleep') || searchStr.includes('melatonin') || searchStr.includes('magnesium') || searchStr.includes('bed') || searchStr.includes('night')) {
       const match = futureSlots.find(s => s.slot === 'pre_bed' || s.slot === 'wind_down')
@@ -105,6 +104,15 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
 
   const [selectedSlot, setSelectedSlot] = useState<string>(recommendedSlot)
   const [selectedCustomDate, setSelectedCustomDate] = useState<string>('')
+
+  // Sync selectedSlot if recommendedSlot updates
+  useEffect(() => {
+    if (recommendedSlot) {
+      setSelectedSlot(recommendedSlot)
+    }
+  }, [recommendedSlot])
+
+  if (!isOpen || !task || !modality) return null
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">

@@ -65,6 +65,11 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
   const [showCulpritDetails, setShowCulpritDetails] = useState(false)
   const [processingModalityId, setProcessingModalityId] = useState<string | null>(null)
 
+  const [isNbaExpanded, setIsNbaExpanded] = useState(false)
+  const [isNbaBenched, setIsNbaBenched] = useState(false)
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
+  const [actionSuccess, setActionSuccess] = useState<'bench' | 'added' | null>(null)
+
   // 0. Extract set of all known benched/eliminated modality IDs
   const benchedModalityIds = useMemo(() => {
     const ids = new Set<string>(benchedIds)
@@ -406,11 +411,6 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
   const targetMod = recommendation.modality
   const effort = recommendation.effortMeta
   const cost = recommendation.costMeta
-
-  const [isNbaExpanded, setIsNbaExpanded] = useState(false)
-  const [isNbaBenched, setIsNbaBenched] = useState(false)
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
-  const [actionSuccess, setActionSuccess] = useState<'bench' | 'added' | null>(null)
 
   const handleAddModality = async () => {
     setIsProcessing(true)

@@ -330,6 +330,15 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
   const prescribedDoseText = task?.protocol_step?.dose_text || modality?.dose_or_exposure || ''
   const prescribedProtocolName = task?.protocol_step?.protocol?.name || 'Assigned Protocol'
 
+  // Safety & Contraindication Screening
+  const contraindicationWarnings = useMemo(() => {
+    return detectContraindications(modality, userProfile)
+  }, [modality, userProfile])
+
+  const [aiSafetyAssessment, setAiSafetyAssessment] = useState<string | null>(null)
+  const [isAssessingSafety, setIsAssessingSafety] = useState(false)
+  const [isContraindicationsOpen, setIsContraindicationsOpen] = useState(false)
+
   if (!isOpen || !modality) return null
 
   // Day toggle handlers
@@ -396,15 +405,6 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
       setCustomDose(doseText.trim())
     }
   }
-
-  // Safety & Contraindication Screening
-  const contraindicationWarnings = useMemo(() => {
-    return detectContraindications(modality, userProfile)
-  }, [modality, userProfile])
-
-  const [aiSafetyAssessment, setAiSafetyAssessment] = useState<string | null>(null)
-  const [isAssessingSafety, setIsAssessingSafety] = useState(false)
-  const [isContraindicationsOpen, setIsContraindicationsOpen] = useState(false)
 
   const handleRunAISafetyAssessment = async () => {
     if (!modality) return

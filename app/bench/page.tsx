@@ -141,8 +141,6 @@ export default function BenchPage() {
     await removeFromBench(localUserId, modalityId)
   }
 
-  if (loading) return <div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">Loading bench...</div>
-
   const asNeededCount = useMemo(() => {
     return items.filter(item => 
       item.schedule_config?.schedule_mode === 'as_needed' ||
@@ -156,35 +154,41 @@ export default function BenchPage() {
 
   const scheduledCount = items.length - asNeededCount
 
-  const filteredItems = items
-    .filter(item => {
-      if (filterCategory !== 'all' && getMacroCategory(item.modality?.category) !== filterCategory) return false
+  const filteredItems = useMemo(() => {
+    return items
+      .filter(item => {
+        if (filterCategory !== 'all' && getMacroCategory(item.modality?.category) !== filterCategory) return false
 
-      const isAsNeeded = 
-        item.schedule_config?.schedule_mode === 'as_needed' ||
-        (item.custom_timing || '').toLowerCase().includes('as needed') ||
-        (item.custom_timing || '').toLowerCase().includes('as-needed') ||
-        (item.custom_timing || '').toLowerCase().includes('prn') ||
-        (item.notes || '').toLowerCase().includes('as needed') ||
-        (item.modality?.timing_summary || '').toLowerCase().includes('as needed')
+        const isAsNeeded = 
+          item.schedule_config?.schedule_mode === 'as_needed' ||
+          (item.custom_timing || '').toLowerCase().includes('as needed') ||
+          (item.custom_timing || '').toLowerCase().includes('as-needed') ||
+          (item.custom_timing || '').toLowerCase().includes('prn') ||
+          (item.notes || '').toLowerCase().includes('as needed') ||
+          (item.modality?.timing_summary || '').toLowerCase().includes('as needed')
 
-      if (cadenceFilter === 'as_needed' && !isAsNeeded) return false
-      if (cadenceFilter === 'scheduled' && isAsNeeded) return false
+        if (cadenceFilter === 'as_needed' && !isAsNeeded) return false
+        if (cadenceFilter === 'scheduled' && isAsNeeded) return false
 
-      return true
-    })
-    .sort((a, b) => {
-      if (sortMode === 'recent') {
-        const timeA = new Date(a.added_at || (a as any).created_at || 0).getTime()
-        const timeB = new Date(b.added_at || (b as any).created_at || 0).getTime()
-        return timeB - timeA
-      }
-      return (b.modality?.nba_result?.score || 0) - (a.modality?.nba_result?.score || 0)
-    })
+        return true
+      })
+      .sort((a, b) => {
+        if (sortMode === 'recent') {
+          const timeA = new Date(a.added_at || (a as any).created_at || 0).getTime()
+          const timeB = new Date(b.added_at || (b as any).created_at || 0).getTime()
+          return timeB - timeA
+        }
+        return (b.modality?.nba_result?.score || 0) - (a.modality?.nba_result?.score || 0)
+      })
+  }, [items, filterCategory, cadenceFilter, sortMode])
 
   const isNbaMode = sortMode === 'nba'
   const topBenchItem = (isNbaMode && filteredItems.length > 0) ? filteredItems[0] : null
   const remainingBenchItems = isNbaMode ? (filteredItems.length > 1 ? filteredItems.slice(1) : []) : filteredItems
+
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">Loading bench...</div>
+  }
 
   return (
     <div className="p-4 max-w-xl lg:max-w-5xl xl:max-w-6xl mx-auto pt-8">

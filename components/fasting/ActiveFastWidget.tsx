@@ -116,10 +116,8 @@ export default function ActiveFastWidget({
     }
   }, [activeFastTask])
 
-  if (!activeFastTask) return null
-
-  const details: FastingExecutionDetails = activeFastTask.execution_details || {}
-  const startTime = details.start_time ? new Date(details.start_time) : new Date(activeFastTask.scheduled_date)
+  const details: FastingExecutionDetails = activeFastTask?.execution_details || {}
+  const startTime = details.start_time ? new Date(details.start_time) : (activeFastTask ? new Date(activeFastTask.scheduled_date) : new Date())
   const targetDurationHours = details.duration || 18
 
   // Calculate elapsed time
@@ -134,7 +132,7 @@ export default function ActiveFastWidget({
   const currentStage = getAutophagyStage(elapsedHours)
   const gkiInfo = calculateGKI(details.glucose, details.ketones)
 
-  const modality: Modality | undefined = activeFastTask.loose_modality || activeFastTask.protocol_step?.modality
+  const modality: Modality | undefined = activeFastTask?.loose_modality || activeFastTask?.protocol_step?.modality
 
   // Map baseline pre-modality ratings
   const baselineOutcomesMap = useMemo(() => {
@@ -219,6 +217,8 @@ export default function ActiveFastWidget({
       setInlineOutcomeValues(init)
     }
   }, [currentRelevantOutcomes, baselineOutcomesMap])
+
+  if (!activeFastTask) return null
 
   const handleExtend = (extraHours: number) => {
     const newDuration = Math.max(1, Number(targetDurationHours) + extraHours)
