@@ -56,6 +56,78 @@ function formatMinutesToDuration(totalMins: number): string {
   return `${h}h ${m}m`
 }
 
+function WeatherUvMicroWidget({
+  weather,
+  onRefresh,
+  isRefreshing
+}: {
+  weather: LocalWeatherData | null
+  onRefresh?: () => void
+  isRefreshing?: boolean
+}) {
+  if (!weather) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-900/60 border border-slate-800/80 text-[10px] text-slate-400 font-medium shrink-0 animate-pulse">
+        <span>🌤️</span>
+        <span className="hidden xs:inline">Detecting weather &amp; UV...</span>
+        <span className="xs:hidden">Weather...</span>
+      </span>
+    )
+  }
+
+  const uvVal = Number(weather.uv_index ?? 0)
+  const uvLevel = uvVal < 3 ? 'Low' : uvVal < 6 ? 'Mod' : uvVal < 8 ? 'High' : 'Very High'
+  const uvColors = 
+    uvVal < 3 ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' :
+    uvVal < 6 ? 'text-amber-400 bg-amber-500/15 border-amber-500/30' :
+    uvVal < 8 ? 'text-orange-400 bg-orange-500/15 border-orange-500/30' :
+    'text-rose-400 bg-rose-500/15 border-rose-500/30'
+
+  return (
+    <div 
+      className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-0.5 sm:py-1 rounded-lg bg-slate-900/80 border border-slate-800/90 text-[10px] sm:text-[11px] text-slate-300 shadow-sm shrink-0 select-none group/weather"
+      title={`${weather.condition} • ${weather.temp_f}°F (${weather.temp_c}°C) • UV Index ${uvVal.toFixed(1)} (${uvLevel})${weather.city ? ` • ${weather.city}` : ''}`}
+    >
+      {/* Weather Icon & Temp */}
+      <span className="flex items-center gap-1 font-bold text-white shrink-0">
+        <span className="text-xs">{weather.icon || '⛅'}</span>
+        <span className="font-mono">{weather.temp_f}°F</span>
+      </span>
+
+      <span className="w-1 h-1 rounded-full bg-slate-700 shrink-0" />
+
+      {/* Sunnyness / Cloudiness / Rain Condition */}
+      <span className="text-slate-300 font-medium truncate max-w-[90px] sm:max-w-[130px]">
+        {weather.condition}
+      </span>
+
+      <span className="w-1 h-1 rounded-full bg-slate-700 shrink-0" />
+
+      {/* UV Index Pill */}
+      <span className={`inline-flex items-center gap-1 font-mono font-bold px-1.5 py-0.5 rounded border ${uvColors} text-[9px] sm:text-[10px] shrink-0`}>
+        <span>UV {uvVal.toFixed(1)}</span>
+        <span className="font-sans font-normal opacity-80 hidden xs:inline">({uvLevel})</span>
+      </span>
+
+      {/* Refresh button on hover */}
+      {onRefresh && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRefresh()
+          }}
+          disabled={isRefreshing}
+          className="text-slate-500 hover:text-slate-200 transition-colors cursor-pointer ml-0.5 p-0.5 opacity-0 group-hover/weather:opacity-100 shrink-0"
+          title="Refresh live weather & UV"
+        >
+          <RefreshCw size={10} className={isRefreshing ? 'animate-spin text-amber-400' : ''} />
+        </button>
+      )}
+    </div>
+  )
+}
+
 function formatTimeTo12h(timeStr: string): string {
   if (!timeStr || !timeStr.includes(':')) return timeStr
   const [hStr, mStr] = timeStr.split(':')
@@ -772,7 +844,8 @@ export default function DailyWellbeingCheckin({
   }, [shouldStartConfoundersOpen])
 
   useEffect(() => {
-    if (autoWeatherEnabled && !localWeather) {
+    const shouldFetch = !localWeather || localWeather.uv_index == null || localWeather.uv_index === 0
+    if (shouldFetch) {
       const loadWeather = async () => {
         setIsFetchingWeather(true)
         try {
@@ -784,7 +857,15 @@ export default function DailyWellbeingCheckin({
       }
       loadWeather()
     }
-  }, [autoWeatherEnabled])
+  }, [])
+
+  useEffect(() => {
+    const handleWeatherUpdate = (e: any) => {
+      if (e.detail) setLocalWeather(e.detail)
+    }
+    window.addEventListener('levl_weather_updated', handleWeatherUpdate)
+    return () => window.removeEventListener('levl_weather_updated', handleWeatherUpdate)
+  }, [])
 
   const handleManualWeatherRefresh = async () => {
     setIsFetchingWeather(true)
@@ -1961,7 +2042,7 @@ export default function DailyWellbeingCheckin({
             return (
               <div className="pt-2.5 mt-2 border-t border-white/10 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
                     <Sun size={14} className="text-white shrink-0" />
                     <span className="text-white font-bold text-xs truncate">
                       Anytime Check-in
@@ -1971,6 +2052,11 @@ export default function DailyWellbeingCheckin({
                         {anytimeLogs.length} {anytimeLogs.length === 1 ? 'logged' : 'logged'}
                       </span>
                     )}
+                    <WeatherUvMicroWidget 
+                      weather={localWeather} 
+                      onRefresh={handleManualWeatherRefresh} 
+                      isRefreshing={isFetchingWeather} 
+                    />
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {daytimeSavedToast && (
@@ -2158,9 +2244,14 @@ export default function DailyWellbeingCheckin({
       ) : (
         <div className="glass-card p-4 rounded-xl mb-6 space-y-6 border border-levl-accent/20">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="w-2 h-2 rounded-full bg-yellow-400" />
           <h3 className="font-bold text-sm text-white uppercase tracking-wider">{phaseTitle}</h3>
+          <WeatherUvMicroWidget 
+            weather={localWeather} 
+            onRefresh={handleManualWeatherRefresh} 
+            isRefreshing={isFetchingWeather} 
+          />
         </div>
         
         <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
