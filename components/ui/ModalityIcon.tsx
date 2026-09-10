@@ -171,6 +171,30 @@ const CATEGORY_GRADIENTS: Record<string, GradientConfig> = {
     ambient: 'rgba(96, 165, 250, 0.35)' 
   },
   
+  // Gut Microbiome & Intestinal Barrier (Bioactive Emerald / Jade)
+  microbiome: { 
+    from: '#10B981', 
+    to: '#14B8A6', 
+    glow: 'rgba(16, 185, 129, 0.75)', 
+    ambient: 'rgba(20, 184, 166, 0.35)' 
+  },
+  
+  // Glymphatic Neuro-Flushing (Lapis / Indigo Fluid)
+  glymphatic: { 
+    from: '#818CF8', 
+    to: '#6366F1', 
+    glow: 'rgba(129, 140, 248, 0.75)', 
+    ambient: 'rgba(99, 102, 241, 0.35)' 
+  },
+  
+  // Retinal & Macular Phototherapy (670nm Luminous Ruby / Rose)
+  retinal: { 
+    from: '#F43F5E', 
+    to: '#E11D48', 
+    glow: 'rgba(244, 63, 94, 0.75)', 
+    ambient: 'rgba(225, 29, 72, 0.35)' 
+  },
+  
   // Fallback / General Longevity
   default: { 
     from: '#14B8A6', 
@@ -224,7 +248,18 @@ function resolveGradient(nameLower: string, catLower: string, customHex?: string
     return CATEGORY_GRADIENTS.peptides
   }
 
-  // 2. Specific modality-level thermal overrides
+  // 2. Specific modality-level overrides
+  if (nameLower.includes('retinal') || nameLower.includes('670nm') || nameLower.includes('macular') || nameLower.includes('astaxanthin')) {
+    return CATEGORY_GRADIENTS.retinal
+  }
+  if (nameLower.includes('glymphatic') || nameLower.includes('lateral decubitus') || nameLower.includes('40 hz') || nameLower.includes('40hz') || nameLower.includes('mouth tap')) {
+    return CATEGORY_GRADIENTS.glymphatic
+  }
+  if (nameLower.includes('akkermansia') || nameLower.includes('tributyrin') || nameLower.includes('fermented') || nameLower.includes('microbiome') || nameLower.includes('gut barrier')) {
+    return CATEGORY_GRADIENTS.microbiome
+  }
+
+  // 2b. Specific modality-level thermal overrides
   if (nameLower.includes('cold') || nameLower.includes('plunge') || nameLower.includes('ice bath') || nameLower.includes('cryo')) {
     return CATEGORY_GRADIENTS.thermal_cold
   }
@@ -300,6 +335,62 @@ function resolveGradient(nameLower: string, catLower: string, customHex?: string
 // Bespoke Monoline SVG Glyphs (24x24 viewBox, stroke-only, 1.55px stroke)
 // Precision geometric clearances ensure zero detail loss when illuminated.
 // ---------------------------------------------------------------------------
+
+/** Microbiome & Gut Barrier: Intestinal villi undulating landscape with microflora clusters and protective tight junction barrier shield */
+function MicrobiomeGutGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      {/* Intestinal Epithelial Villi Contours */}
+      <path d="M3 18c0-3 1.5-5 3-5s3 2 3 5" />
+      <path d="M9 18c0-4 1.5-7 3-7s3 3 3 7" />
+      <path d="M15 18c0-3 1.5-5 3-5s3 2 3 5" />
+      {/* Tight Junction Intercellular Sealing Line */}
+      <line x1="2" y1="18.5" x2="22" y2="18.5" strokeDasharray="1.5 1.5" />
+      {/* Basolateral Laminar Base */}
+      <path d="M2 21h20" />
+      {/* Active Commensal Probiotic Bacteria Rods & Cocci in Lumen */}
+      <path d="M6 5.5a1.5 1.5 0 0 1 3 0c0 1.5-3 1.5-3 0z" />
+      <path d="M14.5 4a1.8 1.8 0 0 1 3.2 1.2c0 1.5-3.2 1.5-3.2-1.2z" />
+      <circle cx="12" cy="3.5" r="0.8" fill={stroke} />
+      <circle cx="19" cy="6.5" r="0.8" fill={stroke} />
+      <circle cx="4.5" cy="8.5" r="0.8" fill={stroke} />
+    </svg>
+  )
+}
+
+/** Glymphatic Clearance: Anatomical cerebral cortex hemisphere with perivascular AQP4 fluid flush channels and convective wave arrows */
+function GlymphaticBrainGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      {/* Cerebral Cortex Outer Gyri / Sulci Envelope */}
+      <path d="M12 4.5c2.5 0 4.5 1.5 5.5 3.5 1.5 0 3.5 1.5 3.5 3.5 0 1-.5 2-1 2.5.5 1 .5 2 0 3s-1.5 2-2.5 2.5c-.5 1-1.5 1.5-2.5 1.5H9c-1.5 0-3-1-3.5-2.5-1-.5-2-1.5-2-3 0-1 .5-2 1.5-2.5-.5-1-.5-2 0-3 0-2 2-3.5 3.5-3.5 1-2 3-2 3.5-2z" />
+      {/* Internal Perivascular Virchow-Robin CSF Channel Loops */}
+      <path d="M12 9c0 2-1.5 3-3 3" />
+      <path d="M15 12c-1 0-2 1-2 2.5" />
+      {/* Convective Hydrodynamic Fluid Flushing Wave Arrows */}
+      <path d="M3 13c1.5 1 3 0 4.5 1" strokeDasharray="1 1" />
+      <path d="M16 7c1.5-.8 3-.2 4.5-.8" strokeDasharray="1 1" />
+      <path d="M13 18.5c1.5.8 3 .2 4.5.8" strokeDasharray="1 1" />
+    </svg>
+  )
+}
+
+/** Retinal Mitochondria & Macular Photoreceptor Shield: Ocular globe with central fovea cone/rod receptors & 670nm deep-red photon waves */
+function RetinalMitoGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      {/* Ocular Eye Aperture Silhouette */}
+      <path d="M2.5 12c3-5 6.5-7.5 9.5-7.5s6.5 2.5 9.5 7.5c-3 5-6.5 7.5-9.5 7.5s-6.5-2.5-9.5-7.5z" />
+      {/* Central Macular / Iris Ring */}
+      <circle cx="12" cy="12" r="4.2" />
+      {/* Concentric Foveal Carotenoid Target / Photoreceptor Core */}
+      <circle cx="12" cy="12" r="1.5" fill={stroke} />
+      {/* 670nm Deep-Red Incident Photon Waves Entering Pupil */}
+      <path d="M7 10c.5-.8 1-.8 1.5 0s1 .8 1.5 0" />
+      <path d="M7 14c.5-.8 1-.8 1.5 0s1 .8 1.5 0" />
+    </svg>
+  )
+}
 
 /** Cold Plunge / Cold Water Immersion: Deep plunge tub with waterline ripple and floating snowflake ice crystal */
 function ColdPlungeGlyph({ stroke, size }: { stroke: string; size: number }) {
@@ -902,6 +993,13 @@ export default function ModalityIcon({
         return renderLucide(Layers)
       case 'radio':
         return renderLucide(Radio)
+      case 'microbiome':
+      case 'gut':
+        return renderCustom(MicrobiomeGutGlyph)
+      case 'glymphatic':
+        return renderCustom(GlymphaticBrainGlyph)
+      case 'retinal':
+        return renderCustom(RetinalMitoGlyph)
       case 'eye':
         return renderLucide(Eye)
       case 'zap':
@@ -987,6 +1085,47 @@ export default function ModalityIcon({
   }
   if (nameLower.includes('cgm') || nameLower.includes('continuous glucose') || nameLower.includes('glucose monitor') || nameLower.includes('ketone monitor') || nameLower.includes('sensor')) {
     return renderCustom(CGMGlyph)
+  }
+
+  // 2b. RETINAL, GLYMPHATIC & MICROBIOME FUNCTIONAL GLYPHS
+  if (
+    nameLower.includes('retinal') ||
+    nameLower.includes('670nm') ||
+    nameLower.includes('macular') ||
+    nameLower.includes('photoreceptor') ||
+    nameLower.includes('astaxanthin') ||
+    nameLower.includes('ciliary') ||
+    nameLower.includes('20-20-20') ||
+    nameLower.includes('zeaxanthin') ||
+    nameLower.includes('lutein')
+  ) {
+    return renderCustom(RetinalMitoGlyph)
+  }
+
+  if (
+    nameLower.includes('glymphatic') ||
+    nameLower.includes('lateral decubitus') ||
+    nameLower.includes('side-sleeping') ||
+    nameLower.includes('40 hz') ||
+    nameLower.includes('40hz') ||
+    nameLower.includes('genus') ||
+    nameLower.includes('mouth tap') ||
+    nameLower.includes('transcranial') ||
+    nameLower.includes('tpbm')
+  ) {
+    return renderCustom(GlymphaticBrainGlyph)
+  }
+
+  if (
+    nameLower.includes('akkermansia') ||
+    nameLower.includes('tributyrin') ||
+    nameLower.includes('fermented') ||
+    nameLower.includes('microbiome') ||
+    nameLower.includes('gut barrier') ||
+    nameLower.includes('polaprezinc') ||
+    nameLower.includes('zinc carnosine')
+  ) {
+    return renderCustom(MicrobiomeGutGlyph)
   }
 
   // 3. THERMAL / RECOVERY

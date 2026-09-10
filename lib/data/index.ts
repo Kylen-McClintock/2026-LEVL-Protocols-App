@@ -74,15 +74,17 @@ import { BUILT_IN_LONGEVITY_MODALITIES } from './builtInLongevityModalities'
 import { BUILT_IN_SKIN_PROTOCOLS, ALL_BUILT_IN_SKIN_MODALITIES } from './builtInSkinProtocols'
 import { HUBERMAN_DOAC_MODALITIES } from './hubermanDoacModalities'
 import { ALL_HUBERMAN_DOAC_PROTOCOLS, HUBERMAN_DOAC_MASTER_PROTOCOL, HUBERMAN_SUB_PROTOCOLS } from './hubermanDoacProtocol'
+import { BUILT_IN_FUNCTIONAL_PROTOCOLS, ALL_BUILT_IN_FUNCTIONAL_MODALITIES } from './builtInFunctionalProtocols'
 import { getSkinCyclePhaseForDate, isSkinModalityActiveOnDate } from '../calendar/skinCyclingEngine'
 
-export { HUBERMAN_DOAC_MODALITIES, HUBERMAN_DOAC_MASTER_PROTOCOL, HUBERMAN_SUB_PROTOCOLS, ALL_HUBERMAN_DOAC_PROTOCOLS }
+export { HUBERMAN_DOAC_MODALITIES, HUBERMAN_DOAC_MASTER_PROTOCOL, HUBERMAN_SUB_PROTOCOLS, ALL_HUBERMAN_DOAC_PROTOCOLS, BUILT_IN_FUNCTIONAL_PROTOCOLS, ALL_BUILT_IN_FUNCTIONAL_MODALITIES }
 
 const ALL_BUILT_IN_PROTOCOLS = [
   ...BUILT_IN_TRAINING_PROTOCOLS, 
   ...BUILT_IN_PEPTIDE_PROTOCOLS,
   ...BUILT_IN_SKIN_PROTOCOLS,
-  ...ALL_HUBERMAN_DOAC_PROTOCOLS
+  ...ALL_HUBERMAN_DOAC_PROTOCOLS,
+  ...BUILT_IN_FUNCTIONAL_PROTOCOLS
 ]
 
 function getBuiltInModalities(): Modality[] {
@@ -118,6 +120,15 @@ function getBuiltInModalities(): Modality[] {
 
   // 4. Built-in Huberman DOAC modalities
   HUBERMAN_DOAC_MODALITIES.forEach(m => {
+    const key = (m.id || '').toLowerCase()
+    if (key && !seen.has(key)) {
+      seen.add(key)
+      mods.push(m)
+    }
+  })
+
+  // 5. Built-in functional protocols modalities (Gut, Glymphatic, Retinal)
+  ALL_BUILT_IN_FUNCTIONAL_MODALITIES.forEach(m => {
     const key = (m.id || '').toLowerCase()
     if (key && !seen.has(key)) {
       seen.add(key)
