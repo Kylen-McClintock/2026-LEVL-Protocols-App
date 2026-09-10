@@ -3398,13 +3398,6 @@ function TodayPageContent() {
             </div>
           ) : (
             <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
-              {/* Expanded Time Block Biological Window */}
-              <div className="flex items-center gap-1.5 text-xs text-slate-300 font-medium px-3.5 py-2 rounded-xl bg-slate-900/60 border border-slate-800/80 mb-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
-                <span className="text-slate-400 font-normal">Biological Window:</span>
-                <span className="text-slate-200 font-semibold truncate">{circadian.circadianPhase}</span>
-              </div>
-
               {groupTasks
                 .sort((a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0))
                 .map(task => {
