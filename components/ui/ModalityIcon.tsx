@@ -210,6 +210,22 @@ const CATEGORY_GRADIENTS: Record<string, GradientConfig> = {
     glow: 'rgba(245, 158, 11, 0.75)', 
     ambient: 'rgba(217, 119, 6, 0.35)' 
   },
+
+  // Hair Follicle Longevity & Scalp Perfusion (Luminous Amber-Copper / Anagen Rose)
+  follicular: {
+    from: '#F97316', 
+    to: '#E11D48', 
+    glow: 'rgba(249, 115, 22, 0.75)', 
+    ambient: 'rgba(225, 29, 72, 0.35)' 
+  },
+
+  // Interstitial Lymphatic Drainage & Microvascular Fluid Flushing (Aquamarine / Cerulean Flow)
+  lymphatic: {
+    from: '#06B6D4', 
+    to: '#3B82F6', 
+    glow: 'rgba(6, 182, 212, 0.75)', 
+    ambient: 'rgba(59, 130, 246, 0.35)' 
+  },
   
   // Fallback / General Longevity
   default: { 
@@ -339,6 +355,12 @@ function resolveGradient(nameLower: string, catLower: string, customHex?: string
   if (nameLower.includes('670nm') || nameLower.includes('retinal') || nameLower.includes('macular') || nameLower.includes('astaxanthin') || nameLower.includes('20-20-20')) {
     return CATEGORY_GRADIENTS.retinal
   }
+  if (nameLower.includes('hair') || nameLower.includes('follicle') || nameLower.includes('scalp') || nameLower.includes('microneedling') || nameLower.includes('dermastamp') || nameLower.includes('rosemary') || nameLower.includes('saw palmetto') || nameLower.includes('anagen')) {
+    return CATEGORY_GRADIENTS.follicular
+  }
+  if (nameLower.includes('lymphatic') || nameLower.includes('compression boots') || nameLower.includes('pneumatic') || nameLower.includes('rebounding') || nameLower.includes('dry brushing') || nameLower.includes('vascular contrast')) {
+    return CATEGORY_GRADIENTS.lymphatic
+  }
 
   // Category matching
   if (catLower.includes('thermal') || catLower.includes('recovery')) {
@@ -456,6 +478,51 @@ function BoneTrabecularGlyph({ stroke, size }: { stroke: string; size: number })
       <path d="M20.5 3l-1.5 2.5h3l-1.5-2.5z" fill={stroke} />
       <path d="M20.5 21l-1.5-2.5h3l-1.5 2.5z" fill={stroke} />
       <line x1="20.5" y1="5.5" x2="20.5" y2="18.5" />
+    </svg>
+  )
+}
+
+/** Hair Follicle Longevity & Scalp Perfusion: Dermal papilla bulb, emerging terminal hair shaft, microcapillary loop & photobiomodulation radiance */
+function HairFollicleGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      {/* Scalp Epidermal Surface Layer */}
+      <path d="M2.5 7.5h19" />
+      <line x1="2.5" y1="9.5" x2="21.5" y2="9.5" strokeDasharray="1.5 2" />
+      {/* Hair Follicle Sheath & Dermal Papilla Bulb */}
+      <path d="M9.5 7.5v8c0 1.8 1.1 3.5 2.5 3.5s2.5-1.7 2.5-3.5v-8" />
+      {/* Terminal Hair Shaft Ascending through Scalp */}
+      <line x1="12" y1="18.5" x2="12" y2="2" />
+      {/* Perifollicular Capillary Micro-Loop feeding Dermal Papilla */}
+      <path d="M10 21c1 .8 3 .8 4 0" />
+      <circle cx="12" cy="18.5" r="1" fill={stroke} />
+      {/* Photobiomodulation & Anagen Stimulation Radiance Waves */}
+      <path d="M6 13.5a7 7 0 0 0 2.2 2" />
+      <path d="M18 13.5a7 7 0 0 1-2.2 2" />
+      <line x1="5.5" y1="4" x2="7.5" y2="5.5" />
+      <line x1="18.5" y1="4" x2="16.5" y2="5.5" />
+    </svg>
+  )
+}
+
+/** Interstitial Lymphatic Drainage & Microvascular Fluid Flushing: Lymph collector vessel, bicuspid one-way valve, centripetal flow arrow & filtration node */
+function LymphaticDrainageGlyph({ stroke, size }: { stroke: string; size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+      {/* Sinuous Lymphatic Collector Vessel Channel Walls */}
+      <path d="M6.5 21.5c1-3 0-6 1.5-9s0-6 1-9.5" />
+      <path d="M17.5 21.5c-1-3 0-6-1.5-9s0-6-1-9.5" />
+      {/* Bicuspid One-Way Intraluminal Valves (Permitting Only Unidirectional Upward Flow) */}
+      <path d="M8 15.5c2 1 4 0.8 4-1" />
+      <path d="M16 15.5c-2 1-4 0.8-4-1" />
+      {/* Centripetal Fluid Propulsion Arrow (Upward Microvascular Drainage) */}
+      <line x1="12" y1="18.5" x2="12" y2="6.5" />
+      <path d="M9.5 9L12 6.5l2.5 2.5" />
+      {/* Interstitial Drainage Micro-Droplets / Micro-Pores */}
+      <circle cx="3.5" cy="11.5" r="0.9" fill={stroke} />
+      <circle cx="20.5" cy="12.5" r="0.9" fill={stroke} />
+      <circle cx="4" cy="17" r="0.75" fill={stroke} />
+      <circle cx="20" cy="7" r="0.75" fill={stroke} />
     </svg>
   )
 }
@@ -1075,6 +1142,15 @@ export default function ModalityIcon({
       case 'osteogenic':
       case 'trabecular':
         return renderCustom(BoneTrabecularGlyph)
+      case 'hair':
+      case 'follicle':
+      case 'scalp':
+      case 'anagen':
+        return renderCustom(HairFollicleGlyph)
+      case 'lymphatic':
+      case 'lymph':
+      case 'drainage':
+        return renderCustom(LymphaticDrainageGlyph)
       case 'eye':
         return renderLucide(Eye)
       case 'zap':
@@ -1224,6 +1300,30 @@ export default function ModalityIcon({
     nameLower.includes('liov')
   ) {
     return renderCustom(BoneTrabecularGlyph)
+  }
+
+  if (
+    nameLower.includes('hair') ||
+    nameLower.includes('follicle') ||
+    nameLower.includes('scalp') ||
+    nameLower.includes('microneedling') ||
+    nameLower.includes('dermastamp') ||
+    nameLower.includes('rosemary') ||
+    nameLower.includes('saw palmetto') ||
+    nameLower.includes('anagen')
+  ) {
+    return renderCustom(HairFollicleGlyph)
+  }
+
+  if (
+    nameLower.includes('lymphatic') ||
+    nameLower.includes('compression boots') ||
+    nameLower.includes('pneumatic') ||
+    nameLower.includes('rebounding') ||
+    nameLower.includes('dry brushing') ||
+    nameLower.includes('interstitial')
+  ) {
+    return renderCustom(LymphaticDrainageGlyph)
   }
 
   // 3. THERMAL / RECOVERY
