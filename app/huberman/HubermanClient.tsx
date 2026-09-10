@@ -17,7 +17,10 @@ import {
   getOutcomeDimensions,
   getOrCreateUserProfile,
   getModalities,
-  createDailyTask
+  getBenchItems,
+  createDailyTask,
+  adoptTailoredProtocolStack,
+  TailoredProtocolAdoptionPlan
 } from '@/lib/data'
 import { modalityReferences } from '@/lib/data/references'
 import GeekMode from '@/components/cards/GeekMode'
@@ -61,9 +64,11 @@ import {
 } from 'lucide-react'
 import CyclicSighingApplet from '@/components/applets/CyclicSighingApplet'
 import { DosageDetailModal } from '@/components/modals/DosageDetailModal'
+import { ProtocolStackFitModal } from '@/components/modals/ProtocolStackFitModal'
+import { auditProtocolStackFit, ProtocolStackFitAuditResult } from '@/lib/synergy/protocolStackFitAuditor'
 import ModalityIcon from '@/components/ui/ModalityIcon'
 import ProtocolAvatar, { ProtocolCategoryPills } from '@/components/ui/ProtocolAvatar'
-import { Modality, DailyProtocolTask, UserProfile, ProtocolStep } from '@/lib/types'
+import { Modality, DailyProtocolTask, UserProfile, ProtocolStep, UserBenchItem } from '@/lib/types'
 
 // Tab definitions for top protocols
 interface ProtocolTab {
@@ -270,6 +275,8 @@ export default function HubermanClient() {
   const [selectedModalityForDetail, setSelectedModalityForDetail] = useState<Modality | null>(null)
   const [isDosageModalOpen, setIsDosageModalOpen] = useState(false)
   const [catalogModalities, setCatalogModalities] = useState<Modality[]>([])
+  const [benchItems, setBenchItems] = useState<UserBenchItem[]>([])
+  const [isStackFitModalOpen, setIsStackFitModalOpen] = useState(false)
   const [expandedGeekStepId, setExpandedGeekStepId] = useState<string | null>(null)
   const [expandedDescStepIds, setExpandedDescStepIds] = useState<Record<string, boolean>>({})
 
@@ -291,6 +298,12 @@ export default function HubermanClient() {
     }
     return ALL_HUBERMAN_DOAC_PROTOCOLS.find(p => p.id === activeTab.id || p.slug === activeTab.slug) || HUBERMAN_DOAC_MASTER_PROTOCOL
   }, [activeTab])
+
+  // Audit protocol against user's active routine & bench
+  const stackFitAuditResult: ProtocolStackFitAuditResult | null = useMemo(() => {
+    if (!currentProtocol) return null
+    return auditProtocolStackFit(currentProtocol, todayTasks, benchItems, catalogModalities, userProfile)
+  }, [currentProtocol, todayTasks, benchItems, catalogModalities, userProfile])
 
   // Sync URL query params on tab change
   const handleSelectTab = (slug: string) => {
@@ -337,15 +350,17 @@ export default function HubermanClient() {
     const initData = async () => {
       if (!effectiveUserId) return
       try {
-        const [tasks, profile, allMods] = await Promise.all([
+        const [tasks, profile, allMods, userBench] = await Promise.all([
           getDailyProtocolTasks(effectiveUserId, todayStr),
           getOrCreateUserProfile(effectiveUserId),
-          getModalities()
+          getModalities(),
+          getBenchItems(effectiveUserId)
         ])
         if (isCancelled) return
         setTodayTasks(tasks)
         setUserProfile(profile)
         if (allMods) setCatalogModalities(allMods)
+        if (userBench) setBenchItems(userBench)
 
         // Check if steps are missing from active protocol
         const stepModalityIds = (currentProtocol.steps || []).map(s => s.modality_id || s.modality?.id).filter(Boolean) as string[]
@@ -385,7 +400,16 @@ export default function HubermanClient() {
     return () => { isCancelled = true }
   }, [effectiveUserId, todayStr, currentProtocol, searchParams, hasAutoActivated])
 
-  // Instant Kickstart: Add protocol to today's schedule
+  // Intelligent Kickstart Handler: Opens audit modal if user has existing stack, otherwise 1-click kickstarts
+  const handleKickstartClick = () => {
+    if (todayTasks.length > 0) {
+      setIsStackFitModalOpen(true)
+    } else {
+      handleActivateProtocol(true)
+    }
+  }
+
+  // Instant Kickstart: Add protocol to today's schedule (for empty stack or direct bypass)
   const handleActivateProtocol = async (redirectAfter = true) => {
     if (!currentProtocol) return
     setIsActivating(true)
@@ -425,6 +449,49 @@ export default function HubermanClient() {
       }
     } catch (err) {
       console.error('Failed to activate protocol:', err)
+    } finally {
+      setIsActivating(false)
+    }
+  }
+
+  // Adopt Tailored Stack from Stack Fit Audit Modal
+  const handleAdoptTailoredStack = async (plan: TailoredProtocolAdoptionPlan) => {
+    if (!currentProtocol) return
+    setIsActivating(true)
+    try {
+      const activeId = effectiveUserId || getLocalUserId()
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('levl_guest_instant_kickstart', 'true')
+          localStorage.setItem('levl_active_protocol', currentProtocol.name)
+          localStorage.setItem('levl_referral_source', 'diary_of_a_ceo')
+          localStorage.setItem('levl_referral_influencer', 'andrew_huberman')
+        } catch (e) {}
+      }
+
+      await adoptTailoredProtocolStack(activeId, todayStr, plan)
+      const updatedTasks = await getDailyProtocolTasks(activeId, todayStr)
+      setTodayTasks(updatedTasks)
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`levl_cached_tasks_${todayStr}`, JSON.stringify(updatedTasks))
+          window.dispatchEvent(new CustomEvent('levl_sync_end'))
+          window.dispatchEvent(new CustomEvent('levl_tasks_updated', { detail: updatedTasks }))
+        } catch (e) {}
+      }
+
+      setActivatedSuccess(true)
+      setIsStackFitModalOpen(false)
+
+      if (typeof window !== 'undefined') {
+        window.location.href = '/today'
+      } else {
+        router.push('/today')
+      }
+    } catch (err) {
+      console.error('Failed to adopt tailored stack in HubermanClient:', err)
     } finally {
       setIsActivating(false)
     }
@@ -812,7 +879,7 @@ export default function HubermanClient() {
               </button>
             ) : (
               <button
-                onClick={() => handleActivateProtocol(true)}
+                onClick={handleKickstartClick}
                 disabled={isActivating}
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600 via-indigo-600 to-teal-500 hover:from-purple-500 hover:to-teal-400 text-white shadow-lg shadow-purple-500/25 transition-all transform active:scale-95 disabled:opacity-50 cursor-pointer"
               >
@@ -825,13 +892,29 @@ export default function HubermanClient() {
                   <>
                     <Zap className="w-4 h-4 text-amber-300 fill-current" />
                     <span>
-                      {activeModalityCount > 0 
-                        ? `Add Remaining ${missingStepModalityIds.length} Modalities to Today (${activeModalityCount}/${protocolStepModalityIds.length} Active)`
-                        : `Start This Protocol Now • Add All ${protocolStepModalityIds.length} Modalities`
-                      }
+                      {todayTasks.length > 0
+                        ? `Audit Routine & Start Protocol • ${activeModalityCount}/${protocolStepModalityIds.length} Active`
+                        : `Start This Protocol Now • Add All ${protocolStepModalityIds.length} Modalities`}
                     </span>
                     <ArrowRight className="w-4 h-4 text-white" />
                   </>
+                )}
+              </button>
+            )}
+
+            {/* Smart Stack Fit Audit Direct Trigger (if user has existing tasks) */}
+            {todayTasks.length > 0 && (
+              <button
+                onClick={() => setIsStackFitModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-3.5 rounded-xl font-bold text-sm bg-purple-950/70 hover:bg-purple-900/80 text-purple-200 border border-purple-500/40 shadow-lg shadow-purple-950/30 transition-all active:scale-95 cursor-pointer"
+                title="Audit how this protocol compares with your current active routine"
+              >
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span>Audit Stack Fit</span>
+                {stackFitAuditResult && stackFitAuditResult.upgrades.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-purple-500/30 text-purple-200 border border-purple-400/40 font-bold">
+                    {stackFitAuditResult.upgrades.length} Upgrade{stackFitAuditResult.upgrades.length === 1 ? '' : 's'}
+                  </span>
                 )}
               </button>
             )}
@@ -1005,7 +1088,7 @@ export default function HubermanClient() {
                       router.push('/today')
                     }
                   } else {
-                    handleActivateProtocol(true)
+                    handleKickstartClick()
                   }
                 }}
                 disabled={isActivating}
@@ -1023,12 +1106,12 @@ export default function HubermanClient() {
                 ) : missingStepModalityIds.length > 0 && activeModalityCount > 0 ? (
                   <>
                     <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Add Remaining {missingStepModalityIds.length} Modalities ({activeModalityCount}/{protocolStepModalityIds.length} Active)</span>
+                    <span>{todayTasks.length > 0 ? 'Audit & Add Remaining' : 'Add Remaining'} {missingStepModalityIds.length} Modalities ({activeModalityCount}/{protocolStepModalityIds.length} Active)</span>
                   </>
                 ) : (
                   <>
                     <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Add All {protocolStepModalityIds.length} to Today</span>
+                    <span>{todayTasks.length > 0 ? 'Audit Routine & Start Protocol' : `Add All ${protocolStepModalityIds.length} to Today`}</span>
                   </>
                 )}
               </button>
@@ -1339,6 +1422,17 @@ export default function HubermanClient() {
           userProfile={userProfile}
           initialShowGeekMode={true}
           initialShowLongevityDrawer={true}
+        />
+      )}
+
+      {/* Protocol Stack Fit & Comparative Adoption Modal */}
+      {isStackFitModalOpen && (
+        <ProtocolStackFitModal
+          isOpen={isStackFitModalOpen}
+          onClose={() => setIsStackFitModalOpen(false)}
+          protocol={currentProtocol}
+          auditResult={stackFitAuditResult}
+          onAdoptTailoredStack={handleAdoptTailoredStack}
         />
       )}
     </div>

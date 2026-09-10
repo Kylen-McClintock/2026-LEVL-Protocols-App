@@ -3199,6 +3199,196 @@ export async function addProtocolToToday(localUserId: string, date: string, prot
   return true
 }
 
+export interface TailoredProtocolAdoptionPlan {
+  protocolId: string
+  protocolName?: string
+  upgradesToApply: {
+    oldModalityId: string
+    newModalityId: string
+    timingSlot: string
+  }[]
+  additionsToSchedule: {
+    modalityId: string
+    timingSlot: string
+  }[]
+  modalitiesToKeep?: string[]
+}
+
+export async function adoptTailoredProtocolStack(
+  localUserId: string,
+  date: string,
+  plan: TailoredProtocolAdoptionPlan
+): Promise<{ success: boolean; addedCount: number; upgradedCount: number; message: string }> {
+  if (!supabase || !localUserId) {
+    return { success: false, addedCount: 0, upgradedCount: 0, message: 'Supabase client unavailable' }
+  }
+
+  const isProtocolUuid = plan.protocolId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(plan.protocolId)
+  let instanceId: string | null = null
+
+  if (isProtocolUuid) {
+    try {
+      const { data: instance } = await supabase
+        .from('user_protocol_instances')
+        .select('id')
+        .eq('local_user_id', localUserId)
+        .eq('protocol_id', plan.protocolId)
+        .eq('status', 'active')
+        .maybeSingle()
+
+      if (!instance) {
+        const { data: newInstance } = await supabase
+          .from('user_protocol_instances')
+          .insert({
+            local_user_id: localUserId,
+            protocol_id: plan.protocolId,
+            status: 'active'
+          })
+          .select('id')
+          .maybeSingle()
+        if (newInstance) instanceId = newInstance.id
+      } else {
+        instanceId = instance.id
+      }
+    } catch (e) {
+      console.warn('Instance creation in adoptTailoredProtocolStack:', e)
+    }
+  }
+
+  // 1. Process Upgrades: Bench old modalities, prune their future tasks
+  let upgradedCount = 0
+  for (const upgrade of plan.upgradesToApply) {
+    try {
+      await moveModalityToBench(localUserId, upgrade.oldModalityId)
+      upgradedCount++
+    } catch (e) {
+      console.warn(`Failed to bench old modality ${upgrade.oldModalityId}:`, e)
+    }
+  }
+
+  // 2. Prepare tasks to insert for upgrades and additions
+  const itemsToSchedule: { modalityId: string; timingSlot: string }[] = [
+    ...plan.upgradesToApply.map(u => ({ modalityId: u.newModalityId, timingSlot: u.timingSlot })),
+    ...plan.additionsToSchedule.map(a => ({ modalityId: a.modalityId, timingSlot: a.timingSlot }))
+  ]
+
+  // Ensure modalities exist in modalities table
+  const distinctModIds = Array.from(new Set(itemsToSchedule.map(i => i.modalityId)))
+  if (distinctModIds.length > 0) {
+    try {
+      const { data: existingMods } = await supabase
+        .from('modalities')
+        .select('id')
+        .in('id', distinctModIds)
+      const existingSet = new Set((existingMods || []).map(m => m.id))
+      const missing = distinctModIds.filter(id => !existingSet.has(id))
+      if (missing.length > 0) {
+        const placeholders = missing.map(id => ({
+          id,
+          slug: id,
+          name: id.replace(/_/g, ' '),
+          display_name: id.replace(/_/g, ' '),
+          category: 'lifestyle',
+          status: 'active',
+          timing_summary: 'morning'
+        }))
+        await supabase.from('modalities').upsert(placeholders, { onConflict: 'id', ignoreDuplicates: true })
+      }
+    } catch (e) {
+      console.warn('Modality sync check in adoptTailoredProtocolStack:', e)
+    }
+  }
+
+  // Insert 30-day forward schedule for adopted items
+  const [year, month, day] = date.split('-').map(Number)
+  const localStartDate = new Date(year, month - 1, day)
+  const tasksToInsert: any[] = []
+
+  itemsToSchedule.forEach(({ modalityId, timingSlot }) => {
+    for (let i = 0; i < 30; i++) {
+      const targetDate = new Date(localStartDate)
+      targetDate.setDate(localStartDate.getDate() + i)
+      const targetDateStr = format(targetDate, 'yyyy-MM-dd')
+
+      tasksToInsert.push({
+        local_user_id: localUserId,
+        user_protocol_instance_id: instanceId || null,
+        modality_id: modalityId,
+        scheduled_date: targetDateStr,
+        timing_slot: timingSlot || 'morning',
+        status: 'pending'
+      })
+    }
+  })
+
+  const addedCount = plan.additionsToSchedule.length
+  if (tasksToInsert.length > 0) {
+    // Deduplicate against existing scheduled tasks for these dates and modalities
+    const minDate = date
+    const maxDate = format(new Date(localStartDate.getTime() + 29 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+
+    const { data: existingRows } = await supabase
+      .from('daily_protocol_tasks')
+      .select('scheduled_date, modality_id')
+      .eq('local_user_id', localUserId)
+      .gte('scheduled_date', minDate)
+      .lte('scheduled_date', maxDate)
+
+    const existingKeySet = new Set((existingRows || []).map(r => `${r.scheduled_date}__${r.modality_id}`))
+    const tasksToActuallyInsert = tasksToInsert.filter(t => !existingKeySet.has(`${t.scheduled_date}__${t.modality_id}`))
+
+    if (tasksToActuallyInsert.length > 0) {
+      const { error: insertErr } = await supabase
+        .from('daily_protocol_tasks')
+        .insert(tasksToActuallyInsert)
+      if (insertErr) {
+        console.warn('First insert attempt warning in adoptTailoredProtocolStack, falling back to minimal columns:', insertErr)
+        const cleanTasks = tasksToActuallyInsert.map(t => ({
+          local_user_id: t.local_user_id,
+          modality_id: t.modality_id,
+          scheduled_date: t.scheduled_date,
+          timing_slot: t.timing_slot,
+          status: 'pending'
+        }))
+        await supabase.from('daily_protocol_tasks').insert(cleanTasks)
+      }
+    }
+  }
+
+  // Also reactivate bench items if any of the additions/upgrades were previously benched
+  try {
+    const { data: benchedItems } = await supabase
+      .from('user_bench_items')
+      .select('id, modality_id')
+      .eq('local_user_id', localUserId)
+      .in('modality_id', distinctModIds)
+    if (benchedItems && benchedItems.length > 0) {
+      await supabase
+        .from('user_bench_items')
+        .update({ status: 'active' })
+        .in('id', benchedItems.map(b => b.id))
+    }
+  } catch (e) {
+    console.warn('Bench activation in adoptTailoredProtocolStack:', e)
+  }
+
+  // Trigger local cache invalidation and custom events
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(`levl_cached_tasks_${date}`)
+      window.dispatchEvent(new CustomEvent('levl_sync_end'))
+      window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+    } catch (e) {}
+  }
+
+  return {
+    success: true,
+    addedCount,
+    upgradedCount,
+    message: `Successfully adopted ${addedCount} new habits and ${upgradedCount} clinical upgrades!`
+  }
+}
+
 export async function completeDailySession(id: string) {
   if (!supabase) return null
   const { data, error } = await supabase

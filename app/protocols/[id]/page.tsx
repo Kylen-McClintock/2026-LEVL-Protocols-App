@@ -19,10 +19,15 @@ import {
   getTaskOutcomeObservations,
   getDailyWellbeingHistory,
   benchEntireProtocol,
-  eliminateEntireProtocol
+  eliminateEntireProtocol,
+  getModalities,
+  adoptTailoredProtocolStack,
+  TailoredProtocolAdoptionPlan
 } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
-import { DailyProtocolTask, UserProfile, OutcomeDimension, DailyWellbeingCheckin } from '@/lib/types'
+import { DailyProtocolTask, UserProfile, OutcomeDimension, DailyWellbeingCheckin, Modality } from '@/lib/types'
+import { ProtocolStackFitModal } from '@/components/modals/ProtocolStackFitModal'
+import { auditProtocolStackFit, ProtocolStackFitAuditResult } from '@/lib/synergy/protocolStackFitAuditor'
 import { format, subDays } from 'date-fns'
 import { 
   ArrowLeft, 
@@ -235,6 +240,8 @@ export default function ProtocolFocusPage() {
   const [selectedSkinCycleTab, setSelectedSkinCycleTab] = useState<number>(todaySkinPhase.dayNumber)
   const [referralSource, setReferralSource] = useState<string | null>(null)
   const [influencerName, setInfluencerName] = useState<string | null>(null)
+  const [catalogModalities, setCatalogModalities] = useState<Modality[]>([])
+  const [isStackFitModalOpen, setIsStackFitModalOpen] = useState<boolean>(false)
 
   const currentDateStr = format(new Date(), 'yyyy-MM-dd')
 
@@ -294,13 +301,14 @@ export default function ProtocolFocusPage() {
       }
       setProtocol(protoData)
 
-      // 2. Fetch today tasks, bench items, profile, outcome dimensions & 90-day checkin history
-      const [tasks, bench, userProf, outcomes, checkinHistory] = await Promise.all([
+      // 2. Fetch today tasks, bench items, profile, outcome dimensions, checkin history & catalog modalities
+      const [tasks, bench, userProf, outcomes, checkinHistory, allMods] = await Promise.all([
         getDailyProtocolTasks(localUserId, currentDateStr),
         getBenchItems(localUserId),
         getOrCreateUserProfile(localUserId),
         getOutcomeDimensions(),
-        getDailyWellbeingHistory(localUserId, format(subDays(new Date(), 90), 'yyyy-MM-dd'), currentDateStr)
+        getDailyWellbeingHistory(localUserId, format(subDays(new Date(), 90), 'yyyy-MM-dd'), currentDateStr),
+        getModalities()
       ])
 
       setTodayTasks(tasks)
@@ -308,6 +316,7 @@ export default function ProtocolFocusPage() {
       setProfile(userProf)
       setAllOutcomes(outcomes)
       setCheckins(checkinHistory || [])
+      if (allMods) setCatalogModalities(allMods)
       setIsLoading(false)
     }
 
@@ -475,9 +484,53 @@ export default function ProtocolFocusPage() {
     )
   }
 
+  // Audit protocol against existing user tasks and bench
+  const stackFitAuditResult: ProtocolStackFitAuditResult | null = useMemo(() => {
+    if (!protocol) return null
+    return auditProtocolStackFit(protocol, todayTasks, benchItems, catalogModalities, profile)
+  }, [protocol, todayTasks, benchItems, catalogModalities, profile])
+
+  // Intelligent Kickstart Handler: Opens audit modal if user has existing stack, otherwise 1-click kickstarts
+  const handleEnrollClick = () => {
+    if (todayTasks.length > 0) {
+      setIsStackFitModalOpen(true)
+    } else {
+      handleInstantKickstart()
+    }
+  }
+
+  const handleAdoptTailoredStack = async (plan: TailoredProtocolAdoptionPlan) => {
+    if (!protocol) return
+    setIsProcessingAction(true)
+    const localUserId = getLocalUserId()
+    try {
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('levl_guest_instant_kickstart', 'true')
+          localStorage.setItem('levl_active_protocol', protocol.name || protocol.id)
+          if (referralSource) localStorage.setItem('levl_referral_source', referralSource)
+          if (influencerName) localStorage.setItem('levl_referral_influencer', influencerName)
+        } catch (e) {}
+      }
+
+      await adoptTailoredProtocolStack(localUserId, currentDateStr, plan)
+      await reloadData()
+      setIsStackFitModalOpen(false)
+      router.push('/today')
+    } catch (err) {
+      console.error('Error adopting tailored stack in protocol detail page:', err)
+    } finally {
+      setIsProcessingAction(false)
+    }
+  }
+
   // Protocol-Level Actions: Add All, Bench Entire Protocol, Eliminate Entire Protocol
   const handleAddEntireProtocolToToday = async () => {
     if (!protocol) return
+    if (todayTasks.length > 0) {
+      setIsStackFitModalOpen(true)
+      return
+    }
     setIsProcessingAction(true)
     const localUserId = getLocalUserId()
     await addProtocolToToday(localUserId, currentDateStr, protocol.id)
@@ -693,7 +746,7 @@ export default function ProtocolFocusPage() {
             </div>
             <button
               type="button"
-              onClick={handleInstantKickstart}
+              onClick={handleEnrollClick}
               disabled={isProcessingAction}
               className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-500 hover:to-teal-400 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
@@ -753,13 +806,31 @@ export default function ProtocolFocusPage() {
             {/* 1-Click Instant Kickstart Button */}
             <button
               type="button"
-              onClick={handleInstantKickstart}
+              onClick={handleEnrollClick}
               disabled={isProcessingAction}
               className="px-4 py-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-teal-500 hover:from-purple-500 hover:to-teal-400 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-lg shadow-purple-900/40 cursor-pointer active:scale-95 disabled:opacity-50"
             >
               <Zap size={14} className="text-amber-300" />
-              <span>Start Tracking Free (1-Click)</span>
+              <span>{todayTasks.length > 0 ? 'Audit & Start Protocol' : 'Start Tracking Free (1-Click)'}</span>
             </button>
+
+            {/* Smart Stack Fit Direct Button */}
+            {todayTasks.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsStackFitModalOpen(true)}
+                className="px-3.5 py-2 bg-purple-950/60 hover:bg-purple-900/60 text-purple-200 border border-purple-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+                title="Audit how this protocol fits your current daily routine"
+              >
+                <Sparkles size={14} className="text-purple-400" />
+                <span>Audit Stack Fit</span>
+                {stackFitAuditResult && stackFitAuditResult.upgrades.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-purple-500/30 text-purple-200 border border-purple-400/40 font-bold">
+                    {stackFitAuditResult.upgrades.length} Upgrade{stackFitAuditResult.upgrades.length === 1 ? '' : 's'}
+                  </span>
+                )}
+              </button>
+            )}
 
             {isEntirelyActive ? (
               <button
@@ -1685,6 +1756,17 @@ export default function ProtocolFocusPage() {
           onSuccess={async () => {
             await reloadData()
           }}
+        />
+      )}
+
+      {/* Protocol Stack Fit & Comparative Adoption Modal */}
+      {isStackFitModalOpen && (
+        <ProtocolStackFitModal
+          isOpen={isStackFitModalOpen}
+          onClose={() => setIsStackFitModalOpen(false)}
+          protocol={protocol}
+          auditResult={stackFitAuditResult}
+          onAdoptTailoredStack={handleAdoptTailoredStack}
         />
       )}
 
