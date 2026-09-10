@@ -550,6 +550,32 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
               )}
             </div>
 
+            {/* LongevityReviews PubMed Consensus & Evidence Bridge */}
+            <div className="pt-2 border-t border-slate-800/80">
+              <a
+                href={`https://longevityreviews.org/modalities/${mod.id || mod.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-purple-950/70 via-indigo-950/40 to-slate-900 border border-purple-500/40 hover:border-purple-400 text-purple-200 hover:text-white transition-all group shadow-md"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 group-hover:scale-110 transition-transform shrink-0">
+                    <BookOpen size={15} className="text-purple-400" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-white group-hover:text-purple-200 transition-colors flex items-center gap-1.5">
+                      <span>LongevityReviews Evidence Bridge</span>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-extrabold uppercase tracking-wider border border-purple-500/30">PubMed Consensus</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      View PubMed consensus ratings, human RCTs &amp; full literature for {modName} →
+                    </p>
+                  </div>
+                </div>
+                <ExternalLink size={13} className="text-slate-500 group-hover:text-purple-300 transition-colors shrink-0 ml-2" />
+              </a>
+            </div>
+
             {/* Expandable Disclaimer Button */}
             <div className="pt-2 border-t border-slate-800/80">
               <MedicalDisclaimerBanner

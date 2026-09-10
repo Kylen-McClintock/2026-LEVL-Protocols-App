@@ -79,6 +79,81 @@ const getPhaseIcon = (timingSlot: string) => {
   return '⚡'
 }
 
+export type PhysiologicalWindow = {
+  id: 'morning_fasted' | 'afternoon_meals' | 'post_workout' | 'evening_bedtime' | 'flexible'
+  title: string
+  icon: string
+  badgeBg: string
+  badgeText: string
+  badgeBorder: string
+  description: string
+  slots: string[]
+}
+
+export const PHYSIOLOGICAL_WINDOWS: PhysiologicalWindow[] = [
+  {
+    id: 'morning_fasted',
+    title: 'Morning / Fasted',
+    icon: '🌅',
+    badgeBg: 'bg-amber-500/15',
+    badgeText: 'text-amber-300',
+    badgeBorder: 'border-amber-500/30',
+    description: 'Circadian sunrise anchoring, fasting state activations & morning stack',
+    slots: ['fasted', 'morning', 'pre_wake', 'waking', 'sunrise', 'early_morning', 'dawn']
+  },
+  {
+    id: 'afternoon_meals',
+    title: 'Afternoon / With Meals',
+    icon: '☀️',
+    badgeBg: 'bg-sky-500/15',
+    badgeText: 'text-sky-300',
+    badgeBorder: 'border-sky-500/30',
+    description: 'Lipid-soluble cofactors, digestive synergy & daytime metabolic support',
+    slots: ['afternoon', 'midday', 'lunch', 'with_meals', 'post_meal', 'pre_meal', 'meal']
+  },
+  {
+    id: 'post_workout',
+    title: 'Post-Workout',
+    icon: '🏋️',
+    badgeBg: 'bg-emerald-500/15',
+    badgeText: 'text-emerald-300',
+    badgeBorder: 'border-emerald-500/30',
+    description: 'Hypertrophic recovery, cellular replenishment & muscle protein synthesis',
+    slots: ['post_workout', 'workout', 'exercise', 'training', 'hypertrophy']
+  },
+  {
+    id: 'evening_bedtime',
+    title: 'Evening / Bedtime',
+    icon: '🌙',
+    badgeBg: 'bg-indigo-500/15',
+    badgeText: 'text-indigo-300',
+    badgeBorder: 'border-indigo-500/30',
+    description: 'Melatonin secretion, autonomic parasympathetic shift & sleep architecture',
+    slots: ['evening', 'sunset', 'wind_down', 'dinner', 'bedtime', 'night', 'sleep', 'overnight']
+  },
+  {
+    id: 'flexible',
+    title: 'Flexible Window',
+    icon: '⚡',
+    badgeBg: 'bg-purple-500/15',
+    badgeText: 'text-purple-300',
+    badgeBorder: 'border-purple-500/30',
+    description: 'Anytime throughout the day, periodic cadence, or diagnostic surveillance',
+    slots: ['anytime', 'flexible', 'infrequent', 'weekly', 'monthly']
+  }
+]
+
+export const getPhysiologicalWindowId = (slotOrTiming: string): PhysiologicalWindow['id'] => {
+  const norm = (slotOrTiming || '').toLowerCase().replace(/[-\s]/g, '_')
+  for (const win of PHYSIOLOGICAL_WINDOWS) {
+    if (win.id === 'flexible') continue
+    if (win.slots.some(s => norm.includes(s))) {
+      return win.id
+    }
+  }
+  return 'flexible'
+}
+
 const PROTOCOL_BENCH_REASONS = [
   'Currently on a break / cycling off',
   'Traveling / limited hardware or gear',
@@ -521,6 +596,27 @@ export default function ProtocolFocusPage() {
       statusType
     }
   })
+
+  const groupedTimelineSteps = useMemo(() => {
+    const groups: Record<PhysiologicalWindow['id'], any[]> = {
+      morning_fasted: [],
+      afternoon_meals: [],
+      post_workout: [],
+      evening_bedtime: [],
+      flexible: []
+    }
+
+    evaluatedSteps.forEach((item: any) => {
+      const slot = item.step.timing_slot || item.step.frequency || item.modality?.timing_summary || ''
+      const winId = getPhysiologicalWindowId(slot)
+      groups[winId].push(item)
+    })
+
+    return PHYSIOLOGICAL_WINDOWS.map(win => ({
+      ...win,
+      steps: groups[win.id]
+    })).filter(win => win.steps.length > 0)
+  }, [evaluatedSteps])
 
   const activeCount = evaluatedSteps.filter((s: any) => s.statusType === 'completed' || s.statusType === 'pending').length
   const completedCount = evaluatedSteps.filter((s: any) => s.statusType === 'completed').length
@@ -1002,49 +1098,89 @@ export default function ProtocolFocusPage() {
           </button>
 
           {isTimelineExpanded && (
-            <div className="p-4 sm:p-5 border-t border-slate-800 space-y-3 bg-slate-950/60 animate-in fade-in slide-in-from-top-2">
-              <div className="relative pl-6 sm:pl-8 space-y-4 before:absolute before:left-3 sm:before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-gradient-to-b before:from-indigo-500 before:via-purple-500 before:to-amber-500">
-                {evaluatedSteps.map(({ step, modality }: any, idx: number) => {
-                  const stepName = modality?.display_name || modality?.name || step.instructions || `Step ${idx + 1}`
-                  const stepTiming = step.timing_slot ? formatSlotName(step.timing_slot) : modality?.timing_summary || 'Daily'
-                  const stepDose = step.dosage || step.dosage_value || modality?.dose_or_exposure || 'Standard dose'
-                  const stepNotes = step.instructions || modality?.instructions || modality?.brief_description || ''
-                  const phaseIcon = getPhaseIcon(step.timing_slot || modality?.timing_summary || '')
-
-                  return (
-                    <div key={idx} className="relative group">
-                      {/* Chronological Timeline Node */}
-                      <div className="absolute -left-6 sm:-left-8 top-1.5 w-6 h-6 rounded-full bg-slate-950 border-2 border-purple-400 flex items-center justify-center font-mono font-bold text-[10px] text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.4)]">
-                        {idx + 1}
-                      </div>
-
-                      <div className="bg-slate-900/90 border border-slate-800/90 rounded-xl p-3.5 space-y-2 hover:border-purple-500/40 transition-all">
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <span className="text-sm font-extrabold text-white">
-                            {stepName}
+            <div className="p-4 sm:p-5 border-t border-slate-800 space-y-6 bg-slate-950/60 animate-in fade-in slide-in-from-top-2">
+              {groupedTimelineSteps.map(win => (
+                <div key={win.id} className="space-y-3">
+                  {/* Physiological Window Header */}
+                  <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{win.icon}</span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs sm:text-sm font-extrabold text-white">
+                            {win.title}
+                          </h4>
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold ${win.badgeBg} ${win.badgeBorder} ${win.badgeText}`}>
+                            {win.steps.length} {win.steps.length === 1 ? 'Modality' : 'Modalities'}
                           </span>
-
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="bg-slate-950 border border-slate-800 text-purple-300 px-2.5 py-0.5 rounded-lg font-mono text-[11px] flex items-center gap-1">
-                              <span>{phaseIcon}</span>
-                              <span>{stepTiming}</span>
-                            </span>
-                            <span className="bg-slate-950 border border-slate-800 text-teal-300 px-2.5 py-0.5 rounded-lg font-mono text-[11px]">
-                              💊 {stepDose}
-                            </span>
-                          </div>
                         </div>
-
-                        {stepNotes && (
-                          <p className="text-xs text-slate-300 leading-relaxed font-sans pl-3 border-l-2 border-purple-500/30 my-1">
-                            {stepNotes}
-                          </p>
-                        )}
+                        <p className="text-[11px] text-slate-400 font-sans mt-0.5">
+                          {win.description}
+                        </p>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+
+                  {/* Window Step Cards */}
+                  <div className="relative pl-6 sm:pl-8 space-y-3 before:absolute before:left-3 sm:before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-purple-500/80 before:to-teal-500/80">
+                    {win.steps.map(({ step, modality, modalityId }: any, sIdx: number) => {
+                      const stepName = modality?.display_name || modality?.name || step.instructions || `Step ${sIdx + 1}`
+                      const stepTiming = step.timing_slot ? formatSlotName(step.timing_slot) : modality?.timing_summary || 'Daily'
+                      const stepDose = step.dosage || step.dosage_value || step.dose_text || modality?.dose_or_exposure || 'Standard dose'
+                      const stepNotes = step.instructions || modality?.instructions || modality?.brief_description || ''
+                      const phaseIcon = getPhaseIcon(step.timing_slot || modality?.timing_summary || '')
+                      const targetModId = modalityId || modality?.id || modality?.slug || ''
+
+                      return (
+                        <div key={sIdx} className="relative group">
+                          {/* Node marker */}
+                          <div className="absolute -left-6 sm:-left-8 top-1.5 w-6 h-6 rounded-full bg-slate-950 border-2 border-purple-400 flex items-center justify-center font-mono font-bold text-[10px] text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.4)]">
+                            {sIdx + 1}
+                          </div>
+
+                          <div className="bg-slate-900/90 border border-slate-800/90 rounded-xl p-3.5 space-y-2 hover:border-purple-500/40 transition-all">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="text-sm font-extrabold text-white">
+                                {stepName}
+                              </span>
+
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="bg-slate-950 border border-slate-800 text-purple-300 px-2.5 py-0.5 rounded-lg font-mono text-[11px] flex items-center gap-1">
+                                  <span>{phaseIcon}</span>
+                                  <span>{stepTiming}</span>
+                                </span>
+                                <span className="bg-slate-950 border border-slate-800 text-teal-300 px-2.5 py-0.5 rounded-lg font-mono text-[11px]">
+                                  💊 {stepDose}
+                                </span>
+                              </div>
+                            </div>
+
+                            {stepNotes && (
+                              <p className="text-xs text-slate-300 leading-relaxed font-sans pl-3 border-l-2 border-purple-500/30 my-1">
+                                {stepNotes}
+                              </p>
+                            )}
+
+                            {targetModId && (
+                              <div className="pt-1 flex items-center justify-end">
+                                <a
+                                  href={`https://longevityreviews.org/modalities/${targetModId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[11px] font-bold text-purple-400 hover:text-purple-300 transition-colors inline-flex items-center gap-1 group/link"
+                                >
+                                  <span>View PubMed Consensus &amp; Studies</span>
+                                  <ExternalLink size={11} className="opacity-70 group-link:opacity-100 transition-opacity" />
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1120,7 +1256,7 @@ export default function ProtocolFocusPage() {
 
                     {/* Row 2: Dosing & Timing Info + Right Side Actions */}
                     <div className="flex items-center justify-between gap-4 pt-0.5 flex-wrap">
-                      <div className="flex items-center gap-3 text-xs text-slate-300 font-mono flex-wrap">
+                      <div className="flex items-center gap-2 sm:gap-3 text-xs text-slate-300 font-mono flex-wrap">
                         <span className="text-teal-300 font-semibold">{modDose}</span>
                         <span>•</span>
                         <span className="text-purple-300 font-semibold">{modTiming}</span>
@@ -1130,6 +1266,16 @@ export default function ProtocolFocusPage() {
                             <span className="text-slate-400 lowercase">{step.stack_group.replace(/_/g, ' ')}</span>
                           </>
                         )}
+                        <span>•</span>
+                        <a
+                          href={`https://longevityreviews.org/modalities/${modalityId || modality?.id || modality?.slug || ''}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-purple-400 hover:text-purple-300 font-bold font-sans transition-colors inline-flex items-center gap-1 group/bridge"
+                        >
+                          <span>View PubMed Consensus &amp; Studies →</span>
+                        </a>
                       </div>
 
                       {/* Action Buttons on Right Side */}

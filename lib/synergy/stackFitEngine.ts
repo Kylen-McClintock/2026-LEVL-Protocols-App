@@ -24,7 +24,7 @@ export interface StackConflictMatch {
   matchedModalityId: string
   matchedModalityName: string
   source: 'today' | 'bench'
-  conflictType: 'hypertrophy_blunting' | 'circadian_disruption' | 'absorption_competition' | 'methylation_depletion' | 'glycemic_shock' | 'antagonistic_receptors'
+  conflictType: BiochemicalConflictRule['type']
   severity: 'timing' | 'moderate' | 'critical'
   headline: string
   rationale: string

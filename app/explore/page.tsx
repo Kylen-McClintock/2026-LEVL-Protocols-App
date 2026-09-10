@@ -41,6 +41,24 @@ import { StackFitResult } from '@/lib/synergy/stackFitEngine'
 import { semanticSearchModalities, SemanticSearchResult } from '@/app/actions/search'
 import { calculateModalityRelevance, calculateProtocolRelevance } from '@/lib/search/semanticRelevance'
 
+export const PROTOCOL_STACK_CATEGORIES = [
+  { id: 'all', label: 'All Stacks', icon: '✨' },
+  { id: 'cardiorespiratory', label: 'Cardiorespiratory', icon: '🫀' },
+  { id: 'brain_sleep', label: 'Brain & Sleep', icon: '🧠' },
+  { id: 'metabolic', label: 'Metabolic', icon: '🔥' },
+  { id: 'epigenetics', label: 'Epigenetics', icon: '🧬' },
+  { id: 'strength', label: 'Sarcopenia & Strength', icon: '💪' },
+  { id: 'immune', label: 'Immune & Tissue', icon: '🛡️' },
+]
+
+export const PROTOCOL_DIFFICULTY_LEVELS = [
+  { id: 'all', label: 'All Levels' },
+  { id: 'beginner', label: 'Beginner' },
+  { id: 'moderate', label: 'Moderate' },
+  { id: 'advanced', label: 'Advanced' },
+  { id: 'demanding', label: 'Demanding / Elite' },
+]
+
 function ExplorePageContent() {
   const searchParams = useSearchParams()
   const tabParam = searchParams.get('tab')
@@ -59,6 +77,8 @@ function ExplorePageContent() {
   const [benchModalityIds, setBenchModalityIds] = useState<Set<string>>(new Set())
   const [todayProtocolIds, setTodayProtocolIds] = useState<Set<string>>(new Set())
   const [benchProtocolIds, setBenchProtocolIds] = useState<Set<string>>(new Set())
+  const [selectedProtocolCategory, setSelectedProtocolCategory] = useState<string>('all')
+  const [protocolDifficulty, setProtocolDifficulty] = useState<string>('all')
   const [activeModalitiesMap, setActiveModalitiesMap] = useState<Map<string, { modality: Modality, source: 'today' | 'bench' }>>(new Map())
   const [benchHistoryMap, setBenchHistoryMap] = useState<Map<string, UserBenchItem>>(new Map())
   const [filterBenchHistoryStatus, setFilterBenchHistoryStatus] = useState<'all' | 'tried_history' | 'benched' | 'eliminated'>('all')
@@ -168,8 +188,8 @@ function ExplorePageContent() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<SemanticSearchResult[]>([])
   const [searchSortMode, setSearchSortMode] = useState<'semantic' | 'hybrid'>('semantic')
-  const [sortMode, setSortMode] = useState<'popularity' | 'nba' | 'evidence' | 'impact' | 'relevance'>('popularity')
-  const [previousSortMode, setPreviousSortMode] = useState<'popularity' | 'nba' | 'evidence' | 'impact' | 'relevance' | null>(null)
+  const [sortMode, setSortMode] = useState<'popularity' | 'nba' | 'evidence' | 'impact' | 'relevance' | 'difficulty' | 'steps' | 'name'>('popularity')
+  const [previousSortMode, setPreviousSortMode] = useState<'popularity' | 'nba' | 'evidence' | 'impact' | 'relevance' | 'difficulty' | 'steps' | 'name' | null>(null)
 
   useEffect(() => {
     if (tabParam === 'protocols') {
@@ -178,7 +198,7 @@ function ExplorePageContent() {
     } else if (tabParam === 'modalities') {
       setActiveTab('modalities')
     }
-    if (sortParam && ['popularity', 'nba', 'evidence', 'impact', 'relevance'].includes(sortParam)) {
+    if (sortParam && ['popularity', 'nba', 'evidence', 'impact', 'relevance', 'difficulty', 'steps', 'name'].includes(sortParam)) {
       setSortMode(sortParam as any)
     }
   }, [tabParam, sortParam])
@@ -830,6 +850,78 @@ function ExplorePageContent() {
 
 
   const isProtocolCategoryMatch = (proto: any) => {
+    // 1. Check protocol stack category pill
+    if (selectedProtocolCategory !== 'all') {
+      const pName = (proto.name || '').toLowerCase()
+      const pDesc = (proto.description || '').toLowerCase()
+      const pGoal = (proto.primary_goal || proto.goal || '').toLowerCase()
+      const pVectors = Array.isArray(proto.target_vectors) ? proto.target_vectors.join(' ').toLowerCase() : ''
+      const stepCats = (proto.steps || proto.protocol_steps || [])
+        .map((s: any) => `${s.modality?.category || ''} ${s.modality?.modality_type || ''} ${s.modality?.display_name || s.modality?.name || ''} ${s.notes || ''}`)
+        .join(' ')
+        .toLowerCase()
+
+      const fullStackText = `${pName} ${pDesc} ${pGoal} ${pVectors} ${stepCats}`
+
+      if (selectedProtocolCategory === 'cardiorespiratory') {
+        const matches = fullStackText.includes('cardio') || fullStackText.includes('vo2') || fullStackText.includes('heart') ||
+          fullStackText.includes('vascular') || fullStackText.includes('endurance') || fullStackText.includes('running') ||
+          fullStackText.includes('hiit') || fullStackText.includes('aerobic') || fullStackText.includes('cycling') ||
+          fullStackText.includes('norwegian') || fullStackText.includes('cpet') || fullStackText.includes('sprint') ||
+          fullStackText.includes('shear stress') || fullStackText.includes('marathon')
+        if (!matches) return false
+      } else if (selectedProtocolCategory === 'brain_sleep') {
+        const matches = fullStackText.includes('brain') || fullStackText.includes('sleep') || fullStackText.includes('circadian') ||
+          fullStackText.includes('cognitive') || fullStackText.includes('neuro') || fullStackText.includes('focus') ||
+          fullStackText.includes('mind') || fullStackText.includes('breath') || fullStackText.includes('optic flow') ||
+          fullStackText.includes('walker') || fullStackText.includes('huberman') || fullStackText.includes('nsdr') ||
+          fullStackText.includes('nootropic') || fullStackText.includes('semax') || fullStackText.includes('selank')
+        if (!matches) return false
+      } else if (selectedProtocolCategory === 'metabolic') {
+        const matches = fullStackText.includes('metabolic') || fullStackText.includes('fasting') || fullStackText.includes('glucose') ||
+          fullStackText.includes('insulin') || fullStackText.includes('fmd') || fullStackText.includes('visceral') ||
+          fullStackText.includes('lipolysis') || fullStackText.includes('fat loss') || fullStackText.includes('mots') ||
+          fullStackText.includes('mitochondria') || fullStackText.includes('zone2') || fullStackText.includes('zone 2') ||
+          fullStackText.includes('rapamycin') || fullStackText.includes('metformin') || fullStackText.includes('glycemic') ||
+          fullStackText.includes('recomp') || fullStackText.includes('aod')
+        if (!matches) return false
+      } else if (selectedProtocolCategory === 'epigenetics') {
+        const matches = fullStackText.includes('epigenetic') || fullStackText.includes('dunedinpace') || fullStackText.includes('telomere') ||
+          fullStackText.includes('biological age') || fullStackText.includes('horvath') || fullStackText.includes('sinclair') ||
+          fullStackText.includes('blueprint') || fullStackText.includes('senolytic') || fullStackText.includes('cellular') ||
+          fullStackText.includes('aging') || fullStackText.includes('reversal') || fullStackText.includes('hallmark') ||
+          fullStackText.includes('nmn') || fullStackText.includes('fisetin') || fullStackText.includes('epitalon') ||
+          fullStackText.includes('biologics')
+        if (!matches) return false
+      } else if (selectedProtocolCategory === 'strength') {
+        const matches = fullStackText.includes('strength') || fullStackText.includes('hypertrophy') || fullStackText.includes('resistance') ||
+          fullStackText.includes('muscle') || fullStackText.includes('sarcopenia') || fullStackText.includes('bone density') ||
+          fullStackText.includes('lifting') || fullStackText.includes('push pull') || fullStackText.includes('ppl') ||
+          fullStackText.includes('power') || fullStackText.includes('testosterone') || fullStackText.includes('creatine') ||
+          fullStackText.includes('somatotropic') || fullStackText.includes('cjc') || fullStackText.includes('ipamorelin') ||
+          fullStackText.includes('calisthenics')
+        if (!matches) return false
+      } else if (selectedProtocolCategory === 'immune') {
+        const matches = fullStackText.includes('immune') || fullStackText.includes('inflammation') || fullStackText.includes('gut') ||
+          fullStackText.includes('repair') || fullStackText.includes('joint') || fullStackText.includes('tissue') ||
+          fullStackText.includes('thymosin') || fullStackText.includes('ta1') || fullStackText.includes('bpc') ||
+          fullStackText.includes('tb-500') || fullStackText.includes('tb500') || fullStackText.includes('microbiome') ||
+          fullStackText.includes('allergy') || fullStackText.includes('recovery') || fullStackText.includes('wolverine') ||
+          fullStackText.includes('kpv')
+        if (!matches) return false
+      }
+    }
+
+    // 2. Check difficulty level pill
+    if (protocolDifficulty !== 'all') {
+      const diff = (proto.difficulty_level || '').toLowerCase()
+      if (protocolDifficulty === 'beginner' && !(diff.includes('beginner') || diff.includes('easy') || diff.includes('intro'))) return false
+      if (protocolDifficulty === 'moderate' && !(diff.includes('moderate') || diff.includes('intermediate'))) return false
+      if (protocolDifficulty === 'advanced' && !(diff.includes('advanced'))) return false
+      if (protocolDifficulty === 'demanding' && !(diff.includes('demanding') || diff.includes('elite') || diff.includes('hardcore') || diff.includes('extreme'))) return false
+    }
+
+    // 3. Modality main/sub category fallthrough if selectedMainCategories is non-default
     const isAllMain = selectedMainCategories.includes('all') || selectedMainCategories.length === 0
     if (isAllMain && selectedSubCategories.length === 0) return true
 
@@ -871,35 +963,27 @@ function ExplorePageContent() {
 
     if (selectedSubCategories.length > 0) {
       const matchesSub = selectedSubCategories.some(subId => {
-        // 1. Injury & Joint Repair
         if (subId === 'injury_joint_repair' || subId === 'tissue_repair') {
           return fullText.includes('wolverine') || fullText.includes('repair') || fullText.includes('injury') || fullText.includes('joint') || fullText.includes('tendon') || fullText.includes('ligament') || fullText.includes('bpc') || fullText.includes('tb-500') || fullText.includes('tb500') || fullText.includes('kpv') || fullText.includes('thermal recovery') || fullText.includes('tissue')
         }
-        // 2. Fat Loss & Metabolism
         if (subId === 'fat_loss_metabolism' || subId === 'metabolic_glp1') {
           return fullText.includes('lipolysis') || fullText.includes('fat loss') || fullText.includes('visceral') || fullText.includes('recomp') || fullText.includes('metabolic') || fullText.includes('aod') || fullText.includes('tirzepatide') || fullText.includes('retatrutide') || fullText.includes('semaglutide') || fullText.includes('mots') || fullText.includes('zone2') || fullText.includes('biogenesis') || fullText.includes('fasting')
         }
-        // 3. Muscle & Recovery
         if (subId === 'muscle_recovery' || subId === 'gh_secretagogues') {
           return fullText.includes('muscle') || fullText.includes('growth hormone') || fullText.includes('hypertrophy') || fullText.includes('somatotropic') || fullText.includes('anabolic') || fullText.includes('cjc') || fullText.includes('ipamorelin') || fullText.includes('sermorelin') || fullText.includes('igf') || fullText.includes('sleep reset') || fullText.includes('strength')
         }
-        // 4. Focus, Brain & Mood
         if (subId === 'focus_brain_mood' || subId === 'nootropics_brain') {
           return fullText.includes('semax') || fullText.includes('selank') || fullText.includes('cognitive') || fullText.includes('focus') || fullText.includes('brain') || fullText.includes('neuro') || fullText.includes('synaptic') || fullText.includes('flow') || fullText.includes('mind') || fullText.includes('mood')
         }
-        // 5. Skin & Aesthetics
         if (subId === 'skin_aesthetics') {
           return fullText.includes('skin') || fullText.includes('glow') || fullText.includes('klow') || fullText.includes('photonic') || fullText.includes('collagen') || fullText.includes('dermal') || fullText.includes('aesthetics') || fullText.includes('ghk') || fullText.includes('epitalon skin') || fullText.includes('red light')
         }
-        // 6. Immunity & Gut Health
         if (subId === 'immunity_gut') {
           return fullText.includes('immune') || fullText.includes('gut') || fullText.includes('ta1') || fullText.includes('thymosin') || fullText.includes('kpv') || fullText.includes('mucosal') || fullText.includes('barrier') || fullText.includes('leaky gut')
         }
-        // 7. Libido & Vitality
         if (subId === 'libido_vitality') {
           return fullText.includes('sexual') || fullText.includes('libido') || fullText.includes('pt141') || fullText.includes('pt-141') || fullText.includes('kisspeptin') || fullText.includes('oxytocin') || fullText.includes('intimacy') || fullText.includes('vitality')
         }
-        // 8. Cellular Longevity & Anti-Aging
         if (subId === 'cellular_longevity' || subId === 'longevity_biologics') {
           return fullText.includes('longevity') || fullText.includes('epigenetic') || fullText.includes('telomere') || fullText.includes('blueprint') || fullText.includes('sinclair') || fullText.includes('biologics') || fullText.includes('epitalon') || fullText.includes('ss-31') || fullText.includes('mots') || fullText.includes('senolytic') || fullText.includes('fmd') || fullText.includes('stem cell')
         }
@@ -956,6 +1040,45 @@ function ExplorePageContent() {
       if (scoreB !== scoreA) return scoreB - scoreA
       if (isSearchActive && relB !== relA) return relB - relA
       return 0
+    }
+
+    // 2. Difficulty order (Beginner -> Moderate -> Advanced -> Demanding)
+    if (sortMode === 'difficulty') {
+      const getDiffRank = (p: any) => {
+        const d = (p.difficulty_level || '').toLowerCase()
+        if (d.includes('beginner') || d.includes('easy') || d.includes('intro')) return 1
+        if (d.includes('moderate') || d.includes('intermediate')) return 2
+        if (d.includes('advanced')) return 3
+        if (d.includes('demanding') || d.includes('elite')) return 4
+        return 2
+      }
+      const rankDiff = getDiffRank(a) - getDiffRank(b)
+      if (rankDiff !== 0) return rankDiff
+    }
+
+    // 3. Step count (Highest to lowest)
+    if (sortMode === 'steps') {
+      const stepsA = a.steps?.length || a.protocol_steps?.length || 0
+      const stepsB = b.steps?.length || b.protocol_steps?.length || 0
+      if (stepsB !== stepsA) return stepsB - stepsA
+    }
+
+    // 4. Alphabetical by protocol name
+    if (sortMode === 'name') {
+      const nameDiff = (a.name || '').localeCompare(b.name || '')
+      if (nameDiff !== 0) return nameDiff
+    }
+
+    // 5. Scientific Evidence quality
+    if (sortMode === 'evidence') {
+      const getEvRank = (p: any) => {
+        const ev = (p.evidence_level || '').toLowerCase()
+        if (ev.includes('level a') || ev.includes('meta-analysis') || ev.includes('rct')) return 3
+        if (ev.includes('level b') || ev.includes('clinical')) return 2
+        return 1
+      }
+      const evDiff = getEvRank(b) - getEvRank(a)
+      if (evDiff !== 0) return evDiff
     }
 
     if (isSearchActive && relB !== relA) return relB - relA
@@ -1056,6 +1179,9 @@ function ExplorePageContent() {
                sortMode === 'nba' ? '★ Sorted by Next Best Action' :
                sortMode === 'evidence' ? '⭐ Sorted by Scientific Evidence' :
                sortMode === 'impact' ? '📈 Sorted by Longevity Benefit' :
+               sortMode === 'difficulty' ? '🎯 Sorted by Difficulty Level (Beginner to Advanced)' :
+               sortMode === 'steps' ? '📋 Sorted by Step Count (Most Steps)' :
+               sortMode === 'name' ? '🔤 Sorted Alphabetically (A-Z)' :
                '🔤 Sorted by Direct Relevance'}
             </span>
             <span className="text-slate-400 font-mono text-[11px] shrink-0">
@@ -1139,32 +1265,70 @@ function ExplorePageContent() {
             className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'popularity' ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold shadow-sm shadow-amber-500/10' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
           >
             <Flame size={12} className={sortMode === 'popularity' ? 'text-amber-400' : 'text-gray-400'} />
-            Most Popular & Proven
+            Most Popular &amp; Proven
           </button>
 
-          <button 
-            type="button"
-            onClick={() => setSortMode('nba')}
-            className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'nba' ? 'bg-levl-accent/20 border-levl-accent text-levl-accent font-bold shadow-sm' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
-          >
-            ★ Recommended (NBA)
-          </button>
+          {activeTab === 'modalities' ? (
+            <>
+              <button 
+                type="button"
+                onClick={() => setSortMode('nba')}
+                className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'nba' ? 'bg-levl-accent/20 border-levl-accent text-levl-accent font-bold shadow-sm' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+              >
+                ★ Recommended (NBA)
+              </button>
 
-          <button 
-            type="button"
-            onClick={() => setSortMode('evidence')}
-            className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'evidence' ? 'bg-levl-accent/20 border-levl-accent text-levl-accent font-bold shadow-sm' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
-          >
-            ⭐ Scientific Evidence
-          </button>
+              <button 
+                type="button"
+                onClick={() => setSortMode('evidence')}
+                className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'evidence' ? 'bg-levl-accent/20 border-levl-accent text-levl-accent font-bold shadow-sm' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+              >
+                ⭐ Scientific Evidence
+              </button>
 
-          <button 
-            type="button"
-            onClick={() => setSortMode('impact')}
-            className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'impact' ? 'bg-levl-accent/20 border-levl-accent text-levl-accent font-bold shadow-sm' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
-          >
-            📈 Longevity Benefit
-          </button>
+              <button 
+                type="button"
+                onClick={() => setSortMode('impact')}
+                className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'impact' ? 'bg-levl-accent/20 border-levl-accent text-levl-accent font-bold shadow-sm' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+              >
+                📈 Longevity Benefit
+              </button>
+            </>
+          ) : (
+            <>
+              <button 
+                type="button"
+                onClick={() => setSortMode('difficulty')}
+                className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'difficulty' ? 'bg-levl-accent/20 border-levl-accent text-levl-accent font-bold shadow-sm' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+              >
+                🎯 Difficulty
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => setSortMode('steps')}
+                className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'steps' ? 'bg-levl-accent/20 border-levl-accent text-levl-accent font-bold shadow-sm' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+              >
+                📋 Step Count
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => setSortMode('name')}
+                className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'name' ? 'bg-levl-accent/20 border-levl-accent text-levl-accent font-bold shadow-sm' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+              >
+                🔤 Name (A-Z)
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => setSortMode('evidence')}
+                className={`px-2.5 py-1 rounded-lg border text-xs transition-colors flex items-center gap-1 shrink-0 cursor-pointer ${sortMode === 'evidence' ? 'bg-levl-accent/20 border-levl-accent text-levl-accent font-bold shadow-sm' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+              >
+                ⭐ Evidence
+              </button>
+            </>
+          )}
 
           <button 
             type="button"
@@ -1176,7 +1340,7 @@ function ExplorePageContent() {
 
           <button
             type="button"
-            onClick={() => setTransparencyModal({ isOpen: true, tab: sortMode })}
+            onClick={() => setTransparencyModal({ isOpen: true, tab: (['popularity', 'nba', 'evidence', 'impact', 'relevance'].includes(sortMode) ? sortMode : 'popularity') as any })}
             className="ml-auto px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer text-[11px]"
             title="Inspect Ranking Algorithm Weights & Transparency"
           >
@@ -1185,23 +1349,72 @@ function ExplorePageContent() {
           </button>
         </div>
 
-        {/* Unified Category & Outcomes Filter Toggle Bar */}
-        <div className="mt-2 mb-1">
-          <CategoryFiltersBar 
-            selectedMainCategories={selectedMainCategories}
-            selectedSubCategories={selectedSubCategories}
-            onToggleMainCategory={handleToggleMainCategory}
-            onToggleSubCategory={handleToggleSubCategory}
-            filterLens={filterLens}
-            onToggleFilterLens={setFilterLens}
-            selectedOutcomes={selectedOutcomes}
-            onToggleOutcome={toggleOutcome}
-            onClearOutcomes={() => setSelectedOutcomes([])}
-            availableOutcomes={displayedOutcomes}
-            userProfile={profile}
-            allOutcomeDimensions={outcomeDimensions}
-          />
-        </div>
+        {/* Category & Discovery Bar */}
+        {activeTab === 'modalities' ? (
+          <div className="mt-2 mb-1">
+            <CategoryFiltersBar 
+              selectedMainCategories={selectedMainCategories}
+              selectedSubCategories={selectedSubCategories}
+              onToggleMainCategory={handleToggleMainCategory}
+              onToggleSubCategory={handleToggleSubCategory}
+              filterLens={filterLens}
+              onToggleFilterLens={setFilterLens}
+              selectedOutcomes={selectedOutcomes}
+              onToggleOutcome={toggleOutcome}
+              onClearOutcomes={() => setSelectedOutcomes([])}
+              availableOutcomes={displayedOutcomes}
+              userProfile={profile}
+              allOutcomeDimensions={outcomeDimensions}
+            />
+          </div>
+        ) : (
+          /* Protocol Macro Stack Category & Difficulty Filters Bar */
+          <div className="mt-2 mb-1 space-y-2">
+            {/* Macro Stack Category Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {PROTOCOL_STACK_CATEGORIES.map(cat => {
+                const isSelected = selectedProtocolCategory === cat.id
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedProtocolCategory(cat.id)}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm ${
+                      isSelected
+                        ? 'bg-purple-900/80 border-purple-500 text-white shadow-purple-950/40 ring-1 ring-purple-400/40'
+                        : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
+                    }`}
+                  >
+                    <span>{cat.icon}</span>
+                    <span>{cat.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Protocol Difficulty Level Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[11px]">
+              <span className="text-[10px] text-slate-500 uppercase font-semibold mr-1 shrink-0">Level:</span>
+              {PROTOCOL_DIFFICULTY_LEVELS.map(lvl => {
+                const isSelected = protocolDifficulty === lvl.id
+                return (
+                  <button
+                    key={lvl.id}
+                    type="button"
+                    onClick={() => setProtocolDifficulty(lvl.id)}
+                    className={`px-2.5 py-1 rounded-lg border transition-colors shrink-0 cursor-pointer font-medium ${
+                      isSelected
+                        ? 'bg-teal-950/90 border-teal-500/80 text-teal-200 font-bold shadow-sm'
+                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                    }`}
+                  >
+                    {lvl.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Prominent Expandable Button for Detailed Filters */}
         <button 
@@ -1238,6 +1451,8 @@ function ExplorePageContent() {
                 onClick={() => {
                   setSelectedMainCategories(['all'])
                   setSelectedSubCategories([])
+                  setSelectedProtocolCategory('all')
+                  setProtocolDifficulty('all')
                   setDiurnalRange([0, 4])
                   setSelectedSpecificTimings([])
                   setFilterCost('all')
@@ -1600,6 +1815,8 @@ function ExplorePageContent() {
                       handleClearSearch()
                       setSelectedMainCategories(['all'])
                       setSelectedSubCategories([])
+                      setSelectedProtocolCategory('all')
+                      setProtocolDifficulty('all')
                       setFilterCost('all')
                       setFilterEffort('all')
                       setFilterEvidence('all')

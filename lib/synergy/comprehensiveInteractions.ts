@@ -13,7 +13,17 @@ export interface BiochemicalConflictRule {
   id: string
   triggers: string[]
   targets: string[]
-  type: 'hypertrophy_blunting' | 'circadian_disruption' | 'absorption_competition' | 'methylation_depletion' | 'glycemic_shock' | 'antagonistic_receptors'
+  type: 
+    | 'hypertrophy_blunting' 
+    | 'circadian_disruption' 
+    | 'absorption_competition' 
+    | 'methylation_depletion' 
+    | 'glycemic_shock' 
+    | 'antagonistic_receptors'
+    | 'mitochondrial_blunting'
+    | 'autophagy_anabolism_antagonism'
+    | 'serotonin_toxicity_risk'
+    | 'autonomic_overreaching'
   severity: 'timing' | 'moderate' | 'critical'
   headline: string
   rationale: string
@@ -424,5 +434,75 @@ export const COMPREHENSIVE_CONFLICT_RULES: BiochemicalConflictRule[] = [
       description: 'Finish eating and drinking 3 hours before sleep'
     },
     pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/26305626/'
+  },
+
+  // 9. Metformin + Zone 2 Aerobic Exercise (Complex I Blunting)
+  {
+    id: 'metformin_vs_zone2',
+    triggers: ['metformin', 'glucophage'],
+    targets: ['zone2cardio', 'vo2maxhiittraining', 'endurancetraining', 'cpet'],
+    type: 'mitochondrial_blunting',
+    severity: 'timing',
+    headline: 'Metformin Blunts Mitochondrial Complex I Exercise Adaptations',
+    rationale: 'Metformin reversibly inhibits mitochondrial Complex I in skeletal muscle. Co-administering Metformin immediately around aerobic exercise blunts the training-induced increase in whole-body VO2 max and whole-muscle mitochondrial respiration by approximately 50% in healthy individuals (MAST Study).',
+    mitigationRecommendation: 'In non-diabetic longevity protocols, dose Metformin in the evening, separated by at least 4 hours from cardiovascular training sessions.',
+    autoResolutionTiming: {
+      spacingHours: 4,
+      recommendedTimeSlot: 'Evening Stack (post-workout window)',
+      description: 'Dose Metformin 4+ hours after endurance exercise or in the evening'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/30817791/'
+  },
+
+  // 10. Rapamycin + High-Leucine Protein / Whey (mTORC1 Antagonism)
+  {
+    id: 'rapamycin_vs_leucine',
+    triggers: ['rapamycin', 'sirolimus'],
+    targets: ['wheyprotein', 'leucine', 'essentialaminoacids', 'attiaproteindistribution'],
+    type: 'autophagy_anabolism_antagonism',
+    severity: 'timing',
+    headline: 'High Leucine Antagonizes Rapamycin mTORC1 Autophagy Inhibition',
+    rationale: 'Rapamycin inhibits mTORC1 by binding FKBP12. High circulating leucine and amino acids stimulate Sestrin2 to recruit mTORC1 to the lysosomal membrane via Rag GTPases, directly opposing the autophagic and geroprotective clearance induced by rapamycin pulses.',
+    mitigationRecommendation: 'Take Rapamycin on a dedicated weekly fasting day; withhold high-leucine protein shakes and heavy resistance training for 24 hours post-dose.',
+    autoResolutionTiming: {
+      spacingHours: 24,
+      recommendedTimeSlot: 'Weekly Pulse Fasting Window',
+      description: 'Separate high-protein intake 24 hours away from weekly rapamycin pulse'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/31631026/'
+  },
+
+  // 11. Methylene Blue + SSRIs / SNRIs (Severe Serotonin Toxicity Risk)
+  {
+    id: 'methylene_blue_vs_ssri',
+    triggers: ['methyleneblue', 'methylene_blue'],
+    targets: ['sertraline', 'zoloft', 'escitalopram', 'lexapro', 'fluoxetine', 'prozac', 'citalopram', 'paroxetine', 'duloxetine', 'cymbalta', 'venlafaxine', 'ssri', 'snri'],
+    type: 'serotonin_toxicity_risk',
+    severity: 'critical',
+    headline: 'Severe Serotonin Toxicity Risk via Potent MAO-A Inhibition',
+    rationale: 'Methylene Blue is a potent, reversible Monoamine Oxidase A (MAO-A) inhibitor with IC50 in the nanomolar range. When combined with Serotonin Reuptake Inhibitors (SSRIs/SNRIs), it blocks serotonin degradation, precipitating life-threatening Central Serotonin Syndrome.',
+    mitigationRecommendation: 'STRICT CONTRAINDICATION: Methylene Blue must never be combined with SSRIs, SNRIs, or serotonergic antidepressants without a 14-day clinical washout.',
+    autoResolutionTiming: {
+      description: 'Strict clinical contraindication — do not combine with serotonergic medications'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/21804245/'
+  },
+
+  // 12. Excessive Anaerobic HIIT Without Aerobic Mitochondrial Base
+  {
+    id: 'anaerobic_hiit_vs_zone2_base',
+    triggers: ['vo2maxhiittraining', 'rhondahiitsprints', 'sprintintervals'],
+    targets: ['zone2cardio'],
+    type: 'autonomic_overreaching',
+    severity: 'moderate',
+    headline: 'Excessive Anaerobic Density Without Aerobic Mitochondrial Base',
+    rationale: 'Daily high-intensity interval training (>90% HRmax) without a foundational Zone 2 aerobic base causes chronic sympathetic tone elevation, impaired parasympathetic reactivation, suppressed nocturnal HRV, and mitochondrial uncoupling overload.',
+    mitigationRecommendation: 'Enforce the Seiler 80/20 Rule: Cap high-intensity anaerobic sessions at 1–2 days per week, backed by 3–4 sessions of sub-lactate threshold Zone 2 aerobic base work.',
+    autoResolutionTiming: {
+      spacingHours: 24,
+      recommendedTimeSlot: 'Polarized 80/20 weekly cadence',
+      description: 'Cap HIIT at 1–2 sessions weekly, paired with 80% Zone 2 aerobic volume'
+    },
+    pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/24790484/'
   }
 ]

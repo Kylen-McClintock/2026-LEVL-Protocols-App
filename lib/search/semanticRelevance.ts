@@ -656,7 +656,7 @@ export function calculateProtocolRelevance(
   const name = (proto.name || '').toLowerCase()
   const desc = (proto.description || '').toLowerCase()
   const primaryGoal = (proto.primary_goal || proto.goal || '').toLowerCase()
-  const source = (proto.source_label || proto.author_id || '').toLowerCase()
+  const source = `${proto.source_label || ''} ${proto.author_id || ''} ${proto.author_name || ''}`.toLowerCase()
   const vectors = Array.isArray(proto.target_vectors) ? proto.target_vectors.join(' ').toLowerCase() : ''
   const steps = (proto.steps || proto.protocol_steps || [])
     .map((s: any) => `${s.modality?.display_name || s.modality?.name || ''} ${s.notes || ''}`)
