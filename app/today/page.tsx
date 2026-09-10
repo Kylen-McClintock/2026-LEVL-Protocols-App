@@ -83,6 +83,8 @@ import AdaptiveSleepTriageCard from '@/components/today/AdaptiveSleepTriageCard'
 import { OutcomeLensView } from '@/components/outcomes/OutcomeLensView'
 import { OutcomeOptimizationModal } from '@/components/modals/OutcomeOptimizationModal'
 import { Outcome8020SpotlightCard } from '@/components/outcomes/Outcome8020SpotlightCard'
+import NewUserWelcomeHub from '@/components/onboarding/NewUserWelcomeHub'
+import SampleDayPreviewTimeline from '@/components/today/SampleDayPreviewTimeline'
 import { OutcomeOptimizationState, AntagonisticClash } from '@/lib/outcomes/outcomeOptimizationEngine'
 
 function formatSlotName(str: string): string {
@@ -607,6 +609,12 @@ function TodayPageContent() {
     setShowGuestOnboardingCard(false)
     safeLocalStorageSet('levl_guest_banner_dismissed', 'true')
   }, [])
+
+  const isNewGuestUser = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    const completed = safeLocalStorageGet('levl_onboarding_completed') === 'true'
+    return !completed && (!tasks || tasks.length === 0)
+  }, [tasks])
 
   const guestKickstartProtocol = useMemo(() => {
     if (typeof window === 'undefined') return null
@@ -3892,8 +3900,8 @@ function TodayPageContent() {
           </button>
         </div>
 
-        {/* If Today view is loading / calibrating, display the dedicated Calibration screen with rotating Circadian Ring */}
-        {calendarViewMode === 'today' && (loading || (!tasks.length && isDateSwitching)) ? (
+        {/* If Today view is loading / calibrating, display the dedicated Calibration screen with rotating Circadian Ring (bypassed for new guests) */}
+        {calendarViewMode === 'today' && !isNewGuestUser && (loading || (!tasks.length && isDateSwitching)) ? (
           <div className="py-20 sm:py-28 flex flex-col items-center justify-center text-center space-y-6 animate-in fade-in duration-300">
             {/* Circadian Rotating Ring */}
             <div className="relative flex items-center justify-center">
@@ -3933,103 +3941,13 @@ function TodayPageContent() {
           </div>
         ) : (
           <>
-        {/* Enticing Guest Mode Onboarding & Circadian Calibration Card */}
+        {/* Enticing Guest Mode 3-Door Launchpad Hub */}
         {showGuestOnboardingCard && !isFocusMode && (
-          <div className="mb-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-indigo-950/90 via-slate-900/95 to-purple-950/80 border border-indigo-500/40 shadow-[0_4px_30px_rgba(99,102,241,0.2)] relative overflow-hidden backdrop-blur-md animate-in fade-in slide-in-from-top-3 duration-300">
-            {/* Ambient Background Glow */}
-            <div className="absolute -top-12 -right-12 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="relative z-10 space-y-4">
-              {/* Header row with badges and dismiss */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-cyan-300 bg-cyan-950/70 border border-cyan-500/40 px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shadow-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-                    Guest Mode • Protocol Live
-                  </span>
-                  {guestKickstartProtocol && (
-                    <span className="text-[10px] font-medium text-purple-300 bg-purple-950/70 border border-purple-500/30 px-2.5 py-0.5 rounded-full truncate max-w-[240px]">
-                      Tracking: {guestKickstartProtocol}
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleDismissGuestCard}
-                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer shrink-0"
-                  title="Dismiss banner"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              {/* Title and core enticing reason */}
-              <div className="space-y-1.5">
-                <h3 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
-                  <Sparkles size={18} className="text-indigo-400 shrink-0" />
-                  Personalize Your Circadian Protocol Schedule
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                  You can track and check off today&apos;s scheduled modalities right now! Finish your quick 2-minute circadian calibration to tailor dosage timing to your exact wake &amp; sleep windows, unlock biological age tracking, and sync streaks across devices.
-                </p>
-              </div>
-
-              {/* 3 Quick Visual Benefit Pills */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                  <div className="w-6 h-6 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0 mt-0.5">
-                    <Clock size={13} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-200">Circadian Timing</div>
-                    <div className="text-[11px] text-slate-400 leading-tight">Auto-align doses to your wake &amp; sleep hours</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                  <div className="w-6 h-6 rounded-lg bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0 mt-0.5">
-                    <Activity size={13} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-200">Biological Age Clocks</div>
-                    <div className="text-[11px] text-slate-400 leading-tight">Track shifts across 8 longevity vectors</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
-                  <div className="w-6 h-6 rounded-lg bg-teal-500/20 border border-teal-400/30 flex items-center justify-center text-teal-300 shrink-0 mt-0.5">
-                    <Zap size={13} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-200">Multi-Device Sync</div>
-                    <div className="text-[11px] text-slate-400 leading-tight">Preserve streaks &amp; tasks across phone &amp; Mac</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons Row */}
-              <div className="flex items-center gap-3 pt-1 flex-wrap sm:flex-nowrap">
-                <button
-                  type="button"
-                  onClick={() => router.push('/onboarding')}
-                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs sm:text-sm font-extrabold shadow-lg shadow-indigo-500/25 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
-                >
-                  <span>Finish 2-Min Calibration</span>
-                  <ArrowRight size={14} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleDismissGuestCard}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer text-center whitespace-nowrap"
-                >
-                  Explore Today First
-                </button>
-              </div>
-            </div>
-          </div>
+          <NewUserWelcomeHub
+            onOpenEnrollModal={() => setIsEnrollModalOpen(true)}
+            onDismiss={handleDismissGuestCard}
+            userFirstName={userFirstName}
+          />
         )}
 
         {/* 100% Protocol Completion Micro-Celebration Banner */}
@@ -5088,26 +5006,33 @@ function TodayPageContent() {
                       )}
                     </div>
                   ) : (
-                    <div className="text-center p-8 bg-slate-950/60 border border-white/10 rounded-2xl text-gray-400 text-sm space-y-4 shadow-xl backdrop-blur-md">
-                      <div className="space-y-1">
-                        <p className="font-bold text-white text-base">You don&apos;t have any protocols scheduled for today.</p>
-                        <p className="text-xs text-slate-400">Enroll in an active protocol or log an ad-hoc session to start building your daily timeline.</p>
+                    (showGuestOnboardingCard || safeLocalStorageGet('levl_onboarding_completed') !== 'true') ? (
+                      <SampleDayPreviewTimeline
+                        onEnrollClick={() => setIsEnrollModalOpen(true)}
+                        onOpenCoachClick={() => router.push('/coach')}
+                      />
+                    ) : (
+                      <div className="text-center p-8 bg-slate-950/60 border border-white/10 rounded-2xl text-gray-400 text-sm space-y-4 shadow-xl backdrop-blur-md">
+                        <div className="space-y-1">
+                          <p className="font-bold text-white text-base">You don&apos;t have any protocols scheduled for today.</p>
+                          <p className="text-xs text-slate-400">Enroll in an active protocol or log an ad-hoc session to start building your daily timeline.</p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-md mx-auto">
+                          <button 
+                            onClick={() => setIsEnrollModalOpen(true)}
+                            className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl transition-all font-bold text-xs shadow-lg shadow-purple-900/40 cursor-pointer"
+                          >
+                            <Sparkles size={16} /> + Enroll in Protocol
+                          </button>
+                          <button 
+                            onClick={() => setIsAdHocModalOpen(true)}
+                            className="flex items-center justify-center gap-2 w-full py-3 bg-white/10 hover:bg-white/15 border border-white/15 text-white rounded-xl transition-colors font-bold text-xs cursor-pointer"
+                          >
+                            <Plus size={16} /> Log Extra Activity
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-md mx-auto">
-                        <button 
-                          onClick={() => setIsEnrollModalOpen(true)}
-                          className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl transition-all font-bold text-xs shadow-lg shadow-purple-900/40 cursor-pointer"
-                        >
-                          <Sparkles size={16} /> + Enroll in Protocol
-                        </button>
-                        <button 
-                          onClick={() => setIsAdHocModalOpen(true)}
-                          className="flex items-center justify-center gap-2 w-full py-3 bg-white/10 hover:bg-white/15 border border-white/15 text-white rounded-xl transition-colors font-bold text-xs cursor-pointer"
-                        >
-                          <Plus size={16} /> Log Extra Activity
-                        </button>
-                      </div>
-                    </div>
+                    )
                   )
                 ) : (
                   <div 

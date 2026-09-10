@@ -4,11 +4,12 @@ import {
   Send, Bot, User, Sparkles, FileSignature, CheckCircle, 
   Sliders, Clock, Calendar, CheckCircle2, ArrowRight, Pill, Plus 
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useChat } from '@ai-sdk/react'
 import { lastAssistantMessageIsCompleteWithToolCalls, DefaultChatTransport, UIMessage } from 'ai'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
+import { safeLocalStorageGet } from '@/lib/utils/storage'
 import { ProfileInlineEditor } from '@/components/ProfileInlineEditor'
 import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolCard from '@/components/cards/ProtocolCard'
@@ -19,8 +20,12 @@ import { getLatestBiomarkerMeasurements, getUserLabPanels } from '@/lib/data/blo
 import { getBiologicalMeasurements } from '@/lib/data/physiologicalAgeData'
 import { getOrCreateUserProfile, getBenchItems, getDailyProtocolTasks, getDailyWellbeingCheckin, addToBench, addProtocolToBench, addProtocolToToday, createDailyTask, addModalityOrProtocolToToday } from '@/lib/data'
 
-export default function CoachPage() {
+function CoachPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const promptParam = searchParams?.get('prompt')
+  const hasAutoSentPromptRef = useRef(false)
+  const [isGuestMode, setIsGuestMode] = useState(false)
   const [input, setInput] = useState('')
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [clientContextData, setClientContextData] = useState<any>(null)
@@ -32,6 +37,13 @@ export default function CoachPage() {
     initialData: null
   })
   const contextRef = useRef<any>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const completed = safeLocalStorageGet('levl_onboarding_completed') === 'true'
+      setIsGuestMode(!completed)
+    }
+  }, [])
   
   useEffect(() => {
     const loadFullContext = async () => {
@@ -94,6 +106,14 @@ export default function CoachPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isLoading])
+
+  // Auto-send prompt from searchParams once client context is loaded
+  useEffect(() => {
+    if (promptParam && !hasAutoSentPromptRef.current && clientContextData && !isLoading) {
+      hasAutoSentPromptRef.current = true
+      sendMessage({ text: promptParam })
+    }
+  }, [promptParam, clientContextData, isLoading, sendMessage])
 
   const handlePromptClick = (prompt: string) => {
     if (isLoading) return
@@ -161,6 +181,25 @@ export default function CoachPage() {
           <span>New Custom Modality</span>
         </button>
       </div>
+
+      {/* Guest Mode Deferred Calibration Banner */}
+      {isGuestMode && (
+        <div className="flex-none mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-900 border border-purple-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-purple-200 shadow-lg animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse shrink-0" />
+            <span>
+              <strong>Guest Mode:</strong> Your AI Coach is building your custom protocol. When ready, you can calibrate your circadian wake/sleep hours in onboarding.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push('/onboarding')}
+            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-[11px] whitespace-nowrap cursor-pointer transition-all shrink-0 self-end sm:self-center active:scale-95 shadow-sm"
+          >
+            Calibrate Sleep Curve
+          </button>
+        </div>
+      )}
 
       {/* Chat Messages Area */}
       <div className="flex-1 overflow-y-auto space-y-6 mb-4 pr-2 scrollbar-hide pb-4">
@@ -515,3 +554,19 @@ function AIProposedDraftCard({ draft, type }: { draft: any, type: 'modality' | '
     </div>
   )
 }
+
+export default function CoachPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-400 font-bold text-sm">
+        <div className="animate-pulse flex items-center gap-2">
+          <Sparkles size={16} className="text-purple-400" />
+          <span>Loading AI Longevity Coach...</span>
+        </div>
+      </div>
+    }>
+      <CoachPageContent />
+    </Suspense>
+  )
+}
+
