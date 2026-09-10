@@ -25,12 +25,15 @@ export interface SlotPulsePhaseSegment {
   name: string
   colorHex: string
   textClass: string
+  mechanism?: string
   subtitle?: string
 }
 
 export interface SlotPulseBadgeConfig {
   phaseType: PulsePhaseType
   label: string
+  expandedLabel?: string
+  mechanism?: string
   dotColor: string
   dotGradientCSS?: string
   badgeBg: string
@@ -72,12 +75,29 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     timeRange: '5:30 AM – 7:30 AM',
     circadianPhase: 'Astronomical & Nautical Dawn • Cortisol Awakening',
     pulseBadge: {
-      phaseType: 'autophagy',
-      label: 'Autophagy (AMPK)',
-      dotColor: '#0284C7',
-      badgeBg: 'bg-sky-500/10',
-      badgeBorder: 'border-sky-500/30',
-      badgeText: 'text-sky-300'
+      phaseType: 'transition_to_glymphatic',
+      label: 'Neural Reset ➔ Cellular Renewal',
+      expandedLabel: 'Neural Reset (Glymphatic) ➔ Cellular Renewal (Autophagy)',
+      dotColor: '#8B5CF6',
+      dotGradientCSS: 'linear-gradient(135deg, #8B5CF6, #0284C7)',
+      badgeBg: 'bg-gradient-to-r from-purple-500/15 via-slate-900/50 to-sky-500/15',
+      badgeBorder: 'border-purple-500/30',
+      badgeText: 'text-purple-300',
+      badgeGradientCSS: 'linear-gradient(135deg, rgba(139,92,246,0.18) 0%, rgba(2,132,199,0.18) 100%)',
+      fromPhase: {
+        name: 'Neural Reset',
+        mechanism: 'Glymphatic',
+        colorHex: '#C084FC',
+        textClass: 'text-purple-400'
+      },
+      toPhase: {
+        name: 'Cellular Renewal',
+        mechanism: 'Autophagy',
+        colorHex: '#38BDF8',
+        textClass: 'text-sky-400'
+      },
+      dividerChar: '➔',
+      arrowGradientCSS: 'linear-gradient(to right, #C084FC, #38BDF8)'
     },
     skyColorHex: '#F59E0B',
     startColorHex: '#D97706',
@@ -101,7 +121,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Golden Morning Sunrise & Hydration',
     pulseBadge: {
       phaseType: 'autophagy',
-      label: 'Autophagy (AMPK)',
+      label: 'Cellular Renewal',
+      expandedLabel: 'Cellular Renewal (Autophagy)',
+      mechanism: 'Autophagy',
       dotColor: '#0284C7',
       badgeBg: 'bg-sky-500/10',
       badgeBorder: 'border-sky-500/30',
@@ -129,7 +151,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'High-Lux 480nm Light • Dopaminergic Focus',
     pulseBadge: {
       phaseType: 'autophagy',
-      label: 'Autophagy (AMPK)',
+      label: 'Cellular Renewal',
+      expandedLabel: 'Cellular Renewal (Autophagy)',
+      mechanism: 'Autophagy',
       dotColor: '#0284C7',
       badgeBg: 'bg-sky-500/10',
       badgeBorder: 'border-sky-500/30',
@@ -157,7 +181,8 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Fasted AM / Post-Breakfast Bioavailability',
     pulseBadge: {
       phaseType: 'transition_fasted_to_growth',
-      label: 'Autophagy ➔ Growth',
+      label: 'Cellular Renewal ➔ Growth',
+      expandedLabel: 'Cellular Renewal (Autophagy) ➔ Growth (mTOR)',
       dotColor: '#10B981',
       dotGradientCSS: 'linear-gradient(135deg, #0284C7, #10B981)',
       badgeBg: 'bg-gradient-to-r from-sky-500/15 via-slate-900/50 to-emerald-500/15',
@@ -165,12 +190,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
       badgeText: 'text-emerald-300',
       badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(16,185,129,0.18) 100%)',
       fromPhase: {
-        name: 'Autophagy',
+        name: 'Cellular Renewal',
+        mechanism: 'Autophagy',
         colorHex: '#38BDF8',
         textClass: 'text-sky-400'
       },
       toPhase: {
         name: 'Growth',
+        mechanism: 'mTOR',
         colorHex: '#34D399',
         textClass: 'text-emerald-400'
       },
@@ -199,7 +226,8 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Late Morning Sky • Fat-Soluble Nutrient Uptake',
     pulseBadge: {
       phaseType: 'transition_fasted_to_growth',
-      label: 'Autophagy ➔ Growth (mTOR)',
+      label: 'Cellular Renewal ➔ Growth',
+      expandedLabel: 'Cellular Renewal (Autophagy) ➔ Growth (mTOR)',
       dotColor: '#10B981',
       dotGradientCSS: 'linear-gradient(135deg, #0284C7, #10B981)',
       badgeBg: 'bg-gradient-to-r from-sky-500/15 via-slate-900/50 to-emerald-500/15',
@@ -207,15 +235,16 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
       badgeText: 'text-emerald-300',
       badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(16,185,129,0.18) 100%)',
       fromPhase: {
-        name: 'Autophagy',
+        name: 'Cellular Renewal',
+        mechanism: 'Autophagy',
         colorHex: '#38BDF8',
         textClass: 'text-sky-400'
       },
       toPhase: {
         name: 'Growth',
+        mechanism: 'mTOR',
         colorHex: '#34D399',
-        textClass: 'text-emerald-400',
-        subtitle: '(mTOR)'
+        textClass: 'text-emerald-400'
       },
       dividerChar: '➔',
       arrowGradientCSS: 'linear-gradient(to right, #38BDF8, #34D399)'
@@ -242,7 +271,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Peak Solar Noon • Maximum High-Lux Brilliance',
     pulseBadge: {
       phaseType: 'growth',
-      label: 'Growth Mode (mTOR)',
+      label: 'Growth',
+      expandedLabel: 'Growth (mTOR)',
+      mechanism: 'mTOR',
       dotColor: '#10B981',
       badgeBg: 'bg-emerald-500/10',
       badgeBorder: 'border-emerald-500/30',
@@ -270,7 +301,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Mitochondrial Co-factors • Solar Peak Bioavailability',
     pulseBadge: {
       phaseType: 'growth',
-      label: 'Growth Mode (mTOR)',
+      label: 'Growth',
+      expandedLabel: 'Growth (mTOR)',
+      mechanism: 'mTOR',
       dotColor: '#10B981',
       badgeBg: 'bg-emerald-500/10',
       badgeBorder: 'border-emerald-500/30',
@@ -298,7 +331,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Deep Daylight Sky',
     pulseBadge: {
       phaseType: 'growth',
-      label: 'Growth Mode (mTOR)',
+      label: 'Growth',
+      expandedLabel: 'Growth (mTOR)',
+      mechanism: 'mTOR',
       dotColor: '#10B981',
       badgeBg: 'bg-emerald-500/10',
       badgeBorder: 'border-emerald-500/30',
@@ -326,7 +361,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Late Afternoon Sky',
     pulseBadge: {
       phaseType: 'growth',
-      label: 'Growth Mode (mTOR)',
+      label: 'Growth',
+      expandedLabel: 'Growth (mTOR)',
+      mechanism: 'mTOR',
       dotColor: '#10B981',
       badgeBg: 'bg-emerald-500/10',
       badgeBorder: 'border-emerald-500/30',
@@ -354,7 +391,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Pre-Meal Window • Glycemic Buffer',
     pulseBadge: {
       phaseType: 'growth',
-      label: 'Growth Mode (mTOR)',
+      label: 'Growth',
+      expandedLabel: 'Growth (mTOR)',
+      mechanism: 'mTOR',
       dotColor: '#10B981',
       badgeBg: 'bg-emerald-500/10',
       badgeBorder: 'border-emerald-500/30',
@@ -382,7 +421,8 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Post-Meal Window',
     pulseBadge: {
       phaseType: 'transition_growth_to_fasted',
-      label: 'Growth ➔ Autophagy',
+      label: 'Growth ➔ Cellular Renewal',
+      expandedLabel: 'Growth (mTOR) ➔ Cellular Renewal (Autophagy)',
       dotColor: '#0284C7',
       dotGradientCSS: 'linear-gradient(135deg, #10B981, #0284C7)',
       badgeBg: 'bg-gradient-to-r from-emerald-500/15 via-slate-900/50 to-sky-500/15',
@@ -391,11 +431,13 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
       badgeGradientCSS: 'linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(2,132,199,0.18) 100%)',
       fromPhase: {
         name: 'Growth',
+        mechanism: 'mTOR',
         colorHex: '#34D399',
         textClass: 'text-emerald-400'
       },
       toPhase: {
-        name: 'Autophagy',
+        name: 'Cellular Renewal',
+        mechanism: 'Autophagy',
         colorHex: '#38BDF8',
         textClass: 'text-sky-400'
       },
@@ -424,7 +466,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Evening & Sunset',
     pulseBadge: {
       phaseType: 'autophagy',
-      label: 'Autophagy & Reset',
+      label: 'Cellular Renewal',
+      expandedLabel: 'Cellular Renewal (Autophagy)',
+      mechanism: 'Autophagy',
       dotColor: '#0284C7',
       badgeBg: 'bg-sky-500/10',
       badgeBorder: 'border-sky-500/30',
@@ -452,7 +496,8 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Evening Stack',
     pulseBadge: {
       phaseType: 'transition_to_glymphatic',
-      label: 'Autophagy ➔ Glymphatic',
+      label: 'Cellular Renewal ➔ Neural Reset',
+      expandedLabel: 'Cellular Renewal (Autophagy) ➔ Neural Reset (Glymphatic)',
       dotColor: '#8B5CF6',
       dotGradientCSS: 'linear-gradient(135deg, #0284C7, #8B5CF6)',
       badgeBg: 'bg-gradient-to-r from-sky-500/15 via-slate-900/50 to-purple-500/15',
@@ -460,12 +505,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
       badgeText: 'text-purple-300',
       badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(139,92,246,0.18) 100%)',
       fromPhase: {
-        name: 'Autophagy',
+        name: 'Cellular Renewal',
+        mechanism: 'Autophagy',
         colorHex: '#38BDF8',
         textClass: 'text-sky-400'
       },
       toPhase: {
-        name: 'Glymphatic',
+        name: 'Neural Reset',
+        mechanism: 'Glymphatic',
         colorHex: '#C084FC',
         textClass: 'text-purple-400'
       },
@@ -494,7 +541,8 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Evening Wind-Down',
     pulseBadge: {
       phaseType: 'transition_to_glymphatic',
-      label: 'Autophagy ➔ Glymphatic Prep',
+      label: 'Cellular Renewal ➔ Neural Reset',
+      expandedLabel: 'Cellular Renewal (Autophagy) ➔ Neural Reset (Glymphatic)',
       dotColor: '#8B5CF6',
       dotGradientCSS: 'linear-gradient(135deg, #0284C7, #8B5CF6)',
       badgeBg: 'bg-gradient-to-r from-sky-500/15 via-slate-900/50 to-purple-500/15',
@@ -502,12 +550,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
       badgeText: 'text-purple-300',
       badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(139,92,246,0.18) 100%)',
       fromPhase: {
-        name: 'Autophagy',
+        name: 'Cellular Renewal',
+        mechanism: 'Autophagy',
         colorHex: '#38BDF8',
         textClass: 'text-sky-400'
       },
       toPhase: {
-        name: 'Glymphatic',
+        name: 'Neural Reset',
+        mechanism: 'Glymphatic',
         colorHex: '#C084FC',
         textClass: 'text-purple-400',
         subtitle: 'Prep'
@@ -537,7 +587,9 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Pre-Bed Preparation',
     pulseBadge: {
       phaseType: 'glymphatic',
-      label: 'Glymphatic Induction',
+      label: 'Neural Reset',
+      expandedLabel: 'Neural Reset (Glymphatic)',
+      mechanism: 'Glymphatic',
       dotColor: '#8B5CF6',
       badgeBg: 'bg-purple-500/10',
       badgeBorder: 'border-purple-500/30',
@@ -565,7 +617,8 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Bedtime & Overnight',
     pulseBadge: {
       phaseType: 'overnight_dual',
-      label: 'Glymphatic + Autophagy',
+      label: 'Neural Reset + Cellular Renewal',
+      expandedLabel: 'Neural Reset (Glymphatic) + Cellular Renewal (Autophagy)',
       dotColor: '#A855F7',
       dotGradientCSS: 'linear-gradient(135deg, #A855F7, #0284C7)',
       badgeBg: 'bg-gradient-to-r from-purple-500/20 via-slate-900/50 to-sky-500/20',
@@ -573,12 +626,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
       badgeText: 'text-purple-200',
       badgeGradientCSS: 'linear-gradient(135deg, rgba(168,85,247,0.2) 0%, rgba(2,132,199,0.2) 100%)',
       fromPhase: {
-        name: 'Glymphatic',
+        name: 'Neural Reset',
+        mechanism: 'Glymphatic',
         colorHex: '#C084FC',
         textClass: 'text-purple-400'
       },
       toPhase: {
-        name: 'Autophagy',
+        name: 'Cellular Renewal',
+        mechanism: 'Autophagy',
         colorHex: '#38BDF8',
         textClass: 'text-sky-400'
       },
@@ -608,6 +663,7 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     pulseBadge: {
       phaseType: 'flexible',
       label: 'Flexible Window',
+      expandedLabel: 'Flexible Window',
       dotColor: '#94A3B8',
       badgeBg: 'bg-slate-800/40',
       badgeBorder: 'border-slate-700/40',

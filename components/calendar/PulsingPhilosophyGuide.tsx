@@ -28,7 +28,7 @@ export default function PulsingPhilosophyGuide() {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5 truncate">
-              Why optimal healthspan requires the cyclical rhythm of Growth (mTOR) and Recovery (AMPK).
+              Why optimal healthspan requires the cyclical rhythm of Growth (mTOR), Cellular Renewal (Autophagy), and Neural Reset (Glymphatic).
             </p>
           </div>
         </div>
@@ -46,16 +46,16 @@ export default function PulsingPhilosophyGuide() {
           <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-2">
             <h4 className="text-sm font-black text-white flex items-center gap-2">
               <Sparkles size={15} className="text-amber-400" />
-              <span>The Triphasic Longevity Architecture: Growth, Autophagy, and Glymphatic Wash</span>
+              <span>The Triphasic Longevity Architecture: Growth, Cellular Renewal, and Neural Reset</span>
             </h4>
             <p>
               In human longevity biology, optimal healthspan is governed by three distinct, non-overlapping circadian phases: 
-              <strong className="text-emerald-300"> Anabolic Growth (mTORC1)</strong>, 
-              <strong className="text-sky-300"> Autophagic Clearance (AMPK)</strong>, and 
-              <strong className="text-purple-300"> Glymphatic Washing (SWS Sleep)</strong>.
+              <strong className="text-emerald-300"> Growth (mTOR)</strong>, 
+              <strong className="text-sky-300"> Cellular Renewal (Autophagy)</strong>, and 
+              <strong className="text-purple-300"> Neural Reset (Glymphatic)</strong>.
             </p>
             <p>
-              Perpetual <strong>Growth Mode</strong> causes toxic proteomic waste buildup and accelerated cellular senescence. Perpetual <strong>Fasting/Clearance</strong> causes sarcopenia, osteopenia, and hormonal exhaustion.
+              Perpetual <strong>Growth</strong> causes toxic proteomic waste buildup and accelerated cellular senescence. Perpetual <strong>Cellular Renewal / Fasting</strong> causes sarcopenia, osteopenia, and hormonal exhaustion.
               <strong> Biological Longevity Pulsing</strong> orchestrates sharp, focused anabolic spikes cleanly separated from deep autophagic clearance and nocturnal glymphatic neuro-restoration.
             </p>
           </div>
@@ -67,7 +67,7 @@ export default function PulsingPhilosophyGuide() {
               <div className="flex items-center gap-2 text-emerald-300">
                 <Dumbbell size={16} />
                 <h5 className="font-extrabold text-xs uppercase tracking-wider text-emerald-200">
-                  🟢 Growth Mode (mTORC1 Axis)
+                  🟢 Growth (mTOR)
                 </h5>
               </div>
               <ul className="space-y-1.5 text-[11px] text-slate-300">
@@ -86,12 +86,12 @@ export default function PulsingPhilosophyGuide() {
               </ul>
             </div>
 
-            {/* AUTOPHAGY & RECOVERY (AMPK) */}
+            {/* CELLULAR RENEWAL (AUTOPHAGY & AMPK) */}
             <div className="p-4 rounded-xl bg-sky-950/20 border border-sky-500/30 space-y-2.5">
               <div className="flex items-center gap-2 text-sky-300">
                 <HeartPulse size={16} />
                 <h5 className="font-extrabold text-xs uppercase tracking-wider text-sky-200">
-                  🔵 Autophagy &amp; Recovery (AMPK)
+                  🔵 Cellular Renewal (Autophagy)
                 </h5>
               </div>
               <ul className="space-y-1.5 text-[11px] text-slate-300">
@@ -110,12 +110,12 @@ export default function PulsingPhilosophyGuide() {
               </ul>
             </div>
 
-            {/* GLYMPHATIC CLEARANCE (SLEEP) */}
+            {/* NEURAL RESET (GLYMPHATIC & SLEEP) */}
             <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-2.5">
               <div className="flex items-center gap-2 text-purple-300">
                 <Moon size={16} />
                 <h5 className="font-extrabold text-xs uppercase tracking-wider text-purple-200">
-                  🟣 Glymphatic Clearance (Sleep)
+                  🟣 Neural Reset (Glymphatic)
                 </h5>
               </div>
               <ul className="space-y-1.5 text-[11px] text-slate-300">
