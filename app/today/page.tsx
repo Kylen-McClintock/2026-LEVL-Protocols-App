@@ -322,37 +322,100 @@ function TodayPageContent() {
   })
   const isEffectiveLandscape = isPhysicalLandscape || manualLandscape
 
+  // Synchronize document attribute for global CSS styling
   useEffect(() => {
-    const updateOrientation = () => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-orientation', isEffectiveLandscape ? 'landscape' : 'portrait')
+      if (isEffectiveLandscape) {
+        document.documentElement.classList.add('is-landscape')
+      } else {
+        document.documentElement.classList.remove('is-landscape')
+      }
+    }
+  }, [isEffectiveLandscape])
+
+  useEffect(() => {
+    // Unlock any stale WebAPK / PWA orientation locks on Android
+    if (typeof screen !== 'undefined' && screen.orientation) {
+      try {
+        const p = (screen.orientation as any).unlock?.()
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {})
+        }
+      } catch (e) {}
+    }
+
+    const checkOrientation = () => {
       if (typeof window === 'undefined') return
-      const isLandscapeMediaQuery = window.matchMedia('(orientation: landscape)').matches
+
+      // 1. CSS Media Query: Standard (orientation: landscape)
+      const isLandscapeMediaQuery = typeof window.matchMedia === 'function' && window.matchMedia('(orientation: landscape)').matches
+
+      // 2. Viewport Aspect Ratio: Width > Height
       const isWideAspect = window.innerWidth > window.innerHeight
-      const isLandscapeAngle = typeof window.orientation !== 'undefined'
-        ? (window.orientation === 90 || window.orientation === -90)
-        : (screen.orientation?.type?.includes('landscape') ?? false)
-      setIsPhysicalLandscape(isLandscapeMediaQuery || isWideAspect || isLandscapeAngle)
+
+      // 3. Modern Screen Orientation API (Primary standard for Android Blink/Chromium)
+      const screenType = typeof screen !== 'undefined' && screen.orientation?.type ? screen.orientation.type : ''
+      const screenAngle = typeof screen !== 'undefined' && typeof screen.orientation?.angle === 'number' ? screen.orientation.angle : null
+      const isScreenLandscape = screenType.includes('landscape') || screenAngle === 90 || screenAngle === 270
+
+      // 4. Legacy window.orientation Fallback (Supports 90, -90, and 270 on Android & iOS)
+      const rawLegacyAngle = typeof window.orientation !== 'undefined' ? Number(window.orientation) : null
+      const isLegacyLandscape = rawLegacyAngle === 90 || rawLegacyAngle === -90 || rawLegacyAngle === 270
+
+      const detected = Boolean(isLandscapeMediaQuery || isWideAspect || isScreenLandscape || isLegacyLandscape)
+      setIsPhysicalLandscape(detected)
+    }
+
+    // Android Blink delayed repaint handler:
+    // Android Chrome updates innerWidth/innerHeight and orientation queries 50ms-300ms after orientationchange
+    let timer1: NodeJS.Timeout
+    let timer2: NodeJS.Timeout
+    let timer3: NodeJS.Timeout
+    let timer4: NodeJS.Timeout
+
+    const updateOrientation = () => {
+      checkOrientation()
+      timer1 = setTimeout(checkOrientation, 60)
+      timer2 = setTimeout(checkOrientation, 150)
+      timer3 = setTimeout(checkOrientation, 300)
+      timer4 = setTimeout(checkOrientation, 600)
     }
 
     updateOrientation()
     window.addEventListener('resize', updateOrientation, { passive: true })
     window.addEventListener('orientationchange', updateOrientation, { passive: true })
+
     if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.addEventListener) {
       screen.orientation.addEventListener('change', updateOrientation)
     }
-    const mql = window.matchMedia('(orientation: landscape)')
-    if (mql.addEventListener) {
+
+    const mql = typeof window.matchMedia === 'function' ? window.matchMedia('(orientation: landscape)') : null
+    if (mql && mql.addEventListener) {
       mql.addEventListener('change', updateOrientation)
     }
 
+    const handleGlobalOrientationEvent = (e: any) => {
+      if (typeof e?.detail?.isLandscape === 'boolean') {
+        setIsPhysicalLandscape(e.detail.isLandscape)
+      }
+    }
+    window.addEventListener('levl_orientation_changed', handleGlobalOrientationEvent)
+
     return () => {
+      clearTimeout(timer1)
+      clearTimeout(timer2)
+      clearTimeout(timer3)
+      clearTimeout(timer4)
       window.removeEventListener('resize', updateOrientation)
       window.removeEventListener('orientationchange', updateOrientation)
       if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.removeEventListener) {
         screen.orientation.removeEventListener('change', updateOrientation)
       }
-      if (mql.removeEventListener) {
+      if (mql && mql.removeEventListener) {
         mql.removeEventListener('change', updateOrientation)
       }
+      window.removeEventListener('levl_orientation_changed', handleGlobalOrientationEvent)
     }
   }, [])
 
@@ -4020,15 +4083,36 @@ function TodayPageContent() {
             {/* In-App Landscape / Rotate Toggle Button */}
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 triggerHaptic('selection')
-                setManualLandscape(prev => {
-                  const next = !prev
-                  if (typeof window !== 'undefined') {
-                    localStorage.setItem('levl_manual_landscape', String(next))
-                  }
-                  return next
-                })
+                const next = !manualLandscape
+                setManualLandscape(next)
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('levl_manual_landscape', String(next))
+                }
+
+                // Android Native Hardware Orientation Command (if supported by PWA / Fullscreen)
+                if (typeof screen !== 'undefined' && screen.orientation) {
+                  try {
+                    const scr = screen.orientation as any
+                    if (next) {
+                      if (typeof scr.lock === 'function') {
+                        const lockPromise = scr.lock('landscape')
+                        if (lockPromise && typeof lockPromise.catch === 'function') {
+                          lockPromise.catch(() => {})
+                        }
+                      }
+                    } else {
+                      if (typeof scr.unlock === 'function') {
+                        const unlockPromise = scr.unlock()
+                        if (unlockPromise && typeof unlockPromise.catch === 'function') {
+                          unlockPromise.catch(() => {})
+                        }
+                      }
+                    }
+                  } catch (e) {}
+                }
+
                 if (calendarViewMode !== 'today' && calendarViewMode !== 'pulse') {
                   setLayoutOrientation(prev => prev === 'stack' ? 'columns' : 'stack')
                 }

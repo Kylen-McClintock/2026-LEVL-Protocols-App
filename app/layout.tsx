@@ -50,6 +50,7 @@ export const metadata: Metadata = {
 
 import TopStickyHeader from "@/components/navigation/TopStickyHeader";
 import { TopPhotonProgressBar } from "@/components/ui/TopPhotonProgressBar";
+import OrientationController from "@/components/navigation/OrientationController";
 
 export default function RootLayout({
   children,
@@ -60,6 +61,7 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen desktop-body-layout pb-16 relative`} suppressHydrationWarning>
         <AuthProvider>
+          <OrientationController />
           <TopPhotonProgressBar />
           {/* Background Glowing Orbs */}
           <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">

@@ -117,8 +117,8 @@
   }
 }
 
-/* 3. Compact Landscape Mobile Ergonomics (Height < 500px & Landscape Orientation) */
-@media (orientation: landscape) and (max-height: 500px) {
+/* 3. Compact Landscape Mobile Ergonomics (Height < 600px & Landscape Orientation, or html.is-landscape) */
+@media (orientation: landscape) and (max-height: 600px) {
   .landscape-compact-nav {
     height: 40px !important;
   }
@@ -136,6 +136,29 @@
   .desktop-body-layout {
     padding-bottom: 3rem !important;
   }
+}
+
+html.is-landscape .landscape-compact-nav,
+html[data-orientation="landscape"] .landscape-compact-nav {
+  height: 40px !important;
+}
+html.is-landscape .landscape-compact-nav-item,
+html[data-orientation="landscape"] .landscape-compact-nav-item {
+  padding-top: 1px !important;
+  padding-bottom: 1px !important;
+}
+html.is-landscape .landscape-compact-icon,
+html[data-orientation="landscape"] .landscape-compact-icon {
+  width: 16px !important;
+  height: 16px !important;
+}
+html.is-landscape .desktop-pt-14,
+html[data-orientation="landscape"] .desktop-pt-14 {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 42px) !important;
+}
+html.is-landscape .desktop-body-layout,
+html[data-orientation="landscape"] .desktop-body-layout {
+  padding-bottom: 3rem !important;
 }
 
 /* Touch Ergonomics & Momentum Scrolling */
