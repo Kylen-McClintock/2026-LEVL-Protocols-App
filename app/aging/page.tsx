@@ -47,11 +47,17 @@ export default function AgingPage() {
   const loadData = async () => {
     const id = getLocalUserId()
     setUserId(id)
-    const p = await getOrCreateUserProfile(id)
-    setProfile(p)
 
-    // Load Calico
-    const calicoData = await getBiologicalMeasurements(id)
+    // Load user profile, Calico, lab panels, and biomarkers in a single concurrent batch
+    const [p, calicoData, panels, bRecords, allBRecords] = await Promise.all([
+      getOrCreateUserProfile(id),
+      getBiologicalMeasurements(id),
+      getUserLabPanels(id),
+      getLatestBiomarkerMeasurements(id),
+      getAllBiomarkerMeasurements(id)
+    ])
+
+    setProfile(p)
     setCalicoMeasurements(calicoData)
     if (p) {
       const chronoAge = (p as any).chronological_age || p.age || 35
@@ -59,13 +65,7 @@ export default function AgingPage() {
       setCalicoResult(res)
     }
 
-    // Load Bloodwork
-    const panels = await getUserLabPanels(id)
     setLabPanels(panels)
-    const [bRecords, allBRecords] = await Promise.all([
-      getLatestBiomarkerMeasurements(id),
-      getAllBiomarkerMeasurements(id)
-    ])
     setBiomarkers(bRecords)
     setAllBiomarkers(allBRecords)
 

@@ -107,6 +107,9 @@ export default function BenchPage() {
     validModData.sort((a, b) => (b.modality?.nba_result?.score || 0) - (a.modality?.nba_result?.score || 0))
     
     setItems(validModData)
+    try {
+      localStorage.setItem('levl_cached_bench_items', JSON.stringify(validModData))
+    } catch (e) {}
     setBenchedProtocols(protoData)
     setProfile(profileData)
     setDraftModalities(draftModData)
@@ -116,7 +119,18 @@ export default function BenchPage() {
   }
 
   useEffect(() => {
-    if (authLoading) return
+    // SWR instant hydration: paint cached bench items immediately if available
+    try {
+      const cached = localStorage.getItem('levl_cached_bench_items')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setItems(parsed)
+          setLoading(false)
+        }
+      }
+    } catch (e) {}
+
     load()
 
     const handleRefresh = () => {
@@ -128,7 +142,7 @@ export default function BenchPage() {
       window.removeEventListener('levl_auth_user_changed', handleRefresh)
       window.removeEventListener('levl_bench_updated', handleRefresh)
     }
-  }, [authLoading, authUserId])
+  }, [authUserId])
 
   const handleAddToToday = async (modalityId: string) => {
     const localUserId = authUserId || getLocalUserId()

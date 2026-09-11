@@ -283,26 +283,26 @@ export default function ProtocolFocusPage() {
   }
 
   useEffect(() => {
-    if (authLoading) return
-
     async function loadData() {
       setIsLoading(true)
       const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
 
-      // 1. Fetch protocol with joined steps
-      let protoData = await getProtocolByIdWithSteps(protocolId)
-      if (!protoData) {
-        const allProtos = await getProtocolsWithSteps()
-        protoData = allProtos.find(p => 
-          p.id === protocolId || 
-          (p.name && p.name.toLowerCase() === protocolId.toLowerCase()) ||
-          (p.slug && p.slug.toLowerCase() === protocolId.toLowerCase())
-        )
-      }
-      setProtocol(protoData)
+      // Fetch protocol and all associated user data concurrently
+      const fetchProtoPromise = (async () => {
+        let protoData = await getProtocolByIdWithSteps(protocolId)
+        if (!protoData) {
+          const allProtos = await getProtocolsWithSteps()
+          protoData = allProtos.find(p => 
+            p.id === protocolId || 
+            (p.name && p.name.toLowerCase() === protocolId.toLowerCase()) ||
+            (p.slug && p.slug.toLowerCase() === protocolId.toLowerCase())
+          )
+        }
+        return protoData
+      })()
 
-      // 2. Fetch today tasks, bench items, profile, outcome dimensions, checkin history & catalog modalities
-      const [tasks, bench, userProf, outcomes, checkinHistory, allMods] = await Promise.all([
+      const [protoData, tasks, bench, userProf, outcomes, checkinHistory, allMods] = await Promise.all([
+        fetchProtoPromise,
         getDailyProtocolTasks(localUserId, currentDateStr),
         getBenchItems(localUserId),
         getOrCreateUserProfile(localUserId),
@@ -311,6 +311,7 @@ export default function ProtocolFocusPage() {
         getModalities()
       ])
 
+      setProtocol(protoData)
       setTodayTasks(tasks)
       setBenchItems(bench)
       setProfile(userProf)
@@ -331,7 +332,7 @@ export default function ProtocolFocusPage() {
     return () => {
       window.removeEventListener('levl_auth_user_changed', handleAuthChange)
     }
-  }, [protocolId, authLoading, authUserId])
+  }, [protocolId, authUserId])
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     const localUserId = getLocalUserId()

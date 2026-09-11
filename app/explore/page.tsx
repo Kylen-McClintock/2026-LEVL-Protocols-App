@@ -230,7 +230,7 @@ function ExplorePageContent() {
 
     const [fetchedProfile, allMods, allProtos, benchItems, todayTasks, userBiomarkers, fetchedDims] = await Promise.all([
       getOrCreateUserProfile(localUserId),
-      getModalities(true),
+      getModalities(),
       getProtocolsWithSteps(),
       getBenchItems(localUserId),
       getDailyProtocolTasks(localUserId, todayStr),
@@ -299,6 +299,18 @@ function ExplorePageContent() {
   }, [])
 
   useEffect(() => {
+    // SWR instant hydration: paint cached modalities immediately if available
+    try {
+      const cached = localStorage.getItem('levl_cached_modalities')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setModalities(parsed)
+          setLoading(false)
+        }
+      }
+    } catch (e) {}
+
     loadData()
   }, [loadData])
 

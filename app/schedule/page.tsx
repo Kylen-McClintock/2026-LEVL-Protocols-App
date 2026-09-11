@@ -22,8 +22,6 @@ export default function SchedulePage() {
   const [isStackHealthOpen, setIsStackHealthOpen] = useState(false)
 
   useEffect(() => {
-    if (authLoading) return
-
     async function loadData() {
       const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
       
@@ -73,7 +71,7 @@ export default function SchedulePage() {
     return () => {
       window.removeEventListener('levl_auth_user_changed', handleAuthChange)
     }
-  }, [currentDate, authLoading, authUserId])
+  }, [currentDate, authUserId])
 
   const nextWeek = () => setCurrentDate(addWeeks(currentDate, 1))
   const prevWeek = () => setCurrentDate(subWeeks(currentDate, 1))

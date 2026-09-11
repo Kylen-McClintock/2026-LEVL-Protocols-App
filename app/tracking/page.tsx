@@ -200,8 +200,6 @@ export default function TrackingPage() {
   }
 
   useEffect(() => {
-    if (authLoading) return
-
     async function load() {
       window.dispatchEvent(new CustomEvent('levl_sync_start'))
       const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
@@ -443,7 +441,7 @@ export default function TrackingPage() {
       window.removeEventListener('levl_bench_updated', handleRefresh)
       window.removeEventListener('levl_schedule_updated', handleRefresh)
     }
-  }, [authLoading, authUserId, dataVersion])
+  }, [authUserId, dataVersion])
 
   // Filtered outcomes list based on tabs & search
   const filteredOutcomes = useMemo(() => {
