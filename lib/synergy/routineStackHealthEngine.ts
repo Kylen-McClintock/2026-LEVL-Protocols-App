@@ -430,6 +430,7 @@ export function auditRoutineStackHealth(
           // If scheduled within the dangerous conflict proximity
           if (hourDiff < requiredSpacing || triggerItem.resolvedSlot === targetItem.resolvedSlot) {
             seenConflictPairs.add(pairKeyForward)
+            seenConflictPairs.add(pairKeyReverse)
 
             // Determine optimal auto-fix target slot
             let targetSlot = rule.autoResolutionTiming?.recommendedTimeSlot || 'Evening Stack'
@@ -555,6 +556,7 @@ export function auditRoutineStackHealth(
 
         if ((aTrigger && bTarget) || (bTrigger && aTarget)) {
           seenSynergyPairs.add(pairKey)
+          seenSynergyPairs.add(pairKeyRev)
           activeSynergies.push({
             id: `active_synergy_${synRule.id}_${itemA.modality.id}_${itemB.modality.id}`,
             modalityAName: itemA.modality.display_name || itemA.modality.name,
@@ -573,6 +575,7 @@ export function auditRoutineStackHealth(
 
   // 4. Identify Synergy Unlocks (Simple Timing Tweaks to Elevate Bioavailability)
   const synergyUnlocks: RoutineSynergyUnlockItem[] = []
+  const seenUnlockKeys = new Set<string>()
 
   // A. Check Fat-Soluble Vitamins scheduled in Fasted AM
   const FAT_SOLUBLE_KEYS = ['vitamind', 'vitamind3', 'd3', 'vitamink', 'vitamink2', 'mk7', 'coq10', 'ubiquinol', 'curcumin', 'astaxanthin']
@@ -583,24 +586,28 @@ export function auditRoutineStackHealth(
       (item.task.custom_timing && item.task.custom_timing.toLowerCase().includes('fasted'))
 
     if (isFatSoluble && isFastedSlot) {
-      synergyUnlocks.push({
-        id: `unlock_fat_soluble_${item.modality.id}`,
-        ruleId: 'fat_soluble_vitamins_meal',
-        modalityId: item.modality.id,
-        modalityName: item.modality.display_name || item.modality.name,
-        headline: 'Shift to First Meal for +30–50% Higher Lipid Absorption',
-        rationale: `${item.modality.display_name || item.modality.name} is fat-soluble and requires dietary lipids for mixed micelle formation in the gut. Taking it during a morning fast drops intestinal absorption significantly.`,
-        clinicalEffectDelta: '+30% to +50% Greater Bioavailability & Tissue Delivery',
-        targetPathway: 'Intestinal Mixed Micelle Diffusion',
-        actionableTip: 'Shift from Fasted AM to First Meal / Lunch alongside healthy fats (EVOO, eggs, or avocado).',
-        pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/24500150/',
-        suggestedTimingShift: {
-          currentSlot: item.resolvedSlot || 'Fasted AM',
-          targetSlot: 'First Meal / Lunch',
-          targetTimingString: 'Midday • 12:30 PM (with food)',
-          description: 'Move to First Meal / Lunch with dietary fats'
-        }
-      })
+      const unlockKey = `fat_soluble_${item.modality.id}`
+      if (!seenUnlockKeys.has(unlockKey)) {
+        seenUnlockKeys.add(unlockKey)
+        synergyUnlocks.push({
+          id: `unlock_fat_soluble_${item.modality.id}`,
+          ruleId: 'fat_soluble_vitamins_meal',
+          modalityId: item.modality.id,
+          modalityName: item.modality.display_name || item.modality.name,
+          headline: 'Shift to First Meal for +30–50% Higher Lipid Absorption',
+          rationale: `${item.modality.display_name || item.modality.name} is fat-soluble and requires dietary lipids for mixed micelle formation in the gut. Taking it during a morning fast drops intestinal absorption significantly.`,
+          clinicalEffectDelta: '+30% to +50% Greater Bioavailability & Tissue Delivery',
+          targetPathway: 'Intestinal Mixed Micelle Diffusion',
+          actionableTip: 'Shift from Fasted AM to First Meal / Lunch alongside healthy fats (EVOO, eggs, or avocado).',
+          pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/24500150/',
+          suggestedTimingShift: {
+            currentSlot: item.resolvedSlot || 'Fasted AM',
+            targetSlot: 'First Meal / Lunch',
+            targetTimingString: 'Midday • 12:30 PM (with food)',
+            description: 'Move to First Meal / Lunch with dietary fats'
+          }
+        })
+      }
     }
   })
 
@@ -610,19 +617,23 @@ export function auditRoutineStackHealth(
   if (hasNMN && !hasTMG) {
     const nmnItem = activeTaskModalityMap.find(i => i.normKey.includes('nmn') || i.normKey.includes('nr'))
     if (nmnItem) {
-      synergyUnlocks.push({
-        id: 'unlock_nmn_tmg',
-        ruleId: 'nmn_tmg',
-        modalityId: nmnItem.modality.id,
-        modalityName: nmnItem.modality.display_name || nmnItem.modality.name,
-        synergyPartnerName: 'TMG (Trimethylglycine)',
-        headline: 'Pair NMN with TMG to Buffer Hepatic Methyl Groups',
-        rationale: 'Nicotinamide clearance consumes methyl groups from SAMe pools via NNMT. Adding 500mg TMG preserves methyl donor balance, preventing homocysteine elevation while supporting sirtuin deacetylation flux.',
-        clinicalEffectDelta: '+100% Methyl Pool Buffering & Homocysteine Protection',
-        targetPathway: 'NNMT Nicotinamide Clearance & SAMe S-Adenosylmethionine',
-        actionableTip: 'Take 500mg TMG alongside your morning NMN dose.',
-        pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/30349075/'
-      })
+      const unlockKey = `missing_synergist_${nmnItem.modality.id}`
+      if (!seenUnlockKeys.has(unlockKey)) {
+        seenUnlockKeys.add(unlockKey)
+        synergyUnlocks.push({
+          id: 'unlock_nmn_tmg',
+          ruleId: 'nmn_tmg',
+          modalityId: nmnItem.modality.id,
+          modalityName: nmnItem.modality.display_name || nmnItem.modality.name,
+          synergyPartnerName: 'TMG (Trimethylglycine)',
+          headline: 'Pair NMN with TMG to Buffer Hepatic Methyl Groups',
+          rationale: 'Nicotinamide clearance consumes methyl groups from SAMe pools via NNMT. Adding 500mg TMG preserves methyl donor balance, preventing homocysteine elevation while supporting sirtuin deacetylation flux.',
+          clinicalEffectDelta: '+100% Methyl Pool Buffering & Homocysteine Protection',
+          targetPathway: 'NNMT Nicotinamide Clearance & SAMe S-Adenosylmethionine',
+          actionableTip: 'Take 500mg TMG alongside your morning NMN dose.',
+          pubmedUrl: 'https://pubmed.ncbi.nlm.nih.gov/30349075/'
+        })
+      }
     }
   }
 
@@ -671,6 +682,9 @@ export function auditRoutineStackHealth(
     const meta = getTimelineSlotLabel(item.hourDec)
     const bucket = timelineSlotBuckets.get(meta.slot)
     if (bucket) {
+      // Deduplicate modality in the same slot if multi-day tasks are passed
+      if (bucket.tasks.some(t => t.modalityId === item.modality.id)) return
+
       const matchingConflict = conflicts.find(c => c.modalityAId === item.modality.id || c.modalityBId === item.modality.id)
       const hasConflict = Boolean(matchingConflict)
       const conflictingWith = matchingConflict

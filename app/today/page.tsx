@@ -3832,7 +3832,7 @@ function TodayPageContent() {
                 }}
                 className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
                   isFocusMode
-                    ? 'bg-emerald-950/70 border border-emerald-500/80 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.35)] ring-1 ring-emerald-500/40'
+                    ? 'bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-300'
                     : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
                 }`}
                 title={isFocusMode ? "Focus Mode ON (Super Simple View) — Click to show all tools & completed tasks" : "Focus Mode OFF — Click to collapse tools and focus on pending modalities"}
@@ -3851,12 +3851,12 @@ function TodayPageContent() {
                   triggerHaptic('selection')
                   handleOpenAdaptiveGovernor('survival_80_20')
                 }}
-                className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 bg-amber-950/80 hover:bg-amber-900/90 border border-amber-500/80 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.35)] ring-1 ring-amber-500/40"
+                className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 bg-amber-950/60 hover:bg-amber-900/70 border border-amber-500/40 text-amber-300"
                 title="Survival Mode (80/20 Routine Active) — Click to review changes, why they were made, or adjust your routine"
                 aria-label="Open Survival Mode Routine Adjustments"
               >
                 <Shield size={13} className="text-amber-400 fill-amber-400/20 animate-pulse" />
-                <span>Survival Mode</span>
+                <span>Survival</span>
               </button>
             )}
 
@@ -3868,12 +3868,12 @@ function TodayPageContent() {
                   triggerHaptic('selection')
                   handleOpenAdaptiveGovernor('peak_surge')
                 }}
-                className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 bg-cyan-950/80 hover:bg-cyan-900/90 border border-cyan-500/80 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.35)] ring-1 ring-cyan-500/40"
+                className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 bg-cyan-950/60 hover:bg-cyan-900/70 border border-cyan-500/40 text-cyan-300"
                 title="Peak Mode Active — Click to review added high-capacity adaptations, why they were added, or adjust your routine"
                 aria-label="Open Peak Mode Routine Adjustments"
               >
                 <Flame size={13} className="text-cyan-400 fill-cyan-400/20 animate-pulse" />
-                <span>Peak Mode</span>
+                <span>Peak</span>
               </button>
             )}
 
@@ -3887,9 +3887,9 @@ function TodayPageContent() {
                 }}
                 className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
                   routineAudit.criticalCount > 0
-                    ? 'bg-rose-950/70 hover:bg-rose-900/80 border border-rose-500/80 text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.35)] animate-pulse'
+                    ? 'bg-rose-950/60 hover:bg-rose-900/70 border border-rose-500/50 text-rose-200 animate-pulse'
                     : routineAudit.conflictCount > 0
-                    ? 'bg-amber-950/70 hover:bg-amber-900/80 border border-amber-500/80 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                    ? 'bg-amber-950/60 hover:bg-amber-900/70 border border-amber-500/40 text-amber-300'
                     : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
                 }`}
                 title="Audit My Routine — Live conflict & synergy optimizer"
