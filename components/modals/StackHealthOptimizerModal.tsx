@@ -28,6 +28,7 @@ import {
   RoutineStackHealthReport
 } from '@/lib/synergy/routineStackHealthEngine'
 import { ProtocolVectorRadar } from '@/components/ui/ProtocolVectorRadar'
+import ModalityIcon from '@/components/ui/ModalityIcon'
 import { reconcileModalityScheduleAndFutureTasks } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 
@@ -353,84 +354,178 @@ export const StackHealthOptimizerModal: React.FC<StackHealthOptimizerModalProps>
                   return (
                     <div
                       key={conflict.id}
-                      className={`p-4 rounded-2xl border transition-all ${
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                         isChecked
-                          ? 'bg-amber-950/20 border-amber-500/40 shadow-sm'
-                          : 'bg-zinc-900/30 border-zinc-800 opacity-80'
+                          ? 'bg-zinc-900/90 border-amber-500/50 shadow-lg shadow-amber-950/20'
+                          : 'bg-zinc-900/40 border-zinc-800 opacity-75'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          {/* Modality Pair Banner */}
-                          <div className="flex items-center gap-2 flex-wrap text-xs">
-                            <span className="font-bold text-white px-2.5 py-0.5 rounded-lg bg-zinc-800 border border-zinc-700">
-                              {conflict.modalityAName}
-                            </span>
-                            <span className="text-rose-400 font-mono font-bold">⚡ BLUNTS ➔</span>
-                            <span className="font-bold text-white px-2.5 py-0.5 rounded-lg bg-zinc-800 border border-zinc-700">
-                              {conflict.modalityBName}
-                            </span>
-                            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                              {conflict.severity}
-                            </span>
-                          </div>
-
-                          <h4 className="font-extrabold text-sm sm:text-base text-white pt-1">
-                            {conflict.headline}
-                          </h4>
-                          <p className="text-xs text-zinc-300 leading-relaxed">
-                            {conflict.rationale}
-                          </p>
-
-                          {/* Quantified Effect & Mechanism */}
-                          <div className="flex items-center gap-2 pt-1 flex-wrap text-[11px] font-mono">
-                            <span className="px-2 py-0.5 rounded bg-rose-950/60 text-rose-300 border border-rose-500/30">
-                              Impact: {conflict.clinicalEffectDelta}
-                            </span>
-                            <span className="px-2 py-0.5 rounded bg-zinc-900 text-zinc-300 border border-zinc-800">
-                              Pathway: {conflict.targetPathway}
-                            </span>
-                            {conflict.pubmedUrl && (
-                              <a
-                                href={conflict.pubmedUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-purple-300 hover:text-purple-200 underline"
-                              >
-                                <span>Study</span>
-                                <ExternalLink size={10} />
-                              </a>
-                            )}
-                          </div>
+                      {/* Top Header with Conflict Type & Severity */}
+                      <div className="flex items-center justify-between gap-2 pb-3 border-b border-zinc-800/80 mb-3.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[11px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-lg border ${
+                            conflict.severity === 'critical'
+                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          }`}>
+                            {conflict.severity === 'critical' ? '🔴 Critical Antagonism' : '🟡 Timing & Blunting Conflict'}
+                          </span>
+                          <span className="text-[11px] font-mono text-zinc-400 capitalize">
+                            {conflict.conflictType.replace(/_/g, ' ')}
+                          </span>
                         </div>
 
                         {/* Interactive Auto-Fix Switch */}
-                        <div className="shrink-0 flex flex-col items-end">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleConflictFix(conflict.id)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                              isChecked
-                                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/30'
-                                : 'bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700'
-                            }`}
-                          >
-                            <Check size={14} className={isChecked ? 'text-black stroke-[3]' : 'opacity-0'} />
-                            <span>{isChecked ? 'Auto-Fix Active' : 'Keep Conflict'}</span>
-                          </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleConflictFix(conflict.id)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            isChecked
+                              ? 'bg-amber-500 text-black shadow-md shadow-amber-500/30 hover:bg-amber-400'
+                              : 'bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700'
+                          }`}
+                        >
+                          <Check size={14} className={isChecked ? 'text-black stroke-[3]' : 'opacity-0'} />
+                          <span>{isChecked ? 'Auto-Fix Active' : 'Keep Conflict'}</span>
+                        </button>
+                      </div>
+
+                      {/* 1. The Two Conflicting Modalities Display */}
+                      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-3 bg-zinc-950/70 p-3.5 rounded-xl border border-zinc-800/90 mb-3.5">
+                        {/* Modality A: The Trigger / Blunting Factor */}
+                        <div className="p-3 rounded-lg bg-zinc-900/80 border border-amber-500/30 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                              Interfering Modality
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                              <Clock size={11} className="text-amber-400" />
+                              {conflict.modalityAScheduledTime}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
+                              <ModalityIcon
+                                modality={{
+                                  id: conflict.modalityAId,
+                                  name: conflict.modalityAName,
+                                  category: conflict.modalityACategory,
+                                  icon: conflict.modalityAIcon
+                                }}
+                                size={18}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <h5 className="font-extrabold text-sm text-white truncate">
+                                {conflict.modalityAName}
+                              </h5>
+                              <span className="text-[11px] text-zinc-400 font-mono block truncate">
+                                {conflict.modalityADose || conflict.modalityASlot}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Collision Center Connector */}
+                        <div className="flex flex-col items-center justify-center px-1 py-0.5 text-center">
+                          <div className="flex items-center gap-1 text-rose-400 font-mono font-black text-xs">
+                            <Zap size={13} className="text-rose-400 fill-rose-400/20" />
+                            <span>BLUNTS</span>
+                            <ArrowRight size={13} className="text-rose-400" />
+                          </div>
+                          <span className="text-[10px] font-mono text-amber-300 font-bold mt-0.5">
+                            {conflict.gapFormatted}
+                          </span>
+                          <span className="text-[9px] font-mono text-zinc-500 mt-0.5">
+                            Needs ≥{conflict.requiredSpacingFormatted}
+                          </span>
+                        </div>
+
+                        {/* Modality B: The Target / Affected Adaptation */}
+                        <div className="p-3 rounded-lg bg-zinc-900/80 border border-rose-500/30 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/20 text-rose-300">
+                              Target Adaptation At Risk
+                            </span>
+                            <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                              <Clock size={11} className="text-rose-400" />
+                              {conflict.modalityBScheduledTime}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
+                              <ModalityIcon
+                                modality={{
+                                  id: conflict.modalityBId,
+                                  name: conflict.modalityBName,
+                                  category: conflict.modalityBCategory,
+                                  icon: conflict.modalityBIcon
+                                }}
+                                size={18}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <h5 className="font-extrabold text-sm text-white truncate">
+                                {conflict.modalityBName}
+                              </h5>
+                              <span className="text-[11px] text-zinc-400 font-mono block truncate">
+                                {conflict.modalityBDose || conflict.modalityBSlot}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Auto-Shift Prescription Preview */}
-                      <div className="mt-3 p-2.5 rounded-xl bg-zinc-950/70 border border-zinc-800/80 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <Clock size={14} className="text-amber-400 shrink-0" />
-                          <span className="text-zinc-400 font-mono">Prescribed Fix:</span>
-                          <span className="text-amber-200 font-bold">{conflict.autoFix.description}</span>
+                      {/* 2. Specific Conflict Explanation & Biochemical Rationale */}
+                      <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-amber-500/30 space-y-2 mb-3">
+                        <div className="flex items-center gap-2 text-amber-300">
+                          <AlertCircle size={15} className="shrink-0 text-amber-400" />
+                          <h4 className="font-bold text-xs sm:text-sm text-white">
+                            {conflict.headline}
+                          </h4>
                         </div>
-                        <span className="text-[10px] font-mono text-zinc-500 hidden sm:inline">
-                          Shift to {conflict.autoFix.targetSlot}
-                        </span>
+                        
+                        <p className="text-xs text-zinc-200 leading-relaxed pl-5">
+                          {conflict.specificExplanation || conflict.rationale}
+                        </p>
+
+                        {/* Pathway & Loss Indicators */}
+                        <div className="flex items-center gap-2 pl-5 pt-1 flex-wrap text-[11px] font-mono">
+                          <span className="px-2 py-0.5 rounded bg-rose-950/60 text-rose-300 border border-rose-500/30">
+                            Impact: {conflict.clinicalEffectDelta}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-zinc-900 text-zinc-300 border border-zinc-800">
+                            Pathway: {conflict.targetPathway}
+                          </span>
+                          {conflict.pubmedUrl && (
+                            <a
+                              href={conflict.pubmedUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-purple-300 hover:text-purple-200 underline ml-auto"
+                            >
+                              <span>Evidence Paper</span>
+                              <ExternalLink size={10} />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 3. Actionable Prescribed Fix Preview */}
+                      <div className="p-3 rounded-xl bg-gradient-to-r from-amber-950/30 via-zinc-900 to-zinc-950 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-amber-300 font-mono font-bold text-[11px]">
+                            <Clock size={13} className="text-amber-400" />
+                            <span>PRESCRIBED SCHEDULE FIX:</span>
+                          </div>
+                          <p className="text-zinc-200 font-medium text-xs">
+                            {conflict.autoFix.plainEnglishFix || conflict.autoFix.description}
+                          </p>
+                        </div>
+                        <div className="shrink-0 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 text-right">
+                          <span className="text-[10px] text-zinc-400 block font-mono">Recommended Target</span>
+                          <span className="text-amber-300 font-bold font-mono text-xs">{conflict.autoFix.targetTimingString}</span>
+                        </div>
                       </div>
                     </div>
                   )
@@ -659,6 +754,11 @@ export const StackHealthOptimizerModal: React.FC<StackHealthOptimizerModalProps>
                             <span className="font-bold truncate block">{t.modalityName}</span>
                             {t.customDose && (
                               <span className="text-[10px] text-zinc-400 font-mono block">{t.customDose}</span>
+                            )}
+                            {t.conflictingWith && (
+                              <span className="text-[10px] text-rose-300 font-mono block mt-0.5">
+                                ⚠️ Clashes with {t.conflictingWith}
+                              </span>
                             )}
                           </div>
                           {t.hasConflict && (

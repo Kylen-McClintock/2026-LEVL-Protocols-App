@@ -403,7 +403,7 @@ export const COMPREHENSIVE_CONFLICT_RULES: BiochemicalConflictRule[] = [
   {
     id: 'late_caffeine_sleep',
     triggers: ['caffeine', 'coffee', 'preworkout'],
-    targets: ['darkcoolsleepenvironment', 'sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop', 'magnesiumglycinate', '478breathing'],
+    targets: ['darkcoolsleepenvironment', 'sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop'],
     type: 'circadian_disruption',
     severity: 'timing',
     headline: 'Adenosine Receptor Blockade Degrades Slow-Wave Deep Sleep',
@@ -484,7 +484,7 @@ export const COMPREHENSIVE_CONFLICT_RULES: BiochemicalConflictRule[] = [
   // 8. Late Evening Metabolic Meal / Alcohol (<3h Before Sleep)
   {
     id: 'late_meal_alcohol_sleep',
-    triggers: ['walkermetabolicalcoholcutoff'],
+    triggers: ['latemeal', 'alcohol', 'heavy_dinner', 'latenightfood', 'wine', 'beer'],
     targets: ['sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop', 'darkcoolsleepenvironment'],
     type: 'circadian_disruption',
     severity: 'timing',
@@ -594,7 +594,7 @@ export const COMPREHENSIVE_CONFLICT_RULES: BiochemicalConflictRule[] = [
   {
     id: 'evening_cold_plunge_sleep',
     triggers: ['coldwaterimmersion', 'coldplunge', 'icebath', 'wimhofcoldshockimmersion'],
-    targets: ['darkcoolsleepenvironment', 'sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop', '478breathing', 'magnesiumglycinate'],
+    targets: ['darkcoolsleepenvironment', 'sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop'],
     type: 'circadian_disruption',
     severity: 'timing',
     headline: 'Late-Night Cold Plunge Re-Warming Elevates Core Body Temp & Latency',
@@ -710,7 +710,7 @@ export const COMPREHENSIVE_CONFLICT_RULES: BiochemicalConflictRule[] = [
   {
     id: 'circadian_nad_precursor_night',
     triggers: ['nmn', 'nicotinamidemononucleotide', 'nr', 'nicotinamideriboside', 'nad', 'nadivtherapy'],
-    targets: ['darkcoolsleepenvironment', 'sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop', '478breathing', 'magnesiumglycinate'],
+    targets: ['darkcoolsleepenvironment', 'sleep', 'blueprintsleeparchitecture', 'walker65fthermaldrop'],
     type: 'circadian_disruption',
     severity: 'timing',
     headline: 'Late-Day NAD+ Precursors Disrupt Peripheral Circadian Clocks',

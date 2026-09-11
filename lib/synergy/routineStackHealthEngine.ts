@@ -23,24 +23,54 @@ import { resolveSlotFromTimingString } from '@/lib/data/resolveOptimalTiming'
 export interface RoutineConflictItem {
   id: string
   ruleId: string
+
+  // Modality A (The Trigger / Blunting Agent)
   modalityAId: string
   modalityAName: string
+  modalityACategory?: string
+  modalityAIcon?: string
+  modalityAScheduledTime: string
+  modalityASlot: string
+  modalityADose?: string
+  modalityRoleA: string
+
+  // Modality B (The Target / Adaptation Being Blunted)
   modalityBId: string
   modalityBName: string
+  modalityBCategory?: string
+  modalityBIcon?: string
+  modalityBScheduledTime: string
+  modalityBSlot: string
+  modalityBDose?: string
+  modalityRoleB: string
+
+  // Timing Proximity Details
+  currentHourGap: number
+  gapFormatted: string
+  requiredSpacingHours: number
+  requiredSpacingFormatted: string
+  isSameTimeBlock: boolean
+
+  // Conflict Description & Mechanism
   conflictType: BiochemicalConflictRule['type']
   severity: 'timing' | 'moderate' | 'critical'
   headline: string
+  specificExplanation: string
   rationale: string
   clinicalEffectDelta: string
   targetPathway: string
   pubmedUrl: string
+
+  // Prescribed Auto-Fix
   autoFix: {
     modalityIdToShift: string
     modalityNameToShift: string
     currentSlot: string
+    currentTimingString: string
     targetSlot: string
     targetTimingString: string
     description: string
+    plainEnglishFix: string
   }
 }
 
@@ -88,6 +118,7 @@ export interface RoutineTimelineSlotGroup {
     status: string
     hasConflict?: boolean
     hasSynergy?: boolean
+    conflictingWith?: string
   }[]
 }
 
@@ -345,14 +376,12 @@ export function auditRoutineStackHealth(
       if (seenConflictPairs.has(pairKeyForward) || seenConflictPairs.has(pairKeyReverse)) continue
 
       for (const rule of COMPREHENSIVE_CONFLICT_RULES) {
-        if (rule.id === 'late_caffeine_sleep') {
-          // A cutoff or curfew habit (e.g. Walker 10-Hour Caffeine Cutoff) is sleep hygiene, not caffeine intake
-          if (
-            itemA.normKey.includes('cutoff') || itemA.normKey.includes('curfew') || itemA.normKey.includes('cessation') ||
-            itemB.normKey.includes('cutoff') || itemB.normKey.includes('curfew') || itemB.normKey.includes('cessation')
-          ) {
-            continue
-          }
+        // A cutoff, curfew, or cessation habit (e.g. Walker 10-Hour Caffeine Cutoff, 3-Hour Metabolic Cutoff) is sleep hygiene, not an active stimulus
+        if (
+          itemA.normKey.includes('cutoff') || itemA.normKey.includes('curfew') || itemA.normKey.includes('cessation') ||
+          itemB.normKey.includes('cutoff') || itemB.normKey.includes('curfew') || itemB.normKey.includes('cessation')
+        ) {
+          continue
         }
 
         const aIsTrigger = rule.triggers.some(t => itemA.normKey.includes(t) || t.includes(itemA.normKey))
@@ -416,27 +445,85 @@ export function auditRoutineStackHealth(
               targetTimingString = 'Evening • 7:00 PM (post-workout)'
             }
 
+            const nameA = triggerItem.modality.display_name || triggerItem.modality.name || (triggerItem.task.protocol_step as any)?.title || 'Protocol Modality'
+            const nameB = targetItem.modality.display_name || targetItem.modality.name || (targetItem.task.protocol_step as any)?.title || 'Protocol Modality'
+            const timeA = triggerItem.task.custom_timing || triggerItem.task.scheduled_time || formatHourLabel(triggerItem.hourDec)
+            const timeB = targetItem.task.custom_timing || targetItem.task.scheduled_time || formatHourLabel(targetItem.hourDec)
+            const slotA = triggerItem.resolvedSlot || 'Current Slot'
+            const slotB = targetItem.resolvedSlot || 'Current Slot'
+            const doseA = triggerItem.task.custom_dose || triggerItem.task.protocol_step?.dose_text || ''
+            const doseB = targetItem.task.custom_dose || targetItem.task.protocol_step?.dose_text || ''
+
+            const isSameTimeBlock = triggerItem.resolvedSlot === targetItem.resolvedSlot || hourDiff < 0.25
+            const gapMinutes = Math.round(hourDiff * 60)
+            const gapFormatted = isSameTimeBlock ? 'Scheduled in same time window' : gapMinutes < 60 ? `${gapMinutes} mins apart` : `${hourDiff.toFixed(1)}h apart`
+            const requiredSpacingFormatted = `${requiredSpacing}+ hours`
+
+            let specificExplanation = ''
+            if (rule.type === 'hypertrophy_blunting') {
+              specificExplanation = `You have "${nameA}" (${timeA}) and "${nameB}" (${timeB}) scheduled ${gapFormatted}. Cold immersion or high-dose antioxidants suppress the acute localized COX-2 and reactive oxygen species (ROS) pulses that muscle fibers require to signal hypertrophy and mitochondrial biogenesis. Performing these within ${requiredSpacingFormatted} blunts up to 30% of your resistance training adaptations.`
+            } else if (rule.type === 'circadian_disruption') {
+              specificExplanation = `You have "${nameA}" scheduled at ${timeA}, which directly collides with "${nameB}". Ingesting caffeine, late meals, or cold exposure late in the day blocks adenosine receptors and raises core body temperature, degrading restorative slow-wave deep sleep.`
+            } else if (rule.type === 'mitochondrial_blunting') {
+              specificExplanation = `You have "${nameA}" (${timeA}) and "${nameB}" (${timeB}) scheduled ${gapFormatted}. Complex I inhibition attenuates the acute PGC-1α signaling surge produced during aerobic workouts, cutting your endurance and VO2 max training response.`
+            } else if (rule.type === 'absorption_competition') {
+              specificExplanation = `"${nameA}" (${timeA}) and "${nameB}" (${timeB}) are scheduled ${gapFormatted}. Both compounds compete directly for intestinal absorption transporters (such as DMT-1 or TRPM6) or form unabsorbable precipitates, reducing clinical bioavailability by up to 40%–60%.`
+            } else if (rule.type === 'antagonistic_receptors') {
+              specificExplanation = `"${nameA}" and "${nameB}" exert direct biochemical receptor antagonism when taken ${gapFormatted}. Separating them by ${requiredSpacingFormatted} preserves full pharmacological effectiveness.`
+            } else if (rule.type === 'autophagy_anabolism_antagonism') {
+              specificExplanation = `"${nameA}" (${timeA}) triggers Sestrin2/mTORC1 amino acid signaling, which instantly halts the autophagic renewal and AMPK activation targeted by "${nameB}". They should be strictly separated into dedicated fasting vs. eating windows.`
+            } else if (rule.type === 'serotonin_toxicity_risk') {
+              specificExplanation = `CRITICAL CONTRAINDICATION: Combining "${nameA}" with "${nameB}" poses severe serotonin toxicity risk via MAO-A inhibition and reuptake blockade.`
+            } else {
+              specificExplanation = `"${nameA}" (${timeA}) and "${nameB}" (${timeB}) are scheduled ${gapFormatted}, producing biological antagonism (${rule.headline}). Separating by ${requiredSpacingFormatted} eliminates the conflict.`
+            }
+
+            const plainEnglishFix = `Shift "${nameA}" from ${slotA} (${timeA}) ➔ ${targetSlot} (${targetTimingString}), establishing a safe ${requiredSpacingFormatted} buffer while keeping "${nameB}" locked at ${timeB}.`
+
             conflicts.push({
               id: `conflict_${triggerItem.modality.id}_${targetItem.modality.id}_${rule.id}`,
               ruleId: rule.id,
               modalityAId: triggerItem.modality.id,
-              modalityAName: triggerItem.modality.display_name || triggerItem.modality.name,
+              modalityAName: nameA,
+              modalityACategory: triggerItem.modality.category,
+              modalityAIcon: triggerItem.modality.icon,
+              modalityAScheduledTime: timeA,
+              modalityASlot: slotA,
+              modalityADose: doseA,
+              modalityRoleA: 'Trigger / Blunting Agent',
+
               modalityBId: targetItem.modality.id,
-              modalityBName: targetItem.modality.display_name || targetItem.modality.name,
+              modalityBName: nameB,
+              modalityBCategory: targetItem.modality.category,
+              modalityBIcon: targetItem.modality.icon,
+              modalityBScheduledTime: timeB,
+              modalityBSlot: slotB,
+              modalityBDose: doseB,
+              modalityRoleB: 'Target Adaptation At Risk',
+
+              currentHourGap: hourDiff,
+              gapFormatted,
+              requiredSpacingHours: requiredSpacing,
+              requiredSpacingFormatted,
+              isSameTimeBlock,
+
               conflictType: rule.type,
               severity: rule.severity,
               headline: rule.headline,
+              specificExplanation,
               rationale: rule.rationale,
               clinicalEffectDelta: rule.clinicalEffectDelta || '-30% Cellular Adaptation',
               targetPathway: rule.targetPathway || 'Cellular Pathway Interference',
               pubmedUrl: rule.pubmedUrl,
               autoFix: {
                 modalityIdToShift: triggerItem.modality.id,
-                modalityNameToShift: triggerItem.modality.display_name || triggerItem.modality.name,
-                currentSlot: triggerItem.resolvedSlot || 'Current Slot',
+                modalityNameToShift: nameA,
+                currentSlot: slotA,
+                currentTimingString: timeA,
                 targetSlot,
                 targetTimingString,
-                description: rule.autoResolutionTiming?.description || `Shift ${triggerItem.modality.name} to ${targetSlot}`
+                description: rule.autoResolutionTiming?.description || `Shift ${nameA} to ${targetSlot}`,
+                plainEnglishFix
               }
             })
             break // Match highest priority rule for this pair
@@ -584,7 +671,11 @@ export function auditRoutineStackHealth(
     const meta = getTimelineSlotLabel(item.hourDec)
     const bucket = timelineSlotBuckets.get(meta.slot)
     if (bucket) {
-      const hasConflict = conflicts.some(c => c.modalityAId === item.modality.id || c.modalityBId === item.modality.id)
+      const matchingConflict = conflicts.find(c => c.modalityAId === item.modality.id || c.modalityBId === item.modality.id)
+      const hasConflict = Boolean(matchingConflict)
+      const conflictingWith = matchingConflict
+        ? (matchingConflict.modalityAId === item.modality.id ? matchingConflict.modalityBName : matchingConflict.modalityAName)
+        : undefined
       const hasSynergy = activeSynergies.some(s => s.modalityAName === item.modality.name || s.modalityBName === item.modality.name)
 
       bucket.tasks.push({
@@ -595,7 +686,8 @@ export function auditRoutineStackHealth(
         customTiming: item.task.custom_timing,
         status: item.task.status,
         hasConflict,
-        hasSynergy
+        hasSynergy,
+        conflictingWith
       })
     }
   })
