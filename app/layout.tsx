@@ -60,7 +60,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen pb-16 md:pb-0 md:flex relative`} suppressHydrationWarning>
+      <body className={`${inter.className} min-h-screen desktop-body-layout pb-16 relative`} suppressHydrationWarning>
         <AuthProvider>
           <TopPhotonProgressBar />
           {/* Background Glowing Orbs */}
@@ -69,8 +69,8 @@ export default function RootLayout({
             <div className="absolute bottom-[-10%] right-[-10%] w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-blue-600/15 blur-[120px] rounded-full" />
           </div>
 
-          {/* Desktop Sidebar */}
-          <aside className="hidden md:flex flex-col w-64 border-r border-levl-border p-4 h-screen sticky top-0 bg-slate-950/60 backdrop-blur-md z-40">
+          {/* Desktop Sidebar (Only visible on true desktop/tablet: width >= 768px and height >= 550px) */}
+          <aside className="hidden desktop-sidebar flex-col w-64 border-r border-levl-border p-4 h-screen sticky top-0 bg-slate-950/60 backdrop-blur-md z-40">
             <div className="mb-6 pt-1 px-1 flex items-center justify-between">
               <img 
                 src="/logo.png" 
@@ -94,8 +94,14 @@ export default function RootLayout({
           {/* Dynamic Mobile Top Header */}
           <TopStickyHeader />
 
-          {/* Main Content Area */}
-          <main className="flex-1 min-h-screen min-w-0 w-full overflow-x-hidden pt-[calc(env(safe-area-inset-top,0px)+52px)] md:pt-14">
+          {/* Main Content Area: Universal safe area margins prevent notch/Dynamic Island collisions */}
+          <main 
+            className="flex-1 min-h-screen min-w-0 w-full overflow-x-hidden desktop-pt-14"
+            style={{
+              paddingLeft: 'env(safe-area-inset-left, 0px)',
+              paddingRight: 'env(safe-area-inset-right, 0px)'
+            }}
+          >
             {children}
           </main>
 

@@ -34,7 +34,7 @@
   }
 
   .pb-safe {
-    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 
   .pb-nav-ios {
@@ -42,7 +42,93 @@
   }
 
   .pt-safe {
-    padding-top: max(0.75rem, env(safe-area-inset-top));
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  }
+
+  /* Universal Safe Area Margin & Padding Utilities */
+  .safe-x {
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+
+  .safe-left {
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  }
+
+  .safe-right {
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+  }
+
+  .modal-safe-overlay {
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+    padding-top: max(0.5rem, env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Responsive Layout Separation: Desktop/Tablet vs Landscape Mobile Phone    */
+/* ------------------------------------------------------------------------- */
+
+/* 1. True Desktop / Large Tablet: Width >= 768px AND Height >= 550px */
+@media (min-width: 768px) and (min-height: 550px) {
+  .desktop-sidebar {
+    display: flex !important;
+  }
+  .desktop-header-offset {
+    left: 16rem !important; /* 256px */
+  }
+  .desktop-hide-bottom-nav {
+    display: none !important;
+  }
+  .desktop-body-layout {
+    display: flex !important;
+    padding-bottom: 0 !important;
+  }
+  .desktop-hide-header-logo {
+    display: none !important;
+  }
+  .desktop-pt-14 {
+    padding-top: 3.5rem !important;
+  }
+}
+
+/* 2. Mobile in Portrait OR Phone in Landscape: Width < 768px OR Height < 550px */
+@media (max-width: 767px), (max-height: 549px) {
+  .desktop-sidebar {
+    display: none !important;
+  }
+  .desktop-header-offset {
+    left: 0 !important;
+  }
+  .desktop-hide-bottom-nav {
+    display: block !important;
+  }
+  .desktop-body-layout {
+    display: block !important;
+    padding-bottom: 4rem !important;
+  }
+  .desktop-hide-header-logo {
+    display: flex !important;
+  }
+  .desktop-pt-14 {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 52px) !important;
+  }
+}
+
+/* 3. Compact Landscape Mobile Ergonomics (Height < 500px & Landscape Orientation) */
+@media (orientation: landscape) and (max-height: 500px) {
+  .landscape-compact-nav {
+    height: 42px !important;
+  }
+  .landscape-compact-nav-item {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+  }
+  .landscape-compact-icon {
+    width: 17px !important;
+    height: 17px !important;
   }
 }
 
@@ -51,4 +137,5 @@ html {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
+
 

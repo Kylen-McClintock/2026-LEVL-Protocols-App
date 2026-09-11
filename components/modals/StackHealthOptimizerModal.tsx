@@ -173,7 +173,7 @@ export const StackHealthOptimizerModal: React.FC<StackHealthOptimizerModalProps>
     : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-y-auto modal-safe-overlay">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/85 backdrop-blur-md transition-opacity"

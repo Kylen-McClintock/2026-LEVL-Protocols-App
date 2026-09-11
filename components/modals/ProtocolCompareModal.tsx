@@ -159,7 +159,7 @@ export default function ProtocolCompareModal({
   const uniqueNamesB = Array.from(modNamesB).filter(name => !modNamesA.has(name))
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto modal-safe-overlay">
       <div className="fixed inset-0 bg-black/85 backdrop-blur-md transition-opacity" onClick={onClose} />
 
       <div className="relative bg-slate-950 border border-slate-800 rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[94vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">

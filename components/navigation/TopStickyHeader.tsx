@@ -164,11 +164,13 @@ export default function TopStickyHeader() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 md:left-64 right-0 z-40 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 desktop-header-offset right-0 z-40 transition-transform duration-300 ease-in-out ${
           isVisible ? 'translate-y-0' : '-translate-y-full'
         } bg-slate-950/85 backdrop-blur-xl border-b border-levl-border/80 shadow-lg shadow-black/20`}
         style={{
-          paddingTop: 'max(env(safe-area-inset-top, 0px), 10px)'
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 10px)',
+          paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
+          paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))'
         }}
       >
         {/* Top Edge Gradient Completion Progress Bar */}
@@ -186,7 +188,7 @@ export default function TopStickyHeader() {
         <div className="flex items-center justify-between px-3.5 py-2.5">
           {/* Left: Logo & Cloud Sync Status */}
           <div className="flex items-center gap-2">
-            <Link href="/today" className="shrink-0 flex items-center md:hidden">
+            <Link href="/today" className="shrink-0 flex items-center desktop-hide-header-logo">
               <img
                 src="/logo.png"
                 alt="LEVL"
