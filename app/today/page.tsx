@@ -294,15 +294,9 @@ function TodayPageContent() {
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const cachedTasks = safeLocalStorageGet(`levl_cached_tasks_${initialDateStr}`)
-      if (cachedTasks !== null) {
-        return false
-      }
-      const completed = safeLocalStorageGet('levl_onboarding_completed') === 'true'
-      if (!completed) {
-        return false
-      }
+      if (cachedTasks !== null) return false
     }
-    return true
+    return false
   })
   const [isDateSwitching, setIsDateSwitching] = useState(false)
 
@@ -313,6 +307,46 @@ function TodayPageContent() {
   const hasLoadedInitialCatalogRef = useRef(false)
   const activeDateReqIdRef = useRef(0)
   const lastLoadedUserIdRef = useRef<string | null>(null)
+  const tasksDateCacheRef = useRef<Map<string, DailyProtocolTask[]>>(new Map())
+  const loadDebounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Physical & Manual Landscape Orientation State
+  const [isPhysicalLandscape, setIsPhysicalLandscape] = useState(false)
+  const [manualLandscape, setManualLandscape] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('levl_manual_landscape') === 'true'
+    }
+    return false
+  })
+  const isEffectiveLandscape = isPhysicalLandscape || manualLandscape
+
+  useEffect(() => {
+    const updateOrientation = () => {
+      if (typeof window === 'undefined') return
+      const isLandscapeMediaQuery = window.matchMedia('(orientation: landscape)').matches
+      const isWideAspect = window.innerWidth > window.innerHeight
+      const isLandscapeAngle = typeof window.orientation !== 'undefined'
+        ? (window.orientation === 90 || window.orientation === -90)
+        : (screen.orientation?.type?.includes('landscape') ?? false)
+      setIsPhysicalLandscape(isLandscapeMediaQuery || isWideAspect || isLandscapeAngle)
+    }
+
+    updateOrientation()
+    window.addEventListener('resize', updateOrientation, { passive: true })
+    window.addEventListener('orientationchange', updateOrientation, { passive: true })
+    const mql = window.matchMedia('(orientation: landscape)')
+    if (mql.addEventListener) {
+      mql.addEventListener('change', updateOrientation)
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateOrientation)
+      window.removeEventListener('orientationchange', updateOrientation)
+      if (mql.removeEventListener) {
+        mql.removeEventListener('change', updateOrientation)
+      }
+    }
+  }, [])
 
   const [activeDate, setActiveDate] = useState<Date>(initialEffectiveDate)
 
@@ -1017,19 +1051,39 @@ function TodayPageContent() {
       hasLoadedInitialCatalogRef.current = false
     }
 
+    // 0ms SWR Memory/LocalStorage Hydration for Target Date
+    const memCached = tasksDateCacheRef.current.get(dateStr)
+    if (memCached && memCached.length > 0) {
+      setTasks(memCached)
+      setLoading(false)
+      setIsDateSwitching(false)
+    } else if (typeof window !== 'undefined') {
+      try {
+        const rawLocal = localStorage.getItem(`levl_cached_tasks_${dateStr}`)
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTasks(parsed)
+            tasksDateCacheRef.current.set(dateStr, parsed)
+            setLoading(false)
+            setIsDateSwitching(false)
+          }
+        }
+      } catch (e) {}
+    }
+
     async function loadData() {
       const reqId = ++activeDateReqIdRef.current
       lastLoadedUserIdRef.current = effectiveUserId
       window.dispatchEvent(new CustomEvent('levl_sync_start'))
 
       try {
-        if (!hasLoadedInitialCatalogRef.current) {
-          const hasCachedDate = typeof window !== 'undefined' && localStorage.getItem(`levl_cached_tasks_${dateStr}`) !== null
-          const isGuest = typeof window !== 'undefined' && safeLocalStorageGet('levl_onboarding_completed') !== 'true'
-          if (!hasCachedDate && !isGuest && (!tasks || tasks.length === 0)) {
-            setLoading(true)
-          }
+        const hasCached = tasksDateCacheRef.current.has(dateStr) || (typeof window !== 'undefined' && localStorage.getItem(`levl_cached_tasks_${dateStr}`) !== null)
+        if (!hasCached && (!tasks || tasks.length === 0)) {
+          setLoading(true)
+        }
 
+        if (!hasLoadedInitialCatalogRef.current) {
           // 1. Fetch profile and tasks first to unlock the UI immediately
           const [userProfile, currentTasks] = await Promise.all([
             getOrCreateUserProfile(effectiveUserId),
@@ -1049,7 +1103,9 @@ function TodayPageContent() {
 
           setProfile(effectiveProfile)
           setTasks(currentTasks)
+          tasksDateCacheRef.current.set(dateStr, currentTasks)
           setLoading(false)
+          setIsDateSwitching(false)
           hasLoadedInitialCatalogRef.current = true
 
           if (typeof window !== 'undefined') {
@@ -1057,7 +1113,7 @@ function TodayPageContent() {
             safeLocalStorageSet('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
           }
 
-          // 2. Fetch secondary catalog, bench & outcomes asynchronously in the background
+          // 2. Fetch secondary catalog, bench & outcomes asynchronously in background
           Promise.all([
             getOutcomeDimensions(),
             getProtocols(),
@@ -1074,25 +1130,7 @@ function TodayPageContent() {
             }
           }).catch(console.error)
         } else {
-          // Fast in-place transition without unmounting DOM tree
-          setIsDateSwitching(true)
-          // Immediate SWR hydration from localStorage for target date
-          let hasCached = false
-          if (typeof window !== 'undefined') {
-            try {
-              const cached = localStorage.getItem(`levl_cached_tasks_${dateStr}`)
-              if (cached) {
-                const parsed = JSON.parse(cached)
-                if (Array.isArray(parsed)) {
-                  setTasks(parsed)
-                  hasCached = true
-                }
-              }
-            } catch (e) {}
-          }
-          if (!hasCached) {
-            setLoading(true)
-          }
+          // In-place fast transition
           const [currentTasks, todayCheckin] = await Promise.all([
             getDailyProtocolTasks(effectiveUserId, dateStr),
             getDailyWellbeingCheckin(effectiveUserId, dateStr)
@@ -1101,7 +1139,10 @@ function TodayPageContent() {
           if (reqId !== activeDateReqIdRef.current) return
 
           setTasks(currentTasks)
+          tasksDateCacheRef.current.set(dateStr, currentTasks)
           setWellbeingCheckin(todayCheckin || null)
+          setLoading(false)
+          setIsDateSwitching(false)
           if (typeof window !== 'undefined') {
             safeLocalStorageSet('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
           }
@@ -1116,17 +1157,33 @@ function TodayPageContent() {
         }
       }
     }
-    loadData()
 
-    const handleAuthChange = () => {
-      hasLoadedInitialCatalogRef.current = false
-      loadData()
+    if (loadDebounceTimerRef.current) {
+      clearTimeout(loadDebounceTimerRef.current)
     }
+    loadDebounceTimerRef.current = setTimeout(() => {
+      loadData()
+    }, 40)
+
+    const handleAuthChange = (e: any) => {
+      const incomingUserId = e?.detail || authUserId || getLocalUserId()
+      if (incomingUserId && lastLoadedUserIdRef.current === incomingUserId) {
+        refreshTodayTasks()
+        return
+      }
+      hasLoadedInitialCatalogRef.current = false
+      if (loadDebounceTimerRef.current) clearTimeout(loadDebounceTimerRef.current)
+      loadDebounceTimerRef.current = setTimeout(() => {
+        loadData()
+      }, 40)
+    }
+
     window.addEventListener('levl_auth_user_changed', handleAuthChange)
     return () => {
+      if (loadDebounceTimerRef.current) clearTimeout(loadDebounceTimerRef.current)
       window.removeEventListener('levl_auth_user_changed', handleAuthChange)
     }
-  }, [dateStr, router, authLoading, authUserId])
+  }, [dateStr, authUserId])
 
   // Multi-day task loader for 3day, week, and month views
   useEffect(() => {
@@ -3237,7 +3294,7 @@ function TodayPageContent() {
                   </div>
                 </div>
               ) : (
-                <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
+                <div className={isEffectiveLandscape ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "space-y-1.5" : "space-y-3")}>
                   {tasksToRender.map(task => {
                     const mId = task.modality_id || task.protocol_step?.modality_id || ''
                     const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -3635,7 +3692,7 @@ function TodayPageContent() {
               </div>
             </div>
           ) : (
-            <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
+            <div className={isEffectiveLandscape ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "space-y-1.5" : "space-y-3")}>
               {groupTasks
                 .sort((a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0))
                 .map(task => {
@@ -3733,7 +3790,17 @@ function TodayPageContent() {
       )}
 
       {/* Main Container */}
-      <div className={`mx-auto px-3 sm:px-6 pt-4 sm:pt-6 ${calendarViewMode === 'today' ? 'max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl' : 'max-w-7xl'}`}>
+      <div 
+        className={`mx-auto pt-4 sm:pt-6 transition-all duration-300 ${
+          isEffectiveLandscape 
+            ? 'w-full max-w-full px-4 sm:px-8' 
+            : (calendarViewMode === 'today' ? 'px-3 sm:px-6 max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl' : 'px-3 sm:px-6 max-w-7xl')
+        }`}
+        style={isEffectiveLandscape ? {
+          paddingLeft: 'max(1.5rem, env(safe-area-inset-left, 16px))',
+          paddingRight: 'max(1.5rem, env(safe-area-inset-right, 16px))'
+        } : undefined}
+      >
         
         {/* Protocol Filter Header if specific protocol filtered */}
         {selectedProtocolFilter !== 'all' && !isFocusMode && (
@@ -3908,6 +3975,33 @@ function TodayPageContent() {
               </button>
             )}
 
+            {/* In-App Landscape / Rotate Toggle Button */}
+            {calendarViewMode === 'today' && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  setManualLandscape(prev => {
+                    const next = !prev
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('levl_manual_landscape', String(next))
+                    }
+                    return next
+                  })
+                }}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
+                  isEffectiveLandscape
+                    ? 'bg-purple-950/60 hover:bg-purple-900/70 border border-purple-500/40 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.2)]'
+                    : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
+                }`}
+                title={isEffectiveLandscape ? "Landscape Mode ON — Tap to switch back to Portrait single-column" : "Rotate to Landscape — Tap to switch to spacious panoramic multi-column layout (works even if phone Portrait Lock is on)"}
+                aria-label="Toggle Landscape Orientation"
+              >
+                <Columns size={13} className={isEffectiveLandscape ? "text-purple-400" : "text-slate-400"} />
+                <span>{isEffectiveLandscape ? 'Landscape' : 'Rotate'}</span>
+              </button>
+            )}
+
             {calendarViewMode !== 'today' && calendarViewMode !== 'pulse' && multiDayStats && multiDayStats.total > 0 && (
               <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center gap-1">
                 <span>{multiDayStats.completed}/{multiDayStats.total}</span>
@@ -3927,47 +4021,6 @@ function TodayPageContent() {
           </button>
         </div>
 
-        {/* If Today view is loading / calibrating, display the dedicated Calibration screen with rotating Circadian Ring (bypassed for new guests) */}
-        {calendarViewMode === 'today' && !isNewGuestUser && (!tasks.length && (loading || isDateSwitching)) ? (
-          <div className="py-20 sm:py-28 flex flex-col items-center justify-center text-center space-y-6 animate-in fade-in duration-300">
-            {/* Circadian Rotating Ring */}
-            <div className="relative flex items-center justify-center">
-              {/* Outer Ambient Circadian Aura */}
-              <div 
-                className="absolute w-44 h-44 rounded-full blur-2xl opacity-40 animate-pulse pointer-events-none"
-                style={{
-                  background: 'radial-gradient(circle, #F59E0B 0%, #38BDF8 25%, #A52D6A 70%, transparent 100%)'
-                }}
-              />
-              
-              {/* Rotating Conic Ring (Matches ending color with beginning morning color #D97706) */}
-              <div 
-                className="w-32 h-32 sm:w-36 sm:h-36 rounded-full p-[5px] animate-[spin_4s_linear_infinite] shadow-[0_0_35px_rgba(245,158,11,0.25)]"
-                style={{
-                  background: 'conic-gradient(from 0deg, #D97706 0%, #F59E0B 3%, #FBBF24 6%, #38BDF8 10%, #0284C7 30%, #2563EB 48%, #F59E0B 58%, #F87E38 66%, #DF5558 76%, #A52D6A 84%, #50236B 90%, #231A45 94%, #0B132B 98%, #D97706 100%)'
-                }}
-              >
-                {/* Inner Cutout Disc */}
-                <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center p-3 border border-white/10 shadow-inner">
-                  <div className="w-full h-full rounded-full bg-gradient-to-br from-slate-900 via-slate-950 to-black flex items-center justify-center shadow-inner">
-                    <Sparkles className="text-amber-400 animate-pulse" size={24} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Calibration Copy */}
-            <div className="space-y-2 max-w-md px-4">
-              <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-                {userFirstName === 'Your' ? 'Calibrating Your Protocol' : `Calibrating ${userFirstName}'s Protocol`}
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 font-medium">
-                Aligning circadian biological vectors, scheduled modalities &amp; outcomes
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
         {/* Enticing Guest Mode 3-Door Launchpad Hub */}
         {showGuestOnboardingCard && !isFocusMode && (
           <NewUserWelcomeHub
@@ -4499,7 +4552,7 @@ function TodayPageContent() {
                                 <span>{completedSortBy === 'chronological' ? (viewMode === 'chronological' ? formatSlotName(groupKey) : groupKey) : 'Completed Log'}</span>
                                 <span className="text-[10px] text-gray-500 font-normal">({tasksInGroup.length})</span>
                               </div>
-                              <div className={completionMode === 'fast' ? "space-y-1.5 pt-1" : "space-y-3 pt-1"}>
+                              <div className={isEffectiveLandscape ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 pt-1" : (completionMode === 'fast' ? "space-y-1.5 pt-1" : "space-y-3 pt-1")}>
                                 {tasksInGroup.map(task => {
                                   const mId = task.modality_id || task.protocol_step?.modality_id || ''
                                   const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -4508,7 +4561,7 @@ function TodayPageContent() {
                                       key={task.id} 
                                       task={task} 
                                       onStatusChange={handleStatusChange} 
-                                      onTrackOutcomes={openTracker}
+                                      onTrackOutcomes={openTracker} 
                                       initialBenchItem={benchItem}
                                       recentTasks={tasks}
                                       allOutcomes={allOutcomes}
@@ -4565,7 +4618,7 @@ function TodayPageContent() {
                       </div>
 
                       {isSnoozedSectionExpanded && (
-                        <div className={`${completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3"} bg-black/40 animate-in fade-in ${!isSnoozedLast ? 'border-b border-amber-500/20' : ''}`}>
+                        <div className={`${isEffectiveLandscape ? "p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3")} bg-black/40 animate-in fade-in ${!isSnoozedLast ? 'border-b border-amber-500/20' : ''}`}>
                           {allSnoozedTasks.map(task => {
                             const mId = task.modality_id || task.protocol_step?.modality_id || ''
                             const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -4627,7 +4680,7 @@ function TodayPageContent() {
                       </div>
 
                       {isSkippedSectionExpanded && (
-                        <div className={`${completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3"} bg-black/40 animate-in fade-in`}>
+                        <div className={`${isEffectiveLandscape ? "p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3")} bg-black/40 animate-in fade-in`}>
                           {allSkippedTasks.map(task => {
                             const mId = task.modality_id || task.protocol_step?.modality_id || ''
                             const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -5005,7 +5058,34 @@ function TodayPageContent() {
               )
             ) : (
               <div className="space-y-8">
-                {activeGroups.length === 0 ? (
+                {(!tasks.length && (loading || isDateSwitching)) ? (
+                  <div className="space-y-6 animate-pulse">
+                    <div className="flex items-center justify-between px-2 py-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                          <Sparkles size={12} className="text-purple-400 animate-spin" style={{ animationDuration: '3s' }} />
+                        </div>
+                        <span className="text-xs font-bold text-slate-300">
+                          {userFirstName === 'Your' ? 'Aligning Daily Protocol...' : `Aligning ${userFirstName}'s Protocol...`}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-500">Syncing schedule</span>
+                    </div>
+
+                    {['Morning Stack', 'Afternoon Stack', 'Evening Stack'].map((blockTitle) => (
+                      <div key={blockTitle} className="space-y-3 p-3.5 rounded-2xl bg-slate-900/40 border border-slate-800/80">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                          <div className="h-4 w-28 bg-slate-800 rounded-md" />
+                          <div className="h-3 w-16 bg-slate-800/60 rounded-md" />
+                        </div>
+                        <div className={isEffectiveLandscape ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" : "space-y-2.5"}>
+                          <div className="h-20 bg-slate-950/60 border border-slate-800/60 rounded-xl" />
+                          <div className="h-20 bg-slate-950/60 border border-slate-800/60 rounded-xl" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : activeGroups.length === 0 ? (
                   dedupedTasks.length > 0 ? (
                     <div className="text-center p-8 bg-slate-950/60 border border-emerald-500/30 rounded-2xl text-gray-400 text-sm space-y-4 shadow-xl backdrop-blur-md animate-in fade-in">
                       <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(16,185,129,0.3)]">
@@ -5152,8 +5232,6 @@ function TodayPageContent() {
             )}
           </>
         )}
-      </>
-    )}
 
       </div>
 

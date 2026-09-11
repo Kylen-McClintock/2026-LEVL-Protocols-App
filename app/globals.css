@@ -120,15 +120,21 @@
 /* 3. Compact Landscape Mobile Ergonomics (Height < 500px & Landscape Orientation) */
 @media (orientation: landscape) and (max-height: 500px) {
   .landscape-compact-nav {
-    height: 42px !important;
+    height: 40px !important;
   }
   .landscape-compact-nav-item {
     padding-top: 1px !important;
     padding-bottom: 1px !important;
   }
   .landscape-compact-icon {
-    width: 17px !important;
-    height: 17px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+  .desktop-pt-14 {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 42px) !important;
+  }
+  .desktop-body-layout {
+    padding-bottom: 3rem !important;
   }
 }
 

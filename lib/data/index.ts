@@ -381,40 +381,16 @@ export async function getOutcomeDimensions(forceRefresh = false): Promise<Outcom
   return mergeWithCustom(data as OutcomeDimension[])
 }
 
+let isRevalidatingCatalog = false
+
 export async function getCatalogMaps(forceRefresh = false) {
   const now = Date.now()
-  if (!forceRefresh && catalogMapsCache && (now - catalogMapsCache.timestamp < 1000 * 60 * 5)) {
+  if (!forceRefresh && catalogMapsCache && (now - catalogMapsCache.timestamp < 1000 * 60 * 30)) {
     return catalogMapsCache.data
   }
 
-  // 1. Fast-path: If in-memory cache exists (even if stale), return immediately and revalidate in background
+  // 1. Fast-path: If in-memory cache exists, return immediately without duplicate background network calls
   if (!forceRefresh && catalogMapsCache) {
-    Promise.all([
-      getModalities(true),
-      getProtocolsWithSteps(true)
-    ]).then(([modalities, protocolsWithSteps]) => {
-      const modsMap = new Map<string, Modality>()
-      modalities.forEach(m => {
-        if (m.id) modsMap.set(m.id, m)
-        if (m.slug) modsMap.set(m.slug, m)
-      })
-      const stepsMap = new Map<string, any>()
-      const protocolsMap = new Map<string, Protocol>()
-      protocolsWithSteps.forEach(p => {
-        if (p.id) protocolsMap.set(p.id, p)
-        if (p.slug) protocolsMap.set(p.slug, p)
-        if (p.steps && Array.isArray(p.steps)) {
-          p.steps.forEach((s: any) => {
-            if (s.id) {
-              const mod = s.modality || (s.modality_id ? modsMap.get(s.modality_id) : undefined)
-              stepsMap.set(s.id, { ...s, protocol: p, modality: mod })
-            }
-          })
-        }
-      })
-      catalogMapsCache = { data: { modsMap, stepsMap, protocolsMap }, timestamp: Date.now() }
-    }).catch(console.error)
-
     return catalogMapsCache.data
   }
 
@@ -473,32 +449,37 @@ export async function getCatalogMaps(forceRefresh = false) {
   const immediateResult = { modsMap, stepsMap, protocolsMap }
   catalogMapsCache = { data: immediateResult, timestamp: now }
 
-  // Fire background network refresh
-  Promise.all([
-    getModalities(true),
-    getProtocolsWithSteps(true)
-  ]).then(([modalities, protocolsWithSteps]) => {
-    const freshModsMap = new Map<string, Modality>()
-    modalities.forEach(m => {
-      if (m.id) freshModsMap.set(m.id, m)
-      if (m.slug) freshModsMap.set(m.slug, m)
+  // Fire background network refresh ONLY once if not already running, using normal cache (no forceRefresh)
+  if (!isRevalidatingCatalog) {
+    isRevalidatingCatalog = true
+    Promise.all([
+      getModalities(false),
+      getProtocolsWithSteps(false)
+    ]).then(([modalities, protocolsWithSteps]) => {
+      const freshModsMap = new Map<string, Modality>()
+      modalities.forEach(m => {
+        if (m.id) freshModsMap.set(m.id, m)
+        if (m.slug) freshModsMap.set(m.slug, m)
+      })
+      const freshStepsMap = new Map<string, any>()
+      const freshProtocolsMap = new Map<string, Protocol>()
+      protocolsWithSteps.forEach(p => {
+        if (p.id) freshProtocolsMap.set(p.id, p)
+        if (p.slug) freshProtocolsMap.set(p.slug, p)
+        if (p.steps && Array.isArray(p.steps)) {
+          p.steps.forEach((s: any) => {
+            if (s.id) {
+              const mod = s.modality || (s.modality_id ? freshModsMap.get(s.modality_id) : undefined)
+              freshStepsMap.set(s.id, { ...s, protocol: p, modality: mod })
+            }
+          })
+        }
+      })
+      catalogMapsCache = { data: { modsMap: freshModsMap, stepsMap: freshStepsMap, protocolsMap: freshProtocolsMap }, timestamp: Date.now() }
+    }).catch(console.error).finally(() => {
+      isRevalidatingCatalog = false
     })
-    const freshStepsMap = new Map<string, any>()
-    const freshProtocolsMap = new Map<string, Protocol>()
-    protocolsWithSteps.forEach(p => {
-      if (p.id) freshProtocolsMap.set(p.id, p)
-      if (p.slug) freshProtocolsMap.set(p.slug, p)
-      if (p.steps && Array.isArray(p.steps)) {
-        p.steps.forEach((s: any) => {
-          if (s.id) {
-            const mod = s.modality || (s.modality_id ? freshModsMap.get(s.modality_id) : undefined)
-            freshStepsMap.set(s.id, { ...s, protocol: p, modality: mod })
-          }
-        })
-      }
-    })
-    catalogMapsCache = { data: { modsMap: freshModsMap, stepsMap: freshStepsMap, protocolsMap: freshProtocolsMap }, timestamp: Date.now() }
-  }).catch(console.error)
+  }
 
   return immediateResult
 }
@@ -1163,6 +1144,17 @@ export async function getDailyProtocolTasks(
 ): Promise<DailyProtocolTask[]> {
   if (!supabase) return []
 
+  let cachedTasks: DailyProtocolTask[] | null = null
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('levl_cached_tasks_' + date)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) cachedTasks = parsed
+      }
+    } catch (e) {}
+  }
+
   const mapsPromise = preloadedMaps ? Promise.resolve(preloadedMaps) : getCatalogMaps()
   const benchPromise = preloadedBench
     ? Promise.resolve({ data: preloadedBench, error: null })
@@ -1171,29 +1163,51 @@ export async function getDailyProtocolTasks(
         .select('modality_id, status, personal_notes, custom_dose, custom_timing, notes')
         .eq('local_user_id', localUserId)
 
-  const [{ modsMap, stepsMap, protocolsMap }, { data: benchData }, { data: rawTasks, error }] = await Promise.all([
-    mapsPromise,
-    benchPromise,
-    supabase
-      .from('daily_protocol_tasks')
-      .select('id, local_user_id, scheduled_date, modality_id, protocol_step_id, user_protocol_instance_id, status, timing_slot, completed_at, status_reason, execution_details, execution_metrics, scheduled_time, created_at, updated_at')
-      .eq('local_user_id', localUserId)
-      .eq('scheduled_date', date)
-  ])
+  // Safety timeout promise to prevent remote PostgREST connection queue stalling
+  const timeoutPromise = new Promise<{ isTimeout: true }>((resolve) => {
+    setTimeout(() => resolve({ isTimeout: true }), 3500)
+  })
 
-  if (error) {
-    console.warn('Error fetching daily tasks:', error?.message || error)
+  try {
+    const fetchPromise = Promise.all([
+      mapsPromise,
+      benchPromise,
+      supabase
+        .from('daily_protocol_tasks')
+        .select('id, local_user_id, scheduled_date, modality_id, protocol_step_id, user_protocol_instance_id, status, timing_slot, completed_at, status_reason, execution_details, execution_metrics, scheduled_time, created_at, updated_at')
+        .eq('local_user_id', localUserId)
+        .eq('scheduled_date', date)
+    ])
+
+    const raceResult: any = await Promise.race([fetchPromise, timeoutPromise])
+    if (raceResult && raceResult.isTimeout) {
+      console.warn(`[getDailyProtocolTasks] Remote query timed out after 3500ms for date ${date}. Falling back to cached tasks.`)
+      if (cachedTasks) return cachedTasks
+      // If no cache, wait for fetch to complete in background without blocking
+      return []
+    }
+
+    const [{ modsMap, stepsMap, protocolsMap }, { data: benchData }, { data: rawTasks, error }] = raceResult
+
+    if (error) {
+      console.warn('Error fetching daily tasks:', error?.message || error)
+      if (cachedTasks) return cachedTasks
+      return []
+    }
+
+    const benchMap = new Map<string, { status: string; personal_notes?: string; custom_dose?: string; custom_timing?: string; notes?: string }>()
+    if (benchData) {
+      benchData.forEach((b: any) => {
+        if (b.modality_id) benchMap.set(b.modality_id, b)
+      })
+    }
+
+    return hydrateTasksInMemory(rawTasks || [], modsMap, stepsMap, protocolsMap, benchMap)
+  } catch (err) {
+    console.warn('Exception in getDailyProtocolTasks:', err)
+    if (cachedTasks) return cachedTasks
     return []
   }
-
-  const benchMap = new Map<string, { status: string; personal_notes?: string; custom_dose?: string; custom_timing?: string; notes?: string }>()
-  if (benchData) {
-    benchData.forEach((b: any) => {
-      if (b.modality_id) benchMap.set(b.modality_id, b)
-    })
-  }
-
-  return hydrateTasksInMemory(rawTasks || [], modsMap, stepsMap, protocolsMap, benchMap)
 }
 
 export async function getMultiDayProtocolTasks(
