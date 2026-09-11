@@ -387,40 +387,120 @@ export async function getCatalogMaps(forceRefresh = false) {
     return catalogMapsCache.data
   }
 
-  const [modalities, protocolsWithSteps] = await Promise.all([
-    getModalities(forceRefresh),
-    getProtocolsWithSteps(forceRefresh)
-  ])
+  // 1. Fast-path: If in-memory cache exists (even if stale), return immediately and revalidate in background
+  if (!forceRefresh && catalogMapsCache) {
+    Promise.all([
+      getModalities(true),
+      getProtocolsWithSteps(true)
+    ]).then(([modalities, protocolsWithSteps]) => {
+      const modsMap = new Map<string, Modality>()
+      modalities.forEach(m => {
+        if (m.id) modsMap.set(m.id, m)
+        if (m.slug) modsMap.set(m.slug, m)
+      })
+      const stepsMap = new Map<string, any>()
+      const protocolsMap = new Map<string, Protocol>()
+      protocolsWithSteps.forEach(p => {
+        if (p.id) protocolsMap.set(p.id, p)
+        if (p.slug) protocolsMap.set(p.slug, p)
+        if (p.steps && Array.isArray(p.steps)) {
+          p.steps.forEach((s: any) => {
+            if (s.id) {
+              const mod = s.modality || (s.modality_id ? modsMap.get(s.modality_id) : undefined)
+              stepsMap.set(s.id, { ...s, protocol: p, modality: mod })
+            }
+          })
+        }
+      })
+      catalogMapsCache = { data: { modsMap, stepsMap, protocolsMap }, timestamp: Date.now() }
+    }).catch(console.error)
 
+    return catalogMapsCache.data
+  }
+
+  // 2. Persistent storage cache check (0ms load on refresh/navigation)
+  if (!forceRefresh) {
+    const cachedMods = getPersistentCache<Modality[]>('modalities')
+    const cachedProtos = getPersistentCache<any[]>('protocols_with_steps')
+    if (cachedMods && cachedMods.length > 0 && cachedProtos && cachedProtos.length > 0) {
+      const modsMap = new Map<string, Modality>()
+      cachedMods.forEach(m => {
+        if (m.id) modsMap.set(m.id, m)
+        if (m.slug) modsMap.set(m.slug, m)
+      })
+      const stepsMap = new Map<string, any>()
+      const protocolsMap = new Map<string, Protocol>()
+      cachedProtos.forEach(p => {
+        if (p.id) protocolsMap.set(p.id, p)
+        if (p.slug) protocolsMap.set(p.slug, p)
+        if (p.steps && Array.isArray(p.steps)) {
+          p.steps.forEach((s: any) => {
+            if (s.id) {
+              const mod = s.modality || (s.modality_id ? modsMap.get(s.modality_id) : undefined)
+              stepsMap.set(s.id, { ...s, protocol: p, modality: mod })
+            }
+          })
+        }
+      })
+      const result = { modsMap, stepsMap, protocolsMap }
+      catalogMapsCache = { data: result, timestamp: now }
+      return result
+    }
+  }
+
+  // 3. Fallback to built-in catalog synchronously (0ms) so UI never blocks on cold start
+  const builtInMods = mergeBuiltInModalities([])
+  const builtInProtos = mergeBuiltInProtocols([])
   const modsMap = new Map<string, Modality>()
-  modalities.forEach(m => {
+  builtInMods.forEach(m => {
     if (m.id) modsMap.set(m.id, m)
     if (m.slug) modsMap.set(m.slug, m)
   })
-
   const stepsMap = new Map<string, any>()
   const protocolsMap = new Map<string, Protocol>()
-
-  protocolsWithSteps.forEach(p => {
+  builtInProtos.forEach(p => {
     if (p.id) protocolsMap.set(p.id, p)
     if (p.slug) protocolsMap.set(p.slug, p)
     if (p.steps && Array.isArray(p.steps)) {
       p.steps.forEach((s: any) => {
         if (s.id) {
           const mod = s.modality || (s.modality_id ? modsMap.get(s.modality_id) : undefined)
-          stepsMap.set(s.id, {
-            ...s,
-            protocol: p,
-            modality: mod
-          })
+          stepsMap.set(s.id, { ...s, protocol: p, modality: mod })
         }
       })
     }
   })
+  const immediateResult = { modsMap, stepsMap, protocolsMap }
+  catalogMapsCache = { data: immediateResult, timestamp: now }
 
-  const result = { modsMap, stepsMap, protocolsMap }
-  catalogMapsCache = { data: result, timestamp: now }
-  return result
+  // Fire background network refresh
+  Promise.all([
+    getModalities(true),
+    getProtocolsWithSteps(true)
+  ]).then(([modalities, protocolsWithSteps]) => {
+    const freshModsMap = new Map<string, Modality>()
+    modalities.forEach(m => {
+      if (m.id) freshModsMap.set(m.id, m)
+      if (m.slug) freshModsMap.set(m.slug, m)
+    })
+    const freshStepsMap = new Map<string, any>()
+    const freshProtocolsMap = new Map<string, Protocol>()
+    protocolsWithSteps.forEach(p => {
+      if (p.id) freshProtocolsMap.set(p.id, p)
+      if (p.slug) freshProtocolsMap.set(p.slug, p)
+      if (p.steps && Array.isArray(p.steps)) {
+        p.steps.forEach((s: any) => {
+          if (s.id) {
+            const mod = s.modality || (s.modality_id ? freshModsMap.get(s.modality_id) : undefined)
+            freshStepsMap.set(s.id, { ...s, protocol: p, modality: mod })
+          }
+        })
+      }
+    })
+    catalogMapsCache = { data: { modsMap: freshModsMap, stepsMap: freshStepsMap, protocolsMap: freshProtocolsMap }, timestamp: Date.now() }
+  }).catch(console.error)
+
+  return immediateResult
 }
 
 export function sanitizeProfileTime(val: any): string | null {

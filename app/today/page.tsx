@@ -1030,14 +1030,10 @@ function TodayPageContent() {
             setLoading(true)
           }
 
-          // Concurrently fetch profile, tasks, outcomes, protocols, bench, and today checkin in parallel!
-          const [userProfile, currentTasks, outcomes, protocols, bench, todayCheckin] = await Promise.all([
+          // 1. Fetch profile and tasks first to unlock the UI immediately
+          const [userProfile, currentTasks] = await Promise.all([
             getOrCreateUserProfile(effectiveUserId),
-            getDailyProtocolTasks(effectiveUserId, dateStr),
-            getOutcomeDimensions(),
-            getProtocols(),
-            getBenchItems(effectiveUserId),
-            getDailyWellbeingCheckin(effectiveUserId, dateStr)
+            getDailyProtocolTasks(effectiveUserId, dateStr)
           ])
 
           if (reqId !== activeDateReqIdRef.current) return
@@ -1053,16 +1049,30 @@ function TodayPageContent() {
 
           setProfile(effectiveProfile)
           setTasks(currentTasks)
-          setAllOutcomes(outcomes)
-          setAvailableProtocols(protocols.map((p: any) => ({ id: p.id, name: p.name })))
-          setBenchItems(bench)
-          setWellbeingCheckin(todayCheckin || null)
+          setLoading(false)
+          hasLoadedInitialCatalogRef.current = true
+
           if (typeof window !== 'undefined') {
             safeLocalStorageSet('levl_cached_user_profile', JSON.stringify(userProfile))
             safeLocalStorageSet('levl_cached_tasks_' + dateStr, JSON.stringify(currentTasks))
-            if (bench) safeLocalStorageSet('levl_cached_bench_items', JSON.stringify(bench))
           }
-          hasLoadedInitialCatalogRef.current = true
+
+          // 2. Fetch secondary catalog, bench & outcomes asynchronously in the background
+          Promise.all([
+            getOutcomeDimensions(),
+            getProtocols(),
+            getBenchItems(effectiveUserId),
+            getDailyWellbeingCheckin(effectiveUserId, dateStr)
+          ]).then(([outcomes, protocols, bench, todayCheckin]) => {
+            if (reqId !== activeDateReqIdRef.current) return
+            if (outcomes) setAllOutcomes(outcomes)
+            if (protocols) setAvailableProtocols(protocols.map((p: any) => ({ id: p.id, name: p.name })))
+            if (bench) setBenchItems(bench)
+            if (todayCheckin) setWellbeingCheckin(todayCheckin)
+            if (typeof window !== 'undefined' && bench) {
+              safeLocalStorageSet('levl_cached_bench_items', JSON.stringify(bench))
+            }
+          }).catch(console.error)
         } else {
           // Fast in-place transition without unmounting DOM tree
           setIsDateSwitching(true)
@@ -3918,7 +3928,7 @@ function TodayPageContent() {
         </div>
 
         {/* If Today view is loading / calibrating, display the dedicated Calibration screen with rotating Circadian Ring (bypassed for new guests) */}
-        {calendarViewMode === 'today' && !isNewGuestUser && (loading || (!tasks.length && isDateSwitching)) ? (
+        {calendarViewMode === 'today' && !isNewGuestUser && (!tasks.length && (loading || isDateSwitching)) ? (
           <div className="py-20 sm:py-28 flex flex-col items-center justify-center text-center space-y-6 animate-in fade-in duration-300">
             {/* Circadian Rotating Ring */}
             <div className="relative flex items-center justify-center">
