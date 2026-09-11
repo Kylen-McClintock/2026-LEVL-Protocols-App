@@ -502,7 +502,16 @@ export default function ProtocolFocusPage() {
       }
     } catch (err) {
       console.warn('handleEnrollClick error, falling back to instant kickstart:', err)
-      await handleInstantKickstart()
+      try {
+        await handleInstantKickstart()
+      } catch (fallbackErr) {
+        console.error('Final fallback in handleEnrollClick:', fallbackErr)
+        try {
+          router.push('/today')
+        } catch (e) {
+          if (typeof window !== 'undefined') window.location.href = '/today'
+        }
+      }
     }
   }
 
@@ -526,6 +535,12 @@ export default function ProtocolFocusPage() {
       router.push('/today')
     } catch (err) {
       console.error('Error adopting tailored stack in protocol detail page:', err)
+      setIsStackFitModalOpen(false)
+      try {
+        router.push('/today')
+      } catch (navErr) {
+        if (typeof window !== 'undefined') window.location.href = '/today'
+      }
     } finally {
       setIsProcessingAction(false)
     }
@@ -559,7 +574,11 @@ export default function ProtocolFocusPage() {
         }
       }
     } finally {
-      await reloadData()
+      try {
+        await reloadData()
+      } catch (rErr) {
+        console.warn('reloadData warning in handleAddEntireProtocolToToday:', rErr)
+      }
       setIsProcessingAction(false)
     }
   }
@@ -567,37 +586,50 @@ export default function ProtocolFocusPage() {
   const handleInstantKickstart = async () => {
     if (!protocol) return
     setIsProcessingAction(true)
-    const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('levl_guest_instant_kickstart', 'true')
-        localStorage.setItem('levl_active_protocol', protocol.name || protocol.id)
-        if (referralSource) localStorage.setItem('levl_referral_source', referralSource)
-        if (influencerName) localStorage.setItem('levl_referral_influencer', influencerName)
-      } catch (e) {}
-    }
-
     try {
-      const ok = await addProtocolToToday(localUserId, currentDateStr, protocol.id)
-      if (!ok) {
-        throw new Error('addProtocolToToday returned false')
+      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('levl_guest_instant_kickstart', 'true')
+          localStorage.setItem('levl_active_protocol', protocol.name || protocol.id)
+          if (referralSource) localStorage.setItem('levl_referral_source', referralSource)
+          if (influencerName) localStorage.setItem('levl_referral_influencer', influencerName)
+        } catch (e) {}
       }
-    } catch (err) {
-      console.warn('addProtocolToToday failed or encountered constraint error, executing individual task fallback:', err)
-      const stepsToEnroll = protocol.steps || protocol.protocol_steps || []
-      for (const s of stepsToEnroll) {
-        const mId = s.modality_id || s.modality?.id
-        if (mId) {
-          try {
-            await createDailyTask(localUserId, currentDateStr, mId)
-          } catch (taskErr) {
-            console.warn(`Could not create fallback daily task for modality ${mId}:`, taskErr)
+
+      let ok = false
+      try {
+        ok = await addProtocolToToday(localUserId, currentDateStr, protocol.id)
+      } catch (addErr) {
+        console.warn('addProtocolToToday error in handleInstantKickstart:', addErr)
+      }
+
+      if (!ok) {
+        console.warn('addProtocolToToday failed, executing individual task fallback')
+        const stepsToEnroll = protocol.steps || protocol.protocol_steps || []
+        for (const s of stepsToEnroll) {
+          const mId = s.modality_id || s.modality?.id
+          if (mId) {
+            try {
+              await createDailyTask(localUserId, currentDateStr, mId)
+            } catch (taskErr) {
+              console.warn(`Could not create fallback daily task for modality ${mId}:`, taskErr)
+            }
           }
         }
       }
+    } catch (outerErr) {
+      console.error('Unhandled exception in handleInstantKickstart:', outerErr)
     } finally {
       setIsProcessingAction(false)
-      router.push('/today')
+      try {
+        router.push('/today')
+      } catch (navErr) {
+        console.warn('router.push error in handleInstantKickstart, using window.location fallback:', navErr)
+        if (typeof window !== 'undefined') {
+          window.location.href = '/today'
+        }
+      }
     }
   }
 

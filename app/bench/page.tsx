@@ -191,17 +191,37 @@ function BenchPageContent() {
         const rawDoses = dosesParam ? dosesParam.split('||').map(d => d.trim()) : []
 
         if (rawMods.length > 0) {
-          const parsedItems = rawMods.map((modId, idx) => ({
-            modalityId: modId,
-            displayName: modId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-            slot: rawSlots[idx] || 'anytime',
-            dose: rawDoses[idx] || ''
-          }))
+          const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
 
-          setPendingProtocolImport({
-            title: titleParam,
-            items: parsedItems
-          })
+          ;(async () => {
+            try {
+              for (let idx = 0; idx < rawMods.length; idx++) {
+                const modId = rawMods[idx]
+                const cleanName = modId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                const slot = rawSlots[idx] || 'anytime'
+                const dose = rawDoses[idx] || ''
+
+                await addToBench(
+                  localUserId,
+                  modId,
+                  undefined,
+                  { name: cleanName, display_name: cleanName },
+                  { customDose: dose, customTiming: slot }
+                )
+              }
+              setImportFeedback({
+                type: 'success',
+                message: `Imported ${titleParam} from LongevityReviews!`
+              })
+              await load()
+            } catch (err) {
+              console.error('Error auto-importing custom protocol to bench:', err)
+              setImportFeedback({
+                type: 'error',
+                message: `Failed to import ${titleParam}. Please try again.`
+              })
+            }
+          })()
         }
       }
     }
