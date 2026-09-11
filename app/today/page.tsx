@@ -294,11 +294,12 @@ function TodayPageContent() {
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const cachedTasks = safeLocalStorageGet(`levl_cached_tasks_${initialDateStr}`)
-      if (cachedTasks) {
-        try {
-          const parsed = JSON.parse(cachedTasks)
-          if (Array.isArray(parsed) && parsed.length > 0) return false
-        } catch (e) {}
+      if (cachedTasks !== null) {
+        return false
+      }
+      const completed = safeLocalStorageGet('levl_onboarding_completed') === 'true'
+      if (!completed) {
+        return false
       }
     }
     return true
@@ -311,6 +312,7 @@ function TodayPageContent() {
 
   const hasLoadedInitialCatalogRef = useRef(false)
   const activeDateReqIdRef = useRef(0)
+  const lastLoadedUserIdRef = useRef<string | null>(null)
 
   const [activeDate, setActiveDate] = useState<Date>(initialEffectiveDate)
 
@@ -1002,37 +1004,52 @@ function TodayPageContent() {
   }, [dateStr, authUserId])
 
   useEffect(() => {
-    if (authLoading) return
+    // 1. Resolve local user ID synchronously to start fetching immediately
+    const localUserId = authUserId || (typeof window !== 'undefined' ? (safeLocalStorageGet('levl_local_user_id') || getLocalUserId()) : null)
+
+    // Only block if we truly don't have ANY localUserId yet and auth is actively resolving
+    if (!localUserId && authLoading) return
+
+    const effectiveUserId = localUserId || 'guest_default'
+
+    // If auth state resolved a different user than what was previously loaded, force full re-fetch
+    if (lastLoadedUserIdRef.current && lastLoadedUserIdRef.current !== effectiveUserId) {
+      hasLoadedInitialCatalogRef.current = false
+    }
 
     async function loadData() {
       const reqId = ++activeDateReqIdRef.current
-      const localUserId = authUserId || safeLocalStorageGet('levl_local_user_id') || getLocalUserId()
+      lastLoadedUserIdRef.current = effectiveUserId
       window.dispatchEvent(new CustomEvent('levl_sync_start'))
 
       try {
         if (!hasLoadedInitialCatalogRef.current) {
-          if (!tasks || tasks.length === 0) {
+          const hasCachedDate = typeof window !== 'undefined' && localStorage.getItem(`levl_cached_tasks_${dateStr}`) !== null
+          const isGuest = typeof window !== 'undefined' && safeLocalStorageGet('levl_onboarding_completed') !== 'true'
+          if (!hasCachedDate && !isGuest && (!tasks || tasks.length === 0)) {
             setLoading(true)
           }
-          const userProfile = await getOrCreateUserProfile(localUserId)
+
+          // Concurrently fetch profile, tasks, outcomes, protocols, bench, and today checkin in parallel!
+          const [userProfile, currentTasks, outcomes, protocols, bench, todayCheckin] = await Promise.all([
+            getOrCreateUserProfile(effectiveUserId),
+            getDailyProtocolTasks(effectiveUserId, dateStr),
+            getOutcomeDimensions(),
+            getProtocols(),
+            getBenchItems(effectiveUserId),
+            getDailyWellbeingCheckin(effectiveUserId, dateStr)
+          ])
+
+          if (reqId !== activeDateReqIdRef.current) return
+
           const fallbackProfile: UserProfile = {
-            id: localUserId,
-            local_user_id: localUserId,
+            id: effectiveUserId,
+            local_user_id: effectiveUserId,
             sleep_schedule: { wake_time: '07:00', bed_time: '23:00' },
             outcome_preference_scores: {},
             biological_metrics: {}
           } as any
           const effectiveProfile = userProfile || fallbackProfile
-
-          const [currentTasks, outcomes, protocols, bench, todayCheckin] = await Promise.all([
-            getDailyProtocolTasks(localUserId, dateStr),
-            getOutcomeDimensions(),
-            getProtocols(),
-            getBenchItems(localUserId),
-            getDailyWellbeingCheckin(localUserId, dateStr)
-          ])
-
-          if (reqId !== activeDateReqIdRef.current) return
 
           setProfile(effectiveProfile)
           setTasks(currentTasks)
@@ -1056,7 +1073,7 @@ function TodayPageContent() {
               const cached = localStorage.getItem(`levl_cached_tasks_${dateStr}`)
               if (cached) {
                 const parsed = JSON.parse(cached)
-                if (Array.isArray(parsed) && parsed.length > 0) {
+                if (Array.isArray(parsed)) {
                   setTasks(parsed)
                   hasCached = true
                 }
@@ -1067,8 +1084,8 @@ function TodayPageContent() {
             setLoading(true)
           }
           const [currentTasks, todayCheckin] = await Promise.all([
-            getDailyProtocolTasks(localUserId, dateStr),
-            getDailyWellbeingCheckin(localUserId, dateStr)
+            getDailyProtocolTasks(effectiveUserId, dateStr),
+            getDailyWellbeingCheckin(effectiveUserId, dateStr)
           ])
 
           if (reqId !== activeDateReqIdRef.current) return

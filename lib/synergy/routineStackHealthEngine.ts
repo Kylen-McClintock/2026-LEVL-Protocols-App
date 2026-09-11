@@ -227,6 +227,62 @@ export function auditRoutineStackHealth(
   userProfile?: UserProfile | null,
   wellbeingCheckin?: DailyWellbeingCheckin | null
 ): RoutineStackHealthReport {
+  if (!activeTasks || activeTasks.length === 0) {
+    const zeroVectors: ProtocolVectorScores = {
+      heart_health: 0,
+      brain_longevity: 0,
+      metabolic_health: 0,
+      cancer_defense: 0,
+      testosterone: 0,
+      chronic_inflammation: 0,
+      bone_density: 0,
+      cellular_longevity: 0
+    }
+    const emptyFingerprint: ProtocolFingerprint = {
+      id: 'empty_stack',
+      name: 'Empty Stack',
+      creator: 'LEVL Protocols',
+      superpowers: [],
+      primaryGaps: [],
+      synergyNotes: 'No active protocol modalities scheduled.',
+      vectors: zeroVectors,
+      hallmarks: {
+        genomic_instability: 0,
+        telomere_attrition: 0,
+        epigenetic_alterations: 0,
+        loss_of_proteostasis: 0,
+        disabled_macroautophagy: 0,
+        deregulated_nutrient_sensing: 0,
+        mitochondrial_dysfunction: 0,
+        cellular_senescence: 0,
+        stem_cell_exhaustion: 0,
+        altered_intercellular_communication: 0,
+        chronic_inflammation: 0,
+        dysbiosis: 0
+      }
+    }
+    return {
+      overallScore: 100,
+      healthGrade: 'Optimal',
+      activeModalityCount: 0,
+      conflictCount: 0,
+      criticalCount: 0,
+      synergyUnlockCount: 0,
+      activeSynergyCount: 0,
+      conflicts: [],
+      synergyUnlocks: [],
+      activeSynergies: [],
+      timelineGroups: [],
+      currentRadarFingerprint: emptyFingerprint,
+      optimizedRadarFingerprint: emptyFingerprint,
+      pkCurves: [],
+      biometricProofNotes: [
+        'Continue logging your daily morning and evening wellbeing check-ins to unlock personalized correlation proof notes.'
+      ],
+      summaryMessage: 'Your daily schedule is synergistically aligned with zero timing conflicts.'
+    }
+  }
+
   // 1. Resolve active modalities and their scheduled context
   const activeTaskModalityMap: {
     task: DailyProtocolTask

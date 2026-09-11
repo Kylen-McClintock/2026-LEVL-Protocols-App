@@ -23,6 +23,10 @@ let modalitiesCache: { data: Modality[]; timestamp: number } | null = null
 let protocolsCache: { data: Protocol[]; timestamp: number } | null = null
 let protocolsWithStepsCache: { data: any[]; timestamp: number } | null = null
 let outcomeDimensionsCache: { data: OutcomeDimension[]; timestamp: number } | null = null
+let catalogMapsCache: {
+  data: { modsMap: Map<string, Modality>; stepsMap: Map<string, any>; protocolsMap: Map<string, Protocol> }
+  timestamp: number
+} | null = null
 
 function getPersistentCache<T>(key: string, maxAgeMs = CATALOG_TTL_MS): T | null {
   if (typeof window === 'undefined') return null
@@ -62,6 +66,7 @@ export function clearCatalogCache() {
   protocolsCache = null
   protocolsWithStepsCache = null
   outcomeDimensionsCache = null
+  catalogMapsCache = null
 }
 
 export function clearModalitiesCache() {
@@ -376,10 +381,15 @@ export async function getOutcomeDimensions(forceRefresh = false): Promise<Outcom
   return mergeWithCustom(data as OutcomeDimension[])
 }
 
-export async function getCatalogMaps() {
+export async function getCatalogMaps(forceRefresh = false) {
+  const now = Date.now()
+  if (!forceRefresh && catalogMapsCache && (now - catalogMapsCache.timestamp < 1000 * 60 * 5)) {
+    return catalogMapsCache.data
+  }
+
   const [modalities, protocolsWithSteps] = await Promise.all([
-    getModalities(),
-    getProtocolsWithSteps()
+    getModalities(forceRefresh),
+    getProtocolsWithSteps(forceRefresh)
   ])
 
   const modsMap = new Map<string, Modality>()
@@ -408,7 +418,9 @@ export async function getCatalogMaps() {
     }
   })
 
-  return { modsMap, stepsMap, protocolsMap }
+  const result = { modsMap, stepsMap, protocolsMap }
+  catalogMapsCache = { data: result, timestamp: now }
+  return result
 }
 
 export function sanitizeProfileTime(val: any): string | null {
@@ -1063,15 +1075,25 @@ function hydrateTasksInMemory(
   })
 }
 
-export async function getDailyProtocolTasks(localUserId: string, date: string): Promise<DailyProtocolTask[]> {
+export async function getDailyProtocolTasks(
+  localUserId: string,
+  date: string,
+  preloadedBench?: any[],
+  preloadedMaps?: { modsMap: Map<string, Modality>; stepsMap: Map<string, any>; protocolsMap: Map<string, Protocol> }
+): Promise<DailyProtocolTask[]> {
   if (!supabase) return []
 
+  const mapsPromise = preloadedMaps ? Promise.resolve(preloadedMaps) : getCatalogMaps()
+  const benchPromise = preloadedBench
+    ? Promise.resolve({ data: preloadedBench, error: null })
+    : supabase
+        .from('user_bench_items')
+        .select('modality_id, status, personal_notes, custom_dose, custom_timing, notes')
+        .eq('local_user_id', localUserId)
+
   const [{ modsMap, stepsMap, protocolsMap }, { data: benchData }, { data: rawTasks, error }] = await Promise.all([
-    getCatalogMaps(),
-    supabase
-      .from('user_bench_items')
-      .select('modality_id, status, personal_notes, custom_dose, custom_timing, notes')
-      .eq('local_user_id', localUserId),
+    mapsPromise,
+    benchPromise,
     supabase
       .from('daily_protocol_tasks')
       .select('id, local_user_id, scheduled_date, modality_id, protocol_step_id, user_protocol_instance_id, status, timing_slot, completed_at, status_reason, execution_details, execution_metrics, scheduled_time, created_at, updated_at')
