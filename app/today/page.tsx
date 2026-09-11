@@ -29,7 +29,7 @@ import { DailyProtocolTask, Modality, OutcomeDimension, UserProfile, UserBenchIt
 import { 
   format, parseISO, addDays, subDays, addMonths, subMonths, 
   isBefore, startOfDay, startOfWeek, endOfWeek, eachDayOfInterval, 
-  isSameMonth, isSameDay 
+  isSameMonth, isSameDay, startOfMonth, endOfMonth 
 } from 'date-fns'
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
@@ -308,6 +308,8 @@ function TodayPageContent() {
   const activeDateReqIdRef = useRef(0)
   const lastLoadedUserIdRef = useRef<string | null>(null)
   const tasksDateCacheRef = useRef<Map<string, DailyProtocolTask[]>>(new Map())
+  const multiDayCacheRef = useRef<Map<string, Record<string, DailyProtocolTask[]>>>(new Map())
+  const activeMultiDayReqIdRef = useRef(0)
   const loadDebounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Physical & Manual Landscape Orientation State
@@ -334,6 +336,9 @@ function TodayPageContent() {
     updateOrientation()
     window.addEventListener('resize', updateOrientation, { passive: true })
     window.addEventListener('orientationchange', updateOrientation, { passive: true })
+    if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.addEventListener) {
+      screen.orientation.addEventListener('change', updateOrientation)
+    }
     const mql = window.matchMedia('(orientation: landscape)')
     if (mql.addEventListener) {
       mql.addEventListener('change', updateOrientation)
@@ -342,6 +347,9 @@ function TodayPageContent() {
     return () => {
       window.removeEventListener('resize', updateOrientation)
       window.removeEventListener('orientationchange', updateOrientation)
+      if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.removeEventListener) {
+        screen.orientation.removeEventListener('change', updateOrientation)
+      }
       if (mql.removeEventListener) {
         mql.removeEventListener('change', updateOrientation)
       }
@@ -1203,14 +1211,48 @@ function TodayPageContent() {
         const end = endOfWeek(currentDate, { weekStartsOn: 1 })
         datesToLoad = eachDayOfInterval({ start, end }).map(d => format(d, 'yyyy-MM-dd'))
       } else if (calendarViewMode === 'month') {
-        const start = startOfWeek(startOfDay(currentDate), { weekStartsOn: 1 })
-        const end = endOfWeek(addDays(start, 35), { weekStartsOn: 1 })
+        const monthStart = startOfMonth(currentDate)
+        const monthEnd = endOfMonth(currentDate)
+        const start = startOfWeek(monthStart, { weekStartsOn: 0 })
+        const end = endOfWeek(monthEnd, { weekStartsOn: 0 })
         datesToLoad = eachDayOfInterval({ start, end }).map(d => format(d, 'yyyy-MM-dd'))
       }
 
       if (datesToLoad.length > 0) {
-        const result = await getMultiDayProtocolTasks(localUserId, datesToLoad[0], datesToLoad[datesToLoad.length - 1])
-        setMultiDayTasks(result)
+        const startDate = datesToLoad[0]
+        const endDate = datesToLoad[datesToLoad.length - 1]
+        const cacheKey = `${localUserId}_${calendarViewMode}_${startDate}_${endDate}`
+
+        // 0ms SWR instant hydration from in-memory cache or localStorage
+        const memCached = multiDayCacheRef.current.get(cacheKey)
+        if (memCached && Object.keys(memCached).length > 0) {
+          setMultiDayTasks(prev => ({ ...prev, ...memCached }))
+        } else if (typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem(`levl_cached_multiday_${cacheKey}`)
+            if (raw) {
+              const parsed = JSON.parse(raw)
+              if (parsed && Object.keys(parsed).length > 0) {
+                setMultiDayTasks(prev => ({ ...prev, ...parsed }))
+                multiDayCacheRef.current.set(cacheKey, parsed)
+              }
+            }
+          } catch (e) {}
+        }
+
+        const reqId = ++activeMultiDayReqIdRef.current
+        const result = await getMultiDayProtocolTasks(localUserId, startDate, endDate)
+        if (reqId !== activeMultiDayReqIdRef.current) return
+
+        if (result && Object.keys(result).length > 0) {
+          multiDayCacheRef.current.set(cacheKey, result)
+          setMultiDayTasks(prev => ({ ...prev, ...result }))
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(`levl_cached_multiday_${cacheKey}`, JSON.stringify(result))
+            } catch (e) {}
+          }
+        }
       }
     }
 
@@ -3294,7 +3336,7 @@ function TodayPageContent() {
                   </div>
                 </div>
               ) : (
-                <div className={isEffectiveLandscape ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "space-y-1.5" : "space-y-3")}>
+                <div className={isEffectiveLandscape ? "grid grid-cols-2 lg:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "space-y-1.5" : "space-y-3")}>
                   {tasksToRender.map(task => {
                     const mId = task.modality_id || task.protocol_step?.modality_id || ''
                     const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -3692,7 +3734,7 @@ function TodayPageContent() {
               </div>
             </div>
           ) : (
-            <div className={isEffectiveLandscape ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "space-y-1.5" : "space-y-3")}>
+            <div className={isEffectiveLandscape ? "grid grid-cols-2 lg:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "space-y-1.5" : "space-y-3")}>
               {groupTasks
                 .sort((a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0))
                 .map(task => {
@@ -3976,31 +4018,32 @@ function TodayPageContent() {
             )}
 
             {/* In-App Landscape / Rotate Toggle Button */}
-            {calendarViewMode === 'today' && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic('selection')
-                  setManualLandscape(prev => {
-                    const next = !prev
-                    if (typeof window !== 'undefined') {
-                      localStorage.setItem('levl_manual_landscape', String(next))
-                    }
-                    return next
-                  })
-                }}
-                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
-                  isEffectiveLandscape
-                    ? 'bg-purple-950/60 hover:bg-purple-900/70 border border-purple-500/40 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.2)]'
-                    : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
-                }`}
-                title={isEffectiveLandscape ? "Landscape Mode ON — Tap to switch back to Portrait single-column" : "Rotate to Landscape — Tap to switch to spacious panoramic multi-column layout (works even if phone Portrait Lock is on)"}
-                aria-label="Toggle Landscape Orientation"
-              >
-                <Columns size={13} className={isEffectiveLandscape ? "text-purple-400" : "text-slate-400"} />
-                <span>{isEffectiveLandscape ? 'Landscape' : 'Rotate'}</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('selection')
+                setManualLandscape(prev => {
+                  const next = !prev
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('levl_manual_landscape', String(next))
+                  }
+                  return next
+                })
+                if (calendarViewMode !== 'today' && calendarViewMode !== 'pulse') {
+                  setLayoutOrientation(prev => prev === 'stack' ? 'columns' : 'stack')
+                }
+              }}
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
+                isEffectiveLandscape
+                  ? 'bg-purple-950/60 hover:bg-purple-900/70 border border-purple-500/40 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.2)]'
+                  : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
+              }`}
+              title={isEffectiveLandscape ? "Landscape Mode ON — Tap to switch back to Portrait single-column" : "Rotate to Landscape — Tap to switch to spacious panoramic multi-column layout (works even if phone Portrait Lock is on)"}
+              aria-label="Toggle Landscape Orientation"
+            >
+              <Columns size={13} className={isEffectiveLandscape ? "text-purple-400" : "text-slate-400"} />
+              <span>{isEffectiveLandscape ? 'Landscape' : 'Rotate'}</span>
+            </button>
 
             {calendarViewMode !== 'today' && calendarViewMode !== 'pulse' && multiDayStats && multiDayStats.total > 0 && (
               <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center gap-1">
@@ -4552,7 +4595,7 @@ function TodayPageContent() {
                                 <span>{completedSortBy === 'chronological' ? (viewMode === 'chronological' ? formatSlotName(groupKey) : groupKey) : 'Completed Log'}</span>
                                 <span className="text-[10px] text-gray-500 font-normal">({tasksInGroup.length})</span>
                               </div>
-                              <div className={isEffectiveLandscape ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 pt-1" : (completionMode === 'fast' ? "space-y-1.5 pt-1" : "space-y-3 pt-1")}>
+                              <div className={isEffectiveLandscape ? "grid grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1" : (completionMode === 'fast' ? "space-y-1.5 pt-1" : "space-y-3 pt-1")}>
                                 {tasksInGroup.map(task => {
                                   const mId = task.modality_id || task.protocol_step?.modality_id || ''
                                   const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -4618,7 +4661,7 @@ function TodayPageContent() {
                       </div>
 
                       {isSnoozedSectionExpanded && (
-                        <div className={`${isEffectiveLandscape ? "p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3")} bg-black/40 animate-in fade-in ${!isSnoozedLast ? 'border-b border-amber-500/20' : ''}`}>
+                        <div className={`${isEffectiveLandscape ? "p-4 grid grid-cols-2 lg:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3")} bg-black/40 animate-in fade-in ${!isSnoozedLast ? 'border-b border-amber-500/20' : ''}`}>
                           {allSnoozedTasks.map(task => {
                             const mId = task.modality_id || task.protocol_step?.modality_id || ''
                             const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -4680,7 +4723,7 @@ function TodayPageContent() {
                       </div>
 
                       {isSkippedSectionExpanded && (
-                        <div className={`${isEffectiveLandscape ? "p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3")} bg-black/40 animate-in fade-in`}>
+                        <div className={`${isEffectiveLandscape ? "p-4 grid grid-cols-2 lg:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3")} bg-black/40 animate-in fade-in`}>
                           {allSkippedTasks.map(task => {
                             const mId = task.modality_id || task.protocol_step?.modality_id || ''
                             const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -5078,7 +5121,7 @@ function TodayPageContent() {
                           <div className="h-4 w-28 bg-slate-800 rounded-md" />
                           <div className="h-3 w-16 bg-slate-800/60 rounded-md" />
                         </div>
-                        <div className={isEffectiveLandscape ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5" : "space-y-2.5"}>
+                        <div className={isEffectiveLandscape ? "grid grid-cols-2 lg:grid-cols-3 gap-3.5" : "space-y-2.5"}>
                           <div className="h-20 bg-slate-950/60 border border-slate-800/60 rounded-xl" />
                           <div className="h-20 bg-slate-950/60 border border-slate-800/60 rounded-xl" />
                         </div>

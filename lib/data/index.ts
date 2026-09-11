@@ -1210,6 +1210,8 @@ export async function getDailyProtocolTasks(
   }
 }
 
+const multiDayTasksMemoryCache = new Map<string, { timestamp: number; data: Record<string, DailyProtocolTask[]> }>()
+
 export async function getMultiDayProtocolTasks(
   localUserId: string,
   startDate: string,
@@ -1217,45 +1219,93 @@ export async function getMultiDayProtocolTasks(
 ): Promise<Record<string, DailyProtocolTask[]>> {
   if (!supabase) return {}
 
-  const [{ modsMap, stepsMap, protocolsMap }, { data: benchData }, { data: rawTasks, error }] = await Promise.all([
-    getCatalogMaps(),
-    supabase
-      .from('user_bench_items')
-      .select('modality_id, status, personal_notes, custom_dose, custom_timing, notes')
-      .eq('local_user_id', localUserId),
-    supabase
-      .from('daily_protocol_tasks')
-      .select('id, local_user_id, scheduled_date, modality_id, protocol_step_id, user_protocol_instance_id, status, timing_slot, completed_at, status_reason, execution_details, execution_metrics, scheduled_time, created_at, updated_at')
-      .eq('local_user_id', localUserId)
-      .gte('scheduled_date', startDate)
-      .lte('scheduled_date', endDate)
-      .limit(10000)
-  ])
-
-  if (error) {
-    console.warn('Error fetching multi-day tasks:', error?.message || error)
-    return {}
+  const cacheKey = `${localUserId}_${startDate}_${endDate}`
+  const now = Date.now()
+  const inMemory = multiDayTasksMemoryCache.get(cacheKey)
+  if (inMemory && (now - inMemory.timestamp < 10 * 60 * 1000)) {
+    return inMemory.data
   }
 
-  const benchMap = new Map<string, { status: string; personal_notes?: string; custom_dose?: string; custom_timing?: string; notes?: string }>()
-  if (benchData) {
-    benchData.forEach((b: any) => {
-      if (b.modality_id) benchMap.set(b.modality_id, b)
-    })
+  let localCached: Record<string, DailyProtocolTask[]> | null = null
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(`levl_cached_multiday_${cacheKey}`)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+          localCached = parsed
+          multiDayTasksMemoryCache.set(cacheKey, { timestamp: now, data: parsed })
+        }
+      }
+    } catch (e) {}
   }
 
-  const hydrated = hydrateTasksInMemory(rawTasks || [], modsMap, stepsMap, protocolsMap, benchMap)
-  const map: Record<string, DailyProtocolTask[]> = {}
-
-  hydrated.forEach(task => {
-    const dStr = task.scheduled_date
-    if (dStr) {
-      if (!map[dStr]) map[dStr] = []
-      map[dStr].push(task)
-    }
+  const timeoutPromise = new Promise<{ isTimeout: true }>((resolve) => {
+    setTimeout(() => resolve({ isTimeout: true }), 4000)
   })
 
-  return map
+  try {
+    const fetchPromise = Promise.all([
+      getCatalogMaps(),
+      supabase
+        .from('user_bench_items')
+        .select('modality_id, status, personal_notes, custom_dose, custom_timing, notes')
+        .eq('local_user_id', localUserId),
+      supabase
+        .from('daily_protocol_tasks')
+        .select('id, local_user_id, scheduled_date, modality_id, protocol_step_id, user_protocol_instance_id, status, timing_slot, completed_at, status_reason, execution_details, execution_metrics, scheduled_time, created_at, updated_at')
+        .eq('local_user_id', localUserId)
+        .gte('scheduled_date', startDate)
+        .lte('scheduled_date', endDate)
+        .limit(10000)
+    ])
+
+    const raceResult: any = await Promise.race([fetchPromise, timeoutPromise])
+    if (raceResult && raceResult.isTimeout) {
+      console.warn(`[getMultiDayProtocolTasks] Remote query timed out after 4000ms for ${startDate} to ${endDate}`)
+      if (localCached) return localCached
+      return {}
+    }
+
+    const [{ modsMap, stepsMap, protocolsMap }, { data: benchData }, { data: rawTasks, error }] = raceResult
+
+    if (error) {
+      console.warn('Error fetching multi-day tasks:', error?.message || error)
+      if (localCached) return localCached
+      return {}
+    }
+
+    const benchMap = new Map<string, { status: string; personal_notes?: string; custom_dose?: string; custom_timing?: string; notes?: string }>()
+    if (benchData) {
+      benchData.forEach((b: any) => {
+        if (b.modality_id) benchMap.set(b.modality_id, b)
+      })
+    }
+
+    const hydrated = hydrateTasksInMemory(rawTasks || [], modsMap, stepsMap, protocolsMap, benchMap)
+    const map: Record<string, DailyProtocolTask[]> = {}
+
+    hydrated.forEach(task => {
+      const dStr = task.scheduled_date
+      if (dStr) {
+        if (!map[dStr]) map[dStr] = []
+        map[dStr].push(task)
+      }
+    })
+
+    multiDayTasksMemoryCache.set(cacheKey, { timestamp: Date.now(), data: map })
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`levl_cached_multiday_${cacheKey}`, JSON.stringify(map))
+      } catch (e) {}
+    }
+
+    return map
+  } catch (err) {
+    console.warn('Exception in getMultiDayProtocolTasks:', err)
+    if (localCached) return localCached
+    return {}
+  }
 }
 
 export async function getProtocolTasksHistory(localUserId: string, startDate: string, endDate: string): Promise<DailyProtocolTask[]> {

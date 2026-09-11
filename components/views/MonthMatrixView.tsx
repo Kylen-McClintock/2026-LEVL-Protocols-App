@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { DailyProtocolTask, UserProfile } from '@/lib/types'
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns'
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isToday, startOfWeek, endOfWeek, isSameMonth } from 'date-fns'
 import { Calendar } from 'lucide-react'
 import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
@@ -55,6 +55,9 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
   const monthStart = startOfMonth(currentObj)
   const monthEnd = endOfMonth(currentObj)
   const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd })
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 })
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 })
+  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
 
   const isStacked = layoutOrientation === 'stack'
 
@@ -93,15 +96,33 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
 
           {/* Month Days Matrix Grid */}
           <div className="grid grid-cols-7 gap-0.5">
-            {monthDays.map((dayObj) => {
+            {calendarDays.map((dayObj) => {
               const dStr = format(dayObj, 'yyyy-MM-dd')
               const isSelected = dStr === currentDateStr
               const isCurrentToday = isToday(dayObj)
+              const isCurrentMonth = isSameMonth(dayObj, currentObj)
 
               const rawTasks = tasksByDate[dStr] || []
               const dedupedTasks = sortTasksChronologically(dedupeTasksForColumn(rawTasks), userProfile)
               const completedCount = dedupedTasks.filter(t => t.status === 'completed').length
               const adherencePct = dedupedTasks.length > 0 ? Math.round((completedCount / dedupedTasks.length) * 100) : 0
+
+              if (!isCurrentMonth) {
+                return (
+                  <div
+                    key={dStr}
+                    onClick={() => onSelectDate(dStr)}
+                    title={`Go to ${format(dayObj, 'EEEE, MMMM d, yyyy')}`}
+                    className="p-1 sm:p-1.5 rounded-xl text-left flex flex-col justify-between min-h-[68px] sm:min-h-[84px] opacity-25 hover:opacity-60 transition-all cursor-pointer border border-slate-900/60 bg-slate-950/20"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-600">
+                        {format(dayObj, 'd')}
+                      </span>
+                    </div>
+                  </div>
+                )
+              }
 
               return (
                 <div
