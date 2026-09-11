@@ -21,6 +21,7 @@ import {
   benchEntireProtocol,
   eliminateEntireProtocol,
   getModalities,
+  createDailyTask,
   adoptTailoredProtocolStack,
   TailoredProtocolAdoptionPlan
 } from '@/lib/data'
@@ -492,18 +493,23 @@ export default function ProtocolFocusPage() {
   }, [protocol, todayTasks, benchItems, catalogModalities, profile])
 
   // Intelligent Kickstart Handler: Opens audit modal if user has existing stack, otherwise 1-click kickstarts
-  const handleEnrollClick = () => {
-    if (todayTasks.length > 0) {
-      setIsStackFitModalOpen(true)
-    } else {
-      handleInstantKickstart()
+  const handleEnrollClick = async () => {
+    try {
+      if (todayTasks.length > 0) {
+        setIsStackFitModalOpen(true)
+      } else {
+        await handleInstantKickstart()
+      }
+    } catch (err) {
+      console.warn('handleEnrollClick error, falling back to instant kickstart:', err)
+      await handleInstantKickstart()
     }
   }
 
   const handleAdoptTailoredStack = async (plan: TailoredProtocolAdoptionPlan) => {
     if (!protocol) return
     setIsProcessingAction(true)
-    const localUserId = getLocalUserId()
+    const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
     try {
       if (typeof window !== 'undefined') {
         try {
@@ -533,16 +539,35 @@ export default function ProtocolFocusPage() {
       return
     }
     setIsProcessingAction(true)
-    const localUserId = getLocalUserId()
-    await addProtocolToToday(localUserId, currentDateStr, protocol.id)
-    await reloadData()
-    setIsProcessingAction(false)
+    const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+    try {
+      const ok = await addProtocolToToday(localUserId, currentDateStr, protocol.id)
+      if (!ok) {
+        throw new Error('addProtocolToToday returned false')
+      }
+    } catch (err) {
+      console.warn('handleAddEntireProtocolToToday failed, falling back to individual tasks:', err)
+      const stepsToEnroll = protocol.steps || protocol.protocol_steps || []
+      for (const s of stepsToEnroll) {
+        const mId = s.modality_id || s.modality?.id
+        if (mId) {
+          try {
+            await createDailyTask(localUserId, currentDateStr, mId)
+          } catch (taskErr) {
+            console.warn(`Could not create fallback daily task for modality ${mId}:`, taskErr)
+          }
+        }
+      }
+    } finally {
+      await reloadData()
+      setIsProcessingAction(false)
+    }
   }
 
   const handleInstantKickstart = async () => {
     if (!protocol) return
     setIsProcessingAction(true)
-    const localUserId = getLocalUserId()
+    const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('levl_guest_instant_kickstart', 'true')
@@ -551,8 +576,29 @@ export default function ProtocolFocusPage() {
         if (influencerName) localStorage.setItem('levl_referral_influencer', influencerName)
       } catch (e) {}
     }
-    await addProtocolToToday(localUserId, currentDateStr, protocol.id)
-    router.push('/today')
+
+    try {
+      const ok = await addProtocolToToday(localUserId, currentDateStr, protocol.id)
+      if (!ok) {
+        throw new Error('addProtocolToToday returned false')
+      }
+    } catch (err) {
+      console.warn('addProtocolToToday failed or encountered constraint error, executing individual task fallback:', err)
+      const stepsToEnroll = protocol.steps || protocol.protocol_steps || []
+      for (const s of stepsToEnroll) {
+        const mId = s.modality_id || s.modality?.id
+        if (mId) {
+          try {
+            await createDailyTask(localUserId, currentDateStr, mId)
+          } catch (taskErr) {
+            console.warn(`Could not create fallback daily task for modality ${mId}:`, taskErr)
+          }
+        }
+      }
+    } finally {
+      setIsProcessingAction(false)
+      router.push('/today')
+    }
   }
 
   const handleConfirmProtocolAction = async () => {
@@ -617,13 +663,13 @@ export default function ProtocolFocusPage() {
     )
   }
 
-  const steps = protocol.steps || protocol.protocol_steps || []
+  const steps = protocol?.steps || protocol?.protocol_steps || []
   const benchedModalityIds = new Set(benchItems.map(b => b.modality_id))
   
   // Categorize steps by user enrollment status
   const evaluatedSteps = steps.map((step: any) => {
-    const mod = step.modality || {}
-    const mId = step.modality_id || mod.id
+    const mod = step?.modality || {}
+    const mId = step?.modality_id || mod?.id
     
     // Check if task scheduled for today
     const todayTask = todayTasks.find(t => 
@@ -1131,10 +1177,10 @@ export default function ProtocolFocusPage() {
         )}
 
         {/* N-of-1 EFFECTIVENESS & LONGITUDINAL ANALYSIS (For Peptide Protocols) */}
-        {(protocol.steps?.some((s: any) => s.modality?.category === 'peptide' || s.modality?.peptide_metadata?.is_peptide) || protocol.id.includes('bpc') || protocol.id.includes('cjc')) && (
+        {(protocol?.steps?.some((s: any) => s?.modality?.category === 'peptide' || s?.modality?.peptide_metadata?.is_peptide) || protocol?.id?.includes('bpc') || protocol?.id?.includes('cjc')) && (
           <PeptideEffectivenessCard
-            protocolId={protocol.id}
-            protocolName={protocol.name}
+            protocolId={protocol?.id}
+            protocolName={protocol?.name}
             tasks={todayTasks}
             checkins={checkins}
           />

@@ -80,11 +80,13 @@ import { BUILT_IN_SKIN_PROTOCOLS, ALL_BUILT_IN_SKIN_MODALITIES } from './builtIn
 import { HUBERMAN_DOAC_MODALITIES } from './hubermanDoacModalities'
 import { ALL_HUBERMAN_DOAC_PROTOCOLS, HUBERMAN_DOAC_MASTER_PROTOCOL, HUBERMAN_SUB_PROTOCOLS } from './hubermanDoacProtocol'
 import { BUILT_IN_FUNCTIONAL_PROTOCOLS, ALL_BUILT_IN_FUNCTIONAL_MODALITIES } from './builtInFunctionalProtocols'
+import { BUILT_IN_CANONICAL_PROTOCOLS, ALL_CANONICAL_MODALITIES } from './builtInCanonicalProtocols'
 import { getSkinCyclePhaseForDate, isSkinModalityActiveOnDate } from '../calendar/skinCyclingEngine'
 
-export { HUBERMAN_DOAC_MODALITIES, HUBERMAN_DOAC_MASTER_PROTOCOL, HUBERMAN_SUB_PROTOCOLS, ALL_HUBERMAN_DOAC_PROTOCOLS, BUILT_IN_FUNCTIONAL_PROTOCOLS, ALL_BUILT_IN_FUNCTIONAL_MODALITIES }
+export { HUBERMAN_DOAC_MODALITIES, HUBERMAN_DOAC_MASTER_PROTOCOL, HUBERMAN_SUB_PROTOCOLS, ALL_HUBERMAN_DOAC_PROTOCOLS, BUILT_IN_FUNCTIONAL_PROTOCOLS, ALL_BUILT_IN_FUNCTIONAL_MODALITIES, BUILT_IN_CANONICAL_PROTOCOLS, ALL_CANONICAL_MODALITIES }
 
 const ALL_BUILT_IN_PROTOCOLS = [
+  ...BUILT_IN_CANONICAL_PROTOCOLS,
   ...BUILT_IN_TRAINING_PROTOCOLS, 
   ...BUILT_IN_PEPTIDE_PROTOCOLS,
   ...BUILT_IN_SKIN_PROTOCOLS,
@@ -95,6 +97,15 @@ const ALL_BUILT_IN_PROTOCOLS = [
 function getBuiltInModalities(): Modality[] {
   const seen = new Set<string>()
   const mods: Modality[] = []
+
+  // 0. Canonical built-in longevity modalities (Attia, Blueprint, Patrick, Sinclair)
+  ALL_CANONICAL_MODALITIES.forEach(m => {
+    const key = (m.id || '').toLowerCase()
+    if (key && !seen.has(key)) {
+      seen.add(key)
+      mods.push(m)
+    }
+  })
 
   // 1. Built-in skin modalities list
   ALL_BUILT_IN_SKIN_MODALITIES.forEach(m => {
@@ -141,7 +152,7 @@ function getBuiltInModalities(): Modality[] {
     }
   })
 
-  // 3. Modalities from built-in protocols
+  // 6. Modalities from built-in protocols
   ALL_BUILT_IN_PROTOCOLS.forEach(p => {
     ;(p.steps || []).forEach(s => {
       if (s.modality) {
@@ -843,7 +854,13 @@ export async function getBenchProtocols(localUserId: string): Promise<any[]> {
   return data
 }
 
-export async function addToBench(localUserId: string, modalityId: string, protocolId?: string) {
+export async function addToBench(
+  localUserId: string, 
+  modalityId: string, 
+  protocolId?: string, 
+  modalityData?: Partial<Modality>,
+  overrides?: { customDose?: string; customTiming?: string; notes?: string }
+) {
   if (!supabase) return null
 
   // Check if modality is already on bench to prevent duplicates
@@ -855,18 +872,74 @@ export async function addToBench(localUserId: string, modalityId: string, protoc
     .limit(1)
 
   if (existing && existing.length > 0) {
+    if (overrides && (overrides.customDose || overrides.customTiming || overrides.notes)) {
+      await supabase
+        .from('user_bench_items')
+        .update({
+          ...(overrides.customDose !== undefined ? { custom_dose: overrides.customDose } : {}),
+          ...(overrides.customTiming !== undefined ? { custom_timing: overrides.customTiming } : {}),
+          ...(overrides.notes !== undefined ? { notes: overrides.notes } : {}),
+        })
+        .eq('id', existing[0].id)
+    }
     return existing[0]
+  }
+
+  // Ensure modality exists in remote modalities table so foreign key constraint passes
+  try {
+    const { data: modInDb } = await supabase
+      .from('modalities')
+      .select('id')
+      .eq('id', modalityId)
+      .maybeSingle()
+
+    if (!modInDb) {
+      const allBuiltIns = getBuiltInModalities()
+      const matchedMod = allBuiltIns.find(m => m.id === modalityId || m.slug === modalityId) || modalityData
+      const cleanName = matchedMod?.name || matchedMod?.display_name || modalityId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      const slug = matchedMod?.slug || modalityId.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
+      await supabase
+        .from('modalities')
+        .upsert({
+          id: modalityId,
+          slug,
+          name: cleanName,
+          display_name: matchedMod?.display_name || cleanName,
+          category: matchedMod?.category || 'lifestyle',
+          modality_type: matchedMod?.modality_type || 'lifestyle',
+          status: 'active',
+          brief_description: matchedMod?.brief_description || '',
+          headline_benefit: matchedMod?.headline_benefit || '',
+          primary_outcome: matchedMod?.primary_outcome || 'General Longevity',
+          dose_or_exposure: matchedMod?.dose_or_exposure || '',
+          timing_summary: matchedMod?.timing_summary || 'anytime'
+        }, { onConflict: 'id', ignoreDuplicates: true })
+    }
+  } catch (syncErr) {
+    console.warn('Modality existence check warning in addToBench:', syncErr)
   }
 
   const { data, error } = await supabase
     .from('user_bench_items')
-    .insert([{ local_user_id: localUserId, modality_id: modalityId, protocol_id: protocolId }])
+    .insert([{ 
+      local_user_id: localUserId, 
+      modality_id: modalityId, 
+      protocol_id: protocolId,
+      custom_dose: overrides?.customDose || '',
+      custom_timing: overrides?.customTiming || '',
+      notes: overrides?.notes || ''
+    }])
     .select()
     .single()
 
   if (error) {
     console.error('Error adding to bench:', error)
     return null
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('levl_bench_updated'))
   }
   return data
 }
@@ -1403,7 +1476,14 @@ export async function processSnoozedTasksRollover(localUserId: string, currentDa
   }
 }
 
-export async function createDailyTask(localUserId: string, date: string, modalityId: string, archetype?: string) {
+export async function createDailyTask(
+  localUserId: string, 
+  date: string, 
+  modalityId: string, 
+  archetype?: string,
+  customDose?: string,
+  customTimingSlot?: string
+) {
   if (!supabase) return null
 
   // 1. Fetch and resolve the modality object reliably (DB + in-memory cache + built-in library)
@@ -1492,8 +1572,8 @@ export async function createDailyTask(localUserId: string, date: string, modalit
     }
   }
 
-  let timing_slot = resolveOptimalTimingSlot(modality, null, archetype || 'anytime')
-  if (modality) {
+  let timing_slot = customTimingSlot || resolveOptimalTimingSlot(modality, null, archetype || 'anytime')
+  if (!customTimingSlot && modality) {
     const isSupplement = modality.category?.toLowerCase().includes('supplement') || 
                          modality.modality_type?.toLowerCase() === 'supplement'
     if (isSupplement && (timing_slot === 'morning' || timing_slot === 'anytime')) {
@@ -1557,7 +1637,8 @@ export async function createDailyTask(localUserId: string, date: string, modalit
         scheduled_date: targetDateStr, 
         modality_id: effectiveModalityId, 
         timing_slot: timing_slot,
-        status: 'pending'
+        status: 'pending',
+        ...(customDose ? { execution_details: { custom_dose: customDose } } : {})
       })
     }
   })
@@ -1570,7 +1651,8 @@ export async function createDailyTask(localUserId: string, date: string, modalit
       .update({
         status: 'pending',
         timing_slot: timing_slot,
-        status_reason: null
+        status_reason: null,
+        ...(customDose ? { execution_details: { custom_dose: customDose } } : {})
       })
       .in('id', idsToReactivate)
   }

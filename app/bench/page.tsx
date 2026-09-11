@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef, Suspense } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
-import { getBenchItems, getBenchProtocols, createDailyTask, addProtocolToToday, removeFromBench, getOrCreateUserProfile, getDraftModalities, getDraftProtocols, getProtocols, getDailyProtocolTasks } from '@/lib/data'
+import { getBenchItems, getBenchProtocols, createDailyTask, addProtocolToToday, removeFromBench, getOrCreateUserProfile, getDraftModalities, getDraftProtocols, getProtocols, getDailyProtocolTasks, addToBench } from '@/lib/data'
 import { UserBenchItem, UserProfile, Modality, Protocol } from '@/lib/types'
-import { Bookmark, Plus, Sparkles, HelpCircle, Clock, Zap, Calendar } from 'lucide-react'
+import { Bookmark, Plus, Sparkles, HelpCircle, Clock, Zap, Calendar, CheckCircle2, X } from 'lucide-react'
 import BenchCard from '@/components/cards/BenchCard'
 import ProtocolCard from '@/components/cards/ProtocolCard'
 import DraftCard from '@/components/cards/DraftCard'
@@ -18,7 +19,18 @@ import { getMacroCategory, MACRO_CATEGORIES, getColorForProtocol } from '@/lib/u
 import { calculateNextBestAction } from '@/lib/ranking/nextBestAction'
 import { format } from 'date-fns'
 
-export default function BenchPage() {
+interface PendingImportProtocol {
+  title: string
+  items: Array<{
+    modalityId: string
+    displayName: string
+    slot: string
+    dose: string
+  }>
+}
+
+function BenchPageContent() {
+  const searchParams = useSearchParams()
   const { localUserId: authUserId, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [items, setItems] = useState<UserBenchItem[]>([])
@@ -36,6 +48,11 @@ export default function BenchPage() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorItem, setEditorItem] = useState<Modality | Protocol | null>(null)
   const [editorType, setEditorType] = useState<'modality' | 'protocol'>('modality')
+
+  const [pendingProtocolImport, setPendingProtocolImport] = useState<PendingImportProtocol | null>(null)
+  const [importFeedback, setImportFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const hasProcessedParamsRef = useRef(false)
 
   const load = async () => {
     window.dispatchEvent(new CustomEvent('levl_sync_start'))
@@ -133,6 +150,62 @@ export default function BenchPage() {
 
     load()
 
+    // Process inbound URL imports from LongevityReviews
+    if (!hasProcessedParamsRef.current) {
+      const addModalityParam = searchParams.get('addModality')
+      const nameParam = searchParams.get('name')
+      const importParam = searchParams.get('import')
+
+      if (addModalityParam) {
+        hasProcessedParamsRef.current = true
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', window.location.pathname)
+        }
+        const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+        const cleanName = nameParam || addModalityParam.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+
+        addToBench(localUserId, addModalityParam, undefined, { name: cleanName, display_name: cleanName })
+          .then(() => {
+            setImportFeedback({
+              type: 'success',
+              message: `Added ${cleanName} to your Bench from LongevityReviews!`
+            })
+            load()
+          })
+          .catch(err => {
+            console.error('Error importing modality to bench:', err)
+          })
+      } else if (importParam === 'custom_protocol') {
+        hasProcessedParamsRef.current = true
+        const titleParam = searchParams.get('title') || 'Custom Protocol'
+        const modalitiesParam = searchParams.get('modalities') || ''
+        const slotsParam = searchParams.get('slots') || ''
+        const dosesParam = searchParams.get('doses') || ''
+
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', window.location.pathname)
+        }
+
+        const rawMods = modalitiesParam.split(',').map(m => m.trim()).filter(Boolean)
+        const rawSlots = slotsParam ? slotsParam.split(',').map(s => s.trim()) : []
+        const rawDoses = dosesParam ? dosesParam.split('||').map(d => d.trim()) : []
+
+        if (rawMods.length > 0) {
+          const parsedItems = rawMods.map((modId, idx) => ({
+            modalityId: modId,
+            displayName: modId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            slot: rawSlots[idx] || 'anytime',
+            dose: rawDoses[idx] || ''
+          }))
+
+          setPendingProtocolImport({
+            title: titleParam,
+            items: parsedItems
+          })
+        }
+      }
+    }
+
     const handleRefresh = () => {
       load()
     }
@@ -142,7 +215,66 @@ export default function BenchPage() {
       window.removeEventListener('levl_auth_user_changed', handleRefresh)
       window.removeEventListener('levl_bench_updated', handleRefresh)
     }
-  }, [authUserId])
+  }, [authUserId, searchParams])
+
+  const handleImportProtocolToBench = async () => {
+    if (!pendingProtocolImport) return
+    setIsImporting(true)
+    const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+
+    try {
+      for (const item of pendingProtocolImport.items) {
+        await addToBench(
+          localUserId, 
+          item.modalityId, 
+          undefined, 
+          { name: item.displayName, display_name: item.displayName },
+          { customDose: item.dose, customTiming: item.slot }
+        )
+      }
+      setImportFeedback({
+        type: 'success',
+        message: `Successfully added ${pendingProtocolImport.items.length} modalities from "${pendingProtocolImport.title}" to your Bench!`
+      })
+      setPendingProtocolImport(null)
+      await load()
+    } catch (err) {
+      console.error('Error importing protocol to bench:', err)
+      setImportFeedback({
+        type: 'error',
+        message: 'Could not complete import. Please try again.'
+      })
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  const handleImportProtocolToToday = async () => {
+    if (!pendingProtocolImport) return
+    setIsImporting(true)
+    const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+    const todayStr = format(new Date(), 'yyyy-MM-dd')
+
+    try {
+      for (const item of pendingProtocolImport.items) {
+        await createDailyTask(localUserId, todayStr, item.modalityId, undefined, item.dose, item.slot)
+      }
+      setImportFeedback({
+        type: 'success',
+        message: `Successfully scheduled "${pendingProtocolImport.title}" (${pendingProtocolImport.items.length} items) into Today's routine!`
+      })
+      setPendingProtocolImport(null)
+      await load()
+    } catch (err) {
+      console.error('Error importing protocol to today:', err)
+      setImportFeedback({
+        type: 'error',
+        message: 'Could not complete import to today. Please try again.'
+      })
+    } finally {
+      setIsImporting(false)
+    }
+  }
 
   const handleAddToToday = async (modalityId: string) => {
     const localUserId = authUserId || getLocalUserId()
@@ -243,6 +375,27 @@ export default function BenchPage() {
           </button>
         </div>
       </header>
+
+      {/* LongevityReviews Inbound Import Feedback Banner */}
+      {importFeedback && (
+        <div className={`mb-5 p-3.5 rounded-xl border flex items-center justify-between gap-3 text-sm animate-in fade-in slide-in-from-top-2 duration-200 ${
+          importFeedback.type === 'success' 
+            ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200 shadow-lg shadow-emerald-950/30' 
+            : 'bg-red-950/60 border-red-500/40 text-red-200 shadow-lg shadow-red-950/30'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 size={18} className={importFeedback.type === 'success' ? 'text-emerald-400 shrink-0' : 'text-red-400 shrink-0'} />
+            <span className="font-medium">{importFeedback.message}</span>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setImportFeedback(null)}
+            className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
 
       {activeTab === 'modalities' && (
         <>
@@ -520,6 +673,85 @@ export default function BenchPage() {
         todayTasks={[]}
         onLogged={load}
       />
+
+      {/* LongevityReviews 1-Click Protocol Import Modal */}
+      {pendingProtocolImport && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-levl-surface border border-levl-border rounded-2xl p-6 max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+            <button 
+              type="button"
+              onClick={() => setPendingProtocolImport(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-levl-text-secondary hover:text-white hover:bg-levl-surface-highlight transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                <Sparkles size={22} />
+              </div>
+              <div>
+                <span className="text-[11px] uppercase tracking-wider text-purple-400 font-semibold">LongevityReviews Import</span>
+                <h2 className="text-lg font-bold text-white leading-tight">{pendingProtocolImport.title}</h2>
+              </div>
+            </div>
+
+            <p className="text-xs text-levl-text-secondary mb-4">
+              This protocol includes <strong className="text-white">{pendingProtocolImport.items.length} modalities</strong> exported from LongevityReviews.org:
+            </p>
+
+            <div className="max-h-56 overflow-y-auto space-y-2 pr-1 mb-6 border border-white/5 rounded-xl p-2.5 bg-black/30">
+              {pendingProtocolImport.items.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-levl-surface/60 border border-white/5 text-xs">
+                  <div className="font-medium text-white truncate max-w-[210px]">
+                    {item.displayName}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {item.dose && (
+                      <span className="px-2 py-0.5 rounded bg-levl-accent/15 border border-levl-accent/30 text-levl-accent font-mono text-[10px]">
+                        {item.dose}
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-gray-300 text-[10px] capitalize">
+                      {item.slot.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={handleImportProtocolToBench}
+                disabled={isImporting}
+                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs transition-colors shadow-lg shadow-purple-600/20 disabled:opacity-50 cursor-pointer"
+              >
+                <Bookmark size={15} />
+                {isImporting ? 'Importing...' : 'Add All to Bench'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleImportProtocolToToday}
+                disabled={isImporting}
+                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-levl-accent hover:bg-levl-accent/90 text-black font-semibold text-xs transition-colors shadow-lg shadow-levl-accent/20 disabled:opacity-50 cursor-pointer"
+              >
+                <Calendar size={15} />
+                {isImporting ? 'Scheduling...' : "Add to Today's Routine"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+export default function BenchPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">Loading bench...</div>}>
+      <BenchPageContent />
+    </Suspense>
   )
 }

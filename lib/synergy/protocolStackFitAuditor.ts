@@ -469,7 +469,8 @@ function normalizeString(str?: string): string {
   return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
-export function findModalityCluster(modality: Modality | { id: string; name?: string }): FunctionalModalityCluster | null {
+export function findModalityCluster(modality?: Modality | { id?: string; name?: string } | null): FunctionalModalityCluster | null {
+  if (!modality || !modality.id) return null
   const normId = normalizeString(modality.id)
   const normName = normalizeString((modality as any).name || (modality as any).display_name || '')
 
@@ -494,9 +495,10 @@ export function findModalityCluster(modality: Modality | { id: string; name?: st
 }
 
 export function getModalityRankInCluster(
-  modality: Modality | { id: string; name?: string },
-  cluster: FunctionalModalityCluster
+  modality?: Modality | { id?: string; name?: string } | null,
+  cluster?: FunctionalModalityCluster | null
 ): { tier: number; evidenceGrade: string; title: string; clinicalDelta: string; mechanism: string; preferredSlot?: string } | null {
+  if (!modality || !modality.id || !cluster) return null
   const normId = normalizeString(modality.id)
   const normName = normalizeString((modality as any).name || (modality as any).display_name || '')
 
@@ -577,16 +579,40 @@ export function auditProtocolStackFit(
   allModalities: Modality[] = [],
   userProfile?: UserProfile | null
 ): ProtocolStackFitAuditResult {
-  const hasExistingStack = (existingTasks && existingTasks.length > 0) || (benchItems && benchItems.some(b => b.status === 'active'))
+  const emptyResult: ProtocolStackFitAuditResult = {
+    hasExistingStack: false,
+    totalProtocolSteps: 0,
+    alreadyCovered: [],
+    upgrades: [],
+    conflicts: [],
+    synergisticAdditions: [],
+    netDelta: {
+      addedDailyMinutes: 0,
+      vectorScoresDelta: [],
+      topGainingVector: 'Brain Longevity',
+      topGainPoints: 0,
+      summaryText: '0m tailored daily habit investment.'
+    },
+    suggestedActionsSummary: {
+      additionsCount: 0,
+      upgradesCount: 0,
+      conflictsAutoResolvedCount: 0,
+      coveredCount: 0
+    }
+  }
+
+  if (!protocol) return emptyResult
+
+  const hasExistingStack = (existingTasks && existingTasks.length > 0) || (benchItems && benchItems.some(b => b && b.status === 'active'))
 
   // 1. Gather all active modalities currently in the user's stack
   const activeUserModalities: { id: string; name: string; timingSlot: string; modality?: Modality }[] = []
 
-  existingTasks.forEach(task => {
-    if (task.status === 'skipped') return
+  existingTasks?.forEach(task => {
+    if (!task || task.status === 'skipped') return
     const modId = task.modality_id
     if (!modId) return
-    const resolvedMod = allModalities.find(m => m.id === modId) || task.loose_modality || task.protocol_step?.modality || (task as any).modality
+    const resolvedMod = allModalities?.find(m => m && m.id === modId) || task.loose_modality || task.protocol_step?.modality || (task as any).modality
     activeUserModalities.push({
       id: modId,
       name: resolvedMod?.display_name || resolvedMod?.name || (task as any).custom_name || modId,
@@ -595,11 +621,11 @@ export function auditProtocolStackFit(
     })
   })
 
-  benchItems.forEach(bench => {
-    if (bench.status !== 'active') return
+  benchItems?.forEach(bench => {
+    if (!bench || bench.status !== 'active') return
     const modId = bench.modality_id
     if (!modId) return
-    const resolvedMod = allModalities.find(m => m.id === modId) || bench.modality
+    const resolvedMod = allModalities?.find(m => m && m.id === modId) || bench.modality
     if (!activeUserModalities.some(u => u.id === modId)) {
       activeUserModalities.push({
         id: modId,
@@ -611,7 +637,9 @@ export function auditProtocolStackFit(
   })
 
   // 2. Resolve protocol steps and their modalities
-  const protocolSteps: any[] = protocol?.steps || protocol?.protocol_steps || []
+  const protocolSteps: any[] = Array.isArray(protocol?.steps)
+    ? protocol.steps
+    : (Array.isArray(protocol?.protocol_steps) ? protocol.protocol_steps : [])
   const protocolConstituents: {
     modality: Modality
     step: any
@@ -619,15 +647,31 @@ export function auditProtocolStackFit(
   }[] = []
 
   protocolSteps.forEach(step => {
+    if (!step) return
     const modId = step.modality_id || step.modality?.id
     if (!modId) return
-    const resolvedMod = step.modality || allModalities.find(m => m.id === modId) || {
+
+    const rawMod = step.modality || allModalities?.find(m => m && (m.id === modId || m.slug === modId)) || null
+
+    const safeFunctionalOutcomes = rawMod?.functional_outcomes_to_track
+      ? (Array.isArray(rawMod.functional_outcomes_to_track)
+          ? rawMod.functional_outcomes_to_track
+          : (typeof rawMod.functional_outcomes_to_track === 'string'
+              ? (rawMod.functional_outcomes_to_track as string).replace(/[{}]/g, '').split(',').map((s: string) => s.trim()).filter(Boolean)
+              : []))
+      : []
+
+    const resolvedMod: Modality = rawMod ? {
+      ...rawMod,
+      functional_outcomes_to_track: safeFunctionalOutcomes
+    } : {
       id: modId,
       name: step.name || modId.replace(/_/g, ' '),
       display_name: step.name || modId.replace(/_/g, ' '),
       category: 'lifestyle',
-      timing_summary: step.timing_slot || 'morning'
-    }
+      timing_summary: step.timing_slot || 'morning',
+      functional_outcomes_to_track: safeFunctionalOutcomes
+    } as Modality
 
     protocolConstituents.push({
       modality: resolvedMod,
@@ -643,6 +687,7 @@ export function auditProtocolStackFit(
   const synergisticAdditions: SynergisticAdditionItem[] = []
 
   protocolConstituents.forEach(({ modality: incomingMod, step, timingSlot }) => {
+    if (!incomingMod) return
     const normIncomingId = normalizeString(incomingMod.id)
     const normIncomingName = normalizeString(incomingMod.name || incomingMod.display_name || '')
 
@@ -754,10 +799,10 @@ export function auditProtocolStackFit(
             recommendedTimingSlot: upgradeSlot,
             conflictWarning: conflictNotice,
             studies: incomingMod.scientific_references?.map(r => ({
-              title: r.title,
-              url: r.url,
-              pmid: r.pmid
-            })),
+              title: r?.title || '',
+              url: r?.url || '',
+              pmid: r?.pmid
+            })) || [],
             defaultAction: 'upgrade'
           })
           return
@@ -875,10 +920,14 @@ export function auditProtocolStackFit(
   
   // Model the projected stack: current mods minus upgraded old mods plus new additions and upgraded mods
   const upgradedOldIds = new Set(upgrades.map(u => u.currentModalityId))
-  const projectedModsList = currentModsList.filter(m => !upgradedOldIds.has(m.id))
+  const projectedModsList = currentModsList.filter(m => m && !upgradedOldIds.has(m.id))
   
-  upgrades.forEach(u => projectedModsList.push(u.upgradedModality))
-  synergisticAdditions.forEach(a => projectedModsList.push(a.modality))
+  upgrades.forEach(u => {
+    if (u?.upgradedModality) projectedModsList.push(u.upgradedModality)
+  })
+  synergisticAdditions.forEach(a => {
+    if (a?.modality) projectedModsList.push(a.modality)
+  })
 
   const vectorScoresDelta: NetLongevityDelta['vectorScoresDelta'] = []
   let topGainingVector = 'Brain Longevity'
