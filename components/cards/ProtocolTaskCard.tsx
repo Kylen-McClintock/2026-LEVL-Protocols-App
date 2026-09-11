@@ -13,6 +13,7 @@ import CustomizeModalityOutcomesModal from '../modals/CustomizeModalityOutcomesM
 import { addToBench, moveModalityToBench, eliminateModality, getBenchItem, saveOutcomeObservation, getTaskOutcomeObservations, upsertBenchItemOverride, updateTaskExecutionDetails, reconcileModalityScheduleAndFutureTasks } from '@/lib/data'
 import { ELIMINATION_REASON_OPTIONS } from '../views/ExpandedModalityDetailBanner'
 import { ModalityExecutionGuide } from '../modals/ModalityExecutionGuide'
+import { ModalitySafetyCard } from './ModalitySafetyCard'
 import { getModalityVideoInfo } from '@/lib/data/modalityVideos'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { UserBenchItem, OutcomeDimension, UserProfile, DailyWellbeingCheckin } from '@/lib/types'
@@ -3599,6 +3600,13 @@ export default function ProtocolTaskCard({
                   />
                 )
               })()}
+
+              {/* Dedicated Safety: Considerations and Risks Section (Collapsed by Default) */}
+              <ModalitySafetyCard
+                modality={modality}
+                userProfile={userProfile}
+                defaultOpen={false}
+              />
 
               {/* Main Actions */}
               <div className="grid grid-cols-2 gap-2 mb-3">

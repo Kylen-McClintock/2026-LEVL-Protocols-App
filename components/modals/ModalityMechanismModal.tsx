@@ -17,6 +17,7 @@ import {
   ShieldCheck
 } from 'lucide-react'
 import { ModalityMechanismDetail } from '@/lib/calendar/pulseOptimizationEngine'
+import { ModalitySafetyCard } from '@/components/cards/ModalitySafetyCard'
 
 interface ModalityMechanismModalProps {
   isOpen: boolean
@@ -192,7 +193,20 @@ export default function ModalityMechanismModal({
             )}
           </div>
 
-          {/* Section 5: PEER-REVIEWED RESEARCH CITATION */}
+          {/* Section 5: SAFETY: CONSIDERATIONS AND RISKS (Collapsed by default) */}
+          <ModalitySafetyCard
+            modality={{
+              id: detail.id,
+              name: detail.name,
+              slug: detail.id,
+              status: 'active',
+              temperature: detail.temperature,
+              dose_or_exposure: detail.exactDoseOrExposure
+            } as any}
+            defaultOpen={false}
+          />
+
+          {/* Section 6: PEER-REVIEWED RESEARCH CITATION */}
           <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2 text-xs text-slate-400 min-w-0">
               <BookOpen size={14} className="text-cyan-400 shrink-0" />

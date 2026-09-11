@@ -14,6 +14,7 @@ import { ModalityExecutionGuide } from '@/components/modals/ModalityExecutionGui
 import { getModalityVideoInfo } from '@/lib/data/modalityVideos'
 import MedicalDisclaimerBanner from '@/components/ui/MedicalDisclaimerBanner'
 import ModalityLongevityDrawer from '@/components/cards/ModalityLongevityDrawer'
+import { ModalitySafetyCard } from '@/components/cards/ModalitySafetyCard'
 
 export const ELIMINATION_REASON_OPTIONS = [
   { id: 'time', label: 'Too Time-Consuming / Schedule Conflict', icon: '⏰' },
@@ -458,6 +459,12 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
           )}
         </div>
       )}
+
+      {/* Dedicated Safety: Considerations and Risks Section (Collapsed by Default) */}
+      <ModalitySafetyCard
+        modality={mod}
+        defaultOpen={false}
+      />
 
       {/* Full Geek Mode Science & PubMed Literature Section */}
       <div className="border-t border-slate-800 pt-2 space-y-3">
