@@ -824,6 +824,19 @@ export async function getBenchItems(localUserId: string): Promise<UserBenchItem[
   const allMods = await getModalities()
   const modsMap = new Map(allMods.map(m => [m.id, m]))
 
+  // Resilient check: if any modality IDs are missing from modsMap, fetch directly from Supabase
+  const missingModIds = Array.from(new Set(items.filter(i => i.modality_id && !modsMap.has(i.modality_id)).map(i => i.modality_id as string)))
+  if (missingModIds.length > 0) {
+    try {
+      const { data: remoteMods } = await supabase.from('modalities').select('*').in('id', missingModIds)
+      if (remoteMods) {
+        remoteMods.forEach(m => modsMap.set(m.id, m))
+      }
+    } catch (e) {
+      console.warn('Error fetching missing modalities in getBenchItems:', e)
+    }
+  }
+
   const deduplicatedItems: UserBenchItem[] = []
   const seenModalityIds = new Set<string>()
 
@@ -831,11 +844,27 @@ export async function getBenchItems(localUserId: string): Promise<UserBenchItem[
     if (!item.modality_id) return
     if (seenModalityIds.has(item.modality_id)) return
 
-    if (modsMap.has(item.modality_id)) {
-      item.modality = modsMap.get(item.modality_id)
-      seenModalityIds.add(item.modality_id)
-      deduplicatedItems.push(item)
+    let mod = modsMap.get(item.modality_id)
+    if (!mod) {
+      const cleanName = item.modality_id.replace(/_/g, ' ').replace(/w/g, c => c.toUpperCase())
+      mod = {
+        id: item.modality_id,
+        slug: item.modality_id,
+        name: cleanName,
+        display_name: cleanName,
+        category: 'lifestyle',
+        modality_type: 'lifestyle',
+        status: 'active',
+        brief_description: '',
+        headline_benefit: '',
+        primary_outcome: 'General Longevity',
+        dose_or_exposure: item.custom_dose || '',
+        timing_summary: item.custom_timing || 'anytime'
+      } as Modality
     }
+    item.modality = mod
+    seenModalityIds.add(item.modality_id)
+    deduplicatedItems.push(item)
   })
 
   return deduplicatedItems
@@ -878,7 +907,7 @@ export async function addToBench(
         .update({
           ...(overrides.customDose !== undefined ? { custom_dose: overrides.customDose } : {}),
           ...(overrides.customTiming !== undefined ? { custom_timing: overrides.customTiming } : {}),
-          ...(overrides.notes !== undefined ? { notes: overrides.notes } : {}),
+          ...(overrides.notes !== undefined ? { personal_notes: overrides.notes } : {}),
         })
         .eq('id', existing[0].id)
     }
@@ -928,7 +957,7 @@ export async function addToBench(
       protocol_id: protocolId,
       custom_dose: overrides?.customDose || '',
       custom_timing: overrides?.customTiming || '',
-      notes: overrides?.notes || ''
+      personal_notes: overrides?.notes || ''
     }])
     .select()
     .single()
@@ -938,6 +967,8 @@ export async function addToBench(
     return null
   }
 
+  clearCatalogCache()
+  modalitiesCache = null
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('levl_bench_updated'))
   }
@@ -4309,7 +4340,7 @@ export async function updateBenchItemOverride(id: string, customDose?: string, c
   const updatePayload: any = {}
   if (customDose !== undefined && customDose !== '') updatePayload.custom_dose = customDose
   if (customTiming !== undefined && customTiming !== '') updatePayload.custom_timing = customTiming
-  if (notes !== undefined) updatePayload.notes = notes
+  if (notes !== undefined) updatePayload.personal_notes = notes
 
   const { data, error } = await supabase
     .from('user_bench_items')

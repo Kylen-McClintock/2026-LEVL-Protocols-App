@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
-import { getBenchItems, getBenchProtocols, createDailyTask, addProtocolToToday, removeFromBench, getOrCreateUserProfile, getDraftModalities, getDraftProtocols, getProtocols, getDailyProtocolTasks, addToBench } from '@/lib/data'
+import { getBenchItems, getBenchProtocols, createDailyTask, addProtocolToToday, removeFromBench, getOrCreateUserProfile, getDraftModalities, getDraftProtocols, getProtocols, getDailyProtocolTasks, addToBench, createManualProtocol } from '@/lib/data'
 import { UserBenchItem, UserProfile, Modality, Protocol } from '@/lib/types'
 import { Bookmark, Plus, Sparkles, HelpCircle, Clock, Zap, Calendar, CheckCircle2, X } from 'lucide-react'
 import BenchCard from '@/components/cards/BenchCard'
@@ -181,6 +181,7 @@ function BenchPageContent() {
         const modalitiesParam = searchParams.get('modalities') || ''
         const slotsParam = searchParams.get('slots') || ''
         const dosesParam = searchParams.get('doses') || ''
+        const goalParam = searchParams.get('goal') || ''
 
         if (typeof window !== 'undefined') {
           window.history.replaceState({}, '', window.location.pathname)
@@ -195,6 +196,7 @@ function BenchPageContent() {
 
           ;(async () => {
             try {
+              // 1. Add each modality to bench
               for (let idx = 0; idx < rawMods.length; idx++) {
                 const modId = rawMods[idx]
                 const cleanName = modId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -209,9 +211,28 @@ function BenchPageContent() {
                   { customDose: dose, customTiming: slot }
                 )
               }
+
+              // 2. Also register protocol draft so it appears under 'My Protocols' and 'Custom & Drafts'
+              const stepsToCreate = rawMods.map((modId, idx) => ({
+                modality_id: modId,
+                timing_slot: rawSlots[idx] || 'morning',
+                dose_text: rawDoses[idx] || '',
+                notes: ''
+              }))
+              await createManualProtocol(
+                localUserId,
+                {
+                  name: titleParam,
+                  description: goalParam ? `Evidence-based protocol imported from LongevityReviews for goal: ${goalParam}` : 'Imported from LongevityReviews evidence consultation.',
+                  primary_goal: goalParam || 'Longevity', protocol_type: 'source_imported'
+                },
+                stepsToCreate
+              )
+
+              setActiveTab('modalities')
               setImportFeedback({
                 type: 'success',
-                message: `Imported ${titleParam} from LongevityReviews!`
+                message: `Imported ${titleParam} (${rawMods.length} modalities) from LongevityReviews!`
               })
               await load()
             } catch (err) {
@@ -222,8 +243,7 @@ function BenchPageContent() {
               })
             }
           })()
-        }
-      }
+        }      }
     }
 
     const handleRefresh = () => {
