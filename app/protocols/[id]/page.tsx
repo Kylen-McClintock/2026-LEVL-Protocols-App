@@ -729,26 +729,7 @@ export default function ProtocolFocusPage() {
     }
   })
 
-  const groupedTimelineSteps = useMemo(() => {
-    const groups: Record<PhysiologicalWindow['id'], any[]> = {
-      morning_fasted: [],
-      afternoon_meals: [],
-      post_workout: [],
-      evening_bedtime: [],
-      flexible: []
-    }
-
-    evaluatedSteps.forEach((item: any) => {
-      const slot = item.step.timing_slot || item.step.frequency || item.modality?.timing_summary || ''
-      const winId = getPhysiologicalWindowId(slot)
-      groups[winId].push(item)
-    })
-
-    return PHYSIOLOGICAL_WINDOWS.map(win => ({
-      ...win,
-      steps: groups[win.id]
-    })).filter(win => win.steps.length > 0)
-  }, [evaluatedSteps])
+  const groupedTimelineSteps = (() => {})()
 
   const activeCount = evaluatedSteps.filter((s: any) => s.statusType === 'completed' || s.statusType === 'pending').length
   const completedCount = evaluatedSteps.filter((s: any) => s.statusType === 'completed').length
