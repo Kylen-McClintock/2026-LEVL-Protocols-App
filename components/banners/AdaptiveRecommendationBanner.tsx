@@ -60,7 +60,7 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
 
   const [benchedIds, setBenchedIds] = useState<string[]>([])
   const [benchedNamesMap, setBenchedNamesMap] = useState<Record<string, string>>({})
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
   const [showOtherCandidates, setShowOtherCandidates] = useState(false)
   const [showCulpritDetails, setShowCulpritDetails] = useState(false)
   const [processingModalityId, setProcessingModalityId] = useState<string | null>(null)
@@ -141,24 +141,26 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
 
     const benchedNamesList = benchedIds.map(id => benchedNamesMap[id] || 'Modality').filter(Boolean)
 
-    // Collapsed State once benched
-    if (isCollapsed && benchedIds.length > 0) {
+    // Collapsed State
+    if (isCollapsed) {
       return (
         <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/60 via-slate-900 to-slate-950 p-3 sm:p-4 shadow-xl backdrop-blur-md animate-in fade-in">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold shrink-0">
-                <Check size={14} />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold shrink-0">
+                <Scale size={14} />
               </div>
-              <div>
-                <span className="text-xs font-extrabold text-emerald-300">Stack Reset Active: </span>
+              <div className="min-w-0">
+                <span className="text-xs font-extrabold text-amber-300">80/20 Protocol Simplification: </span>
                 <span className="text-xs text-slate-300">
-                  Moved <strong className="text-white">{benchedNamesList.join(', ')}</strong> to Bench (14 Days)
+                  {benchedIds.length > 0 
+                    ? `Moved ${benchedNamesList.join(', ')} to Bench (14 Days)` 
+                    : recommendation.title}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-2 ml-auto shrink-0">
               <button
                 type="button"
                 onClick={() => setIsCollapsed(false)}
@@ -208,17 +210,15 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
           </div>
 
           <div className="flex items-center gap-1.5">
-            {benchedIds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsCollapsed(true)}
-                className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-bold px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-all cursor-pointer"
-                title="Collapse banner"
-              >
-                <span>Collapse</span>
-                <ChevronUp size={14} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(true)}
+              className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-bold px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-all cursor-pointer"
+              title="Collapse banner"
+            >
+              <span>Collapse</span>
+              <ChevronUp size={14} />
+            </button>
             <button
               type="button"
               onClick={() => setIsDismissed(true)}
@@ -450,6 +450,49 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
     return null
   }
 
+  // Collapsed NBA State
+  if (isCollapsed) {
+    return (
+      <div className="w-full max-w-full overflow-hidden rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-950/40 via-slate-900 to-slate-950 p-3 sm:p-3.5 shadow-lg relative backdrop-blur-md animate-in fade-in flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="w-7 h-7 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center font-bold shrink-0">
+            <ModalityIcon modality={targetMod} size={15} glow={false} />
+          </div>
+          <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 bg-purple-950/80 px-2 py-0.5 rounded-full border border-purple-500/30">
+              Next Best Action
+            </span>
+            <span className="text-xs font-bold text-white truncate">
+              {recommendation.title}
+            </span>
+            <span className="text-[10px] text-emerald-300 font-mono hidden sm:inline">
+              (+{recommendation.longevityImpactScore}/10 Longevity Score)
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(false)}
+            className="text-xs text-purple-300 hover:text-white font-bold flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-950/50 hover:bg-purple-900/50 border border-purple-500/30 transition-all cursor-pointer"
+          >
+            <span>View Recommendation</span>
+            <ChevronDown size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsDismissed(true)}
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Dismiss suggestion"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="w-full max-w-full overflow-hidden rounded-2xl border border-purple-500/40 bg-gradient-to-br from-purple-950/60 via-slate-900 to-slate-950 p-3.5 sm:p-5 shadow-2xl relative backdrop-blur-md animate-in fade-in slide-in-from-top-2 space-y-4">
       <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -475,14 +518,25 @@ export const AdaptiveRecommendationBanner: React.FC<AdaptiveRecommendationBanner
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsDismissed(true)}
-          className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-          title="Dismiss suggestion"
-        >
-          <X size={14} />
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(true)}
+            className="text-xs text-purple-300 hover:text-white font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-950/50 border border-purple-500/30 transition-all cursor-pointer"
+            title="Collapse recommendation"
+          >
+            <span>Collapse</span>
+            <ChevronUp size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsDismissed(true)}
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            title="Dismiss suggestion"
+          >
+            <X size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Recommendation Rationale Summary */}

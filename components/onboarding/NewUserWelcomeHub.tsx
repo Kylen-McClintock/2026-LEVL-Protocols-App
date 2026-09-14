@@ -129,6 +129,11 @@ export default function NewUserWelcomeHub({
   const [expandedPillar, setExpandedPillar] = useState<'biology' | 'goals' | 'constraints' | null>(null)
   const [activeGoalTab, setActiveGoalTab] = useState<'heart' | 'sleep' | 'cognition' | 'cellular'>('heart')
 
+  // Expansion toggles for Option B & C
+  const [isProtocolDetailsExpanded, setIsProtocolDetailsExpanded] = useState(false)
+  const [isCoachDetailsExpanded, setIsCoachDetailsExpanded] = useState(false)
+  const [coachInputText, setCoachInputText] = useState('')
+
   // Protocol Showcase Marquee auto-cycle
   const [protocolIndex, setProtocolIndex] = useState(0)
   useEffect(() => {
@@ -570,17 +575,28 @@ export default function NewUserWelcomeHub({
 
         {/* ── 2-COLUMN SECONDARY OPTIONS: PROVEN PROTOCOLS & AI LONGEVITY COACH ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-          {/* OPTION A: START WITH A PROVEN PROTOCOL */}
+          {/* OPTION B: START WITH A PROVEN PROTOCOL */}
           <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800/90 hover:border-indigo-500/30 transition-all flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 bg-cyan-950/80 border border-cyan-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   <Award size={11} />
-                  Option A • 1-Click Start
+                  Option B • 1-Click Start
                 </span>
-                <span className="text-[11px] text-slate-400 font-mono">
-                  {protocolIndex + 1} of {SHOWCASE_PROTOCOLS.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {protocolIndex + 1} of {SHOWCASE_PROTOCOLS.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsProtocolDetailsExpanded(!isProtocolDetailsExpanded)}
+                    className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-0.5 cursor-pointer"
+                    title={isProtocolDetailsExpanded ? "Collapse protocol details" : "Expand full protocol details"}
+                  >
+                    <span>{isProtocolDetailsExpanded ? 'Less' : 'Details'}</span>
+                    <ChevronDown size={12} className={`transition-transform duration-200 ${isProtocolDetailsExpanded ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -593,14 +609,37 @@ export default function NewUserWelcomeHub({
                 </p>
               </div>
 
-              {/* Auto-Cycling Protocol Card */}
-              <div className={`p-3.5 rounded-xl bg-gradient-to-br ${currentProtocol.accentColor} border transition-all duration-300 space-y-2`}>
+              {/* Mobile Compact Protocol Scrolling Strip (Visible on mobile when not expanded) */}
+              <div className={`${isProtocolDetailsExpanded ? 'hidden' : 'block md:hidden'}`}>
+                <div 
+                  onClick={onOpenEnrollModal}
+                  className={`p-3 rounded-xl bg-gradient-to-br ${currentProtocol.accentColor} border transition-all duration-300 flex items-center justify-between gap-2.5 cursor-pointer shadow-sm`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <currentProtocol.icon size={18} className="text-cyan-400 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded-full border ${currentProtocol.badgeColor}`}>
+                          {currentProtocol.badge}
+                        </span>
+                      </div>
+                      <div className="font-extrabold text-white text-xs truncate mt-0.5">
+                        {currentProtocol.title}
+                      </div>
+                      <div className="text-[10px] text-slate-300 italic truncate">
+                        {currentProtocol.tagline}
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-cyan-400 shrink-0" />
+                </div>
+              </div>
+
+              {/* Expanded Protocol Card (Visible on desktop, or on mobile when expanded) */}
+              <div className={`${isProtocolDetailsExpanded ? 'block' : 'hidden md:block'} p-3.5 rounded-xl bg-gradient-to-br ${currentProtocol.accentColor} border transition-all duration-300 space-y-2`}>
                 <div className="flex items-center justify-between gap-2">
                   <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${currentProtocol.badgeColor}`}>
                     {currentProtocol.badge}
-                  </span>
-                  <span className="text-[10px] text-slate-300 font-medium">
-                    Effort: {currentProtocol.effort}
                   </span>
                 </div>
 
@@ -636,13 +675,15 @@ export default function NewUserWelcomeHub({
                 ))}
               </div>
 
-              {/* Explicit "Finish Later" Guarantee */}
-              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
-                <ShieldCheck size={14} className="text-cyan-400 shrink-0 mt-0.5" />
-                <span>
-                  <strong>No questionnaire required now.</strong> Your daily schedule will populate immediately. You can personalize your sleep times and constraints anytime later.
-                </span>
-              </div>
+              {/* Explicit "Finish Later" Guarantee — ONLY shown if expanded */}
+              {isProtocolDetailsExpanded && (
+                <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2 animate-in fade-in">
+                  <ShieldCheck size={14} className="text-cyan-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>No questionnaire required now.</strong> Your daily schedule will populate immediately. You can personalize your sleep times and constraints anytime later.
+                  </span>
+                </div>
+              )}
             </div>
 
             <button
@@ -655,17 +696,28 @@ export default function NewUserWelcomeHub({
             </button>
           </div>
 
-          {/* OPTION B: BUILD WITH AI LONGEVITY COACH */}
+          {/* OPTION C: BUILD WITH AI LONGEVITY COACH */}
           <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800/90 hover:border-purple-500/30 transition-all flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-950/80 border border-purple-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   <Bot size={11} />
-                  Option B • Conversational
+                  Option C • Conversational
                 </span>
-                <span className="text-[11px] text-slate-400 font-mono">
-                  {promptIndex + 1} of {SHOWCASE_AI_PROMPTS.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {promptIndex + 1} of {SHOWCASE_AI_PROMPTS.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsCoachDetailsExpanded(!isCoachDetailsExpanded)}
+                    className="text-[11px] text-purple-400 hover:text-purple-300 font-bold flex items-center gap-0.5 cursor-pointer"
+                    title={isCoachDetailsExpanded ? "Collapse coach details" : "Expand coach details"}
+                  >
+                    <span>{isCoachDetailsExpanded ? 'Less' : 'Details'}</span>
+                    <ChevronDown size={12} className={`transition-transform duration-200 ${isCoachDetailsExpanded ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -678,53 +730,68 @@ export default function NewUserWelcomeHub({
                 </p>
               </div>
 
-              {/* Large Interactive Prompt Showcase Card */}
-              <div 
-                onClick={() => handleLaunchCoachWithPrompt(currentPrompt.text)}
-                className="p-3.5 rounded-xl bg-purple-950/25 hover:bg-purple-950/40 border border-purple-500/30 transition-all duration-300 space-y-2 cursor-pointer group shadow-inner"
-                title="Click to launch coach with this prompt"
+              {/* Functional AI Coach Input Bar with Scrolling Examples in Light Grey */}
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleLaunchCoachWithPrompt(coachInputText.trim() || currentPrompt.text)
+                }}
+                className="relative pt-1"
               >
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-purple-300 font-bold uppercase px-2 py-0.5 rounded bg-purple-950/80 border border-purple-500/40">
-                    {currentPrompt.tag}
-                  </span>
-                  <span className="text-slate-400 group-hover:text-purple-300 transition-colors flex items-center gap-1 font-semibold">
-                    Tap to use ↗
+                <div className="relative flex items-center">
+                  <Bot size={16} className="absolute left-3 text-purple-400 shrink-0 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={coachInputText}
+                    onChange={(e) => setCoachInputText(e.target.value)}
+                    placeholder={currentPrompt.text}
+                    className="w-full pl-9 pr-16 py-2.5 sm:py-3 rounded-xl bg-slate-950/80 border border-purple-500/30 text-white placeholder:text-slate-400/70 placeholder:italic placeholder:font-normal text-xs sm:text-sm focus:outline-none focus:border-purple-400 transition-colors shadow-inner"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute right-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-extrabold rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-sm"
+                    title="Send prompt to AI Coach"
+                  >
+                    <span>Ask</span>
+                    <ArrowRight size={12} />
+                  </button>
+                </div>
+              </form>
+
+              {/* Prompt Category Chip & Dots */}
+              <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                <span className="text-[10px] text-slate-400 font-medium truncate">
+                  Prompt: <span className="text-purple-300 font-semibold">{currentPrompt.tag}</span>
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {SHOWCASE_AI_PROMPTS.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setPromptIndex(i)}
+                      className={`w-1.5 h-1.5 rounded-full transition-all cursor-pointer ${
+                        promptIndex === i ? 'w-5 bg-purple-400' : 'bg-slate-700 hover:bg-slate-500'
+                      }`}
+                      title={`View prompt ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Explicit "Finish Later" Guarantee — ONLY shown if expanded */}
+              {isCoachDetailsExpanded && (
+                <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2 animate-in fade-in">
+                  <ShieldCheck size={14} className="text-purple-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Build your protocol first in chat.</strong> The coach pushes tasks directly to your Today timeline. Complete profile onboarding whenever you are ready.
                   </span>
                 </div>
-
-                <p className="text-xs sm:text-[13px] text-slate-100 font-medium italic leading-snug">
-                  &ldquo;{currentPrompt.text}&rdquo;
-                </p>
-              </div>
-
-              {/* Prompt Ticker Dots */}
-              <div className="flex items-center justify-center gap-1.5 pt-1">
-                {SHOWCASE_AI_PROMPTS.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setPromptIndex(i)}
-                    className={`w-1.5 h-1.5 rounded-full transition-all cursor-pointer ${
-                      promptIndex === i ? 'w-5 bg-purple-400' : 'bg-slate-700 hover:bg-slate-500'
-                    }`}
-                    title={`View prompt ${i + 1}`}
-                  />
-                ))}
-              </div>
-
-              {/* Explicit "Finish Later" Guarantee */}
-              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
-                <ShieldCheck size={14} className="text-purple-400 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Build your protocol first in chat.</strong> The coach pushes tasks directly to your Today timeline. Complete profile onboarding whenever you are ready.
-                </span>
-              </div>
+              )}
             </div>
 
             <button
               type="button"
-              onClick={() => handleLaunchCoachWithPrompt(currentPrompt.text)}
+              onClick={() => handleLaunchCoachWithPrompt(coachInputText.trim() || currentPrompt.text)}
               className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-purple-500/40 text-purple-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95"
             >
               <span>Chat with AI Longevity Coach</span>

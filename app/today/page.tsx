@@ -4375,7 +4375,7 @@ function TodayPageContent() {
                     }
                     setDismissedTipIds(prev => [...prev, tipId])
                   }}
-                  isCollapsedByDefault={isPastDate}
+                  isCollapsedByDefault={true}
                 />
               </div>
             )}

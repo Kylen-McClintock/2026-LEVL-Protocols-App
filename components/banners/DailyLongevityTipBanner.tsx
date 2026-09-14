@@ -41,7 +41,7 @@ export const DailyLongevityTipBanner: React.FC<DailyLongevityTipBannerProps> = (
   onAddToToday,
   onAddToBench,
   onDismiss,
-  isCollapsedByDefault = false
+  isCollapsedByDefault = true
 }) => {
   const [currentIndex, setCurrentIndex] = useState<number>(0)
   const [isAdding, setIsAdding] = useState<boolean>(false)

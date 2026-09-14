@@ -83,9 +83,10 @@ export default function QuickHotkeyGrid({
   const [justTappedId, setJustTappedId] = useState<string | null>(null)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('levl_hotkeys_tray_collapsed') === 'true'
+      const stored = localStorage.getItem('levl_hotkeys_tray_collapsed')
+      if (stored !== null) return stored === 'true'
     }
-    return false
+    return true
   })
 
   const currentDayOfWeek = useMemo(() => {
