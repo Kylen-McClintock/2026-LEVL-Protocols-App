@@ -22,25 +22,18 @@ export default function OrientationController() {
     const evaluateOrientation = () => {
       if (typeof window === 'undefined' || typeof document === 'undefined') return
 
-      // A. Standard CSS Media Query
-      const isLandscapeMediaQuery = typeof window.matchMedia === 'function' && window.matchMedia('(orientation: landscape)').matches
+      // Mobile landscape: true phone held horizontally (short height <= 550px AND wide aspect)
+      const isMobileLandscape = window.innerWidth > window.innerHeight && window.innerHeight <= 550
 
-      // B. Dynamic Viewport Aspect Ratio
-      const isWideAspect = window.innerWidth > window.innerHeight
-
-      // C. Modern Screen Orientation API (Primary standard for Android Blink/Chromium)
-      const screenType = typeof screen !== 'undefined' && screen.orientation?.type ? screen.orientation.type : ''
+      // Screen orientation angle (90 or 270) on mobile devices (max dimension <= 1024)
       const screenAngle = typeof screen !== 'undefined' && typeof screen.orientation?.angle === 'number' ? screen.orientation.angle : null
-      const isScreenLandscape = screenType.includes('landscape') || screenAngle === 90 || screenAngle === 270
+      const isMobileScreenRotated = (screenAngle === 90 || screenAngle === 270) && Math.max(window.innerWidth, window.innerHeight) <= 1024
 
-      // D. Legacy window.orientation Fallback (Supports 90, -90, and 270 on Android & iOS)
+      // Legacy window.orientation Fallback on mobile
       const legacyAngle = typeof window.orientation !== 'undefined' ? Number(window.orientation) : null
-      const isLegacyLandscape = legacyAngle === 90 || legacyAngle === -90 || legacyAngle === 270
+      const isMobileLegacyRotated = (legacyAngle === 90 || legacyAngle === -90 || legacyAngle === 270) && Math.max(window.innerWidth, window.innerHeight) <= 1024
 
-      // E. Manual in-app rotation override stored in localStorage
-      const manualLandscape = localStorage.getItem('levl_manual_landscape') === 'true'
-
-      const isLandscape = Boolean(isLandscapeMediaQuery || isWideAspect || isScreenLandscape || isLegacyLandscape || manualLandscape)
+      const isLandscape = Boolean(isMobileLandscape || isMobileScreenRotated || isMobileLegacyRotated)
 
       document.documentElement.setAttribute('data-orientation', isLandscape ? 'landscape' : 'portrait')
       if (isLandscape) {

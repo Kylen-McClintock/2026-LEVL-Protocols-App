@@ -312,112 +312,7 @@ function TodayPageContent() {
   const activeMultiDayReqIdRef = useRef(0)
   const loadDebounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Physical & Manual Landscape Orientation State
-  const [isPhysicalLandscape, setIsPhysicalLandscape] = useState(false)
-  const [manualLandscape, setManualLandscape] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('levl_manual_landscape') === 'true'
-    }
-    return false
-  })
-  const isEffectiveLandscape = isPhysicalLandscape || manualLandscape
 
-  // Synchronize document attribute for global CSS styling
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-orientation', isEffectiveLandscape ? 'landscape' : 'portrait')
-      if (isEffectiveLandscape) {
-        document.documentElement.classList.add('is-landscape')
-      } else {
-        document.documentElement.classList.remove('is-landscape')
-      }
-    }
-  }, [isEffectiveLandscape])
-
-  useEffect(() => {
-    // Unlock any stale WebAPK / PWA orientation locks on Android
-    if (typeof screen !== 'undefined' && screen.orientation) {
-      try {
-        const p = (screen.orientation as any).unlock?.()
-        if (p && typeof p.catch === 'function') {
-          p.catch(() => {})
-        }
-      } catch (e) {}
-    }
-
-    const checkOrientation = () => {
-      if (typeof window === 'undefined') return
-
-      // 1. CSS Media Query: Standard (orientation: landscape)
-      const isLandscapeMediaQuery = typeof window.matchMedia === 'function' && window.matchMedia('(orientation: landscape)').matches
-
-      // 2. Viewport Aspect Ratio: Width > Height
-      const isWideAspect = window.innerWidth > window.innerHeight
-
-      // 3. Modern Screen Orientation API (Primary standard for Android Blink/Chromium)
-      const screenType = typeof screen !== 'undefined' && screen.orientation?.type ? screen.orientation.type : ''
-      const screenAngle = typeof screen !== 'undefined' && typeof screen.orientation?.angle === 'number' ? screen.orientation.angle : null
-      const isScreenLandscape = screenType.includes('landscape') || screenAngle === 90 || screenAngle === 270
-
-      // 4. Legacy window.orientation Fallback (Supports 90, -90, and 270 on Android & iOS)
-      const rawLegacyAngle = typeof window.orientation !== 'undefined' ? Number(window.orientation) : null
-      const isLegacyLandscape = rawLegacyAngle === 90 || rawLegacyAngle === -90 || rawLegacyAngle === 270
-
-      const detected = Boolean(isLandscapeMediaQuery || isWideAspect || isScreenLandscape || isLegacyLandscape)
-      setIsPhysicalLandscape(detected)
-    }
-
-    // Android Blink delayed repaint handler:
-    // Android Chrome updates innerWidth/innerHeight and orientation queries 50ms-300ms after orientationchange
-    let timer1: NodeJS.Timeout
-    let timer2: NodeJS.Timeout
-    let timer3: NodeJS.Timeout
-    let timer4: NodeJS.Timeout
-
-    const updateOrientation = () => {
-      checkOrientation()
-      timer1 = setTimeout(checkOrientation, 60)
-      timer2 = setTimeout(checkOrientation, 150)
-      timer3 = setTimeout(checkOrientation, 300)
-      timer4 = setTimeout(checkOrientation, 600)
-    }
-
-    updateOrientation()
-    window.addEventListener('resize', updateOrientation, { passive: true })
-    window.addEventListener('orientationchange', updateOrientation, { passive: true })
-
-    if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.addEventListener) {
-      screen.orientation.addEventListener('change', updateOrientation)
-    }
-
-    const mql = typeof window.matchMedia === 'function' ? window.matchMedia('(orientation: landscape)') : null
-    if (mql && mql.addEventListener) {
-      mql.addEventListener('change', updateOrientation)
-    }
-
-    const handleGlobalOrientationEvent = (e: any) => {
-      if (typeof e?.detail?.isLandscape === 'boolean') {
-        setIsPhysicalLandscape(e.detail.isLandscape)
-      }
-    }
-    window.addEventListener('levl_orientation_changed', handleGlobalOrientationEvent)
-
-    return () => {
-      clearTimeout(timer1)
-      clearTimeout(timer2)
-      clearTimeout(timer3)
-      clearTimeout(timer4)
-      window.removeEventListener('resize', updateOrientation)
-      window.removeEventListener('orientationchange', updateOrientation)
-      if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.removeEventListener) {
-        screen.orientation.removeEventListener('change', updateOrientation)
-      }
-      if (mql && mql.removeEventListener) {
-        mql.removeEventListener('change', updateOrientation)
-      }
-      window.removeEventListener('levl_orientation_changed', handleGlobalOrientationEvent)
-    }
-  }, [])
 
   const [activeDate, setActiveDate] = useState<Date>(initialEffectiveDate)
 
@@ -3399,7 +3294,7 @@ function TodayPageContent() {
                   </div>
                 </div>
               ) : (
-                <div className={isEffectiveLandscape ? "grid grid-cols-2 lg:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "space-y-1.5" : "space-y-3")}>
+                <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
                   {tasksToRender.map(task => {
                     const mId = task.modality_id || task.protocol_step?.modality_id || ''
                     const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -3797,7 +3692,7 @@ function TodayPageContent() {
               </div>
             </div>
           ) : (
-            <div className={isEffectiveLandscape ? "grid grid-cols-2 lg:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "space-y-1.5" : "space-y-3")}>
+            <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
               {groupTasks
                 .sort((a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0))
                 .map(task => {
@@ -3896,15 +3791,9 @@ function TodayPageContent() {
 
       {/* Main Container */}
       <div 
-        className={`mx-auto pt-4 sm:pt-6 transition-all duration-300 ${
-          isEffectiveLandscape 
-            ? 'w-full max-w-full px-4 sm:px-8' 
-            : (calendarViewMode === 'today' ? 'px-3 sm:px-6 max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl' : 'px-3 sm:px-6 max-w-7xl')
+        className={`mx-auto px-3 sm:px-6 pt-4 sm:pt-6 transition-all duration-300 ${
+          calendarViewMode === 'today' ? 'max-w-4xl' : 'max-w-7xl'
         }`}
-        style={isEffectiveLandscape ? {
-          paddingLeft: 'max(1.5rem, env(safe-area-inset-left, 16px))',
-          paddingRight: 'max(1.5rem, env(safe-area-inset-right, 16px))'
-        } : undefined}
       >
         
         {/* Protocol Filter Header if specific protocol filtered */}
@@ -4080,54 +3969,6 @@ function TodayPageContent() {
               </button>
             )}
 
-            {/* In-App Landscape / Rotate Toggle Button */}
-            <button
-              type="button"
-              onClick={async () => {
-                triggerHaptic('selection')
-                const next = !manualLandscape
-                setManualLandscape(next)
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('levl_manual_landscape', String(next))
-                }
-
-                // Android Native Hardware Orientation Command (if supported by PWA / Fullscreen)
-                if (typeof screen !== 'undefined' && screen.orientation) {
-                  try {
-                    const scr = screen.orientation as any
-                    if (next) {
-                      if (typeof scr.lock === 'function') {
-                        const lockPromise = scr.lock('landscape')
-                        if (lockPromise && typeof lockPromise.catch === 'function') {
-                          lockPromise.catch(() => {})
-                        }
-                      }
-                    } else {
-                      if (typeof scr.unlock === 'function') {
-                        const unlockPromise = scr.unlock()
-                        if (unlockPromise && typeof unlockPromise.catch === 'function') {
-                          unlockPromise.catch(() => {})
-                        }
-                      }
-                    }
-                  } catch (e) {}
-                }
-
-                if (calendarViewMode !== 'today' && calendarViewMode !== 'pulse') {
-                  setLayoutOrientation(prev => prev === 'stack' ? 'columns' : 'stack')
-                }
-              }}
-              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
-                isEffectiveLandscape
-                  ? 'bg-purple-950/60 hover:bg-purple-900/70 border border-purple-500/40 text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.2)]'
-                  : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
-              }`}
-              title={isEffectiveLandscape ? "Landscape Mode ON — Tap to switch back to Portrait single-column" : "Rotate to Landscape — Tap to switch to spacious panoramic multi-column layout (works even if phone Portrait Lock is on)"}
-              aria-label="Toggle Landscape Orientation"
-            >
-              <Columns size={13} className={isEffectiveLandscape ? "text-purple-400" : "text-slate-400"} />
-              <span>{isEffectiveLandscape ? 'Landscape' : 'Rotate'}</span>
-            </button>
 
             {calendarViewMode !== 'today' && calendarViewMode !== 'pulse' && multiDayStats && multiDayStats.total > 0 && (
               <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center gap-1">
@@ -4679,7 +4520,7 @@ function TodayPageContent() {
                                 <span>{completedSortBy === 'chronological' ? (viewMode === 'chronological' ? formatSlotName(groupKey) : groupKey) : 'Completed Log'}</span>
                                 <span className="text-[10px] text-gray-500 font-normal">({tasksInGroup.length})</span>
                               </div>
-                              <div className={isEffectiveLandscape ? "grid grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1" : (completionMode === 'fast' ? "space-y-1.5 pt-1" : "space-y-3 pt-1")}>
+                              <div className={completionMode === 'fast' ? "space-y-1.5 pt-1" : "space-y-3 pt-1"}>
                                 {tasksInGroup.map(task => {
                                   const mId = task.modality_id || task.protocol_step?.modality_id || ''
                                   const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -4745,7 +4586,7 @@ function TodayPageContent() {
                       </div>
 
                       {isSnoozedSectionExpanded && (
-                        <div className={`${isEffectiveLandscape ? "p-4 grid grid-cols-2 lg:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3")} bg-black/40 animate-in fade-in ${!isSnoozedLast ? 'border-b border-amber-500/20' : ''}`}>
+                        <div className={`${completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3"} bg-black/40 animate-in fade-in ${!isSnoozedLast ? 'border-b border-amber-500/20' : ''}`}>
                           {allSnoozedTasks.map(task => {
                             const mId = task.modality_id || task.protocol_step?.modality_id || ''
                             const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -4807,7 +4648,7 @@ function TodayPageContent() {
                       </div>
 
                       {isSkippedSectionExpanded && (
-                        <div className={`${isEffectiveLandscape ? "p-4 grid grid-cols-2 lg:grid-cols-3 gap-3.5" : (completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3")} bg-black/40 animate-in fade-in`}>
+                        <div className={`${completionMode === 'fast' ? "p-3 space-y-1.5" : "p-4 space-y-3"} bg-black/40 animate-in fade-in`}>
                           {allSkippedTasks.map(task => {
                             const mId = task.modality_id || task.protocol_step?.modality_id || ''
                             const benchItem = benchItems.find(b => b.modality_id === mId)
@@ -4913,90 +4754,6 @@ function TodayPageContent() {
               </div>
             )}
 
-            {/* Daily Bandwidth & Routine Adaptation Governor Bar */}
-            <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/90 border border-slate-800/90 p-2 sm:p-2.5 rounded-2xl mb-2 sm:mb-3 backdrop-blur-md shadow-sm gap-2 sm:gap-3">
-              {/* Left: Mode Switcher Pills */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center bg-black/60 p-1 rounded-xl border border-white/10 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenAdaptiveGovernor('survival_80_20')}
-                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
-                      isShieldActive
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                        : 'text-slate-400 hover:text-amber-300'
-                    }`}
-                    title="Survival 80/20: Cut high-strain protocols, keep Minimum Effective Dose"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-amber-400" />
-                    <span>80/20<span className="hidden min-[420px]:inline"> Survival</span></span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isShieldActive) {
-                        safeLocalStorageSet(`levl_8020_protected_${dateStr}`, 'false')
-                        setIsShieldActive(false)
-                        refreshTodayTasks()
-                      }
-                    }}
-                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
-                      !isShieldActive
-                        ? 'bg-purple-600/30 text-purple-200 border border-purple-500/40 shadow-sm'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="Standard: Complete scheduled routine"
-                  >
-                    <Activity className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Standard</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenAdaptiveGovernor('peak_surge')}
-                    className="px-2.5 py-1 rounded-lg font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 text-slate-400 hover:text-cyan-300"
-                    title="Peak Surge: Add high-yield expansion protocols"
-                  >
-                    <Zap className="w-3.5 h-3.5 text-cyan-400" />
-                    <span><span className="hidden min-[420px]:inline">Peak </span>Surge</span>
-                  </button>
-                </div>
-
-                {isShieldActive && (
-                  <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-mono font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
-                    🛡️ 100% Adherence Shield Active
-                  </span>
-                )}
-              </div>
-
-              {/* Right: Action & Customization Trigger */}
-              <div className="flex items-center justify-between sm:justify-end gap-2 text-xs">
-                {isShieldActive ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-emerald-400 font-mono font-medium md:hidden">
-                      🛡️ Shield Active
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenAdaptiveGovernor('survival_80_20')}
-                      className="text-[11px] font-bold text-amber-300 hover:text-amber-200 underline underline-offset-2 cursor-pointer"
-                    >
-                      Modify 80/20 Plan
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleOpenAdaptiveGovernor()}
-                    className="text-[11px] font-bold text-purple-300 hover:text-purple-200 flex items-center gap-1 hover:underline cursor-pointer"
-                  >
-                    <Sparkles className="w-3 h-3 text-purple-400" />
-                    <span>Adaptive Governor</span>
-                  </button>
-                )}
-              </div>
-            </div>
 
             {/* Timeline Layout Mode & Completion Mode Toggle Bar (Single Non-Scrolling Row) */}
             <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 p-1 sm:p-1.5 md:p-2.5 rounded-2xl mb-2 sm:mb-3 backdrop-blur-md shadow-sm gap-1 sm:gap-2 md:gap-4">
@@ -5205,7 +4962,7 @@ function TodayPageContent() {
                           <div className="h-4 w-28 bg-slate-800 rounded-md" />
                           <div className="h-3 w-16 bg-slate-800/60 rounded-md" />
                         </div>
-                        <div className={isEffectiveLandscape ? "grid grid-cols-2 lg:grid-cols-3 gap-3.5" : "space-y-2.5"}>
+                        <div className="space-y-2.5">
                           <div className="h-20 bg-slate-950/60 border border-slate-800/60 rounded-xl" />
                           <div className="h-20 bg-slate-950/60 border border-slate-800/60 rounded-xl" />
                         </div>

@@ -546,42 +546,7 @@ export default function ProtocolFocusPage() {
     }
   }
 
-  // Protocol-Level Actions: Add All, Bench Entire Protocol, Eliminate Entire Protocol
-  const handleAddEntireProtocolToToday = async () => {
-    if (!protocol) return
-    if (todayTasks.length > 0) {
-      setIsStackFitModalOpen(true)
-      return
-    }
-    setIsProcessingAction(true)
-    const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
-    try {
-      const ok = await addProtocolToToday(localUserId, currentDateStr, protocol.id)
-      if (!ok) {
-        throw new Error('addProtocolToToday returned false')
-      }
-    } catch (err) {
-      console.warn('handleAddEntireProtocolToToday failed, falling back to individual tasks:', err)
-      const stepsToEnroll = protocol.steps || protocol.protocol_steps || []
-      for (const s of stepsToEnroll) {
-        const mId = s.modality_id || s.modality?.id
-        if (mId) {
-          try {
-            await createDailyTask(localUserId, currentDateStr, mId)
-          } catch (taskErr) {
-            console.warn(`Could not create fallback daily task for modality ${mId}:`, taskErr)
-          }
-        }
-      }
-    } finally {
-      try {
-        await reloadData()
-      } catch (rErr) {
-        console.warn('reloadData warning in handleAddEntireProtocolToToday:', rErr)
-      }
-      setIsProcessingAction(false)
-    }
-  }
+
 
   const handleInstantKickstart = async () => {
     if (!protocol) return
@@ -880,56 +845,27 @@ export default function ProtocolFocusPage() {
             </div>
           </div>
 
-          {/* PROTOCOL-LEVEL QUICK ACTIONS BAR (Easy to Add, Bench, or Eliminate Entire Protocol) */}
+          {/* PROTOCOL-LEVEL QUICK ACTIONS BAR (Consolidated Single Primary Action + Clean Secondary Actions) */}
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap pt-1 border-t border-white/5">
-            {/* 1-Click Instant Kickstart Button */}
-            <button
-              type="button"
-              onClick={handleEnrollClick}
-              disabled={isProcessingAction}
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-teal-500 hover:from-purple-500 hover:to-teal-400 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-lg shadow-purple-900/40 cursor-pointer active:scale-95 disabled:opacity-50"
-            >
-              <Zap size={14} className="text-amber-300" />
-              <span>{todayTasks.length > 0 ? 'Audit & Start Protocol' : 'Start Tracking Free (1-Click)'}</span>
-            </button>
-
-            {/* Smart Stack Fit Direct Button */}
-            {todayTasks.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsStackFitModalOpen(true)}
-                className="px-3.5 py-2 bg-purple-950/60 hover:bg-purple-900/60 text-purple-200 border border-purple-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
-                title="Audit how this protocol fits your current daily routine"
-              >
-                <Sparkles size={14} className="text-purple-400" />
-                <span>Audit Stack Fit</span>
-                {stackFitAuditResult && stackFitAuditResult.upgrades.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-purple-500/30 text-purple-200 border border-purple-400/40 font-bold">
-                    {stackFitAuditResult.upgrades.length} Upgrade{stackFitAuditResult.upgrades.length === 1 ? '' : 's'}
-                  </span>
-                )}
-              </button>
-            )}
-
             {isEntirelyActive ? (
               <button
                 type="button"
                 onClick={() => router.push(`/today?protocol=${encodeURIComponent(protocol.id || protocol.name)}&name=${encodeURIComponent(protocol.name)}`)}
                 className="px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-pointer active:scale-95 transition-all"
-                title="View protocol in Today"
+                title="View active protocol in Today"
               >
                 <CheckCircle2 size={14} className="text-emerald-400" />
-                <span>Added to today</span>
+                <span>Active in Today (View Routine)</span>
               </button>
             ) : (
               <button
                 type="button"
-                onClick={handleAddEntireProtocolToToday}
+                onClick={handleEnrollClick}
                 disabled={isProcessingAction}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95 disabled:opacity-50"
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-teal-500 hover:from-purple-500 hover:to-teal-400 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-lg shadow-purple-900/40 cursor-pointer active:scale-95 disabled:opacity-50"
               >
-                <Plus size={14} strokeWidth={3} />
-                <span>Add to Today</span>
+                <Zap size={14} className="text-amber-300" />
+                <span>{todayTasks.length > 0 ? 'Audit & Start Protocol' : 'Start Tracking Protocol (Free)'}</span>
               </button>
             )}
 
