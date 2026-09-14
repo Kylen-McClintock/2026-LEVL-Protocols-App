@@ -246,148 +246,160 @@ export default function TopStickyHeader() {
             {/* Floating Popover Dropdown Menu (Guaranteed in front of all page elements) */}
             {isViewDropdownOpen && (
               <div 
-                className="absolute top-full mt-2 w-60 p-2 rounded-2xl bg-slate-950 border border-slate-700 shadow-[0_25px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl z-[100000] animate-in fade-in zoom-in-95 duration-150"
+                className="header-view-dropdown absolute top-full mt-2 w-64 p-2.5 rounded-2xl bg-slate-950 border border-slate-700 shadow-[0_25px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl z-[100000] animate-in fade-in zoom-in-95 duration-150 max-h-[calc(100vh-54px)] overflow-y-auto"
                 style={{ left: '50%', transform: 'translateX(-50%)' }}
               >
-                {/* Section 1: Daily Layout Mode */}
-                <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-                  Daily Timeline Layout
-                </div>
-                <div className="space-y-0.5 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectView('today', 'chronological')}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      activeCalendarView === 'today' && activeLayoutView === 'chronological'
-                        ? 'bg-purple-600 text-white shadow-sm font-extrabold'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Clock size={13} className={activeCalendarView === 'today' && activeLayoutView === 'chronological' ? 'text-white' : 'text-purple-400'} />
-                      <span>Time Blocks</span>
-                    </div>
-                    {activeCalendarView === 'today' && activeLayoutView === 'chronological' && <Check size={13} />}
-                  </button>
+                <div className="header-view-dropdown-grid grid grid-cols-1 gap-2">
+                  {/* Column 1 (Left in Landscape): Daily Layout Mode & Navigation Hubs */}
+                  <div className="space-y-2">
+                    {/* Section 1: Daily Layout Mode */}
+                    <div>
+                      <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                        Daily Timeline Layout
+                      </div>
+                      <div className="space-y-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectView('today', 'chronological')}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            activeCalendarView === 'today' && activeLayoutView === 'chronological'
+                              ? 'bg-purple-600 text-white shadow-sm font-extrabold'
+                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Clock size={13} className={activeCalendarView === 'today' && activeLayoutView === 'chronological' ? 'text-white' : 'text-purple-400'} />
+                            <span>Time Blocks</span>
+                          </div>
+                          {activeCalendarView === 'today' && activeLayoutView === 'chronological' && <Check size={13} />}
+                        </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSelectView('today', 'protocol')}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      activeCalendarView === 'today' && activeLayoutView === 'protocol'
-                        ? 'bg-purple-600 text-white shadow-sm font-extrabold'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ListOrdered size={13} className={activeCalendarView === 'today' && activeLayoutView === 'protocol' ? 'text-white' : 'text-purple-400'} />
-                      <span>Protocols</span>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectView('today', 'protocol')}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            activeCalendarView === 'today' && activeLayoutView === 'protocol'
+                              ? 'bg-purple-600 text-white shadow-sm font-extrabold'
+                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <ListOrdered size={13} className={activeCalendarView === 'today' && activeLayoutView === 'protocol' ? 'text-white' : 'text-purple-400'} />
+                            <span>Protocols</span>
+                          </div>
+                          {activeCalendarView === 'today' && activeLayoutView === 'protocol' && <Check size={13} />}
+                        </button>
+                      </div>
                     </div>
-                    {activeCalendarView === 'today' && activeLayoutView === 'protocol' && <Check size={13} />}
-                  </button>
-                </div>
 
-                <div className="h-[1px] bg-slate-800/80 my-1" />
+                    {/* Section 3: Navigation Hubs */}
+                    <div className="pt-1.5 border-t border-slate-800/80">
+                      <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                        Quick Hubs
+                      </div>
+                      <div className="space-y-0.5">
+                        <Link
+                          href="/schedule"
+                          onClick={() => setIsViewDropdownOpen(false)}
+                          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-300 hover:bg-amber-950/60 hover:text-white transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Zap size={13} className="text-amber-400 shrink-0" />
+                            <span>Master Schedule</span>
+                          </div>
+                          <span className="text-[9px] uppercase font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
+                            Rhythms
+                          </span>
+                        </Link>
 
-                {/* Section 2: Calendar & Multi-Day Views */}
-                <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-                  Calendar & Cadence Views
-                </div>
-                <div className="space-y-0.5">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectView('pulse')}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      activeCalendarView === 'pulse'
-                        ? 'bg-indigo-600 text-white shadow-sm font-extrabold'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Activity size={13} className={activeCalendarView === 'pulse' ? 'text-white' : 'text-indigo-400'} />
-                      <span>Daily Pulse</span>
+                        <Link
+                          href="/bench"
+                          onClick={() => setIsViewDropdownOpen(false)}
+                          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-purple-300 hover:bg-purple-950/60 hover:text-white transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Bookmark size={13} className="text-purple-400 shrink-0" />
+                            <span>Protocol Bench</span>
+                          </div>
+                          <span className="text-[9px] uppercase font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30">
+                            Saved
+                          </span>
+                        </Link>
+                      </div>
                     </div>
-                    {activeCalendarView === 'pulse' && <Check size={13} />}
-                  </button>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSelectView('3day')}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      activeCalendarView === '3day'
-                        ? 'bg-teal-600 text-white shadow-sm font-extrabold'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Columns size={13} className={activeCalendarView === '3day' ? 'text-white' : 'text-teal-400'} />
-                      <span>3-Day View</span>
+                  {/* Column 2 (Right in Landscape): Calendar & Cadence Views */}
+                  <div className="header-view-dropdown-calendar border-t border-slate-800/80 pt-1.5">
+                    <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                      Calendar &amp; Cadence Views
                     </div>
-                    {activeCalendarView === '3day' && <Check size={13} />}
-                  </button>
+                    <div className="space-y-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectView('pulse')}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          activeCalendarView === 'pulse'
+                            ? 'bg-indigo-600 text-white shadow-sm font-extrabold'
+                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Activity size={13} className={activeCalendarView === 'pulse' ? 'text-white' : 'text-indigo-400'} />
+                          <span>Daily Pulse</span>
+                        </div>
+                        {activeCalendarView === 'pulse' && <Check size={13} />}
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSelectView('week')}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      activeCalendarView === 'week'
-                        ? 'bg-teal-600 text-white shadow-sm font-extrabold'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Calendar size={13} className={activeCalendarView === 'week' ? 'text-white' : 'text-teal-400'} />
-                      <span>7-Day Week</span>
-                    </div>
-                    {activeCalendarView === 'week' && <Check size={13} />}
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectView('3day')}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          activeCalendarView === '3day'
+                            ? 'bg-teal-600 text-white shadow-sm font-extrabold'
+                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Columns size={13} className={activeCalendarView === '3day' ? 'text-white' : 'text-teal-400'} />
+                          <span>3-Day View</span>
+                        </div>
+                        {activeCalendarView === '3day' && <Check size={13} />}
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSelectView('month')}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      activeCalendarView === 'month'
-                        ? 'bg-cyan-600 text-white shadow-sm font-extrabold'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <LayoutGrid size={13} className={activeCalendarView === 'month' ? 'text-white' : 'text-cyan-400'} />
-                      <span>Month Matrix</span>
-                    </div>
-                    {activeCalendarView === 'month' && <Check size={13} />}
-                  </button>
-                </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectView('week')}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          activeCalendarView === 'week'
+                            ? 'bg-teal-600 text-white shadow-sm font-extrabold'
+                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Calendar size={13} className={activeCalendarView === 'week' ? 'text-white' : 'text-teal-400'} />
+                          <span>7-Day Week</span>
+                        </div>
+                        {activeCalendarView === 'week' && <Check size={13} />}
+                      </button>
 
-                {/* Section 3: Navigation Hubs */}
-                <div className="pt-1 mt-1 border-t border-slate-800/80 space-y-0.5">
-                  <Link
-                    href="/schedule"
-                    onClick={() => setIsViewDropdownOpen(false)}
-                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-300 hover:bg-amber-950/60 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Zap size={13} className="text-amber-400 shrink-0" />
-                      <span>Master Schedule</span>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectView('month')}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          activeCalendarView === 'month'
+                            ? 'bg-cyan-600 text-white shadow-sm font-extrabold'
+                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <LayoutGrid size={13} className={activeCalendarView === 'month' ? 'text-white' : 'text-cyan-400'} />
+                          <span>Month Matrix</span>
+                        </div>
+                        {activeCalendarView === 'month' && <Check size={13} />}
+                      </button>
                     </div>
-                    <span className="text-[9px] uppercase font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
-                      Rhythms
-                    </span>
-                  </Link>
-
-                  <Link
-                    href="/bench"
-                    onClick={() => setIsViewDropdownOpen(false)}
-                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-purple-300 hover:bg-purple-950/60 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Bookmark size={13} className="text-purple-400 shrink-0" />
-                      <span>Protocol Bench</span>
-                    </div>
-                    <span className="text-[9px] uppercase font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30">
-                      Saved
-                    </span>
-                  </Link>
+                  </div>
                 </div>
               </div>
             )}

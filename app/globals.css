@@ -197,6 +197,25 @@
     right: calc(64px + env(safe-area-inset-right, 0px)) !important;
   }
 
+  /* 2-Column Landscape View Options Dropdown */
+  .header-view-dropdown {
+    width: min(520px, calc(100vw - 84px)) !important;
+    max-height: calc(100vh - 54px) !important;
+    overflow-y: auto !important;
+  }
+  .header-view-dropdown-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.75rem !important;
+  }
+  .header-view-dropdown-calendar {
+    border-top-width: 0 !important;
+    border-left-width: 1px !important;
+    border-left-style: solid !important;
+    border-left-color: rgba(255, 255, 255, 0.1) !important;
+    padding-top: 0 !important;
+    padding-left: 0.75rem !important;
+  }
+
   /* Completion and action toasts offset away from right rail */
   .fixed.bottom-20 {
     bottom: 1rem !important;
@@ -226,6 +245,31 @@
   .text-\[10\.5px\] { font-size: 12.6px !important; }
   .text-\[11px\] { font-size: 13.2px !important; }
   .text-\[11\.5px\] { font-size: 13.8px !important; }
+
+  /* Selective Pinned Compact Elements in Landscape */
+  [class*="circadian"] span:not(h1):not(h2):not(h3):not(h4),
+  .circadian-badge,
+  [class*="pulseBadge"] {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+
+  [class*="rounded-full"]:not(button):not(.header-view-dropdown *):not(.bottom-nav-container *) span,
+  .dose-pill,
+  .status-pill,
+  .badge-compact {
+    font-size: 10px !important;
+  }
+
+  .timeline-timestamp,
+  [class*="timeRange"] {
+    font-size: 11px !important;
+  }
+
+  .header-view-dropdown button,
+  .header-view-dropdown a {
+    font-size: 12px !important;
+  }
 }
 
 /* Explicit class activation for devices supporting html.is-landscape */
@@ -325,6 +369,28 @@ html[data-orientation="landscape"] .top-sticky-header-container {
   right: calc(64px + env(safe-area-inset-right, 0px)) !important;
 }
 
+/* 2-Column Landscape View Options Dropdown */
+html.is-landscape .header-view-dropdown,
+html[data-orientation="landscape"] .header-view-dropdown {
+  width: min(520px, calc(100vw - 84px)) !important;
+  max-height: calc(100vh - 54px) !important;
+  overflow-y: auto !important;
+}
+html.is-landscape .header-view-dropdown-grid,
+html[data-orientation="landscape"] .header-view-dropdown-grid {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 0.75rem !important;
+}
+html.is-landscape .header-view-dropdown-calendar,
+html[data-orientation="landscape"] .header-view-dropdown-calendar {
+  border-top-width: 0 !important;
+  border-left-width: 1px !important;
+  border-left-style: solid !important;
+  border-left-color: rgba(255, 255, 255, 0.1) !important;
+  padding-top: 0 !important;
+  padding-left: 0.75rem !important;
+}
+
 html.is-landscape .fixed.bottom-20,
 html[data-orientation="landscape"] .fixed.bottom-20 {
   bottom: 1rem !important;
@@ -341,6 +407,65 @@ html.is-landscape .text-\[10px\], html[data-orientation="landscape"] .text-\[10p
 html.is-landscape .text-\[10\.5px\], html[data-orientation="landscape"] .text-\[10\.5px\] { font-size: 12.6px !important; }
 html.is-landscape .text-\[11px\], html[data-orientation="landscape"] .text-\[11px\] { font-size: 13.2px !important; }
 html.is-landscape .text-\[11\.5px\], html[data-orientation="landscape"] .text-\[11\.5px\] { font-size: 13.8px !important; }
+
+/* Selective Pinned Compact Elements in Landscape */
+html.is-landscape [class*="circadian"] span:not(h1):not(h2):not(h3):not(h4),
+html[data-orientation="landscape"] [class*="circadian"] span:not(h1):not(h2):not(h3):not(h4),
+html.is-landscape .circadian-badge,
+html[data-orientation="landscape"] .circadian-badge,
+html.is-landscape [class*="pulseBadge"],
+html[data-orientation="landscape"] [class*="pulseBadge"] {
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+}
+
+html.is-landscape [class*="rounded-full"]:not(button):not(.header-view-dropdown *):not(.bottom-nav-container *) span,
+html[data-orientation="landscape"] [class*="rounded-full"]:not(button):not(.header-view-dropdown *):not(.bottom-nav-container *) span,
+html.is-landscape .dose-pill,
+html[data-orientation="landscape"] .dose-pill,
+html.is-landscape .status-pill,
+html[data-orientation="landscape"] .status-pill,
+html.is-landscape .badge-compact,
+html[data-orientation="landscape"] .badge-compact {
+  font-size: 10px !important;
+}
+
+html.is-landscape .timeline-timestamp,
+html[data-orientation="landscape"] .timeline-timestamp,
+html.is-landscape [class*="timeRange"],
+html[data-orientation="landscape"] [class*="timeRange"] {
+  font-size: 11px !important;
+}
+
+html.is-landscape .header-view-dropdown button,
+html[data-orientation="landscape"] .header-view-dropdown button,
+html.is-landscape .header-view-dropdown a,
+html[data-orientation="landscape"] .header-view-dropdown a {
+  font-size: 12px !important;
+}
+
+/* Standard 100% User Preference Override */
+html[data-landscape-text="standard"],
+html[data-landscape-text="standard"] body {
+  --text-xs: 0.75rem !important;
+  --text-sm: 0.875rem !important;
+  --text-base: 1rem !important;
+  --text-lg: 1.125rem !important;
+  --text-xl: 1.25rem !important;
+  --text-2xl: 1.5rem !important;
+  --text-3xl: 1.875rem !important;
+  font-size: 16px !important;
+}
+html[data-landscape-text="standard"] .text-\[7px\] { font-size: 7px !important; }
+html[data-landscape-text="standard"] .text-\[7\.5px\] { font-size: 7.5px !important; }
+html[data-landscape-text="standard"] .text-\[8px\] { font-size: 8px !important; }
+html[data-landscape-text="standard"] .text-\[8\.5px\] { font-size: 8.5px !important; }
+html[data-landscape-text="standard"] .text-\[9px\] { font-size: 9px !important; }
+html[data-landscape-text="standard"] .text-\[9\.5px\] { font-size: 9.5px !important; }
+html[data-landscape-text="standard"] .text-\[10px\] { font-size: 10px !important; }
+html[data-landscape-text="standard"] .text-\[10\.5px\] { font-size: 10.5px !important; }
+html[data-landscape-text="standard"] .text-\[11px\] { font-size: 11px !important; }
+html[data-landscape-text="standard"] .text-\[11\.5px\] { font-size: 11.5px !important; }
 
 /* 4. Density Exemptions: Month Matrix & Calendar Views */
 .month-matrix-view {

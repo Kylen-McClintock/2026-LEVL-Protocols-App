@@ -36,6 +36,13 @@ export default function OrientationController() {
       const isLandscape = Boolean(isMobileLandscape || isMobileScreenRotated || isMobileLegacyRotated)
 
       document.documentElement.setAttribute('data-orientation', isLandscape ? 'landscape' : 'portrait')
+      
+      // Hydrate landscape text size preference ('standard' vs 'enlarge')
+      try {
+        const savedTextPref = localStorage.getItem('levl_landscape_text_pref')
+        document.documentElement.setAttribute('data-landscape-text', savedTextPref === 'standard' ? 'standard' : 'enlarge')
+      } catch (e) {}
+
       if (isLandscape) {
         document.documentElement.classList.add('is-landscape')
       } else {
