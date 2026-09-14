@@ -22,8 +22,8 @@ export default function OrientationController() {
     const evaluateOrientation = () => {
       if (typeof window === 'undefined' || typeof document === 'undefined') return
 
-      // Mobile landscape: true phone held horizontally (short height <= 550px AND wide aspect)
-      const isMobileLandscape = window.innerWidth > window.innerHeight && window.innerHeight <= 550
+      // Mobile landscape: true phone held horizontally (short height <= 600px AND wide aspect)
+      const isMobileLandscape = window.innerWidth > window.innerHeight && window.innerHeight <= 600
 
       // Screen orientation angle (90 or 270) on mobile devices (max dimension <= 1024)
       const screenAngle = typeof screen !== 'undefined' && typeof screen.orientation?.angle === 'number' ? screen.orientation.angle : null

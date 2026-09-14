@@ -72,7 +72,7 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
   const todayStr = format(new Date(), 'yyyy-MM-dd')
 
   return (
-    <div className="space-y-3 w-full my-1">
+    <div className="seven-day-matrix-view space-y-3 w-full my-1">
       {/* Full-Width Modality Expansion Banner */}
       {expandedTask && (
         <ExpandedModalityDetailBanner

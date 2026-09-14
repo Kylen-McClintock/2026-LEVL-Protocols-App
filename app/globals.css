@@ -85,6 +85,7 @@
   .desktop-body-layout {
     display: flex !important;
     padding-bottom: 0 !important;
+    padding-right: 0 !important;
   }
   .desktop-hide-header-logo {
     display: none !important;
@@ -94,7 +95,7 @@
   }
 }
 
-/* 2. Mobile in Portrait OR Phone in Landscape: Width < 768px OR Height < 550px */
+/* 2. Mobile in Portrait: Width < 768px */
 @media (max-width: 767px), (max-height: 549px) {
   .desktop-sidebar {
     display: none !important;
@@ -117,48 +118,248 @@
   }
 }
 
-/* 3. Compact Landscape Mobile Ergonomics (Height < 600px & Landscape Orientation, or html.is-landscape) */
+/* 3. Mobile Landscape Ergonomics & Right-Side Navigation Rail */
 @media (orientation: landscape) and (max-height: 600px) {
-  .landscape-compact-nav {
-    height: 40px !important;
+  /* Navigation docked to right side */
+  .bottom-nav-container {
+    top: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    width: calc(64px + env(safe-area-inset-right, 0px)) !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    border-top-width: 0 !important;
+    border-left-width: 1px !important;
+    border-left-style: solid !important;
+    border-left-color: rgba(255, 255, 255, 0.1) !important;
+    padding-top: max(0.5rem, env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)) !important;
+    padding-left: 0.25rem !important;
+    padding-right: max(0.5rem, env(safe-area-inset-right, 0px)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    z-index: 50 !important;
+    border-radius: 0 !important;
   }
-  .landscape-compact-nav-item {
-    padding-top: 1px !important;
-    padding-bottom: 1px !important;
+
+  .bottom-nav-inner {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-evenly !important;
+    align-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0.25rem 0 !important;
+    gap: 0.25rem !important;
   }
-  .landscape-compact-icon {
-    width: 16px !important;
-    height: 16px !important;
+
+  .bottom-nav-item {
+    width: 100% !important;
+    height: auto !important;
+    padding: 0.35rem 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
   }
-  .desktop-pt-14 {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 42px) !important;
+
+  .bottom-nav-icon {
+    width: 20px !important;
+    height: 20px !important;
   }
+
+  .bottom-nav-label {
+    font-size: 9.5px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Reclaim vertical content space: zero bottom padding, add right padding for the rail */
   .desktop-body-layout {
-    padding-bottom: 3rem !important;
+    padding-bottom: 0 !important;
+    padding-right: calc(64px + env(safe-area-inset-right, 0px)) !important;
   }
+
+  .landscape-main-content {
+    padding-bottom: 1rem !important;
+  }
+
+  .desktop-pt-14 {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 44px) !important;
+  }
+
+  /* Top sticky header offset to avoid overlapping the right rail */
+  .top-sticky-header-container {
+    right: calc(64px + env(safe-area-inset-right, 0px)) !important;
+  }
+
+  /* Completion and action toasts offset away from right rail */
+  .fixed.bottom-20 {
+    bottom: 1rem !important;
+    right: calc(72px + env(safe-area-inset-right, 0px)) !important;
+  }
+
+  /* ~20% Typography Increase for Mobile Landscape */
+  :root, html, body {
+    --text-xs: 0.9rem;
+    --text-sm: 1.05rem;
+    --text-base: 1.2rem;
+    --text-lg: 1.35rem;
+    --text-xl: 1.5rem;
+    --text-2xl: 1.8rem;
+    --text-3xl: 2.25rem;
+    --text-4xl: 2.7rem;
+    font-size: 19.2px;
+  }
+
+  .text-\[7px\] { font-size: 8.4px !important; }
+  .text-\[7\.5px\] { font-size: 9px !important; }
+  .text-\[8px\] { font-size: 9.6px !important; }
+  .text-\[8\.5px\] { font-size: 10.2px !important; }
+  .text-\[9px\] { font-size: 10.8px !important; }
+  .text-\[9\.5px\] { font-size: 11.4px !important; }
+  .text-\[10px\] { font-size: 12px !important; }
+  .text-\[10\.5px\] { font-size: 12.6px !important; }
+  .text-\[11px\] { font-size: 13.2px !important; }
+  .text-\[11\.5px\] { font-size: 13.8px !important; }
 }
 
-html.is-landscape .landscape-compact-nav,
-html[data-orientation="landscape"] .landscape-compact-nav {
-  height: 40px !important;
+/* Explicit class activation for devices supporting html.is-landscape */
+html.is-landscape,
+html[data-orientation="landscape"] {
+  --text-xs: 0.9rem;
+  --text-sm: 1.05rem;
+  --text-base: 1.2rem;
+  --text-lg: 1.35rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.8rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 2.7rem;
+  font-size: 19.2px;
 }
-html.is-landscape .landscape-compact-nav-item,
-html[data-orientation="landscape"] .landscape-compact-nav-item {
-  padding-top: 1px !important;
-  padding-bottom: 1px !important;
+
+html.is-landscape .bottom-nav-container,
+html[data-orientation="landscape"] .bottom-nav-container {
+  top: 0 !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  left: auto !important;
+  width: calc(64px + env(safe-area-inset-right, 0px)) !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  border-top-width: 0 !important;
+  border-left-width: 1px !important;
+  border-left-style: solid !important;
+  border-left-color: rgba(255, 255, 255, 0.1) !important;
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0px)) !important;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)) !important;
+  padding-left: 0.25rem !important;
+  padding-right: max(0.5rem, env(safe-area-inset-right, 0px)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  z-index: 50 !important;
+  border-radius: 0 !important;
 }
-html.is-landscape .landscape-compact-icon,
-html[data-orientation="landscape"] .landscape-compact-icon {
-  width: 16px !important;
-  height: 16px !important;
+
+html.is-landscape .bottom-nav-inner,
+html[data-orientation="landscape"] .bottom-nav-inner {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-evenly !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0.25rem 0 !important;
+  gap: 0.25rem !important;
 }
-html.is-landscape .desktop-pt-14,
-html[data-orientation="landscape"] .desktop-pt-14 {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 42px) !important;
+
+html.is-landscape .bottom-nav-item,
+html[data-orientation="landscape"] .bottom-nav-item {
+  width: 100% !important;
+  height: auto !important;
+  padding: 0.35rem 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 2px !important;
 }
+
+html.is-landscape .bottom-nav-icon,
+html[data-orientation="landscape"] .bottom-nav-icon {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+html.is-landscape .bottom-nav-label,
+html[data-orientation="landscape"] .bottom-nav-label {
+  font-size: 9.5px !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+}
+
 html.is-landscape .desktop-body-layout,
 html[data-orientation="landscape"] .desktop-body-layout {
-  padding-bottom: 3rem !important;
+  padding-bottom: 0 !important;
+  padding-right: calc(64px + env(safe-area-inset-right, 0px)) !important;
+}
+
+html.is-landscape .landscape-main-content,
+html[data-orientation="landscape"] .landscape-main-content {
+  padding-bottom: 1rem !important;
+}
+
+html.is-landscape .desktop-pt-14,
+html[data-orientation="landscape"] .desktop-pt-14 {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 44px) !important;
+}
+
+html.is-landscape .top-sticky-header-container,
+html[data-orientation="landscape"] .top-sticky-header-container {
+  right: calc(64px + env(safe-area-inset-right, 0px)) !important;
+}
+
+html.is-landscape .fixed.bottom-20,
+html[data-orientation="landscape"] .fixed.bottom-20 {
+  bottom: 1rem !important;
+  right: calc(72px + env(safe-area-inset-right, 0px)) !important;
+}
+
+html.is-landscape .text-\[7px\], html[data-orientation="landscape"] .text-\[7px\] { font-size: 8.4px !important; }
+html.is-landscape .text-\[7\.5px\], html[data-orientation="landscape"] .text-\[7\.5px\] { font-size: 9px !important; }
+html.is-landscape .text-\[8px\], html[data-orientation="landscape"] .text-\[8px\] { font-size: 9.6px !important; }
+html.is-landscape .text-\[8\.5px\], html[data-orientation="landscape"] .text-\[8\.5px\] { font-size: 10.2px !important; }
+html.is-landscape .text-\[9px\], html[data-orientation="landscape"] .text-\[9px\] { font-size: 10.8px !important; }
+html.is-landscape .text-\[9\.5px\], html[data-orientation="landscape"] .text-\[9\.5px\] { font-size: 11.4px !important; }
+html.is-landscape .text-\[10px\], html[data-orientation="landscape"] .text-\[10px\] { font-size: 12px !important; }
+html.is-landscape .text-\[10\.5px\], html[data-orientation="landscape"] .text-\[10\.5px\] { font-size: 12.6px !important; }
+html.is-landscape .text-\[11px\], html[data-orientation="landscape"] .text-\[11px\] { font-size: 13.2px !important; }
+html.is-landscape .text-\[11\.5px\], html[data-orientation="landscape"] .text-\[11\.5px\] { font-size: 13.8px !important; }
+
+/* 4. Density Exemptions: Month Matrix & Calendar Views */
+.month-matrix-view {
+  --text-xs: 0.75rem !important;
+  --text-sm: 0.875rem !important;
+  --text-base: 1rem !important;
+  font-size: 14px !important;
+}
+.month-matrix-view .text-\[7px\] { font-size: 7px !important; }
+.month-matrix-view .text-\[7\.5px\] { font-size: 7.5px !important; }
+.month-matrix-view .text-\[8px\] { font-size: 8px !important; }
+.month-matrix-view .text-\[8\.5px\] { font-size: 8.5px !important; }
+.month-matrix-view .text-\[9px\] { font-size: 9px !important; }
+.month-matrix-view .text-\[10px\] { font-size: 10px !important; }
+.month-matrix-view .text-\[11px\] { font-size: 11px !important; }
+
+.seven-day-matrix-view {
+  --text-xs: 0.8rem !important;
+  --text-sm: 0.9rem !important;
 }
 
 /* Touch Ergonomics & Momentum Scrolling */

@@ -96,7 +96,7 @@ export default function RootLayout({
 
           {/* Main Content Area: Universal safe area margins prevent notch/Dynamic Island collisions */}
           <main 
-            className="flex-1 min-h-screen min-w-0 w-full overflow-x-hidden desktop-pt-14"
+            className="flex-1 min-h-screen min-w-0 w-full overflow-x-hidden desktop-pt-14 landscape-main-content"
             style={{
               paddingLeft: 'env(safe-area-inset-left, 0px)',
               paddingRight: 'env(safe-area-inset-right, 0px)'

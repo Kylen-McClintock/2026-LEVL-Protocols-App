@@ -62,7 +62,7 @@ export const MonthMatrixView: React.FC<MonthMatrixViewProps> = ({
   const isStacked = layoutOrientation === 'stack'
 
   return (
-    <div className="my-1 bg-slate-950/95 border border-slate-800/90 rounded-xl p-1.5 sm:p-2.5 shadow-xl space-y-2 w-full">
+    <div className="month-matrix-view my-1 bg-slate-950/95 border border-slate-800/90 rounded-xl p-1.5 sm:p-2.5 shadow-xl space-y-2 w-full">
       {/* Month Matrix Header */}
       <div className="flex items-center justify-between border-b border-slate-800/80 pb-1 px-1">
         <div className="flex items-center gap-1.5">

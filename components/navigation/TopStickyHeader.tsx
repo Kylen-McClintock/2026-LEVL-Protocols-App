@@ -164,7 +164,7 @@ export default function TopStickyHeader() {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 desktop-header-offset right-0 z-40 transition-transform duration-300 ease-in-out ${
+        className={`top-sticky-header-container fixed top-0 left-0 desktop-header-offset right-0 z-40 transition-transform duration-300 ease-in-out ${
           isVisible ? 'translate-y-0' : '-translate-y-full'
         } bg-slate-950/85 backdrop-blur-xl border-b border-levl-border/80 shadow-lg shadow-black/20`}
         style={{
