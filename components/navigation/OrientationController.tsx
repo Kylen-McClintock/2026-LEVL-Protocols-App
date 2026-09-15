@@ -19,6 +19,8 @@ export default function OrientationController() {
       } catch (e) {}
     }
 
+    let lastKnownLandscape: boolean | null = null
+
     const evaluateOrientation = () => {
       if (typeof window === 'undefined' || typeof document === 'undefined') return
 
@@ -35,18 +37,26 @@ export default function OrientationController() {
 
       const isLandscape = Boolean(isMobileLandscape || isMobileScreenRotated || isMobileLegacyRotated)
 
-      document.documentElement.setAttribute('data-orientation', isLandscape ? 'landscape' : 'portrait')
+      const targetOrientation = isLandscape ? 'landscape' : 'portrait'
+      if (document.documentElement.getAttribute('data-orientation') !== targetOrientation) {
+        document.documentElement.setAttribute('data-orientation', targetOrientation)
+      }
       
       // Hydrate landscape text size preference ('standard' vs 'enlarge')
       try {
         const savedTextPref = localStorage.getItem('levl_landscape_text_pref')
-        document.documentElement.setAttribute('data-landscape-text', savedTextPref === 'standard' ? 'standard' : 'enlarge')
+        const targetPref = savedTextPref === 'standard' ? 'standard' : 'enlarge'
+        if (document.documentElement.getAttribute('data-landscape-text') !== targetPref) {
+          document.documentElement.setAttribute('data-landscape-text', targetPref)
+        }
       } catch (e) {}
 
       // Hydrate vertical / portrait text scale preference ('compact', 'default', 'large', 'xlarge')
       try {
         const savedScale = localStorage.getItem('levl_text_scale') || 'default'
-        document.documentElement.setAttribute('data-text-scale', savedScale)
+        if (document.documentElement.getAttribute('data-text-scale') !== savedScale) {
+          document.documentElement.setAttribute('data-text-scale', savedScale)
+        }
         if (!isLandscape) {
           const fontMap: Record<string, string> = {
             compact: '14px',
@@ -54,27 +64,46 @@ export default function OrientationController() {
             large: '18.5px',
             xlarge: '21px'
           }
-          document.documentElement.style.fontSize = fontMap[savedScale] || '16px'
+          const targetFontSize = fontMap[savedScale] || '16px'
+          if (document.documentElement.style.fontSize !== targetFontSize) {
+            document.documentElement.style.fontSize = targetFontSize
+          }
+        } else {
+          if (document.documentElement.style.fontSize) {
+            document.documentElement.style.fontSize = ''
+          }
         }
       } catch (e) {}
 
-      if (isLandscape) {
+      const hasLandscapeClass = document.documentElement.classList.contains('is-landscape')
+      if (isLandscape && !hasLandscapeClass) {
         document.documentElement.classList.add('is-landscape')
-      } else {
+      } else if (!isLandscape && hasLandscapeClass) {
         document.documentElement.classList.remove('is-landscape')
       }
 
-      window.dispatchEvent(new CustomEvent('levl_orientation_changed', { detail: { isLandscape } }))
+      if (lastKnownLandscape !== isLandscape) {
+        lastKnownLandscape = isLandscape
+        window.dispatchEvent(new CustomEvent('levl_orientation_changed', { detail: { isLandscape } }))
+      }
     }
 
     // Android Blink engine delayed repaint handler:
     // Android Chrome updates innerWidth/innerHeight and orientation queries 50ms-300ms after orientationchange
-    let timer1: NodeJS.Timeout
-    let timer2: NodeJS.Timeout
-    let timer3: NodeJS.Timeout
-    let timer4: NodeJS.Timeout
+    let timer1: NodeJS.Timeout | undefined
+    let timer2: NodeJS.Timeout | undefined
+    let timer3: NodeJS.Timeout | undefined
+    let timer4: NodeJS.Timeout | undefined
+
+    const clearTimers = () => {
+      if (timer1) clearTimeout(timer1)
+      if (timer2) clearTimeout(timer2)
+      if (timer3) clearTimeout(timer3)
+      if (timer4) clearTimeout(timer4)
+    }
 
     const triggerOrientationUpdate = () => {
+      clearTimers()
       evaluateOrientation()
       timer1 = setTimeout(evaluateOrientation, 60)
       timer2 = setTimeout(evaluateOrientation, 150)
@@ -98,10 +127,7 @@ export default function OrientationController() {
     }
 
     return () => {
-      clearTimeout(timer1)
-      clearTimeout(timer2)
-      clearTimeout(timer3)
-      clearTimeout(timer4)
+      clearTimers()
       window.removeEventListener('resize', triggerOrientationUpdate)
       window.removeEventListener('orientationchange', triggerOrientationUpdate)
       window.removeEventListener('levl_text_scale_changed', triggerOrientationUpdate)
