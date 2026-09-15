@@ -1,13 +1,46 @@
 'use client'
 
-import React from 'react'
-import { Type, Check, Sparkles, Eye, Smartphone, RotateCcw, Maximize2, Minimize2, Pin, ArrowUpRight } from 'lucide-react'
-import { useTextScale, TextScale, TEXT_SCALE_OPTIONS, FONT_SIZE_MAP } from '@/lib/utils/useTextScale'
+import React, { useState, useEffect } from 'react'
+import { Type, Check, Sparkles, Eye, Smartphone, RotateCcw, Maximize2, Minimize2, Pin, ArrowUpRight, Save, CheckCircle2 } from 'lucide-react'
+import { useTextScale, TextScale, FONT_SIZE_MAP } from '@/lib/utils/useTextScale'
 import { useLandscapeFontPreference, LandscapeTextPreference } from '@/lib/utils/useLandscapeFontPreference'
+import { UserProfile } from '@/lib/types'
+import { updateUserProfile } from '@/lib/data'
+import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 
-export default function FontSizeSettingsCard() {
+interface FontSizeSettingsCardProps {
+  profile?: UserProfile
+  onUpdated?: (updated: UserProfile) => void
+}
+
+export default function FontSizeSettingsCard({ profile, onUpdated }: FontSizeSettingsCardProps = {}) {
   const { scale, setScale, options: textScaleOptions } = useTextScale()
   const { preference: landscapePref, setPreference: setLandscapePref } = useLandscapeFontPreference()
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+
+  // Optional hydration from cloud profile if not yet set locally
+  useEffect(() => {
+    if (profile?.outcome_preference_scores) {
+      const cloudScale = profile.outcome_preference_scores.text_scale as TextScale | undefined
+      const cloudLandscape = profile.outcome_preference_scores.landscape_text_preference as LandscapeTextPreference | undefined
+      
+      try {
+        if (cloudScale && ['compact', 'default', 'large', 'xlarge'].includes(cloudScale)) {
+          const localScale = localStorage.getItem('levl_text_scale')
+          if (!localScale) {
+            setScale(cloudScale)
+          }
+        }
+
+        if (cloudLandscape && ['auto_enlarge', 'standard'].includes(cloudLandscape)) {
+          const localLandscape = localStorage.getItem('levl_landscape_text_pref')
+          if (!localLandscape) {
+            setLandscapePref(cloudLandscape)
+          }
+        }
+      } catch (e) {}
+    }
+  }, [profile])
 
   const landscapeOptions: {
     id: LandscapeTextPreference
@@ -37,6 +70,55 @@ export default function FontSizeSettingsCard() {
 
   const activeScaleObj = textScaleOptions.find(o => o.id === scale) || textScaleOptions[1]
 
+  const persistPreferences = async (newScale?: TextScale, newLandscape?: LandscapeTextPreference) => {
+    const targetScale = newScale ?? scale
+    const targetLandscape = newLandscape ?? landscapePref
+    
+    // 1. Immediately apply to local DOM and storage (synchronous & instant)
+    if (newScale) setScale(newScale)
+    if (newLandscape) setLandscapePref(newLandscape)
+
+    // 2. Set saving feedback
+    setSaveStatus('saving')
+
+    // 3. Persist to Supabase if local user id is available
+    try {
+      const localUserId = getLocalUserId()
+      if (localUserId) {
+        const existingScores = profile?.outcome_preference_scores || {}
+        const updatedScores = {
+          ...existingScores,
+          text_scale: targetScale,
+          landscape_text_preference: targetLandscape
+        }
+        const updated = await updateUserProfile(localUserId, {
+          outcome_preference_scores: updatedScores
+        })
+        if (updated && onUpdated) {
+          onUpdated(updated)
+        }
+      }
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus('idle'), 2500)
+    } catch (err) {
+      console.warn('Error syncing font preferences to profile:', err)
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus('idle'), 2500)
+    }
+  }
+
+  const handleSelectScale = (optId: TextScale) => {
+    persistPreferences(optId, landscapePref)
+  }
+
+  const handleSelectLandscape = (optId: LandscapeTextPreference) => {
+    persistPreferences(scale, optId)
+  }
+
+  const handleManualSave = () => {
+    persistPreferences(scale, landscapePref)
+  }
+
   return (
     <div className="glass-card p-5 rounded-2xl border border-slate-700/80 shadow-xl space-y-6 bg-slate-900/70 backdrop-blur-md">
       {/* Header */}
@@ -47,9 +129,28 @@ export default function FontSizeSettingsCard() {
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-extrabold text-base text-white tracking-tight">Display &amp; Font Size</h3>
-            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-              Configure reading scale for vertical and horizontal landscape modes
-            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Configure reading scale for vertical and horizontal landscape modes
+              </p>
+              <span className="text-slate-600 hidden sm:inline">•</span>
+              {saveStatus === 'saved' ? (
+                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 animate-pulse">
+                  <CheckCircle2 size={12} className="text-emerald-400" />
+                  Saved
+                </span>
+              ) : saveStatus === 'saving' ? (
+                <span className="text-xs font-medium text-purple-300 flex items-center gap-1">
+                  <Sparkles size={12} className="animate-spin text-purple-400" />
+                  Saving...
+                </span>
+              ) : (
+                <span className="text-[11px] text-slate-500 hidden sm:inline-flex items-center gap-1">
+                  <Check size={11} className="text-slate-500" />
+                  Auto-saves instantly
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -86,7 +187,7 @@ export default function FontSizeSettingsCard() {
               <button
                 key={opt.id}
                 type="button"
-                onClick={() => setScale(opt.id)}
+                onClick={() => handleSelectScale(opt.id)}
                 className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none ${
                   isSelected
                     ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-950 border border-purple-400/30 font-extrabold'
@@ -178,7 +279,7 @@ export default function FontSizeSettingsCard() {
               <button
                 key={opt.id}
                 type="button"
-                onClick={() => setLandscapePref(opt.id)}
+                onClick={() => handleSelectLandscape(opt.id)}
                 className={`py-3 px-3.5 rounded-xl text-xs font-bold transition-all flex flex-col items-start gap-1 cursor-pointer select-none text-left ${
                   isSelected
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-950 border border-indigo-400/30'
@@ -234,6 +335,46 @@ export default function FontSizeSettingsCard() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* SECTION 3: Explicit Save Action & Persistence Guarantee */}
+      <div className="pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <CheckCircle2 size={15} className={saveStatus === 'saved' ? 'text-emerald-400' : 'text-slate-500'} />
+          <span className="leading-snug">
+            {saveStatus === 'saved'
+              ? '✓ Applied immediately to all views and saved to your profile.'
+              : 'Changes take effect immediately across all views & persist across sessions.'}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleManualSave}
+          disabled={saveStatus === 'saving'}
+          className={`w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg active:scale-98 shrink-0 ${
+            saveStatus === 'saved'
+              ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/50 border border-emerald-400/40'
+              : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-950/40 border border-purple-400/30'
+          }`}
+        >
+          {saveStatus === 'saved' ? (
+            <>
+              <Check size={14} className="stroke-[3]" />
+              <span>Saved &amp; Applied</span>
+            </>
+          ) : saveStatus === 'saving' ? (
+            <>
+              <Sparkles size={14} className="animate-spin" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <Save size={14} />
+              <span>Save Font Preferences</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   )

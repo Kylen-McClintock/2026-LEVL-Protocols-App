@@ -396,7 +396,10 @@ export default function SettingsPage() {
           />
         )}
 
-        <FontSizeSettingsCard />
+        <FontSizeSettingsCard 
+          profile={profile || undefined} 
+          onUpdated={(updated) => setProfile(updated)} 
+        />
 
         <TemperatureUnitSettingsCard />
 

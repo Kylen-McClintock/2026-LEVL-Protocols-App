@@ -24,6 +24,9 @@ export function applyTextScale(scale: TextScale) {
     document.documentElement.setAttribute('data-text-scale', scale)
     document.documentElement.style.fontSize = FONT_SIZE_MAP[scale] || '16px'
     localStorage.setItem('levl_text_scale', scale)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('levl_text_scale_changed', { detail: { scale } }))
+    }
   } catch (e) {}
 }
 
@@ -45,6 +48,15 @@ export function useTextScale() {
     const current = getTextScale()
     setScaleState(current)
     applyTextScale(current)
+
+    const handleUpdate = (e: any) => {
+      if (e.detail?.scale && ['compact', 'default', 'large', 'xlarge'].includes(e.detail.scale)) {
+        setScaleState(e.detail.scale)
+      }
+    }
+
+    window.addEventListener('levl_text_scale_changed', handleUpdate)
+    return () => window.removeEventListener('levl_text_scale_changed', handleUpdate)
   }, [])
 
   const setScale = (newScale: TextScale) => {

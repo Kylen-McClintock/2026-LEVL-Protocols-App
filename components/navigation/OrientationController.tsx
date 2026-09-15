@@ -43,6 +43,21 @@ export default function OrientationController() {
         document.documentElement.setAttribute('data-landscape-text', savedTextPref === 'standard' ? 'standard' : 'enlarge')
       } catch (e) {}
 
+      // Hydrate vertical / portrait text scale preference ('compact', 'default', 'large', 'xlarge')
+      try {
+        const savedScale = localStorage.getItem('levl_text_scale') || 'default'
+        document.documentElement.setAttribute('data-text-scale', savedScale)
+        if (!isLandscape) {
+          const fontMap: Record<string, string> = {
+            compact: '14.4px',
+            default: '16px',
+            large: '18px',
+            xlarge: '20px'
+          }
+          document.documentElement.style.fontSize = fontMap[savedScale] || '16px'
+        }
+      } catch (e) {}
+
       if (isLandscape) {
         document.documentElement.classList.add('is-landscape')
       } else {
@@ -70,6 +85,8 @@ export default function OrientationController() {
     triggerOrientationUpdate()
     window.addEventListener('resize', triggerOrientationUpdate, { passive: true })
     window.addEventListener('orientationchange', triggerOrientationUpdate, { passive: true })
+    window.addEventListener('levl_text_scale_changed', triggerOrientationUpdate)
+    window.addEventListener('levl_landscape_text_changed', triggerOrientationUpdate)
 
     if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.addEventListener) {
       screen.orientation.addEventListener('change', triggerOrientationUpdate)
@@ -87,6 +104,8 @@ export default function OrientationController() {
       clearTimeout(timer4)
       window.removeEventListener('resize', triggerOrientationUpdate)
       window.removeEventListener('orientationchange', triggerOrientationUpdate)
+      window.removeEventListener('levl_text_scale_changed', triggerOrientationUpdate)
+      window.removeEventListener('levl_landscape_text_changed', triggerOrientationUpdate)
       if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.removeEventListener) {
         screen.orientation.removeEventListener('change', triggerOrientationUpdate)
       }
