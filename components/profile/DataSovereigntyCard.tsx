@@ -19,7 +19,9 @@ import {
   ExternalLink,
   Copy,
   X,
-  ArrowUpRight
+  ArrowUpRight,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { 
   fetchCompleteUserData, 
@@ -40,6 +42,7 @@ interface DataSovereigntyCardProps {
 }
 
 export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const [loadingStats, setLoadingStats] = useState(true)
   const [stats, setStats] = useState({
     modalitiesCount: 0,
@@ -69,7 +72,7 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
           setStats({
             modalitiesCount: data.benchItems.length,
             protocolsCount: data.protocolInstances.length,
-            tasksCount: data.tasks.length,
+            tasksCount: data.completedTasksCount || data.tasks.filter((t: any) => t.status === 'completed' || Boolean(t.completed_at)).length,
             checkinsCount: data.checkins.length
           })
           setLoadingStats(false)
@@ -189,13 +192,13 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
   return (
     <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-indigo-950/40 border border-slate-700/60 shadow-2xl backdrop-blur-md space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.25)] shrink-0">
             <Database size={20} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-base font-bold text-white tracking-tight">
                 Data Sovereignty &amp; Protocol Vault
               </h3>
@@ -208,6 +211,15 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
             </p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 mt-0.5"
+        >
+          <span>{isExpanded ? 'Collapse' : 'Options'}</span>
+          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
       </div>
 
       {/* Live Inventory Counter Bar */}
@@ -250,8 +262,54 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
         </div>
       </div>
 
-      {/* Export Format Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* Collapsed Quick Actions Strip */}
+      {!isExpanded && (
+        <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/90 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Quick Export:</span>
+            <button
+              type="button"
+              onClick={() => handleExport('markdown')}
+              disabled={activeExport !== null}
+              className="px-2.5 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles size={12} className="text-purple-400" />
+              <span>AI Dossier (.md)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExport('json')}
+              disabled={activeExport !== null}
+              className="px-2.5 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/40 text-sky-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Database size={12} className="text-sky-400" />
+              <span>Full Vault (.json)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExport('csv_tasks')}
+              disabled={activeExport !== null}
+              className="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Table size={12} className="text-emerald-400" />
+              <span>Tasks (.csv)</span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsExpanded(true)}
+            className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition-colors ml-auto cursor-pointer"
+          >
+            <span>View All Formats</span>
+            <ChevronDown size={13} />
+          </button>
+        </div>
+      )}
+
+      {/* Export Format Cards (Expanded View) */}
+      {isExpanded && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-in fade-in duration-200">
         {/* 1. AI-Ready Markdown Dossier */}
         <div className="p-4 rounded-xl bg-gradient-to-b from-purple-950/40 via-slate-900/60 to-slate-950 border border-purple-500/30 flex flex-col justify-between hover:border-purple-500/60 transition-all group">
           <div className="space-y-2">
@@ -442,6 +500,7 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
           </div>
         </div>
       </div>
+      )}
 
       {/* Export Ready Action Banner */}
       {lastExport && (

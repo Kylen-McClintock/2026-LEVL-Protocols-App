@@ -11,6 +11,8 @@ export interface CompleteUserDataPayload {
   benchItems: any[]
   protocolInstances: any[]
   tasks: any[]
+  completedTasksCount: number
+  totalTasksCount: number
   checkins: any[]
   biomarkers: any[]
   biologicalMeasurements: any[]
@@ -45,6 +47,7 @@ export async function fetchCompleteUserData(localUserId: string): Promise<Comple
   const protocolsMap = new Map<string, Protocol>()
   allProtocols.forEach(p => {
     if (p.id) protocolsMap.set(p.id, p)
+    if (p.slug) protocolsMap.set(p.slug, p)
   })
 
   const outcomesMap = new Map<string, OutcomeDimension>()
@@ -62,6 +65,8 @@ export async function fetchCompleteUserData(localUserId: string): Promise<Comple
   let biologicalMeasurements: any[] = []
   let physiologicalScores: any[] = []
   let outcomeObservations: any[] = []
+  let completedTasksCount = 0
+  let totalTasksCount = 0
 
   if (supabase) {
     const client = supabase
@@ -74,7 +79,9 @@ export async function fetchCompleteUserData(localUserId: string): Promise<Comple
       biomarkersData,
       bioMeasurementsData,
       physoScoresData,
-      outcomesObsData
+      outcomesObsData,
+      completedCountRes,
+      totalCountRes
     ] = await Promise.all([
       (async () => {
         try {
@@ -96,15 +103,23 @@ export async function fetchCompleteUserData(localUserId: string): Promise<Comple
       })(),
       (async () => {
         try {
-          const res = await client.from('daily_protocol_tasks').select('*').eq('local_user_id', localUserId).order('scheduled_date', { ascending: false }).limit(2500)
+          const res = await client.from('daily_protocol_tasks').select('*').eq('local_user_id', localUserId).order('scheduled_date', { ascending: false }).limit(1000)
           return res.data || []
         } catch { return [] }
       })(),
       (async () => {
         try {
-          const res = await client.from('daily_wellbeing_checkins').select('*').eq('local_user_id', localUserId).order('date', { ascending: false }).limit(365)
+          // In Supabase daily_wellbeing_checkins, column is checkin_date
+          const res = await client.from('daily_wellbeing_checkins').select('*').eq('local_user_id', localUserId).order('checkin_date', { ascending: false }).limit(365)
           return res.data || []
-        } catch { return [] }
+        } catch { 
+          try {
+            const fallback = await client.from('daily_wellbeing_checkins').select('*').eq('local_user_id', localUserId).limit(365)
+            return fallback.data || []
+          } catch {
+            return []
+          }
+        }
       })(),
       (async () => {
         try {
@@ -129,18 +144,94 @@ export async function fetchCompleteUserData(localUserId: string): Promise<Comple
           const res = await client.from('outcome_observations').select('*').eq('local_user_id', localUserId).order('created_at', { ascending: false })
           return res.data || []
         } catch { return [] }
+      })(),
+      (async () => {
+        try {
+          const res = await client.from('daily_protocol_tasks').select('*', { count: 'exact', head: true }).eq('local_user_id', localUserId).eq('status', 'completed')
+          return res.count ?? null
+        } catch { return null }
+      })(),
+      (async () => {
+        try {
+          const res = await client.from('daily_protocol_tasks').select('*', { count: 'exact', head: true }).eq('local_user_id', localUserId)
+          return res.count ?? null
+        } catch { return null }
       })()
     ])
 
     profile = profileData
     benchItems = benchData
-    protocolInstances = instancesData
-    tasks = tasksData
-    checkins = checkinsData
-    biomarkers = biomarkersData
-    biologicalMeasurements = bioMeasurementsData
-    physiologicalScores = physoScoresData
-    outcomeObservations = outcomesObsData
+    protocolInstances = [...(instancesData || [])]
+    tasks = tasksData || []
+    checkins = (checkinsData || []).map((c: any) => ({
+      ...c,
+      date: c.checkin_date || c.date,
+      checkin_date: c.checkin_date || c.date
+    }))
+    biomarkers = biomarkersData || []
+    biologicalMeasurements = bioMeasurementsData || []
+    physiologicalScores = physoScoresData || []
+    outcomeObservations = outcomesObsData || []
+
+    // Calculate verified task execution counts
+    completedTasksCount = completedCountRes ?? tasks.filter((t: any) => t.status === 'completed' || Boolean(t.completed_at)).length
+    totalTasksCount = totalCountRes ?? tasks.length
+
+    // Resolve all active parent protocols dynamically from instances, profile goals, bench, tasks, and steps
+    const activeProtocolIds = new Set<string>()
+    protocolInstances.forEach((inst: any) => {
+      if (inst.protocol_id) activeProtocolIds.add(inst.protocol_id)
+    })
+    if (profile?.active_protocol_ids && Array.isArray(profile.active_protocol_ids)) {
+      profile.active_protocol_ids.forEach((id: string) => activeProtocolIds.add(id))
+    }
+    if (profile?.outcome_preference_scores?.active_protocol_ids && Array.isArray(profile.outcome_preference_scores.active_protocol_ids)) {
+      profile.outcome_preference_scores.active_protocol_ids.forEach((id: string) => activeProtocolIds.add(id))
+    }
+    benchItems.forEach((b: any) => {
+      if (b.protocol_id) activeProtocolIds.add(b.protocol_id)
+    })
+    tasks.forEach((t: any) => {
+      if (t.protocol_id) activeProtocolIds.add(t.protocol_id)
+    })
+
+    // Look up parent protocols from task protocol_step_ids
+    const stepIds = [...new Set(tasks.map((t: any) => t.protocol_step_id).filter(Boolean))]
+    if (stepIds.length > 0) {
+      try {
+        const { data: stepRows } = await client
+          .from('protocol_steps')
+          .select('id, protocol_id')
+          .in('id', stepIds)
+        if (stepRows) {
+          stepRows.forEach((s: any) => {
+            if (s.protocol_id) activeProtocolIds.add(s.protocol_id)
+          })
+        }
+      } catch (e) {
+        console.warn('Error resolving step protocols:', e)
+      }
+    }
+
+    // Hydrate missing protocol definitions so UI & dossiers accurately show active protocols
+    const existingProtoIds = new Set(protocolInstances.map((i: any) => i.protocol_id))
+    for (const protoId of activeProtocolIds) {
+      if (!existingProtoIds.has(protoId)) {
+        const protoDef = protocolsMap.get(protoId) || allProtocols.find(p => p.id === protoId || p.slug === protoId)
+        protocolInstances.push({
+          id: `derived_${protoId}`,
+          local_user_id: localUserId,
+          protocol_id: protoId,
+          status: 'active',
+          protocol: protoDef || {
+            id: protoId,
+            name: protoId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            goal: 'Biological Optimization & Longevity',
+            source_label: 'Clinical Protocol'
+          }
+        })
+      }
+    }
   }
 
   // 3. Check client-side localStorage fallback / supplemental data
@@ -163,6 +254,8 @@ export async function fetchCompleteUserData(localUserId: string): Promise<Comple
     benchItems,
     protocolInstances,
     tasks,
+    completedTasksCount,
+    totalTasksCount,
     checkins,
     biomarkers,
     biologicalMeasurements,
@@ -190,7 +283,8 @@ export function generateProtocolJSON(payload: CompleteUserDataPayload): string {
       profile_configured: Boolean(payload.profile),
       benched_modalities_count: payload.benchItems.length,
       active_protocols_count: payload.protocolInstances.length,
-      total_task_executions_logged: payload.tasks.length,
+      completed_task_executions_logged: payload.completedTasksCount || payload.tasks.filter(t => t.status === 'completed' || Boolean(t.completed_at)).length,
+      total_scheduled_tasks_count: payload.totalTasksCount || payload.tasks.length,
       total_wellbeing_checkin_days: payload.checkins.length,
       biomarker_records_count: payload.biomarkers.length,
       quick_logs_count: payload.quickLogs.length
@@ -461,7 +555,8 @@ export function generateProtocolMarkdown(payload: CompleteUserDataPayload): stri
       const m = c.mood_score ?? c.mood ?? '—'
       const s = c.sleep_quality_score ?? c.sleep ?? '—'
       const notes = (c.notes || c.user_notes || c.reflection_notes || '—').replace(/[\n\r]+/g, ' ')
-      lines.push(`| ${c.date} | ${e} | ${f} | ${m} | ${s} | ${notes} |`)
+      const dateStr = c.checkin_date || c.date || '—'
+      lines.push(`| ${dateStr} | ${e} | ${f} | ${m} | ${s} | ${notes} |`)
     })
     lines.push('')
   }
@@ -593,7 +688,7 @@ export function generateCheckinsCSV(payload: CompleteUserDataPayload): string {
 
   payload.checkins.forEach(c => {
     rows.push([
-      escapeCSV(c.date),
+      escapeCSV(c.checkin_date || c.date || ''),
       escapeCSV(c.energy_score ?? c.energy ?? ''),
       escapeCSV(c.focus_score ?? c.focus ?? ''),
       escapeCSV(c.mood_score ?? c.mood ?? ''),

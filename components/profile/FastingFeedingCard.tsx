@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { UserProfile } from '@/lib/types'
 import { updateUserProfile, sanitizeProfileTime } from '@/lib/data'
-import { Utensils, Zap, Sparkles, Check, Clock, Droplets, CheckCircle2, ShieldCheck } from 'lucide-react'
+import { Utensils, Zap, Sparkles, Check, Clock, Droplets, CheckCircle2, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react'
 import CircadianTimePickerInput from '@/components/ui/CircadianTimePickerInput'
 
 interface FastingFeedingCardProps {
@@ -59,6 +59,7 @@ const FASTING_SCHEDULES = [
 export default function FastingFeedingCard({ profile, onUpdated }: FastingFeedingCardProps) {
   const prefs = profile.outcome_preference_scores || {}
 
+  const [isExpanded, setIsExpanded] = useState(false)
   const [schedule, setSchedule] = useState<string>(
     profile.fasting_schedule || prefs.fasting_schedule || '16:8'
   )
@@ -111,31 +112,71 @@ export default function FastingFeedingCard({ profile, onUpdated }: FastingFeedin
     <div className="glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md shadow-xl space-y-5">
       {/* Header */}
       <div className="space-y-2 pb-3 border-b border-slate-800/80">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 flex items-center justify-center shadow-md shrink-0 mt-0.5">
-            <Utensils size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-              <span>Fasting &amp; Eating Window Schedule</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-              Sorts your supplements into Fasted vs. Fed (Lipid Carrier) protocols
-            </p>
-            <div className="flex items-center gap-1.5 mt-2 text-[11px] font-mono">
-              {isSaving ? (
-                <span className="text-teal-400 font-bold animate-pulse">Saving...</span>
-              ) : savedSuccess ? (
-                <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  <Check size={12} /> Auto-saved
-                </span>
-              ) : (
-                <span className="text-slate-500 font-medium">Auto-saves on change</span>
-              )}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 flex items-center justify-center shadow-md shrink-0 mt-0.5">
+              <Utensils size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2 flex-wrap">
+                <span>Fasting &amp; Eating Window Schedule</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                Sorts your supplements into Fasted vs. Fed (Lipid Carrier) protocols
+              </p>
+              <div className="flex items-center gap-1.5 mt-2 text-[11px] font-mono">
+                {isSaving ? (
+                  <span className="text-teal-400 font-bold animate-pulse">Saving...</span>
+                ) : savedSuccess ? (
+                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                    <Check size={12} /> Auto-saved
+                  </span>
+                ) : (
+                  <span className="text-slate-500 font-medium">Auto-saves on change</span>
+                )}
+              </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 mt-0.5"
+          >
+            <span>{isExpanded ? 'Collapse' : 'Configure'}</span>
+            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
         </div>
       </div>
+
+      {/* Collapsed Active Summary Strip */}
+      {!isExpanded ? (
+        <div 
+          onClick={() => setIsExpanded(true)}
+          className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-teal-500/30 flex items-center justify-between cursor-pointer transition-all group select-none gap-3 flex-wrap"
+        >
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-300 border border-teal-500/30">
+              <Zap size={13} className="text-teal-400" />
+              <span>{FASTING_SCHEDULES.find(s => s.id === schedule)?.label.split('(')[0].trim() || schedule}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700/60">
+              <Clock size={13} className="text-teal-400" />
+              <span>Feeding: {windowStart} – {windowEnd}</span>
+            </span>
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-900/80 text-slate-400 border border-slate-800">
+              <Droplets size={12} className="text-sky-400" />
+              <span>Lipid Carrier Rules Active</span>
+            </span>
+          </div>
+
+          <div className="text-xs text-teal-400 group-hover:text-teal-300 flex items-center gap-1 font-semibold ml-auto">
+            <span>Edit Fasting Window</span>
+            <ChevronDown size={14} />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-5 animate-in fade-in duration-200">
 
       {/* Fasting Schedule Archetypes */}
       <div className="space-y-2.5">
@@ -235,6 +276,8 @@ export default function FastingFeedingCard({ profile, onUpdated }: FastingFeedin
           </div>
         </div>
       </div>
+      </div>
+      )}
     </div>
   )
 }

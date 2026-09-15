@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { UserProfile } from '@/lib/types'
 import { updateUserProfile, sanitizeProfileTime } from '@/lib/data'
-import { Moon, Sun, Clock, Coffee, Eye, Sparkles, Check, Flame, ShieldAlert, CheckCircle2 } from 'lucide-react'
+import { Moon, Sun, Clock, Coffee, Eye, Sparkles, Check, Flame, ShieldAlert, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
 import CircadianTimePickerInput from '@/components/ui/CircadianTimePickerInput'
 
 interface CircadianAnchorsCardProps {
@@ -41,6 +41,7 @@ const CHRONOTYPES = [
 export default function CircadianAnchorsCard({ profile, onUpdated }: CircadianAnchorsCardProps) {
   const prefs = profile.outcome_preference_scores || {}
 
+  const [isExpanded, setIsExpanded] = useState(false)
   const [wakeTime, setWakeTime] = useState<string>(
     sanitizeProfileTime(profile.ideal_wake_time || prefs.ideal_wake_time) || '06:30'
   )
@@ -125,147 +126,192 @@ export default function CircadianAnchorsCard({ profile, onUpdated }: CircadianAn
     <div className="glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md shadow-xl space-y-5">
       {/* Header */}
       <div className="space-y-2 pb-3 border-b border-slate-800/80">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-md shrink-0 mt-0.5">
-            <Sun size={20} />
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-md shrink-0 mt-0.5">
+              <Sun size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2 flex-wrap">
+                <span>Circadian &amp; Chronobiology Anchors</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                Drives your personalized daily diurnal rhythm, sunlight, and caffeine cutoffs
+              </p>
+              <div className="flex items-center gap-1.5 mt-2 text-[11px] font-mono">
+                {isSaving ? (
+                  <span className="text-amber-400 font-bold animate-pulse">Saving...</span>
+                ) : savedSuccess ? (
+                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                    <Check size={12} /> Auto-saved
+                  </span>
+                ) : (
+                  <span className="text-slate-500 font-medium">Auto-saves on change</span>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-              <span>Circadian &amp; Chronobiology Anchors</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-              Drives your personalized daily diurnal rhythm, sunlight, and caffeine cutoffs
-            </p>
-            <div className="flex items-center gap-1.5 mt-2 text-[11px] font-mono">
-              {isSaving ? (
-                <span className="text-amber-400 font-bold animate-pulse">Saving...</span>
-              ) : savedSuccess ? (
-                <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  <Check size={12} /> Auto-saved
+
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 mt-0.5"
+          >
+            <span>{isExpanded ? 'Collapse' : 'Configure'}</span>
+            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Collapsed Active Summary Strip */}
+      {!isExpanded ? (
+        <div 
+          onClick={() => setIsExpanded(true)}
+          className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-amber-500/30 flex items-center justify-between cursor-pointer transition-all group select-none gap-3 flex-wrap"
+        >
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30">
+              <Sun size={13} className="text-amber-400" />
+              <span>Wake: {wakeTime}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
+              <Moon size={13} className="text-indigo-400" />
+              <span>Sleep: {bedTime}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700/60">
+              <span>{CHRONOTYPES.find(c => c.id === chronotype)?.emoji || '🐻'}</span>
+              <span>{CHRONOTYPES.find(c => c.id === chronotype)?.label.split('/')[0].trim() || 'Bear'}</span>
+            </span>
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-900/80 text-slate-400 border border-slate-800">
+              <Coffee size={12} className="text-orange-400" />
+              <span>Cutoff: {milestones.caffCutoffStr}</span>
+            </span>
+          </div>
+
+          <div className="text-xs text-amber-400 group-hover:text-amber-300 flex items-center gap-1 font-semibold ml-auto">
+            <span>Edit Times &amp; Chronotype</span>
+            <ChevronDown size={14} />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-5 animate-in fade-in duration-200">
+          {/* Target Bed & Wake Times */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+              <CircadianTimePickerInput
+                label="Target Wake Time"
+                icon={<Sun size={14} className="text-amber-400" />}
+                value={wakeTime}
+                onChange={(val) => {
+                  setWakeTime(val)
+                  autoSave({ ideal_wake_time: val })
+                }}
+                accentColor="amber"
+                helperText="Anchors your morning sunlight and cortisol peak"
+              />
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+              <CircadianTimePickerInput
+                label="Target Sleep / Lights Out"
+                icon={<Moon size={14} className="text-indigo-400" />}
+                value={bedTime}
+                onChange={(val) => {
+                  setBedTime(val)
+                  autoSave({ ideal_bedtime: val })
+                }}
+                accentColor="indigo"
+                helperText="Anchors your caffeine and metabolic fasting cutoffs"
+              />
+            </div>
+          </div>
+
+          {/* Chronotype Selection */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-bold text-slate-300 block">
+              Biological Chronotype
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {CHRONOTYPES.map((ct) => {
+                const isSelected = chronotype === ct.id
+                return (
+                  <div
+                    key={ct.id}
+                    onClick={() => {
+                      setChronotype(ct.id)
+                      autoSave({ chronotype: ct.id })
+                    }}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
+                      isSelected
+                        ? 'bg-amber-950/30 border-amber-500/50 text-white shadow-md'
+                        : 'bg-slate-950/50 border-slate-800/80 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="text-xl shrink-0 mt-0.5">{ct.emoji}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-bold ${isSelected ? 'text-amber-300' : 'text-white'}`}>
+                          {ct.label}
+                        </span>
+                        {isSelected && <CheckCircle2 size={13} className="text-amber-400 shrink-0" />}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">{ct.desc}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Auto-Calculated Circadian Milestones Engine Display */}
+          <div className="p-4 bg-slate-950/80 border border-slate-800/90 rounded-xl space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <Sparkles size={13} className="text-amber-400" />
+                <span>Auto-Calculated Diurnal Timeline</span>
+              </span>
+              <span className="text-[10px] font-mono text-slate-500">Live Circadian Waveform</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-between">
+                <span className="text-slate-300 flex items-center gap-1.5">
+                  <Sun size={13} className="text-amber-400" /> Morning Sunlight
                 </span>
-              ) : (
-                <span className="text-slate-500 font-medium">Auto-saves on change</span>
-              )}
+                <span className="font-mono font-bold text-amber-300">{milestones.morningLightStr}</span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-between">
+                <span className="text-slate-300 flex items-center gap-1.5">
+                  <Coffee size={13} className="text-orange-400" /> 90m Coffee Delay
+                </span>
+                <span className="font-mono font-bold text-orange-300">{milestones.adenosineStr}</span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-between">
+                <span className="text-slate-300 flex items-center gap-1.5">
+                  <ShieldAlert size={13} className="text-red-400" /> 10h Caffeine Cutoff
+                </span>
+                <span className="font-mono font-bold text-red-300">{milestones.caffCutoffStr}</span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-between">
+                <span className="text-slate-300 flex items-center gap-1.5">
+                  <Flame size={13} className="text-yellow-400" /> Last Meal Cutoff (3h)
+                </span>
+                <span className="font-mono font-bold text-yellow-300">{milestones.mealCutoffStr}</span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-between sm:col-span-2">
+                <span className="text-slate-300 flex items-center gap-1.5">
+                  <Eye size={13} className="text-indigo-400" /> Blue Light Reduction (2h)
+                </span>
+                <span className="font-mono font-bold text-indigo-300">{milestones.blueLightStr}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Target Bed & Wake Times */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
-          <CircadianTimePickerInput
-            label="Target Wake Time"
-            icon={<Sun size={14} className="text-amber-400" />}
-            value={wakeTime}
-            onChange={(val) => {
-              setWakeTime(val)
-              autoSave({ ideal_wake_time: val })
-            }}
-            accentColor="amber"
-            helperText="Anchors your morning sunlight and cortisol peak"
-          />
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
-          <CircadianTimePickerInput
-            label="Target Sleep / Lights Out"
-            icon={<Moon size={14} className="text-indigo-400" />}
-            value={bedTime}
-            onChange={(val) => {
-              setBedTime(val)
-              autoSave({ ideal_bedtime: val })
-            }}
-            accentColor="indigo"
-            helperText="Anchors your caffeine and metabolic fasting cutoffs"
-          />
-        </div>
-      </div>
-
-      {/* Chronotype Selection */}
-      <div className="space-y-2.5">
-        <label className="text-xs font-bold text-slate-300 block">
-          Biological Chronotype
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {CHRONOTYPES.map((ct) => {
-            const isSelected = chronotype === ct.id
-            return (
-              <div
-                key={ct.id}
-                onClick={() => {
-                  setChronotype(ct.id)
-                  autoSave({ chronotype: ct.id })
-                }}
-                className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
-                  isSelected
-                    ? 'bg-amber-950/30 border-amber-500/50 text-white shadow-md'
-                    : 'bg-slate-950/50 border-slate-800/80 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <span className="text-xl shrink-0 mt-0.5">{ct.emoji}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs font-bold ${isSelected ? 'text-amber-300' : 'text-white'}`}>
-                      {ct.label}
-                    </span>
-                    {isSelected && <CheckCircle2 size={13} className="text-amber-400 shrink-0" />}
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-1 leading-snug">{ct.desc}</p>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Auto-Calculated Circadian Milestones Engine Display */}
-      <div className="p-4 bg-slate-950/80 border border-slate-800/90 rounded-xl space-y-3">
-        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-400">
-          <span className="flex items-center gap-1.5">
-            <Sparkles size={13} className="text-amber-400" />
-            <span>Auto-Calculated Diurnal Timeline</span>
-          </span>
-          <span className="text-[10px] font-mono text-slate-500">Live Circadian Waveform</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-between">
-            <span className="text-slate-300 flex items-center gap-1.5">
-              <Sun size={13} className="text-amber-400" /> Morning Sunlight
-            </span>
-            <span className="font-mono font-bold text-amber-300">{milestones.morningLightStr}</span>
-          </div>
-
-          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-between">
-            <span className="text-slate-300 flex items-center gap-1.5">
-              <Coffee size={13} className="text-orange-400" /> 90m Coffee Delay
-            </span>
-            <span className="font-mono font-bold text-orange-300">{milestones.adenosineStr}</span>
-          </div>
-
-          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-between">
-            <span className="text-slate-300 flex items-center gap-1.5">
-              <ShieldAlert size={13} className="text-red-400" /> 10h Caffeine Cutoff
-            </span>
-            <span className="font-mono font-bold text-red-300">{milestones.caffCutoffStr}</span>
-          </div>
-
-          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-between">
-            <span className="text-slate-300 flex items-center gap-1.5">
-              <Flame size={13} className="text-yellow-400" /> Last Meal Cutoff (3h)
-            </span>
-            <span className="font-mono font-bold text-yellow-300">{milestones.mealCutoffStr}</span>
-          </div>
-
-          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/60 flex items-center justify-between sm:col-span-2">
-            <span className="text-slate-300 flex items-center gap-1.5">
-              <Eye size={13} className="text-indigo-400" /> Blue Light Reduction (2h)
-            </span>
-            <span className="font-mono font-bold text-indigo-300">{milestones.blueLightStr}</span>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

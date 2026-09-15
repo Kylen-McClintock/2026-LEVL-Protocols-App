@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { UserProfile } from '@/lib/types'
 import { updateUserProfile } from '@/lib/data'
-import { Dumbbell, Activity, Clock, ShieldAlert, Sparkles, Check, CheckCircle2, ShieldCheck, Flame } from 'lucide-react'
+import { Dumbbell, Activity, Clock, ShieldAlert, Sparkles, Check, CheckCircle2, ShieldCheck, Flame, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface PhysicalTrainingRecoveryCardProps {
   profile: UserProfile
@@ -69,6 +69,7 @@ const FITNESS_LEVELS = [
 export default function PhysicalTrainingRecoveryCard({ profile, onUpdated }: PhysicalTrainingRecoveryCardProps) {
   const prefs = profile.outcome_preference_scores || {}
 
+  const [isExpanded, setIsExpanded] = useState(false)
   const [workoutWindow, setWorkoutWindow] = useState<string>(
     profile.primary_workout_window || prefs.primary_workout_window || 'afternoon'
   )
@@ -127,31 +128,76 @@ export default function PhysicalTrainingRecoveryCard({ profile, onUpdated }: Phy
     <div className="glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md shadow-xl space-y-5">
       {/* Header */}
       <div className="space-y-2 pb-3 border-b border-slate-800/80">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 flex items-center justify-center shadow-md shrink-0 mt-0.5">
-            <Activity size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-              <span>Physical Training &amp; Recovery Schedule</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-              Enforces the Cold Plunge Anti-Blunting rule and tailors exercise intensity
-            </p>
-            <div className="flex items-center gap-1.5 mt-2 text-[11px] font-mono">
-              {isSaving ? (
-                <span className="text-orange-400 font-bold animate-pulse">Saving...</span>
-              ) : savedSuccess ? (
-                <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  <Check size={12} /> Auto-saved
-                </span>
-              ) : (
-                <span className="text-slate-500 font-medium">Auto-saves on change</span>
-              )}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 flex items-center justify-center shadow-md shrink-0 mt-0.5">
+              <Activity size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2 flex-wrap">
+                <span>Physical Training &amp; Recovery Schedule</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                Enforces the Cold Plunge Anti-Blunting rule and tailors exercise intensity
+              </p>
+              <div className="flex items-center gap-1.5 mt-2 text-[11px] font-mono">
+                {isSaving ? (
+                  <span className="text-orange-400 font-bold animate-pulse">Saving...</span>
+                ) : savedSuccess ? (
+                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                    <Check size={12} /> Auto-saved
+                  </span>
+                ) : (
+                  <span className="text-slate-500 font-medium">Auto-saves on change</span>
+                )}
+              </div>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 mt-0.5"
+          >
+            <span>{isExpanded ? 'Collapse' : 'Configure'}</span>
+            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
         </div>
       </div>
+
+      {/* Collapsed Active Summary Strip */}
+      {!isExpanded ? (
+        <div 
+          onClick={() => setIsExpanded(true)}
+          className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-orange-500/30 flex items-center justify-between cursor-pointer transition-all group select-none gap-3 flex-wrap"
+        >
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-orange-500/10 text-orange-300 border border-orange-500/30">
+              <Clock size={13} className="text-orange-400" />
+              <span>{WORKOUT_WINDOWS.find(w => w.id === workoutWindow)?.label.split('(')[0].trim() || workoutWindow}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-800/80 text-slate-300 border border-slate-700/60">
+              <Dumbbell size={13} className="text-orange-400" />
+              <span>{resistanceDays.join(', ')} ({resistanceDays.length}d/wk)</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-900/80 text-slate-400 border border-slate-800">
+              <Sparkles size={12} className="text-amber-400" />
+              <span>{FITNESS_LEVELS.find(l => l.id === fitnessLevel)?.label || fitnessLevel}</span>
+            </span>
+            {recoveryDays.length > 0 && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                <span>❄️ Plunge Safe: {recoveryDays.join(', ')}</span>
+              </span>
+            )}
+          </div>
+
+          <div className="text-xs text-orange-400 group-hover:text-orange-300 flex items-center gap-1 font-semibold ml-auto">
+            <span>Edit Training &amp; Days</span>
+            <ChevronDown size={14} />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-5 animate-in fade-in duration-200">
 
       {/* Primary Workout Window */}
       <div className="space-y-2.5">
@@ -279,6 +325,8 @@ export default function PhysicalTrainingRecoveryCard({ profile, onUpdated }: Phy
           </div>
         </div>
       </div>
+      </div>
+      )}
     </div>
   )
 }
