@@ -268,7 +268,7 @@ export default function SampleDayPreviewTimeline({
                         <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/60">
                           {modality.time}
                         </span>
-                        <h5 className="text-xs sm:text-sm font-extrabold text-white group-hover:text-indigo-300 transition-colors">
+                        <h5 className="supplement-name text-xs sm:text-sm font-extrabold text-white group-hover:text-indigo-300 transition-colors">
                           {modality.name}
                         </h5>
                         <span className="text-[9px] font-mono uppercase text-slate-400 bg-slate-800/40 border border-slate-700/40 px-1.5 py-0.2 rounded">
@@ -286,7 +286,7 @@ export default function SampleDayPreviewTimeline({
                         <span className="text-slate-400">Duration: {modality.duration}</span>
                       </div>
 
-                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                      <p className="modality-description text-[11px] text-slate-400 leading-relaxed">
                         {modality.mechanism}
                       </p>
 

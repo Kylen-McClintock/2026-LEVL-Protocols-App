@@ -49,10 +49,10 @@ export default function OrientationController() {
         document.documentElement.setAttribute('data-text-scale', savedScale)
         if (!isLandscape) {
           const fontMap: Record<string, string> = {
-            compact: '14.4px',
+            compact: '14px',
             default: '16px',
-            large: '18px',
-            xlarge: '20px'
+            large: '18.5px',
+            xlarge: '21px'
           }
           document.documentElement.style.fontSize = fontMap[savedScale] || '16px'
         }

@@ -505,9 +505,23 @@ html[data-orientation="landscape"] .header-view-dropdown span[class*="rounded"] 
 }
 
 /* Portrait / Vertical Text Scaling Preferences */
-html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) {
-  font-size: 14.4px;
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]),
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) body {
+  font-size: 14px !important;
+  --text-xs: 0.68rem !important;
+  --text-sm: 0.78rem !important;
+  --text-base: 0.9rem !important;
+  --text-lg: 1.02rem !important;
+  --text-xl: 1.12rem !important;
 }
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .text-xs { font-size: 11px !important; }
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .text-sm { font-size: 12.5px !important; }
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .text-base { font-size: 14px !important; }
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .text-lg { font-size: 16px !important; }
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .modality-description,
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .modality-instruction-text { font-size: 11px !important; line-height: 1.45 !important; }
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .supplement-name { font-size: 11px !important; }
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .supplement-dose { font-size: 9px !important; }
 html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[7px\] { font-size: 6.3px !important; }
 html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[7\.5px\] { font-size: 6.8px !important; }
 html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[8px\] { font-size: 7.2px !important; }
@@ -522,47 +536,83 @@ html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landsc
 html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[13px\] { font-size: 11.7px !important; }
 html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[14px\] { font-size: 12.6px !important; }
 
-html[data-text-scale="default"]:not(.is-landscape):not([data-orientation="landscape"]) {
-  font-size: 16px;
+html[data-text-scale="default"]:not(.is-landscape):not([data-orientation="landscape"]),
+html[data-text-scale="default"]:not(.is-landscape):not([data-orientation="landscape"]) body {
+  font-size: 16px !important;
+  --text-xs: 0.75rem !important;
+  --text-sm: 0.875rem !important;
+  --text-base: 1rem !important;
+  --text-lg: 1.125rem !important;
+  --text-xl: 1.25rem !important;
 }
 
-html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) {
-  font-size: 18px;
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]),
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) body {
+  font-size: 18.5px !important;
+  --text-xs: 0.86rem !important;
+  --text-sm: 1rem !important;
+  --text-base: 1.15rem !important;
+  --text-lg: 1.3rem !important;
+  --text-xl: 1.44rem !important;
 }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-xs { font-size: 14px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-sm { font-size: 16px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-base { font-size: 18.5px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-lg { font-size: 21px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .modality-description,
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .modality-instruction-text { font-size: 14.5px !important; line-height: 1.6 !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .supplement-name { font-size: 14px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .supplement-dose { font-size: 11.5px !important; }
 html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[7px\] { font-size: 7.9px !important; }
 html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[7\.5px\] { font-size: 8.4px !important; }
 html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[8px\] { font-size: 9px !important; }
 html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[8\.5px\] { font-size: 9.6px !important; }
 html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[9px\] { font-size: 10.1px !important; }
 html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[9\.5px\] { font-size: 10.7px !important; }
-html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[10px\] { font-size: 11.3px !important; }
-html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[10\.5px\] { font-size: 11.8px !important; }
-html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[11px\] { font-size: 12.4px !important; }
-html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[11\.5px\] { font-size: 12.9px !important; }
-html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[12px\] { font-size: 13.5px !important; }
-html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[13px\] { font-size: 14.6px !important; }
-html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[14px\] { font-size: 15.8px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[10px\] { font-size: 11.5px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[10\.5px\] { font-size: 12px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[11px\] { font-size: 12.6px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[11\.5px\] { font-size: 13.2px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[12px\] { font-size: 13.8px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[13px\] { font-size: 15px !important; }
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[14px\] { font-size: 16.2px !important; }
 
-html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) {
-  font-size: 20px;
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]),
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) body {
+  font-size: 21px !important;
+  --text-xs: 0.96rem !important;
+  --text-sm: 1.12rem !important;
+  --text-base: 1.28rem !important;
+  --text-lg: 1.44rem !important;
+  --text-xl: 1.6rem !important;
 }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-xs { font-size: 16px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-sm { font-size: 18px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-base { font-size: 21px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-lg { font-size: 24px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .modality-description,
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .modality-instruction-text { font-size: 16.5px !important; line-height: 1.65 !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .supplement-name { font-size: 15.5px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .supplement-dose { font-size: 13px !important; }
 html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[7px\] { font-size: 8.8px !important; }
 html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[7\.5px\] { font-size: 9.4px !important; }
 html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[8px\] { font-size: 10px !important; }
 html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[8\.5px\] { font-size: 10.6px !important; }
 html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[9px\] { font-size: 11.3px !important; }
 html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[9\.5px\] { font-size: 11.9px !important; }
-html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[10px\] { font-size: 12.5px !important; }
-html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[10\.5px\] { font-size: 13.1px !important; }
-html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[11px\] { font-size: 13.8px !important; }
-html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[11\.5px\] { font-size: 14.4px !important; }
-html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[12px\] { font-size: 15px !important; }
-html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[13px\] { font-size: 16.3px !important; }
-html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[14px\] { font-size: 17.5px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[10px\] { font-size: 12.8px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[10\.5px\] { font-size: 13.5px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[11px\] { font-size: 14.2px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[11\.5px\] { font-size: 14.8px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[12px\] { font-size: 15.5px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[13px\] { font-size: 16.8px !important; }
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) .text-\[14px\] { font-size: 18px !important; }
 
-/* Standard 100% User Preference Override */
-html[data-landscape-text="standard"],
-html[data-landscape-text="standard"] body {
+/* Standard 100% User Preference Override in Landscape Mode */
+html.is-landscape[data-landscape-text="standard"],
+html[data-orientation="landscape"][data-landscape-text="standard"],
+html.is-landscape[data-landscape-text="standard"] body,
+html[data-orientation="landscape"][data-landscape-text="standard"] body {
   --text-xs: 0.75rem !important;
   --text-sm: 0.875rem !important;
   --text-base: 1rem !important;
@@ -572,16 +622,26 @@ html[data-landscape-text="standard"] body {
   --text-3xl: 1.875rem !important;
   font-size: 16px !important;
 }
-html[data-landscape-text="standard"] .text-\[7px\] { font-size: 7px !important; }
-html[data-landscape-text="standard"] .text-\[7\.5px\] { font-size: 7.5px !important; }
-html[data-landscape-text="standard"] .text-\[8px\] { font-size: 8px !important; }
-html[data-landscape-text="standard"] .text-\[8\.5px\] { font-size: 8.5px !important; }
-html[data-landscape-text="standard"] .text-\[9px\] { font-size: 9px !important; }
-html[data-landscape-text="standard"] .text-\[9\.5px\] { font-size: 9.5px !important; }
-html[data-landscape-text="standard"] .text-\[10px\] { font-size: 10px !important; }
-html[data-landscape-text="standard"] .text-\[10\.5px\] { font-size: 10.5px !important; }
-html[data-landscape-text="standard"] .text-\[11px\] { font-size: 11px !important; }
-html[data-landscape-text="standard"] .text-\[11\.5px\] { font-size: 11.5px !important; }
+html.is-landscape[data-landscape-text="standard"] .text-\[7px\],
+html[data-orientation="landscape"][data-landscape-text="standard"] .text-\[7px\] { font-size: 7px !important; }
+html.is-landscape[data-landscape-text="standard"] .text-\[7\.5px\],
+html[data-orientation="landscape"][data-landscape-text="standard"] .text-\[7\.5px\] { font-size: 7.5px !important; }
+html.is-landscape[data-landscape-text="standard"] .text-\[8px\],
+html[data-orientation="landscape"][data-landscape-text="standard"] .text-\[8px\] { font-size: 8px !important; }
+html.is-landscape[data-landscape-text="standard"] .text-\[8\.5px\],
+html[data-orientation="landscape"][data-landscape-text="standard"] .text-\[8\.5px\] { font-size: 8.5px !important; }
+html.is-landscape[data-landscape-text="standard"] .text-\[9px\],
+html[data-orientation="landscape"][data-landscape-text="standard"] .text-\[9px\] { font-size: 9px !important; }
+html.is-landscape[data-landscape-text="standard"] .text-\[9\.5px\],
+html[data-orientation="landscape"][data-landscape-text="standard"] .text-\[9\.5px\] { font-size: 9.5px !important; }
+html.is-landscape[data-landscape-text="standard"] .text-\[10px\],
+html[data-orientation="landscape"][data-landscape-text="standard"] .text-\[10px\] { font-size: 10px !important; }
+html.is-landscape[data-landscape-text="standard"] .text-\[10\.5px\],
+html[data-orientation="landscape"][data-landscape-text="standard"] .text-\[10\.5px\] { font-size: 10.5px !important; }
+html.is-landscape[data-landscape-text="standard"] .text-\[11px\],
+html[data-orientation="landscape"][data-landscape-text="standard"] .text-\[11px\] { font-size: 11px !important; }
+html.is-landscape[data-landscape-text="standard"] .text-\[11\.5px\],
+html[data-orientation="landscape"][data-landscape-text="standard"] .text-\[11\.5px\] { font-size: 11.5px !important; }
 
 /* 4. Density Exemptions: Month Matrix & Calendar Views */
 .month-matrix-view {

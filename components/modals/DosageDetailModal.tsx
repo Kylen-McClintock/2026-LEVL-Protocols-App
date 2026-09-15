@@ -783,7 +783,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
                   <Sparkles className="w-4 h-4 text-teal-400 shrink-0" />
                   <span>Prescribed Protocol Dosing: <strong className="text-teal-300 font-mono">{activeProtoPreset.doseText}</strong></span>
                 </div>
-                <p className="text-slate-300 pt-2 border-t border-slate-800/80 leading-relaxed">{activeProtoPreset.fullProtocolInstructions || activeProtoPreset.notes}</p>
+                <p className="modality-description text-slate-300 pt-2 border-t border-slate-800/80 leading-relaxed">{activeProtoPreset.fullProtocolInstructions || activeProtoPreset.notes}</p>
               </div>
             </div>
           )}
@@ -823,7 +823,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
                               <span>{proto.protocolName}</span>
                               <span className={`text-xs sm:text-sm font-mono font-semibold ${color.text}`}>({proto.doseText})</span>
                             </div>
-                            <p className="text-xs sm:text-sm text-slate-300 mt-0.5 leading-relaxed">{proto.notes || proto.fullProtocolInstructions}</p>
+                            <p className="modality-description text-xs sm:text-sm text-slate-300 mt-0.5 leading-relaxed">{proto.notes || proto.fullProtocolInstructions}</p>
                           </div>
                         </div>
                         <ChevronRight className="w-5 h-5 text-slate-500 shrink-0 ml-2" />

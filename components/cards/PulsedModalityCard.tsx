@@ -197,7 +197,7 @@ export const PulsedModalityCard: React.FC<PulsedModalityCardProps> = ({
                 {mod.dose_or_exposure || 'Standard clinical pulse dose'}
               </div>
               {descriptionText && (
-                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                <p className="modality-description text-xs text-slate-300 mt-1 leading-relaxed">
                   {descriptionText}
                 </p>
               )}
@@ -212,7 +212,7 @@ export const PulsedModalityCard: React.FC<PulsedModalityCardProps> = ({
                 <div className="text-[11px] font-extrabold uppercase tracking-wider text-teal-300">
                   Scientific Rationale & Longevity Impact
                 </div>
-                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                <p className="modality-description text-xs text-slate-300 mt-1 leading-relaxed">
                   {mod.evidence_summary}
                 </p>
               </div>

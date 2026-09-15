@@ -103,12 +103,12 @@ export const ModalityExecutionGuide: React.FC<ModalityExecutionGuideProps> = ({
                   return (
                     <div
                       key={idx}
-                      className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-200"
+                      className="modality-step flex items-start gap-3 p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-200"
                     >
                       <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-center font-bold font-mono text-[11px] shrink-0 mt-0.5">
                         {idx + 1}
                       </span>
-                      <p className="leading-relaxed font-sans text-slate-200">
+                      <p className="modality-description modality-instruction-text leading-relaxed font-sans text-slate-200">
                         {cleanStep}
                       </p>
                     </div>

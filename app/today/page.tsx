@@ -3649,7 +3649,7 @@ function TodayPageContent() {
               className="bg-slate-900/60 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-3.5 sm:p-4 space-y-3 cursor-pointer transition-all hover:bg-slate-900/80 shadow-md group"
             >
               {/* Capsule Chips Wrap */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5 supplement-tray-chips">
                 {groupTasks.map((t) => {
                   const mod = t.loose_modality || t.protocol_step?.modality
                   const name = mod?.display_name || mod?.name || 'Modality'
@@ -3660,7 +3660,7 @@ function TodayPageContent() {
                   return (
                     <span 
                       key={t.id}
-                      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-all ${
+                      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-all supplement-pill ${
                         isDone 
                           ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300'
                           : 'bg-black/40 border-white/10 text-slate-200 group-hover:border-purple-500/30'
@@ -3670,9 +3670,9 @@ function TodayPageContent() {
                         <Check size={11} className="text-emerald-400 stroke-[3] shrink-0" />
                       ) : null}
                       <ModalityIcon modality={mod} modalityName={name} size={13} className={`shrink-0 ${isDone ? 'opacity-70' : 'opacity-90'}`} glow={false} />
-                      <span className={isDone ? 'line-through opacity-80' : 'text-white'}>{name}</span>
+                      <span className={`supplement-name ${isDone ? 'line-through opacity-80' : 'text-white'}`}>{name}</span>
                       {dose && (
-                        <span className={`text-[10px] font-mono font-normal ${isDone ? 'text-emerald-400/80' : 'text-slate-400'}`}>
+                        <span className={`supplement-dose text-[10px] font-mono font-normal ${isDone ? 'text-emerald-400/80' : 'text-slate-400'}`}>
                           • {dose}
                         </span>
                       )}

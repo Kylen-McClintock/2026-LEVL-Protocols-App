@@ -436,7 +436,7 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
                   Pairs well with: <span className="text-white font-normal">{synergyData.pairsWith}</span>
                 </p>
               )}
-              <p className="text-xs text-emerald-100/90 leading-relaxed">
+              <p className="modality-description text-xs text-emerald-100/90 leading-relaxed">
                 {synergyData.rationale}
               </p>
             </div>
@@ -452,7 +452,7 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
                   Avoid combining with: <span className="text-white font-normal">{antagonismData.avoidWith}</span>
                 </p>
               )}
-              <p className="text-xs text-red-100/90 leading-relaxed">
+              <p className="modality-description text-xs text-red-100/90 leading-relaxed">
                 {antagonismData.rationale}
               </p>
             </div>

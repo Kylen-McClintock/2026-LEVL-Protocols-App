@@ -2274,7 +2274,7 @@ export default function ProtocolTaskCard({
           )}
 
           {!isJustCompletedInline && (
-            <p className="text-xs text-gray-400 mb-3">{modality.brief_description}</p>
+            <p className="modality-description text-xs text-gray-400 mb-3 leading-relaxed">{modality.brief_description}</p>
           )}
 
           {/* BASELINE PRE-SESSION TRIGGER (Placed directly above execution logger) */}
