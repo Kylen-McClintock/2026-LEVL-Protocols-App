@@ -50,7 +50,7 @@ export default function FunctionalOutcomesRankingCard({
   outcomes: OutcomeDimension[]
   onUpdated?: (updated: UserProfile) => void
 }) {
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
   const [preferences, setPreferences] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)

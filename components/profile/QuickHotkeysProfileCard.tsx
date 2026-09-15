@@ -20,7 +20,9 @@ import {
   Zap,
   Activity,
   Leaf,
-  Plus
+  Plus,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { UserProfile, QuickHotkeyConfig } from '@/lib/types'
 import { POPULAR_HOTKEY_LIBRARY, DEFAULT_STARTER_HOTKEYS } from '@/lib/quicklog/quickHotkeyLibrary'
@@ -58,6 +60,7 @@ export default function QuickHotkeysProfileCard({
   const [customHotkeys, setCustomHotkeys] = useState<QuickHotkeyConfig[]>([])
   const [isManageModalOpen, setIsManageModalOpen] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
 
   const reloadData = async () => {
     if (profile?.local_user_id) {
@@ -104,28 +107,43 @@ export default function QuickHotkeysProfileCard({
   return (
     <div className="glass-card p-5 rounded-2xl border border-slate-800 bg-slate-900/80 space-y-4 shadow-xl">
       <div className="flex items-center justify-between border-b border-white/5 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/30 text-orange-400 flex items-center justify-center">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/30 text-orange-400 flex items-center justify-center shrink-0">
             <Sparkles size={16} />
           </div>
-          <div>
-            <h3 className="text-sm font-black text-white">
-              Daily Micro-Habits &amp; Quick Hotkeys
-            </h3>
-            <p className="text-xs text-slate-400">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-black text-white">
+                Daily Micro-Habits &amp; Quick Hotkeys
+              </h3>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30 font-bold">
+                {activeHotkeys.length} Active
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
               Select what you want to track daily on your Today &amp; Schedule dashboards.
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsManageModalOpen(true)}
-          className="text-xs text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1 cursor-pointer"
-        >
-          <Sliders size={13} />
-          <span>Advanced Studio</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsManageModalOpen(true)}
+            className="text-xs text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1 cursor-pointer"
+          >
+            <Sliders size={13} />
+            <span className="hidden sm:inline">Advanced Studio</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsOpen(!isOpen)}
+            className="text-slate-400 hover:text-white p-1 shrink-0 cursor-pointer transition-colors"
+            aria-label={isOpen ? 'Collapse hotkeys section' : 'Expand hotkeys section'}
+          >
+            {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+        </div>
       </div>
 
       {savedSuccess && (
@@ -134,7 +152,39 @@ export default function QuickHotkeysProfileCard({
         </div>
       )}
 
-      {/* Custom Hotkeys (if user has created any) */}
+      {/* Collapsed Summary vs Expanded Grid */}
+      {!isOpen ? (
+        <div 
+          onClick={() => setIsOpen(true)}
+          className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-orange-500/30 flex items-center justify-between cursor-pointer transition-all group select-none"
+        >
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-xs text-slate-400 font-medium">Active Habits:</span>
+            {activeHotkeys.length === 0 ? (
+              <span className="text-xs text-slate-500 italic">No micro-habits selected</span>
+            ) : (
+              activeHotkeys.slice(0, 6).map(h => {
+                const IconComp = ICON_MAP[h.icon] || Sparkles
+                return (
+                  <span key={h.id} className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-orange-500/10 text-orange-300 border-orange-500/30">
+                    <IconComp size={11} className="text-orange-400" />
+                    <span>{h.name}</span>
+                  </span>
+                )
+              })
+            )}
+            {activeHotkeys.length > 6 && (
+              <span className="text-[10px] font-mono text-slate-400">+{activeHotkeys.length - 6} more</span>
+            )}
+          </div>
+          <div className="text-xs text-orange-400 group-hover:text-orange-300 font-bold flex items-center gap-1 shrink-0 ml-2">
+            <span>Configure ({activeHotkeys.length})</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4 pt-1 animate-in fade-in duration-200">
+          {/* Custom Hotkeys (if user has created any) */}
       {customHotkeys.length > 0 && (
         <div className="space-y-2 p-3 rounded-xl bg-orange-950/20 border border-orange-500/30">
           <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
@@ -258,6 +308,8 @@ export default function QuickHotkeysProfileCard({
           })}
         </div>
       </div>
+    </div>
+  )}
 
       {isManageModalOpen && (
         <ManageHotkeysModal

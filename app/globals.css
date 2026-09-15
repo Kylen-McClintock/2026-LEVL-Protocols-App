@@ -504,6 +504,20 @@ html[data-orientation="landscape"] .header-view-dropdown span[class*="rounded"] 
   padding: 2px 7px !important;
 }
 
+/* Portrait / Vertical Text Scaling Preferences */
+html[data-text-scale="compact"]:not(.is-landscape):not([data-orientation="landscape"]) {
+  font-size: 14.4px;
+}
+html[data-text-scale="default"]:not(.is-landscape):not([data-orientation="landscape"]) {
+  font-size: 16px;
+}
+html[data-text-scale="large"]:not(.is-landscape):not([data-orientation="landscape"]) {
+  font-size: 18px;
+}
+html[data-text-scale="xlarge"]:not(.is-landscape):not([data-orientation="landscape"]) {
+  font-size: 20px;
+}
+
 /* Standard 100% User Preference Override */
 html[data-landscape-text="standard"],
 html[data-landscape-text="standard"] body {

@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { UserProfile } from '@/lib/types'
 import { updateUserProfile } from '@/lib/data'
-import { Dumbbell, Check, CheckCircle2, ShieldCheck, Sparkles, SlidersHorizontal } from 'lucide-react'
+import { Dumbbell, Check, CheckCircle2, ShieldCheck, Sparkles, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface HardwareAccessCardProps {
   profile: UserProfile
@@ -73,6 +73,7 @@ export default function HardwareAccessCard({ profile, onUpdated }: HardwareAcces
       'mouth_tape'
     ]
   )
+  const [isOpen, setIsOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
@@ -103,10 +104,10 @@ export default function HardwareAccessCard({ profile, onUpdated }: HardwareAcces
   }
 
   return (
-    <div className="glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md shadow-xl space-y-5">
+    <div className="glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md shadow-xl space-y-4">
       {/* Header */}
-      <div className="space-y-2 pb-3 border-b border-slate-800/80">
-        <div className="flex items-start gap-3">
+      <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-800/80">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
           <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center shadow-md shrink-0 mt-0.5">
             <Dumbbell size={20} />
           </div>
@@ -133,52 +134,89 @@ export default function HardwareAccessCard({ profile, onUpdated }: HardwareAcces
             </div>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="text-slate-400 hover:text-white p-1 shrink-0 mt-1 cursor-pointer transition-colors"
+          aria-label={isOpen ? 'Collapse hardware section' : 'Expand hardware section'}
+        >
+          {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
       </div>
 
-      {/* Hardware Checklist Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        {HARDWARE_ITEMS.map((item) => {
-          const isChecked = hardware.includes(item.id)
-          return (
-            <div
-              key={item.id}
-              onClick={() => toggleItem(item.id)}
-              className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
-                isChecked
-                  ? 'bg-purple-950/30 border-purple-500/50 text-white shadow-md'
-                  : 'bg-slate-950/50 border-slate-800/80 text-slate-400 hover:border-slate-700'
-              }`}
-            >
-              <span className="text-xl shrink-0 mt-0.5">{item.emoji}</span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className={`text-xs font-bold ${isChecked ? 'text-purple-200' : 'text-slate-300'}`}>
-                    {item.label}
-                  </span>
-                  <div
-                    className={`w-4 h-4 rounded-md border flex items-center justify-center transition-colors shrink-0 ml-2 ${
-                      isChecked
-                        ? 'bg-purple-500 border-purple-400 text-black'
-                        : 'border-slate-700 bg-slate-900'
-                    }`}
-                  >
-                    {isChecked && <Check size={12} className="stroke-[3]" />}
+      {/* Collapsed Summary vs Expanded Details */}
+      {!isOpen ? (
+        <div 
+          onClick={() => setIsOpen(true)}
+          className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-purple-500/30 flex items-center justify-between cursor-pointer transition-all group select-none"
+        >
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-xs text-slate-400 font-medium">Equipped:</span>
+            {hardware.length === 0 ? (
+              <span className="text-xs text-slate-500 italic">No equipment selected</span>
+            ) : (
+              HARDWARE_ITEMS.filter(h => hardware.includes(h.id)).map(h => (
+                <span key={h.id} className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-lg border bg-purple-500/10 text-purple-300 border-purple-500/30">
+                  <span>{h.emoji}</span>
+                  <span>{h.label.split(' / ')[0].split(' (')[0]}</span>
+                </span>
+              ))
+            )}
+          </div>
+          <div className="text-xs text-purple-400 group-hover:text-purple-300 font-bold flex items-center gap-1 shrink-0 ml-2">
+            <span>Configure ({hardware.length})</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4 pt-1 animate-in fade-in duration-200">
+          {/* Hardware Checklist Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {HARDWARE_ITEMS.map((item) => {
+              const isChecked = hardware.includes(item.id)
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => toggleItem(item.id)}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
+                    isChecked
+                      ? 'bg-purple-950/30 border-purple-500/50 text-white shadow-md'
+                      : 'bg-slate-950/50 border-slate-800/80 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <span className="text-xl shrink-0 mt-0.5">{item.emoji}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-bold ${isChecked ? 'text-purple-200' : 'text-slate-300'}`}>
+                        {item.label}
+                      </span>
+                      <div
+                        className={`w-4 h-4 rounded-md border flex items-center justify-center transition-colors shrink-0 ml-2 ${
+                          isChecked
+                            ? 'bg-purple-500 border-purple-400 text-black'
+                            : 'border-slate-700 bg-slate-900'
+                        }`}
+                      >
+                        {isChecked && <Check size={12} className="stroke-[3]" />}
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1 leading-snug">{item.desc}</p>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1 leading-snug">{item.desc}</p>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+              )
+            })}
+          </div>
 
-      {/* Footer Info Pill */}
-      <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2 text-xs text-slate-300">
-        <ShieldCheck size={15} className="text-purple-400 shrink-0" />
-        <span>
-          Modality recommendations in Explore and Today will prioritize protocols matching your available hardware.
-        </span>
-      </div>
+          {/* Footer Info Pill */}
+          <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center gap-2 text-xs text-slate-300">
+            <ShieldCheck size={15} className="text-purple-400 shrink-0" />
+            <span>
+              Modality recommendations in Explore and Today will prioritize protocols matching your available hardware.
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

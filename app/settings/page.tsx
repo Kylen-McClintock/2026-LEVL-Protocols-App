@@ -20,7 +20,7 @@ import BloodworkProfileCard from '@/components/profile/BloodworkProfileCard'
 import NegativeLongevityFactorsCard from '@/components/profile/NegativeLongevityFactorsCard'
 import MedicalHistoryPrescriptionsCard from '@/components/profile/MedicalHistoryPrescriptionsCard'
 import TemperatureUnitSettingsCard from '@/components/profile/TemperatureUnitSettingsCard'
-import LandscapeTextSizeSettingsCard from '@/components/profile/LandscapeTextSizeSettingsCard'
+import FontSizeSettingsCard from '@/components/profile/FontSizeSettingsCard'
 import DataSovereigntyCard from '@/components/profile/DataSovereigntyCard'
 import SupplementScannerModal from '@/components/modals/SupplementScannerModal'
 import { linkGuestDataToAuthUser } from '@/lib/auth/linkGuestData'
@@ -396,7 +396,7 @@ export default function SettingsPage() {
           />
         )}
 
-        <LandscapeTextSizeSettingsCard />
+        <FontSizeSettingsCard />
 
         <TemperatureUnitSettingsCard />
 

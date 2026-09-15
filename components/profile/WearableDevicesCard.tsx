@@ -123,7 +123,7 @@ export default function WearableDevicesCard({ profile, onUpdated }: WearableDevi
   const [primaryDevice, setPrimaryDevice] = useState<string>(
     profile.primary_wearable || savedWearables.primary_device || (selectedDevices[0] || 'oura')
   )
-  const [isExpanded, setIsExpanded] = useState<boolean>(hasWearable)
+  const [isExpanded, setIsExpanded] = useState<boolean>(false)
   const [showComingSoonModal, setShowComingSoonModal] = useState<boolean>(false)
   const [modalDevice, setModalDevice] = useState<WearableDeviceOption | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -131,7 +131,7 @@ export default function WearableDevicesCard({ profile, onUpdated }: WearableDevi
 
   const handleToggleHasWearable = async (enabled: boolean) => {
     setHasWearable(enabled)
-    setIsExpanded(enabled)
+    if (!enabled) setIsExpanded(false)
     const nextDevices = enabled && selectedDevices.length === 0 ? ['oura'] : selectedDevices
     if (enabled && !primaryDevice) setPrimaryDevice(nextDevices[0] || 'oura')
     await saveChanges(enabled, nextDevices, enabled ? (primaryDevice || nextDevices[0] || 'oura') : '')
@@ -279,92 +279,125 @@ export default function WearableDevicesCard({ profile, onUpdated }: WearableDevi
             </button>
           </div>
 
-          {/* Device Grid */}
-          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2.5 transition-all duration-300 ${
-            !isExpanded ? 'max-h-[160px] overflow-hidden' : ''
-          }`}>
-            {SUPPORTED_WEARABLES.map(device => {
-              const isSelected = selectedDevices.includes(device.id)
-              const isPrimary = primaryDevice === device.id
+          {/* Collapsed Active Device Summary Pill Bar */}
+          {!isExpanded ? (
+            <div 
+              onClick={() => setIsExpanded(true)}
+              className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-cyan-500/30 flex items-center justify-between cursor-pointer transition-all group select-none"
+            >
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <span className="text-xs text-slate-400 font-medium">Active Trackers:</span>
+                {selectedDevices.length === 0 ? (
+                  <span className="text-xs text-slate-500 italic">None selected</span>
+                ) : (
+                  selectedDevices.map(id => {
+                    const dev = SUPPORTED_WEARABLES.find(w => w.id === id)
+                    const isPrim = primaryDevice === id
+                    return (
+                      <span key={id} className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg border ${
+                        isPrim ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-slate-800/80 text-slate-300 border-slate-700/60'
+                      }`}>
+                        <span>{dev?.emoji || '⌚'}</span>
+                        <span>{dev?.name || id}</span>
+                        {isPrim && <span className="text-[9px] uppercase font-mono text-cyan-400 font-extrabold">(Primary)</span>}
+                      </span>
+                    )
+                  })
+                )}
+              </div>
+              <div className="text-xs text-cyan-400 group-hover:text-cyan-300 font-bold flex items-center gap-1 shrink-0 ml-2">
+                <span>Configure ({SUPPORTED_WEARABLES.length})</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3.5 animate-in fade-in duration-200">
+              {/* Device Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {SUPPORTED_WEARABLES.map(device => {
+                  const isSelected = selectedDevices.includes(device.id)
+                  const isPrimary = primaryDevice === device.id
 
-              return (
-                <div
-                  key={device.id}
-                  onClick={() => handleToggleDevice(device.id)}
-                  className={`relative p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                    isSelected
-                      ? 'bg-slate-800/80 border-cyan-500/50 shadow-sm shadow-cyan-500/10'
-                      : 'bg-slate-950/40 border-slate-800/60 hover:border-slate-700/80 text-slate-400 opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xl shrink-0">{device.emoji}</span>
-                      <div>
-                        <div className="text-sm font-bold text-white flex items-center gap-2">
-                          {device.name}
-                          {isPrimary && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold uppercase tracking-wider">
-                              Primary
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-slate-400 line-clamp-1">{device.models}</p>
-                      </div>
-                    </div>
-
-                    {/* Checkbox indicator */}
+                  return (
                     <div
-                      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                      key={device.id}
+                      onClick={() => handleToggleDevice(device.id)}
+                      className={`relative p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                         isSelected
-                          ? 'bg-cyan-500 border-cyan-400 text-slate-950'
-                          : 'border-slate-700 bg-slate-900/60'
+                          ? 'bg-slate-800/80 border-cyan-500/50 shadow-sm shadow-cyan-500/10'
+                          : 'bg-slate-950/40 border-slate-800/60 hover:border-slate-700/80 text-slate-400 opacity-70 hover:opacity-100'
                       }`}
                     >
-                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                    </div>
-                  </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-xl shrink-0">{device.emoji}</span>
+                          <div>
+                            <div className="text-sm font-bold text-white flex items-center gap-2">
+                              {device.name}
+                              {isPrimary && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold uppercase tracking-wider">
+                                  Primary
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-400 line-clamp-1">{device.models}</p>
+                          </div>
+                        </div>
 
-                  {/* Metrics preview & Actions */}
-                  <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px]">
-                    <span className="text-slate-400 truncate max-w-[170px]">
-                      {device.metrics.slice(0, 2).join(' • ')}
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      {isSelected && !isPrimary && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleSetPrimary(device.id, e)}
-                          className="text-[10px] text-slate-400 hover:text-cyan-300 transition-colors underline"
+                        {/* Checkbox indicator */}
+                        <div
+                          className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ${
+                            isSelected
+                              ? 'bg-cyan-500 border-cyan-400 text-slate-950'
+                              : 'border-slate-700 bg-slate-900/60'
+                          }`}
                         >
-                          Make Primary
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => openIntegrateModal(device, e)}
-                        className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition-colors"
-                      >
-                        <LinkIcon className="w-2.5 h-2.5" /> Sync
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                          {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </div>
+                      </div>
 
-          {/* Quick Notice */}
-          <div className="mt-3.5 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-2.5 text-xs text-slate-300">
-            <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-white mb-0.5">How LEVL Uses Your Wearable Data</p>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                During your daily morning check-in, simply enter your device&apos;s daily Readiness or Recovery score (0–100%). LEVL uses this to dynamically scale down allostatic physical stress on low-battery days and suggest 80/20 Minimum Effective Dose routines.
-              </p>
+                      {/* Metrics preview & Actions */}
+                      <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px]">
+                        <span className="text-slate-400 truncate max-w-[170px]">
+                          {device.metrics.slice(0, 2).join(' • ')}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          {isSelected && !isPrimary && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleSetPrimary(device.id, e)}
+                              className="text-[10px] text-slate-400 hover:text-cyan-300 transition-colors underline"
+                            >
+                              Make Primary
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => openIntegrateModal(device, e)}
+                            className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition-colors"
+                          >
+                            <LinkIcon className="w-2.5 h-2.5" /> Sync
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Quick Notice */}
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-2.5 text-xs text-slate-300">
+                <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-white mb-0.5">How LEVL Uses Your Wearable Data</p>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    During your daily morning check-in, enter your device&apos;s daily Readiness or Recovery score (0–100%). LEVL uses this to dynamically scale down allostatic physical stress on low-battery days and suggest 80/20 Minimum Effective Dose routines.
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
