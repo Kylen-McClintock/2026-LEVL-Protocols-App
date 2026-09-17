@@ -841,12 +841,12 @@ export function isCurrentCircadianSlot(slotName: string, currentHour?: number): 
 }
 
 /**
- * Calculates whether a given circadian time slot has passed by at least graceHours (default 1.5 hours)
+ * Calculates whether a given circadian time slot has passed by at least graceHours (default 1.0 hour)
  */
 export function isCircadianSlotPast(
   slotName: string, 
   currentDate: Date = new Date(),
-  graceHours: number = 1.5,
+  graceHours: number = 1.0,
   actualWakeTimeStr?: string | null,
   idealWakeTimeStr: string = '06:30'
 ): boolean {

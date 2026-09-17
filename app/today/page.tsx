@@ -104,13 +104,6 @@ export function normalizeChronologicalTimeBlock(slot: string): string {
   return slot
 }
 
-export function isTaskSupplement(task: DedupedTask): boolean {
-  const mod = task.protocol_step?.modality || task.loose_modality
-  const cat = (mod?.category || '').toLowerCase()
-  const type = (mod?.modality_type || '').toLowerCase()
-  return cat.includes('supplement') || cat.includes('nutraceutical') || cat.includes('peptide') || type === 'supplement'
-}
-
 const TIME_BLOCKS = [
   'waking',
   'morning_routine',
@@ -705,6 +698,43 @@ function TodayPageContent() {
 
     return 'Protocol Task'
   }, [resolveTaskModality, allModalities, benchItems])
+
+  const isTaskSupplement = useCallback((task: DedupedTask): boolean => {
+    // 1. Explicit supplement timing slot check
+    const rawSlot = (task.timing_slot || task.protocol_step?.timing_slot || '').toLowerCase()
+    if (
+      rawSlot === 'morning_supplement_stack' ||
+      rawSlot === 'evening_supplement_stack' ||
+      rawSlot === 'midday_stack' ||
+      rawSlot.includes('supplement') ||
+      rawSlot.includes('stack')
+    ) {
+      return true
+    }
+
+    // 2. Modality category check using resolveTaskModality (queries allModalities + benchItems)
+    const mod = resolveTaskModality(task)
+    if (mod) {
+      const cat = (mod.category || '').toLowerCase()
+      const type = (mod.modality_type || '').toLowerCase()
+      if (
+        cat.includes('supplement') ||
+        cat.includes('nutraceutical') ||
+        cat.includes('peptide') ||
+        type === 'supplement'
+      ) {
+        return true
+      }
+    }
+
+    // 3. Modality name or custom category check
+    const customCat = (task.execution_details?.custom_category || '').toLowerCase()
+    if (customCat.includes('supplement') || customCat.includes('peptide')) {
+      return true
+    }
+
+    return false
+  }, [resolveTaskModality])
 
   const asNeededQuickPills = useMemo(() => {
     const fromBench = benchItems
@@ -2324,7 +2354,7 @@ function TodayPageContent() {
       if (viewMode === 'protocol') {
         groupKey = task.lineages?.[0]?.protocol_name || task.protocol_step?.protocol?.name || 'Custom / Unassigned'
       } else {
-        const modality = task.protocol_step?.modality || task.loose_modality
+        const modality = resolveTaskModality(task)
         const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
         const rawGroupKey = (isSplitTask && task.timing_slot && task.timing_slot !== 'anytime')
           ? task.timing_slot
@@ -2352,7 +2382,7 @@ function TodayPageContent() {
     })
 
     return entries
-  }, [allCompletedTasks, completedSortBy, completedSortOrder, viewMode])
+  }, [allCompletedTasks, completedSortBy, completedSortOrder, viewMode, resolveTaskModality])
 
   // Sync completion stats into localStorage and dispatch event
   useEffect(() => {
@@ -2384,7 +2414,7 @@ function TodayPageContent() {
   const chronologicalGroups = useMemo(() => {
     const groups: Record<string, DedupedTask[]> = {}
     routineTasks.forEach(task => {
-      const modality = task.protocol_step?.modality || task.loose_modality
+      const modality = resolveTaskModality(task)
       const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
       
       // If task is a split task, or already has a concrete assigned timing_slot, RESPECT IT!
@@ -2405,7 +2435,7 @@ function TodayPageContent() {
     })
 
     return groups
-  }, [routineTasks, profile, benchItems])
+  }, [routineTasks, profile, benchItems, resolveTaskModality])
 
   const sortedChronologicalGroups = useMemo(() => {
     const rawEntries = Object.entries(chronologicalGroups)
@@ -3053,7 +3083,7 @@ function TodayPageContent() {
       const isPast = isCircadianSlotPast(
         groupName,
         new Date(),
-        1.5,
+        1.0,
         userActualWakeTime,
         profile?.ideal_wake_time || '06:30'
       )
@@ -3488,10 +3518,14 @@ function TodayPageContent() {
                   }`}>
                     {isAnytime ? 'Anytime / Flexible' : formatSlotName(groupName)}
                   </span>
-                  <span className={`text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 transition-colors ${
-                    isIgnited ? (isAnytime ? 'bg-purple-950/50 text-purple-300 border border-purple-800/40' : 'bg-slate-800/90 text-slate-300') : 'bg-slate-900 text-slate-500'
+                  <span className={`text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-mono font-bold shrink-0 transition-colors ${
+                    completedCount === groupTasks.length && groupTasks.length > 0
+                      ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40'
+                      : isIgnited 
+                        ? (isAnytime ? 'bg-purple-950/50 text-purple-300 border border-purple-800/40' : 'bg-slate-800/90 text-slate-200 border border-white/10') 
+                        : 'bg-slate-900 text-slate-400 border border-white/5'
                   }`}>
-                    {completedCount > 0 ? `${completedCount}/${groupTasks.length}` : groupTasks.length}
+                    {completedCount}/{groupTasks.length} Completed
                   </span>
                 </div>
                 {isAnytime ? (
@@ -3691,71 +3725,8 @@ function TodayPageContent() {
             </div>
           )}
 
-          {/* Collapsed Supplement Tray Preview OR Expanded Modality Task Cards */}
-          {isCollapsed ? (
-            <div 
-              onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-              className="bg-slate-900/60 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-3.5 sm:p-4 space-y-3 cursor-pointer transition-all hover:bg-slate-900/80 shadow-md group"
-            >
-              {/* Capsule Chips Wrap */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5 supplement-tray-chips">
-                {groupTasks.map((t) => {
-                  const mod = resolveTaskModality(t)
-                  const name = resolveTaskModalityName(t)
-                  const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
-                  const dose = t.execution_details?.custom_dose || bench?.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount}${t.protocol_step.dose_unit || ''}` : '') || mod?.dose_or_exposure || ''
-                  const isDone = t.status === 'completed'
-
-                  return (
-                    <span 
-                      key={t.id}
-                      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-all supplement-pill ${
-                        isDone 
-                          ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300'
-                          : 'bg-black/40 border-white/10 text-slate-200 group-hover:border-purple-500/30'
-                      }`}
-                    >
-                      {isDone ? (
-                        <Check size={11} className="text-emerald-400 stroke-[3] shrink-0" />
-                      ) : null}
-                      <ModalityIcon modality={mod} modalityName={name} size={13} className={`shrink-0 ${isDone ? 'opacity-70' : 'opacity-90'}`} glow={false} />
-                      <span className={`supplement-name ${isDone ? 'line-through opacity-80' : 'text-white'}`}>{name}</span>
-                      {dose && (
-                        <span className={`supplement-dose text-[10px] font-mono font-normal ${isDone ? 'text-emerald-400/80' : 'text-slate-400'}`}>
-                          • {dose}
-                        </span>
-                      )}
-                    </span>
-                  )
-                })}
-              </div>
-
-              {/* Bottom Subtle Tap To Expand Bar */}
-              <div className="flex items-center justify-between text-[11px] text-purple-400/90 group-hover:text-purple-300 font-semibold pt-1 border-t border-white/5 gap-2 flex-wrap">
-                <span className="flex items-center gap-1">
-                  <span>▾ Tap to view full cards & dosages ({groupTasks.length})</span>
-                </span>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[10px] text-slate-400 font-normal">
-                    {completedCount === groupTasks.length ? '✓ All Done' : `${completedCount}/${groupTasks.length} Logged`}
-                  </span>
-                  {completedCount < groupTasks.length && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleCompleteGroup(groupName, groupTasks)
-                      }}
-                      className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/30 px-2 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
-                      title={`Mark all remaining tasks in ${formatSlotName(groupName)} completed`}
-                    >
-                      <Check size={10} strokeWidth={2.5} /> Log All
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
+          {/* If Collapsed, hide all modalities completely. If Expanded, render modality task cards */}
+          {!isCollapsed && (
             <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
               {(() => {
                 const renderCard = (task: DedupedTask) => {
