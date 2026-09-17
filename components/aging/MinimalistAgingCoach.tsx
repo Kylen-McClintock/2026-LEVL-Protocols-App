@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { Bot, Send, Sparkles, ChevronDown, ChevronUp, MessageSquare, Activity, ShieldCheck, CheckCircle, User } from 'lucide-react'
 import { useChat } from '@ai-sdk/react'
 import { lastAssistantMessageIsCompleteWithToolCalls, DefaultChatTransport, UIMessage } from 'ai'
@@ -30,14 +30,31 @@ export default function MinimalistAgingCoach({
   const [isExpanded, setIsExpanded] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const contextData = {
-    profile,
-    panels,
-    biomarkers,
-    biologicalMeasurements: calicoMeasurements,
+  const contextData = useMemo(() => ({
+    profile: profile ? {
+      age: profile.age,
+      biological_sex: profile.biological_sex,
+      primary_goals: profile.primary_goals
+    } : null,
+    panels: (panels || []).slice(0, 3).map((p: any) => ({
+      collection_date: p.collection_date,
+      provider_name: p.provider_name,
+      bioage_outputs: p.bioage_outputs
+    })),
+    biomarkers: (biomarkers || []).slice(0, 40).map((b: any) => ({
+      raw_name: b.raw_name || b.biomarker_id,
+      normalized_value: b.normalized_value ?? b.raw_value,
+      normalized_unit: b.normalized_unit || b.raw_unit,
+      lab_flag: b.lab_flag
+    })),
+    biologicalMeasurements: (calicoMeasurements || []).slice(0, 15).map((m: any) => ({
+      measurement_id: m.measurement_id || m.name,
+      value: m.value,
+      unit: m.unit
+    })),
     systemStatuses,
     latestBioAge
-  }
+  }), [profile, panels, biomarkers, calicoMeasurements, systemStatuses, latestBioAge])
 
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({

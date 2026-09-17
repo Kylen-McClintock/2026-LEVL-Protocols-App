@@ -31,22 +31,19 @@ export async function POST(req: Request) {
         if (localUserId && supabase) {
           const [
             { data: dbProfile },
-            { data: dbPanels },
             { data: dbRecords },
             { data: dbBench },
             { data: dbToday },
             { data: dbCheckins }
           ] = await Promise.all([
             supabase.from('user_profiles').select('*').eq('local_user_id', localUserId).maybeSingle(),
-            supabase.from('user_lab_panels').select('*').eq('user_id', localUserId).order('collection_date', { ascending: false }).limit(5),
-            supabase.from('biomarker_measurements').select('*').eq('user_id', localUserId).order('collection_date', { ascending: false }).limit(100),
-            supabase.from('user_bench_items').select('*, modality:modalities(*), protocol:protocols(*)').eq('local_user_id', localUserId),
-            supabase.from('daily_protocol_tasks').select('*, modality:modalities(*), protocol_step:protocol_steps(*, modality:modalities(*))').eq('local_user_id', localUserId).eq('date', todayStr),
-            supabase.from('daily_wellbeing_checkins').select('*').eq('local_user_id', localUserId).order('checkin_date', { ascending: false }).limit(3)
+            supabase.from('biomarker_measurements').select('biomarker_id, raw_name, normalized_value, raw_value, normalized_unit, raw_unit, lab_flag').eq('user_id', localUserId).order('collection_date', { ascending: false }).limit(100),
+            supabase.from('user_bench_items').select('id, modality_id, protocol_id, status, modality:modalities(id, name, display_name), protocol:protocols(id, name)').eq('local_user_id', localUserId),
+            supabase.from('daily_protocol_tasks').select('id, scheduled_date, modality_id, timing_slot, status, modality:modalities(id, name, display_name), protocol_step:protocol_steps(id, modality:modalities(id, name, display_name))').eq('local_user_id', localUserId).eq('scheduled_date', todayStr),
+            supabase.from('daily_wellbeing_checkins').select('checkin_date, mood_0_10, energy_0_10, stress_0_10, subjective_sleep_0_10').eq('local_user_id', localUserId).order('checkin_date', { ascending: false }).limit(3)
           ])
 
           if (!profileData) profileData = dbProfile
-          if (panels.length === 0 && dbPanels) panels = dbPanels
           if (bRecords.length === 0 && dbRecords) bRecords = dbRecords
           if (benchData.length === 0 && dbBench) benchData = dbBench
           if (todayTasksData.length === 0 && dbToday) todayTasksData = dbToday
@@ -80,7 +77,7 @@ export async function POST(req: Request) {
 - KDM Biological Age: ${bioOutputs?.kdm_age || 'Calculated'} (Age Gap: ${bioOutputs?.kdm_age_gap || 'N/A'})
 - Homeostatic Dysregulation Score: ${bioOutputs?.hd_score || 'N/A'}
 - Measured Biomarkers (${bRecords.length} lab records available):
-${bRecords.map((b: any) => `  • ${b.raw_name || b.biomarker_id}: ${b.normalized_value ?? b.raw_value} ${b.normalized_unit || b.raw_unit || ''} (Flag: ${b.lab_flag || 'normal'})`).join('\n')}`
+${bRecords.slice(0, 50).map((b: any) => `  • ${b.raw_name || b.biomarker_id}: ${b.normalized_value ?? b.raw_value} ${b.normalized_unit || b.raw_unit || ''} (Flag: ${b.lab_flag || 'normal'})`).join('\n')}`
         }
 
         let physSummary = 'No physiological age assessments recorded yet'
@@ -91,20 +88,22 @@ ${bRecords.map((b: any) => `  • ${b.raw_name || b.biomarker_id}: ${b.normalize
         let todaySummary = 'No modalities scheduled in Today routine yet'
         if (todayTasksData && todayTasksData.length > 0) {
           const names = todayTasksData.map((t: any) => {
-            const m = t.modality || t.protocol_step?.modality
-            return m ? m.name : 'Custom Modality'
+            const m = t.modality || t.protocol_step?.modality || t.loose_modality
+            const taskName = m ? (m.display_name || m.name) : (t.name || 'Custom Modality')
+            const modId = t.modality_id || m?.id
+            return `• ${taskName} [modality_id: "${modId || ''}", task_id: "${t.id || ''}"]`
           })
-          todaySummary = names.join(', ')
+          todaySummary = names.join('\n')
         }
 
         let benchSummary = 'No modalities saved on Bench yet'
         if (benchData && benchData.length > 0) {
           const names = benchData.map((b: any) => {
-            if (b.modality) return `Modality: ${b.modality.name}`
-            if (b.protocol) return `Protocol: ${b.protocol.name}`
-            return 'Bench Item'
+            if (b.modality) return `• Modality: ${b.modality.display_name || b.modality.name} [modality_id: "${b.modality_id || b.modality.id}"]`
+            if (b.protocol) return `• Protocol: ${b.protocol.name} [protocol_id: "${b.protocol_id || b.protocol.id}"]`
+            return '• Bench Item'
           })
-          benchSummary = names.join(', ')
+          benchSummary = names.join('\n')
         }
 
         let checkinSummary = 'No recent daily check-ins logged'
@@ -215,6 +214,12 @@ If the user asks where to find something, how to perform an action, or how featu
    - rest_interval_days: E.g. 1 (every other day) if interval
    - add_to_today: true (automatically schedule in Today tasks)
    - save_to_bench: true (save to bench for permanent access)
+
+10. When a user asks to remove, deprioritize, prune, or bench actions (e.g. "Remove the 4 least important actions", "clean up my today schedule", "take X off today"):
+   - Inspect their TODAY'S ACTIVE ROUTINE list and BENCH list above.
+   - Intelligently evaluate which actions provide the lowest marginal longevity ROI, redundant biological pathways, or highest compliance friction relative to their health goals.
+   - For each action to remove, execute the 'remove_from_today' tool (or 'move_to_bench' if they should keep it in backlog).
+   - In your response, clearly enumerate each action removed and explain your clinical rationale for why it was deprioritized.
 
 ${userContextPrompt}`
 
@@ -615,6 +620,111 @@ ${userContextPrompt}`
                data.protocol_steps.sort((a: any, b: any) => a.display_order - b.display_order);
             }
             return { success: true, protocol: data };
+          }
+        },
+
+        remove_from_today: {
+          description: 'Remove, delete, or skip an action/modality from the user\'s Today routine.',
+          inputSchema: z.object({
+            task_id: z.string().optional().describe('The task ID in daily_protocol_tasks if available.'),
+            modality_id: z.string().optional().describe('The modality ID or slug to remove.'),
+            modality_name: z.string().describe('The name of the modality being removed.'),
+            reason: z.string().optional().describe('Brief rationale for why it was removed.')
+          }),
+          execute: async ({ task_id, modality_id, modality_name, reason }) => {
+            if (!localUserId) return { success: false, error: 'User not authenticated or localUserId missing' };
+            const todayStr = new Date().toISOString().split('T')[0];
+            try {
+              let query = supabase.from('daily_protocol_tasks').delete().eq('local_user_id', localUserId).eq('scheduled_date', todayStr);
+              if (task_id) {
+                query = query.eq('id', task_id);
+              } else if (modality_id) {
+                query = query.eq('modality_id', modality_id);
+              }
+              const { error } = await query;
+              if (error) return { success: false, error: error.message };
+              return {
+                success: true,
+                message: `Successfully removed "${modality_name}" from Today's routine.`,
+                modality_name
+              };
+            } catch (e: any) {
+              return { success: false, error: e.message };
+            }
+          }
+        },
+
+        move_to_bench: {
+          description: 'Move an active modality from Today to the user\'s Bench backlog so it stays saved for future use without appearing on Today.',
+          inputSchema: z.object({
+            modality_id: z.string().describe('The modality ID or slug.'),
+            modality_name: z.string().describe('The name of the modality being moved to bench.'),
+            reason: z.string().optional().describe('Brief rationale for moving to bench.')
+          }),
+          execute: async ({ modality_id, modality_name, reason }) => {
+            if (!localUserId) return { success: false, error: 'User not authenticated or localUserId missing' };
+            const todayStr = new Date().toISOString().split('T')[0];
+            try {
+              // Delete from future daily tasks
+              await supabase
+                .from('daily_protocol_tasks')
+                .delete()
+                .eq('local_user_id', localUserId)
+                .eq('modality_id', modality_id)
+                .gte('scheduled_date', todayStr);
+
+              // Upsert into bench
+              await supabase
+                .from('user_bench_items')
+                .upsert([{
+                  local_user_id: localUserId,
+                  modality_id,
+                  status: 'benched',
+                  notes: reason || undefined
+                }], { onConflict: 'local_user_id,modality_id' });
+
+              return {
+                success: true,
+                message: `Successfully moved "${modality_name}" to your Bench.`,
+                modality_name
+              };
+            } catch (e: any) {
+              return { success: false, error: e.message };
+            }
+          }
+        },
+
+        eliminate_modality: {
+          description: 'Completely eliminate a modality from both Today and Bench schedule.',
+          inputSchema: z.object({
+            modality_id: z.string().describe('The modality ID or slug.'),
+            modality_name: z.string().describe('The name of the modality being eliminated.')
+          }),
+          execute: async ({ modality_id, modality_name }) => {
+            if (!localUserId) return { success: false, error: 'User not authenticated or localUserId missing' };
+            const todayStr = new Date().toISOString().split('T')[0];
+            try {
+              await supabase
+                .from('daily_protocol_tasks')
+                .delete()
+                .eq('local_user_id', localUserId)
+                .eq('modality_id', modality_id)
+                .gte('scheduled_date', todayStr);
+
+              await supabase
+                .from('user_bench_items')
+                .delete()
+                .eq('local_user_id', localUserId)
+                .eq('modality_id', modality_id);
+
+              return {
+                success: true,
+                message: `Successfully eliminated "${modality_name}" from your routine.`,
+                modality_name
+              };
+            } catch (e: any) {
+              return { success: false, error: e.message };
+            }
           }
         },
       },

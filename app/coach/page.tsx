@@ -20,6 +20,71 @@ import { getLatestBiomarkerMeasurements, getUserLabPanels } from '@/lib/data/blo
 import { getBiologicalMeasurements } from '@/lib/data/physiologicalAgeData'
 import { getOrCreateUserProfile, getBenchItems, getDailyProtocolTasks, getDailyWellbeingCheckin, addToBench, addProtocolToBench, addProtocolToToday, createDailyTask, addModalityOrProtocolToToday } from '@/lib/data'
 
+function buildCompactClientContext(raw: {
+  profile: any
+  panels: any[]
+  biomarkers: any[]
+  biologicalMeasurements: any[]
+  benchItems: any[]
+  todayTasks: any[]
+  checkin: any
+}) {
+  return {
+    profile: raw.profile ? {
+      age: raw.profile.age,
+      biological_sex: raw.profile.biological_sex,
+      body_fat_percentage: raw.profile.body_fat_percentage,
+      dietary_pattern: raw.profile.dietary_pattern,
+      primary_goals: raw.profile.primary_goals,
+      weekly_spend_budget_usd: raw.profile.weekly_spend_budget_usd,
+      weekly_time_budget_hours: raw.profile.weekly_time_budget_hours,
+      risk_tolerance: raw.profile.risk_tolerance,
+      discipline_level_0_99: raw.profile.discipline_level_0_99,
+      experimental_openness_0_99: raw.profile.experimental_openness_0_99,
+      outcome_preference_scores: raw.profile.outcome_preference_scores
+    } : null,
+    panels: (raw.panels || []).slice(0, 3).map((p: any) => ({
+      collection_date: p.collection_date,
+      provider_name: p.provider_name,
+      bioage_outputs: p.bioage_outputs
+    })),
+    biomarkers: (raw.biomarkers || []).slice(0, 40).map((b: any) => ({
+      raw_name: b.raw_name || b.biomarker_id,
+      normalized_value: b.normalized_value ?? b.raw_value,
+      normalized_unit: b.normalized_unit || b.raw_unit,
+      lab_flag: b.lab_flag
+    })),
+    biologicalMeasurements: (raw.biologicalMeasurements || []).slice(0, 15).map((m: any) => ({
+      measurement_id: m.measurement_id || m.name,
+      value: m.value,
+      unit: m.unit
+    })),
+    benchItems: (raw.benchItems || []).slice(0, 30).map((b: any) => ({
+      id: b.id,
+      modality_id: b.modality_id,
+      modality: b.modality ? { id: b.modality.id, name: b.modality.display_name || b.modality.name } : undefined,
+      protocol: b.protocol ? { id: b.protocol.id, name: b.protocol.name } : undefined
+    })),
+    todayTasks: (raw.todayTasks || []).slice(0, 30).map((t: any) => {
+      const m = t.modality || t.protocol_step?.modality || t.loose_modality
+      return {
+        id: t.id,
+        modality_id: t.modality_id,
+        name: m?.display_name || m?.name || t.execution_details?.custom_name || 'Task',
+        timing_slot: t.timing_slot,
+        status: t.status
+      }
+    }),
+    checkin: raw.checkin ? {
+      checkin_date: raw.checkin.checkin_date,
+      mood_0_10: raw.checkin.mood_0_10,
+      energy_0_10: raw.checkin.energy_0_10,
+      stress_0_10: raw.checkin.stress_0_10,
+      subjective_sleep_0_10: raw.checkin.subjective_sleep_0_10
+    } : null
+  }
+}
+
 function CoachPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -61,7 +126,7 @@ function CoachPageContent() {
         ])
         setProfile(prof)
 
-        const payload = {
+        const payload = buildCompactClientContext({
           profile: prof,
           panels: panels || [],
           biomarkers: biomarkers || [],
@@ -69,7 +134,7 @@ function CoachPageContent() {
           benchItems: benchItems || [],
           todayTasks: todayTasks || [],
           checkin: checkin || null
-        }
+        })
         setClientContextData(payload)
         contextRef.current = payload
       } catch (err) {
@@ -437,6 +502,92 @@ function CoachPageContent() {
                               <span>Draft successfully submitted for review.</span>
                             </div>
                           )}
+                        </div>
+                      )
+                    }
+
+                    case 'tool-remove_from_today': {
+                      const callId = part.toolCallId;
+                      const isDone = part.state === 'output-available' || part.state === 'output-error';
+                      return (
+                        <div key={callId} className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 mt-2 max-w-sm flex items-center justify-between gap-3 text-xs shadow-sm">
+                          <div className="flex items-center gap-2 text-slate-300">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                            <span>
+                              {part.input?.modality_name ? `Removed "${part.input.modality_name}" from Today` : 'Removed action from Today'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/40">
+                            {isDone ? 'Completed' : 'Processing...'}
+                          </span>
+                        </div>
+                      )
+                    }
+
+                    case 'tool-move_to_bench': {
+                      const callId = part.toolCallId;
+                      const isDone = part.state === 'output-available' || part.state === 'output-error';
+                      return (
+                        <div key={callId} className="bg-slate-900/90 border border-purple-500/30 rounded-xl p-3 mt-2 max-w-sm flex items-center justify-between gap-3 text-xs shadow-sm">
+                          <div className="flex items-center gap-2 text-purple-200">
+                            <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" />
+                            <span>
+                              {part.input?.modality_name ? `Moved "${part.input.modality_name}" to Bench` : 'Moved action to Bench'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/40">
+                            {isDone ? 'Saved to Bench' : 'Processing...'}
+                          </span>
+                        </div>
+                      )
+                    }
+
+                    case 'tool-eliminate_modality': {
+                      const callId = part.toolCallId;
+                      const isDone = part.state === 'output-available' || part.state === 'output-error';
+                      return (
+                        <div key={callId} className="bg-slate-900/90 border border-red-500/30 rounded-xl p-3 mt-2 max-w-sm flex items-center justify-between gap-3 text-xs shadow-sm">
+                          <div className="flex items-center gap-2 text-red-200">
+                            <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                            <span>
+                              {part.input?.modality_name ? `Eliminated "${part.input.modality_name}"` : 'Eliminated modality'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono text-red-300 bg-red-950/40 px-2 py-0.5 rounded border border-red-800/40">
+                            {isDone ? 'Eliminated' : 'Processing...'}
+                          </span>
+                        </div>
+                      )
+                    }
+
+                    case 'tool-add_to_today': {
+                      const callId = part.toolCallId;
+                      const isDone = part.state === 'output-available' || part.state === 'output-error';
+                      return (
+                        <div key={callId} className="bg-slate-900/90 border border-emerald-500/30 rounded-xl p-3 mt-2 max-w-sm flex items-center justify-between gap-3 text-xs shadow-sm">
+                          <div className="flex items-center gap-2 text-emerald-200">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                            <span>Added to Today's routine</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/40">
+                            {isDone ? 'Scheduled' : 'Adding...'}
+                          </span>
+                        </div>
+                      )
+                    }
+
+                    case 'tool-add_to_bench': {
+                      const callId = part.toolCallId;
+                      const isDone = part.state === 'output-available' || part.state === 'output-error';
+                      return (
+                        <div key={callId} className="bg-slate-900/90 border border-purple-500/30 rounded-xl p-3 mt-2 max-w-sm flex items-center justify-between gap-3 text-xs shadow-sm">
+                          <div className="flex items-center gap-2 text-purple-200">
+                            <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" />
+                            <span>Added to Bench backlog</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/40">
+                            {isDone ? 'Saved' : 'Adding...'}
+                          </span>
                         </div>
                       )
                     }
