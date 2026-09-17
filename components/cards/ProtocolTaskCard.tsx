@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { DailyProtocolTask, Modality, ProtocolStep, Protocol, UserModalityHabit } from '@/lib/types'
-import { Check, CheckCircle2, X, Clock, AlertTriangle, Activity, ChevronDown, ChevronUp, ChevronRight, Microscope, Bookmark, User, Info, CalendarDays, RotateCcw, Sliders, Star, Sparkles, Archive, Trash2, ExternalLink, Edit3, SkipForward } from 'lucide-react'
+import { Check, CheckCircle2, X, Clock, AlertTriangle, Activity, ChevronDown, ChevronUp, ChevronRight, Microscope, Bookmark, User, Info, CalendarDays, RotateCcw, Sliders, Star, Sparkles, Archive, Trash2, ExternalLink, Edit3, SkipForward, Target, Pill } from 'lucide-react'
 import GeekMode from './GeekMode'
 import PersonalizeModalityModal from '../modals/PersonalizeModalityModal'
 import { DosageDetailModal } from '../modals/DosageDetailModal'
@@ -489,6 +489,8 @@ export default function ProtocolTaskCard({
 
   // Inline outcome slider tracking states
   const [showInlineOutcomes, setShowInlineOutcomes] = useState(false)
+  const [isOutcomeExecutionExpanded, setIsOutcomeExecutionExpanded] = useState(false)
+  const [isBestTimeExpanded, setIsBestTimeExpanded] = useState(false)
   const [activeOutcomePhase, setActiveOutcomePhase] = useState<'pre' | 'post'>('post')
   const [inlinePreValues, setInlinePreValues] = useState<Record<string, number>>({})
   const [inlinePostValues, setInlinePostValues] = useState<Record<string, number>>({})
@@ -875,52 +877,9 @@ export default function ProtocolTaskCard({
 
   // Precision execution log default expansion determination (~40% open, ~60% collapsed)
   const isPrecisionLogOpenByDefault = useMemo(() => {
-    // EXPANDED by default (~40% - High-variance, dynamic session metrics where users configure sets, temps, HR, mcg):
-    // 1. Strength & Resistance (Sets, reps, load, RPE)
-    // 2. Cardio & Aerobic & Sports (Duration, HR zones, distance, pace)
-    // 3. Thermal Stress (Sauna & Cold plunge exact temp, duration, Søberg warm-up)
-    // 4. Peptides & Biologics (Microgram dose, injection site, route)
-    // 5. Breathwork & Mindfulness / NSDR (Rounds, hold duration, minutes)
-    // 6. Fasting Windows & Live Timers (Fast start/end, target hours)
-    // 7. Targeted Macro Nutrition (Exact grams of protein/carbs/fat)
-    // 8. Phlebotomy & Diagnostics (Volume mL, ferritin, blood pressure)
-    if (
-      isStrength ||
-      isCardio ||
-      isSport ||
-      isThermal ||
-      isPeptide ||
-      isBreathwork ||
-      isNSDR ||
-      isFasting ||
-      isNutritionMacro ||
-      isPhlebotomy
-    ) {
-      return true
-    }
-
-    // COLLAPSED by default (~60% - Low-friction, standard daily habits with compact dose pill + 1-click complete):
-    // 1. Oral Supplements & Nootropics (Creatine, Magnesium, D3+K2, Omega-3, NMN, etc.)
-    // 2. Hydration & Electrolytes (Morning water, LMNT salt)
-    // 3. Sunlight & Circadian Light Exposure (Morning sunlight, optical flow)
-    // 4. Blue Light Blockers & Screen Curfew (Amber glasses, digital sunset)
-    // 5. Sleep Sanctuary & Bedroom Environment (Mouth tape, 66°F room)
-    // 6. Photobiomodulation / Red Light Panels (Standard panel routine)
-    // 7. CGM & Passive Glucose Tracking (Baseline checks)
-    // 8. General Modalities
+    // Session execution numbers/logging is collapsed by default for all modalities per specification
     return false
-  }, [
-    isStrength,
-    isCardio,
-    isSport,
-    isThermal,
-    isPeptide,
-    isBreathwork,
-    isNSDR,
-    isFasting,
-    isNutritionMacro,
-    isPhlebotomy
-  ])
+  }, [])
 
   const [isPrecisionLogExpanded, setIsPrecisionLogExpanded] = useState<boolean>(isPrecisionLogOpenByDefault)
 
@@ -2429,27 +2388,37 @@ export default function ProtocolTaskCard({
                 </div>
               </div>
             ) : (
-              /* COLLAPSED PRECISION LOG PANEL: Compact quick action bar with expand toggle */
+              /* COLLAPSED PRECISION LOG PANEL: Compact 1-row quick action bar with expand toggle */
               <div className="mb-4 space-y-2">
-                <div className="p-3 bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 transition-all">
-                  <div className="flex items-center gap-2 text-xs text-slate-300 flex-wrap">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
-                    <span className="font-medium text-slate-400">Target Dose:</span>
-                    <span className="font-bold text-white font-mono bg-white/5 px-2.5 py-0.5 rounded-lg border border-white/10">
+                <div className="p-2.5 sm:p-3 bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 transition-all">
+                  <div className="flex items-center gap-2 text-xs text-slate-300 min-w-0">
+                    <div className="p-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                      {(modality.category || '').toLowerCase().includes('supplement') || (modality.category || '').toLowerCase().includes('peptide') ? (
+                        <Pill size={13} />
+                      ) : (
+                        <Target size={13} />
+                      )}
+                    </div>
+                    <span className="font-medium text-slate-400 shrink-0">
+                      {(modality.category || '').toLowerCase().includes('supplement') || (modality.category || '').toLowerCase().includes('peptide') ? 'Target Dose:' : 'Session Target:'}
+                    </span>
+                    <span className="font-bold text-white font-mono bg-white/5 px-2 py-0.5 rounded-lg border border-white/10 truncate">
                       {customDose || modality.dose_or_exposure || 'Standard Protocol Session'}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setIsPrecisionLogExpanded(true)}
-                      className="flex-1 sm:flex-initial text-[11px] font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                    >
-                      <Activity size={13} className="text-cyan-400" />
-                      <span>+ Log Specific Details</span>
-                      <ChevronDown size={12} className="text-slate-400" />
-                    </button>
+                    {hasPrecisionLogUI && (
+                      <button
+                        type="button"
+                        onClick={() => setIsPrecisionLogExpanded(true)}
+                        className="flex-1 sm:flex-initial text-[11px] font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 px-3 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <Activity size={13} className="text-cyan-400 shrink-0" />
+                        <span>+ Log Details</span>
+                        <ChevronDown size={12} className="text-slate-400" />
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -2751,97 +2720,160 @@ export default function ProtocolTaskCard({
                 )}
               </div>
 
-              {/* Peak Onset & Best Time to Record Outcomes Guidance Banner */}
+              {/* Guidance & Session Execution Controls (Side by Side on sm+, 1-Row Collapsed by Default) */}
               {(() => {
                 const guidance = getPeakOnsetGuidance(modality)
+                const isSuppOrPeptide = (modality.category || '').toLowerCase().includes('supplement') || (modality.category || '').toLowerCase().includes('peptide')
+                const targetLabel = isSuppOrPeptide ? 'Target Dose' : 'Session Target'
+
                 return (
-                  <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-start gap-2.5 text-xs text-slate-300 backdrop-blur-sm shadow-sm">
-                    <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                      <Clock size={13} />
-                    </div>
-                    <div className="space-y-0.5 flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-extrabold text-white">Best time to record outcomes:</span>
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30">
-                          {guidance.bestTimeToLog}
-                        </span>
+                  <div className="space-y-2 mb-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* 1. Best Time to Record (1 row collapsed by default, visible text is ONLY the best time) */}
+                      <div className="rounded-xl border border-purple-500/30 bg-purple-950/30 overflow-hidden transition-all shadow-sm">
+                        <button
+                          type="button"
+                          onClick={() => setIsBestTimeExpanded(!isBestTimeExpanded)}
+                          className="w-full h-10 px-3 flex items-center justify-between gap-2 text-left hover:bg-purple-950/60 transition-colors cursor-pointer"
+                          title={guidance.subtitle}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                            <div className="p-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
+                              <Clock size={13} />
+                            </div>
+                            <span className="text-xs font-bold text-purple-200 truncate">
+                              {guidance.bestTimeToLog}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 text-purple-400 text-xs shrink-0 pl-1">
+                            <span className="text-[10px] text-purple-300/70 hidden xs:inline">{isBestTimeExpanded ? 'Hide' : 'Info'}</span>
+                            {isBestTimeExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                          </div>
+                        </button>
+                        {isBestTimeExpanded && (
+                          <div className="px-3 pb-2.5 pt-1 text-[11px] text-purple-200/90 border-t border-purple-500/20 leading-relaxed animate-in fade-in">
+                            <span className="font-semibold block mb-0.5 text-purple-300">Peak Biomarker / Onset Window:</span>
+                            {guidance.subtitle}
+                          </div>
+                        )}
                       </div>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">
-                        {guidance.subtitle}
-                      </p>
+
+                      {/* 2. Session Execution Numbers (or Target Dose if no precision log UI) - 1 row collapsed */}
+                      {activeOutcomePhase === 'post' && hasPrecisionLogUI ? (
+                        <div className="rounded-xl border border-cyan-500/30 bg-slate-950/80 overflow-hidden transition-all shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => setIsOutcomeExecutionExpanded(!isOutcomeExecutionExpanded)}
+                            className="w-full h-10 px-3 flex items-center justify-between gap-2 text-left hover:bg-slate-900 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                              <div className="p-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0">
+                                <Activity size={13} />
+                              </div>
+                              <span className="text-xs font-bold text-cyan-300 shrink-0 whitespace-nowrap">
+                                Session Execution Numbers
+                              </span>
+                              {completedSummaryText && (
+                                <span className="text-[10px] font-mono text-slate-400 truncate">
+                                  ({completedSummaryText})
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-cyan-400 text-xs shrink-0 pl-1">
+                              <span className="text-[10px] text-cyan-300/70 hidden xs:inline">{isOutcomeExecutionExpanded ? 'Hide' : '+ Log'}</span>
+                              {isOutcomeExecutionExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                            </div>
+                          </button>
+                        </div>
+                      ) : (
+                        /* Side by side with specific dose / target session */
+                        <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 h-10 px-3 flex items-center justify-between gap-2 overflow-hidden shadow-sm">
+                          <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                            <div className="p-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                              {isSuppOrPeptide ? <Pill size={13} /> : <Target size={13} />}
+                            </div>
+                            <span className="text-xs font-medium text-emerald-300/80 shrink-0">
+                              {targetLabel}:
+                            </span>
+                            <span className="text-xs font-bold text-emerald-200 truncate font-mono">
+                              {customDose || modality.dose_or_exposure || 'Standard Protocol'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Expanded Session Execution Form */}
+                    {activeOutcomePhase === 'post' && hasPrecisionLogUI && isOutcomeExecutionExpanded && (
+                      <div className="p-3.5 bg-slate-950/90 border border-cyan-500/30 rounded-xl space-y-3 shadow-lg animate-in fade-in">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                          <span className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                            <Activity size={14} className="text-cyan-400" /> Session Execution Numbers
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {modality.display_name || modality.name}
+                          </span>
+                        </div>
+
+                        {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isNSDR && (
+                          <NSDRExecutionLog 
+                            value={executionDetails} 
+                            onChange={setExecutionDetails} 
+                            onOpenFullscreen={() => setShowYogaNidraApplet(true)}
+                          />
+                        )}
+                        {isCardio && (
+                          <CardioExecutionLog 
+                            value={executionDetails} 
+                            onChange={setExecutionDetails} 
+                            lockedCardioType={lockedCardioType}
+                            specializedTraits={specializedTraits}
+                          />
+                        )}
+                        {isStrength && (
+                          <StrengthExecutionLog 
+                            value={executionDetails} 
+                            onChange={setExecutionDetails} 
+                            lockedExerciseName={lockedExerciseName}
+                            specializedTraits={specializedTraits}
+                          />
+                        )}
+                        {isFasting && (
+                          <FastingExecutionLog 
+                            value={executionDetails} 
+                            onChange={setExecutionDetails} 
+                            isMultiDay={
+                              modalityKey.includes('16:8') || modalityKey.includes('18:6') || modalityKey.includes('time-restricted') || modalityKey.includes('trf')
+                                ? false 
+                                : true
+                            }
+                          />
+                        )}
+                        {isNutritionMacro && <NutritionMacroExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isRedLight && <RedLightExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isCGM && <CGMExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isBlueLightDimming && <BlueLightDimmingExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isPhlebotomy && <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isPeptide && (
+                          <PeptideExecutionLog 
+                            value={executionDetails} 
+                            onChange={setExecutionDetails} 
+                            modality={modality} 
+                            modalityKey={modalityKey} 
+                            defaultDoseMcg={task.protocol_step?.dose_amount || 250} 
+                          />
+                        )}
+                        {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                      </div>
+                    )}
                   </div>
                 )
               })()}
-
-              {/* Precision Execution Log within Outcome Tracker */}
-              {activeOutcomePhase === 'post' && hasPrecisionLogUI && (
-                <div className="p-3.5 bg-slate-950/90 border border-cyan-500/30 rounded-xl space-y-3 shadow-lg">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
-                      <Activity size={14} className="text-cyan-400" /> Session Execution Numbers
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {modality.display_name || modality.name}
-                    </span>
-                  </div>
-
-                  {isThermal && <ThermalExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isBreathwork && <BreathworkExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isNSDR && (
-                    <NSDRExecutionLog 
-                      value={executionDetails} 
-                      onChange={setExecutionDetails} 
-                      onOpenFullscreen={() => setShowYogaNidraApplet(true)}
-                    />
-                  )}
-                  {isCardio && (
-                    <CardioExecutionLog 
-                      value={executionDetails} 
-                      onChange={setExecutionDetails} 
-                      lockedCardioType={lockedCardioType}
-                      specializedTraits={specializedTraits}
-                    />
-                  )}
-                  {isStrength && (
-                    <StrengthExecutionLog 
-                      value={executionDetails} 
-                      onChange={setExecutionDetails} 
-                      lockedExerciseName={lockedExerciseName}
-                      specializedTraits={specializedTraits}
-                    />
-                  )}
-                  {isFasting && (
-                    <FastingExecutionLog 
-                      value={executionDetails} 
-                      onChange={setExecutionDetails} 
-                      isMultiDay={
-                        modalityKey.includes('16:8') || modalityKey.includes('18:6') || modalityKey.includes('time-restricted') || modalityKey.includes('trf')
-                          ? false 
-                          : true
-                      }
-                    />
-                  )}
-                  {isNutritionMacro && <NutritionMacroExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isRedLight && <RedLightExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isCGM && <CGMExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isBlueLightDimming && <BlueLightDimmingExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isPhlebotomy && <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                  {isPeptide && (
-                    <PeptideExecutionLog 
-                      value={executionDetails} 
-                      onChange={setExecutionDetails} 
-                      modality={modality} 
-                      modalityKey={modalityKey} 
-                      defaultDoseMcg={task.protocol_step?.dose_amount || 250} 
-                    />
-                  )}
-                  {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                </div>
-              )}
 
               {/* Sliders List */}
               <div className="space-y-4">
