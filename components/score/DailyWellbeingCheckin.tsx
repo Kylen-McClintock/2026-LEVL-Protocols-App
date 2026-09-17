@@ -1763,16 +1763,16 @@ export default function DailyWellbeingCheckin({
                 <div className="flex items-center gap-1.5 shrink-0">
                   {activeAnytimeDimensions.map(outcome => {
                     const liveState = liveStateMap[outcome.id] || getLatestOutcomeLiveState(outcome.id, initialData, recentTasks, allOutcomes)
-                    const val = liveState.currentValue ?? 5
-                    const colorCfg = getOutcomeColorConfig(val, liveState.directionality)
+                    const val = liveState.currentValue ?? liveState.morningBaseline
+                    const colorCfg = val != null ? getOutcomeColorConfig(val, liveState.directionality) : getNeutralOutcomeColorConfig()
                     return (
                       <span 
                         key={outcome.id} 
                         className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-lg border shrink-0 ${colorCfg.badgeBg} ${colorCfg.borderColor} ${colorCfg.textColor}`}
-                        title={`${liveState.name}: ${val}/10 (${liveState.sourceLabel})`}
+                        title={`${liveState.name}: ${val != null ? `${val}/10` : '—/10'}${liveState.sourceLabel && liveState.sourceLabel !== 'Unrecorded' ? ` (${liveState.sourceLabel})` : ''}`}
                       >
                         <span className="opacity-75 font-normal text-[10px] sm:text-[11px]">{liveState.name}</span>
-                        <span className="font-mono font-black">{val}</span>
+                        <span className="font-mono font-black">{val != null ? val : '—'}</span>
                       </span>
                     )
                   })}
@@ -1976,8 +1976,9 @@ export default function DailyWellbeingCheckin({
             <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-xs">
               {activeAnytimeDimensions.map(outcome => {
                 const liveState = liveStateMap[outcome.id] || getLatestOutcomeLiveState(outcome.id, initialData, recentTasks, allOutcomes)
-                const val = liveState.currentValue ?? 5
-                const colorCfg = getOutcomeColorConfig(val, liveState.directionality)
+                const hasRecordedData = liveState.currentValue != null || liveState.morningBaseline != null
+                const val = liveState.currentValue ?? liveState.morningBaseline
+                const colorCfg = val != null ? getOutcomeColorConfig(val, liveState.directionality) : getNeutralOutcomeColorConfig()
                 const delta = liveState.delta
 
                 return (
@@ -2006,8 +2007,8 @@ export default function DailyWellbeingCheckin({
                       <span className="text-gray-500 text-[8px] sm:text-[9px] font-mono">/10</span>
                     </div>
 
-                    {/* If expanded, show trend delta and source */}
-                    {isCurrentStateExpanded && (
+                    {/* If expanded and data has been recorded, show trend delta and source */}
+                    {isCurrentStateExpanded && hasRecordedData && (
                       <div className="w-full pt-1 mt-1 border-t border-white/10 space-y-0.5 animate-in fade-in">
                         {delta !== 0 && liveState.morningBaseline != null ? (
                           <div className="flex items-center justify-center text-[8px] sm:text-[9px] font-mono font-bold">
@@ -2020,14 +2021,16 @@ export default function DailyWellbeingCheckin({
                               {delta > 0 ? `+${delta}` : delta} vs AM
                             </span>
                           </div>
-                        ) : (
+                        ) : liveState.morningBaseline != null ? (
                           <div className="text-[8px] sm:text-[9px] font-mono text-slate-400 truncate">
-                            {liveState.morningBaseline != null ? `AM: ${liveState.morningBaseline}` : 'Unrecorded'}
+                            AM: {liveState.morningBaseline}
+                          </div>
+                        ) : null}
+                        {liveState.sourceLabel && liveState.sourceLabel !== 'Unrecorded' && (
+                          <div className="text-[8px] text-slate-400 truncate px-0.5" title={liveState.sourceLabel}>
+                            {liveState.sourceLabel}
                           </div>
                         )}
-                        <div className="text-[8px] text-slate-400 truncate px-0.5" title={liveState.sourceLabel}>
-                          {liveState.sourceLabel}
-                        </div>
                       </div>
                     )}
                   </div>

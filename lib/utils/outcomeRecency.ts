@@ -377,7 +377,7 @@ export function getLatestOutcomeLiveState(
   let latestVal = morningBaseline
   let latestTimestamp = morningTimestamp
   let latestDateStr = morningRecordedAt
-  let latestSourceLabel = morningBaseline !== null ? 'Morning Check-in' : 'Unrecorded'
+  let latestSourceLabel = morningBaseline !== null ? 'Morning Check-in' : ''
 
   // Check anytime check-in snapshots
   if (wellbeingCheckin) {
