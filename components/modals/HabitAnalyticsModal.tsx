@@ -362,7 +362,7 @@ export function HabitAnalyticsModal({
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <Sparkles className="text-indigo-400 w-5 h-5 shrink-0" />
-                <span className="font-extrabold text-sm sm:text-base text-white">Habit Automaticity Progress</span>
+                <span className="font-extrabold text-sm sm:text-base text-white">Habit Progress</span>
               </div>
               <span className="text-xs font-mono font-bold text-indigo-300 bg-indigo-500/20 border border-indigo-500/40 px-3 py-1 rounded-full">
                 {isAutomated ? '100% Automatic' : `${pct}% Automatic (${effectiveStreak}/${targetDays} Days)`}

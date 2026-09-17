@@ -3630,11 +3630,12 @@ export default function ProtocolTaskCard({
                 </button>
               </div>
 
-              {/* Habit Automaticity Progress Box (Placed directly UNDER Personalize & Geek Mode) */}
+              {/* Habit Progress Bar (2 lines thick: Line 1 text/stats, Line 2 skinny progress bar. Clickable for Historical Analysis) */}
               {modality && (
                 <div 
                   onClick={() => setShowHabitAnalyticsModal(true)}
-                  className="mb-4 bg-indigo-950/40 border border-indigo-500/30 hover:border-indigo-400/60 rounded-xl p-3.5 space-y-3 cursor-pointer transition-all hover:bg-indigo-950/60 shadow-[0_0_15px_rgba(99,102,241,0.15)] group"
+                  className="mb-3 bg-indigo-950/30 hover:bg-indigo-950/50 border border-indigo-500/25 hover:border-indigo-400/50 rounded-lg px-3 py-2 space-y-1.5 cursor-pointer transition-all group"
+                  title="Click for Historical Analysis"
                 >
                   {(() => {
                     const rawStreak = habitRecord?.streak_days || 0
@@ -3644,56 +3645,26 @@ export default function ProtocolTaskCard({
 
                     return (
                       <>
-                        <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+                        {/* Line 1: Habit Progress label + Historical Analysis hint + completion stats */}
+                        <div className="flex items-center justify-between gap-2 text-xs">
                           <div className="flex items-center gap-1.5 font-bold text-white group-hover:text-indigo-300 transition-colors">
-                            <Sparkles size={14} className="text-indigo-400 shrink-0" />
-                            <span>Habit Automaticity Progress</span>
-                            <span className="text-[10px] text-indigo-400 underline font-normal ml-1">
-                              (Click for Historical Analysis)
+                            <Sparkles size={13} className="text-indigo-400 shrink-0" />
+                            <span>Habit Progress</span>
+                            <span className="text-[10px] text-indigo-400 underline font-normal ml-0.5">
+                              (Historical Analysis)
                             </span>
                           </div>
-                          <span className="text-[10px] font-mono text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 px-2.5 py-0.5 rounded-full font-bold shrink-0">
-                            {isHabitAutomated ? '100% Automatic' : `${pct}% Automatic (${streakDays}/${targetDays} Days)`}
+                          <span className="text-[10px] font-mono text-indigo-300 bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold shrink-0">
+                            {isHabitAutomated ? '100% Automatic' : `${pct}% (${streakDays}/${targetDays}d)`}
                           </span>
                         </div>
 
-                        {/* Progress Bar */}
-                        <div className="w-full h-2 bg-black/60 border border-white/10 rounded-full overflow-hidden">
+                        {/* Line 2: Skinny Completion Bar */}
+                        <div className="w-full h-1 bg-black/60 border border-white/10 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-500"
+                            className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-500 rounded-full"
                             style={{ width: `${pct}%` }}
                           />
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1 border-t border-white/5">
-                          <span className="text-[10px] text-gray-400 leading-tight">
-                            {isHabitAutomated 
-                              ? '🌿 Graduated to Automatic Habits' 
-                              : `Target: ~${targetDays} Days to 100% Automaticity`}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={async (e) => {
-                              e.stopPropagation()
-                              const localUserId = getLocalUserId()
-                              const { toggleHabitGraduation } = await import('@/lib/data')
-                              const updated = await toggleHabitGraduation(localUserId, modality.id, 'manual')
-                              const found = updated.find(h => h.modality_id === modality.id)
-                              if (found) {
-                                setIsHabitAutomated(found.is_automated)
-                                setHabitRecord(found)
-                              } else {
-                                setIsHabitAutomated(!isHabitAutomated)
-                              }
-                            }}
-                            className={`text-[10px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto ${
-                              isHabitAutomated
-                                ? 'bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20'
-                                : 'bg-indigo-500/20 border-indigo-400 text-indigo-200 hover:bg-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
-                            }`}
-                          >
-                            {isHabitAutomated ? 'Move Back to Active Tasks' : '🌿 Move to Automatic Habits'}
-                          </button>
                         </div>
                       </>
                     )
