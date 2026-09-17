@@ -158,6 +158,85 @@ function parseLocalDate(dStr?: string | null): Date {
   return new Date()
 }
 
+interface SupplementCompactRowProps {
+  task: DedupedTask
+  modality?: Modality
+  modalityName: string
+  benchItem?: UserBenchItem
+  onStatusChange: (taskId: string, status: string) => void
+  onOpenDetails: () => void
+  completionMode: string
+}
+
+function SupplementCompactRow({
+  task,
+  modality,
+  modalityName,
+  benchItem,
+  onStatusChange,
+  onOpenDetails,
+  completionMode
+}: SupplementCompactRowProps) {
+  const isDone = task.status === 'completed'
+  const dose = task.execution_details?.custom_dose || benchItem?.custom_dose || task.protocol_step?.dose_text || (task.protocol_step?.dose_amount ? `${task.protocol_step.dose_amount}${task.protocol_step.dose_unit || ''}` : '') || modality?.dose_or_exposure || ''
+
+  return (
+    <div
+      onClick={onOpenDetails}
+      className={`flex items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer group select-none ${
+        isDone
+          ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/50 hover:bg-emerald-950/30'
+          : 'bg-slate-900/60 border-white/10 hover:border-purple-500/40 hover:bg-slate-900/90 shadow-sm'
+      }`}
+    >
+      {/* Left: Checkbox & Name & Dose */}
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            triggerHaptic('success')
+            onStatusChange(task.id, isDone ? 'pending' : 'completed')
+          }}
+          className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-90 ${
+            isDone
+              ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-sm'
+              : 'border-slate-700 bg-slate-950/80 text-transparent hover:border-purple-400 group-hover:border-purple-400/60'
+          }`}
+          title={isDone ? "Mark as pending" : "Mark as completed"}
+        >
+          <Check size={13} strokeWidth={3} className={isDone ? 'opacity-100 text-slate-950' : 'opacity-0 group-hover:opacity-40 text-purple-300'} />
+        </button>
+
+        <ModalityIcon modality={modality} modalityName={modalityName} size={16} className={`shrink-0 ${isDone ? 'opacity-70' : 'opacity-100'}`} glow={!isDone} />
+
+        <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap sm:flex-nowrap">
+          <span className={`text-xs sm:text-sm font-bold truncate transition-colors ${
+            isDone ? 'line-through text-slate-400' : 'text-white group-hover:text-purple-200'
+          }`}>
+            {modalityName}
+          </span>
+          {dose && (
+            <span className={`text-[10px] sm:text-[11px] font-mono px-2 py-0.5 rounded-md border shrink-0 ${
+              isDone 
+                ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400/90' 
+                : 'bg-purple-950/50 border-purple-800/40 text-purple-300'
+            }`}>
+              {dose}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Right: Expand affordance */}
+      <div className="flex items-center gap-1.5 shrink-0 text-slate-500 group-hover:text-purple-300 transition-colors">
+        <span className="hidden sm:inline text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">Details</span>
+        <ChevronDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
+      </div>
+    </div>
+  )
+}
+
 function TodayPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -421,6 +500,7 @@ function TodayPageContent() {
   const [filterLens, setFilterLens] = useState<FilterLens>('category')
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([])
   const [isStackHealthModalOpen, setIsStackHealthModalOpen] = useState(false)
+  const [expandedSupplementBlocks, setExpandedSupplementBlocks] = useState<Record<string, boolean>>({})
 
   // Bidirectional View Mode sync with TopStickyHeader
   useEffect(() => {
@@ -3474,33 +3554,44 @@ function TodayPageContent() {
       const isNow = isCurrentDay && isCurrentCircadianSlot(groupName)
       const isIgnited = ignitedGroupKeys.has(groupName)
       const isAnytime = groupName === 'anytime'
+      const isPast = isCurrentDay && !isAnytime && isCircadianSlotPast(
+        groupName,
+        new Date(),
+        1.0,
+        userActualWakeTime,
+        profile?.ideal_wake_time || '06:30'
+      )
+      const isPastCollapsed = isCollapsed && isPast
 
       return (
         <div 
           key={groupName} 
           ref={(el) => { groupHeaderRefs.current[groupName] = el }}
+          onClick={isPastCollapsed ? () => toggleGroupCollapse(groupName, groupTasks) : undefined}
           className={`relative ${
-            isAnytime 
-              ? (completionMode === 'fast' ? 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2 sm:p-2.5 space-y-2 my-2' : 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2.5 sm:p-3 space-y-2.5 my-3')
-              : (completionMode === 'fast' ? 'pl-1.5 sm:pl-2.5 space-y-2' : 'pl-1.5 sm:pl-2.5 space-y-3')
+            isPastCollapsed
+              ? 'rounded-2xl border border-purple-500/30 hover:border-purple-400/60 bg-slate-900/40 hover:bg-slate-900/80 p-3 sm:p-3.5 shadow-md hover:shadow-lg transition-all cursor-pointer my-2 active:scale-[0.99] group/past-block'
+              : isAnytime 
+                ? (completionMode === 'fast' ? 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2 sm:p-2.5 space-y-2 my-2' : 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2.5 sm:p-3 space-y-2.5 my-3')
+                : (completionMode === 'fast' ? 'pl-1.5 sm:pl-2.5 space-y-2' : 'pl-1.5 sm:pl-2.5 space-y-3')
           } group/circadian-block`}
         >
-          <div className={`flex items-center justify-between ${isAnytime ? 'border-b border-dashed border-white/10 pb-2' : 'border-b border-white/10 pb-2.5'} flex-wrap gap-2`}>
+          <div className={`flex items-center justify-between ${isPastCollapsed ? '' : isAnytime ? 'border-b border-dashed border-white/10 pb-2' : 'border-b border-white/10 pb-2.5'} flex-wrap gap-2`}>
             <button
               type="button"
               onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-              className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-none"
+              className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-none flex-1 min-w-0"
             >
               {/* Circadian Sky Beacon Icon */}
               <div 
                 ref={(el) => { beaconRefs.current[groupName] = el }}
                 className={`${isAnytime ? 'w-6 h-6 rounded-lg' : 'w-9 h-9 rounded-2xl'} border flex items-center justify-center shrink-0 transition-all duration-500 ${
-                  isIgnited 
+                  isIgnited || isPastCollapsed
                     ? `${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 opacity-100 ${isNow ? circadian.activeRing : ''}`
                     : 'bg-slate-950/60 border-slate-800 text-slate-500/70 scale-95 opacity-40 shadow-none'
                 }`}
                 style={{
-                  background: isIgnited ? circadian.badgeGradientCSS : undefined,
+                  background: isIgnited ? circadian.badgeGradientCSS : (isPastCollapsed ? 'rgba(88, 28, 135, 0.25)' : undefined),
                   boxShadow: isIgnited
                     ? (isNow 
                         ? `0 0 22px ${circadian.skyColorHex}99, inset 0 0 10px ${circadian.skyColorHex}33` 
@@ -3508,7 +3599,7 @@ function TodayPageContent() {
                     : undefined
                 }}
               >
-                <CircadianIcon size={isAnytime ? 12 : 17} strokeWidth={isIgnited ? 2.2 : 1.7} />
+                <CircadianIcon size={isAnytime ? 12 : 17} strokeWidth={isIgnited || isPastCollapsed ? 2.2 : 1.7} />
               </div>
 
               <div className="flex flex-col min-w-0">
@@ -3610,51 +3701,87 @@ function TodayPageContent() {
                 )}
               </div>
 
-              <ChevronDown 
-                size={isAnytime ? 13 : 16} 
-                className={`transition-transform duration-200 ml-1 ${
-                  isIgnited ? 'text-slate-400 group-hover:text-white' : 'text-slate-600'
-                } ${isCollapsed ? '-rotate-90' : ''}`} 
-              />
+              {!isPastCollapsed && (
+                <ChevronDown 
+                  size={isAnytime ? 13 : 16} 
+                  className={`transition-transform duration-200 ml-1 ${
+                    isIgnited ? 'text-slate-400 group-hover:text-white' : 'text-slate-600'
+                  } ${isCollapsed ? '-rotate-90' : ''}`} 
+                />
+              )}
             </button>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  setAsNeededSlot(groupName)
-                  setAsNeededModalityId(undefined)
-                  setIsAdHocModalOpen(true)
-                }}
-                className="font-bold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg text-[11px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all active:scale-95 shrink-0 shadow-sm"
-                title={`Log an As Needed modality for ${formatSlotName(groupName)}`}
-              >
-                <Plus size={12} className="stroke-[2.5]" />
-                <span className="hidden min-[420px]:inline">As Needed</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStartGroupTracking(groupName, groupTasks)}
-                className={`font-semibold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition-colors ${
-                  isAnytime 
-                    ? 'text-[11px] text-slate-400 hover:text-purple-300 hover:bg-white/5' 
-                    : 'text-xs text-purple-400 hover:text-purple-300 hover:bg-white/5'
-                }`}
-              >
-                <Activity size={isAnytime ? 12 : 13} /> {activeGroupTrackKey === groupName ? 'Close' : 'Track'}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleCompleteGroup(groupName, groupTasks)}
-                className={`font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
-                  isAnytime 
-                    ? 'text-[11px] text-emerald-400/90 hover:text-emerald-300 px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20' 
-                    : 'text-xs text-emerald-400 hover:text-emerald-300 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30'
-                }`}
-              >
-                <Check size={isAnytime ? 12 : 13} strokeWidth={2.5} /> Complete All
-              </button>
-            </div>
+            {isPastCollapsed ? (
+              <div className="flex items-center gap-2 shrink-0 ml-auto" onClick={(e) => e.stopPropagation()}>
+                {/* Visual Unlogged Pulsing Amber Pip */}
+                {completedCount < groupTasks.length && (
+                  <span className="relative flex h-2.5 w-2.5 shrink-0" title="Tasks pending to log">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 shadow-sm" />
+                  </span>
+                )}
+
+                {/* 1-Click Log All Remaining Button */}
+                {completedCount < groupTasks.length && (
+                  <button
+                    type="button"
+                    onClick={() => handleCompleteGroup(groupName, groupTasks)}
+                    className="text-[10px] sm:text-xs font-bold text-emerald-400 hover:text-white bg-emerald-950/50 hover:bg-emerald-900/80 border border-emerald-500/40 px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm active:scale-95 shrink-0"
+                    title="1-click log all tasks in this time block"
+                  >
+                    <Check size={12} strokeWidth={2.5} /> Log All
+                  </button>
+                )}
+
+                {/* Prominent Visual Expand Button */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroupCollapse(groupName, groupTasks)}
+                  className="w-8 h-8 rounded-xl bg-purple-950/70 border border-purple-500/40 text-purple-300 group-hover/past-block:text-white group-hover/past-block:bg-purple-900 group-hover/past-block:border-purple-400 flex items-center justify-center transition-all shadow-sm group-hover/past-block:scale-105 active:scale-95 shrink-0 cursor-pointer"
+                  title="Expand time block"
+                >
+                  <ChevronDown size={17} strokeWidth={2.5} className="group-hover/past-block:translate-y-0.5 transition-transform" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAsNeededSlot(groupName)
+                    setAsNeededModalityId(undefined)
+                    setIsAdHocModalOpen(true)
+                  }}
+                  className="font-bold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg text-[11px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all active:scale-95 shrink-0 shadow-sm"
+                  title={`Log an As Needed modality for ${formatSlotName(groupName)}`}
+                >
+                  <Plus size={12} className="stroke-[2.5]" />
+                  <span className="hidden min-[420px]:inline">As Needed</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStartGroupTracking(groupName, groupTasks)}
+                  className={`font-semibold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition-colors ${
+                    isAnytime 
+                      ? 'text-[11px] text-slate-400 hover:text-purple-300 hover:bg-white/5' 
+                      : 'text-xs text-purple-400 hover:text-purple-300 hover:bg-white/5'
+                  }`}
+                >
+                  <Activity size={isAnytime ? 12 : 13} /> {activeGroupTrackKey === groupName ? 'Close' : 'Track'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCompleteGroup(groupName, groupTasks)}
+                  className={`font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
+                    isAnytime 
+                      ? 'text-[11px] text-emerald-400/90 hover:text-emerald-300 px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20' 
+                      : 'text-xs text-emerald-400 hover:text-emerald-300 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30'
+                  }`}
+                >
+                  <Check size={isAnytime ? 12 : 13} strokeWidth={2.5} /> Complete All
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Group Tracking Slider Panel */}
@@ -3766,10 +3893,10 @@ function TodayPageContent() {
 
                 const nonSuppTasks = sortedTasks.filter(t => !isTaskSupplement(t))
                 const suppTasks = sortedTasks.filter(t => isTaskSupplement(t))
-                const hasMultipleSupps = suppTasks.length >= 2
                 const allSuppsCompleted = suppTasks.length > 0 && suppTasks.every(t => t.status === 'completed')
+                const isSuppStackExpanded = expandedSupplementBlocks[groupName] ?? false
 
-                if (!hasMultipleSupps) {
+                if (suppTasks.length === 0) {
                   return sortedTasks.map(renderCard)
                 }
 
@@ -3778,15 +3905,26 @@ function TodayPageContent() {
                     {nonSuppTasks.map(renderCard)}
 
                     {/* In-Block Supplement Stack Sub-Line */}
-                    <div className="pt-2.5 pb-1 flex items-center justify-between gap-3 border-t border-white/10 my-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-md bg-purple-950/40 border border-purple-500/30 flex items-center justify-center text-[11px] shrink-0 text-purple-300 shadow-sm">
+                    <div className="pt-2 pb-1 flex items-center justify-between gap-3 border-t border-white/10 my-1">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
+                        className="flex items-center gap-2 text-left cursor-pointer group select-none"
+                        title={isSuppStackExpanded ? "Collapse to compact rows" : "Click to view full cards for all supplements"}
+                      >
+                        <span className="w-5 h-5 rounded-md bg-purple-950/40 border border-purple-500/30 flex items-center justify-center text-[11px] shrink-0 text-purple-300 shadow-sm group-hover:bg-purple-900/60 transition-colors">
                           💊
                         </span>
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-purple-200">
-                          {formatSlotName(groupName)} Supplements ({suppTasks.length})
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-purple-200 group-hover:text-white transition-colors flex items-center gap-1.5">
+                          <span>{formatSlotName(groupName)} Supplements ({suppTasks.length})</span>
+                          {isSuppStackExpanded ? (
+                            <ChevronUp size={13} className="text-purple-400 group-hover:-translate-y-0.5 transition-transform" />
+                          ) : (
+                            <ChevronDown size={13} className="text-purple-400 group-hover:translate-y-0.5 transition-transform" />
+                          )}
                         </span>
-                      </div>
+                      </button>
+
                       <div className="flex items-center gap-2">
                         {allSuppsCompleted ? (
                           <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
@@ -3805,7 +3943,30 @@ function TodayPageContent() {
                       </div>
                     </div>
 
-                    {suppTasks.map(renderCard)}
+                    {/* Collapsed Mode: Display ONE ROW PER SUPPLEMENT. Expanded Mode: Show ALL full cards */}
+                    {isSuppStackExpanded ? (
+                      suppTasks.map(renderCard)
+                    ) : (
+                      <div className="space-y-1.5 pt-0.5">
+                        {suppTasks.map(t => {
+                          const mod = resolveTaskModality(t)
+                          const name = resolveTaskModalityName(t)
+                          const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
+                          return (
+                            <SupplementCompactRow
+                              key={t.id}
+                              task={t}
+                              modality={mod}
+                              modalityName={name}
+                              benchItem={bench}
+                              onStatusChange={handleStatusChange}
+                              onOpenDetails={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: true }))}
+                              completionMode={completionMode}
+                            />
+                          )
+                        })}
+                      </div>
+                    )}
                   </>
                 )
               })()}

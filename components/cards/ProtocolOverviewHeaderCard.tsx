@@ -217,6 +217,7 @@ export default function ProtocolOverviewHeaderCard({
   onCollapseProtocol
 }: ProtocolOverviewHeaderCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const [isSynthesisStepsExpanded, setIsSynthesisStepsExpanded] = useState(false)
   const [showGeekMode, setShowGeekMode] = useState(false)
   const [isVarianceOpen, setIsVarianceOpen] = useState(false)
@@ -364,11 +365,41 @@ export default function ProtocolOverviewHeaderCard({
             </div>
           </div>
 
-          {/* Line 3: Visible Protocol Description */}
+          {/* Line 3: Collapsible Protocol Description (Collapsed by default) */}
           {(protocolInfo?.description || preset.synergyText) && (
-            <p className="text-xs sm:text-sm text-slate-300/90 leading-relaxed pt-1.5">
-              {protocolInfo?.description || preset.synergyText}
-            </p>
+            <div className="pt-1">
+              {isDescriptionExpanded ? (
+                <div className="space-y-1.5">
+                  <p className="text-xs sm:text-sm text-slate-300/90 leading-relaxed">
+                    {protocolInfo?.description || preset.synergyText}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsDescriptionExpanded(false)
+                    }}
+                    className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors py-0.5"
+                  >
+                    <span>Hide description</span>
+                    <ChevronUp size={12} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsDescriptionExpanded(true)
+                  }}
+                  className="text-[11px] font-semibold text-slate-400 hover:text-purple-300 flex items-center gap-1.5 cursor-pointer transition-colors py-0.5 group/desc"
+                >
+                  <FileText size={12} className="text-purple-400/80 group-hover/desc:text-purple-300" />
+                  <span>Show description</span>
+                  <ChevronDown size={12} className="group-hover/desc:translate-y-0.5 transition-transform" />
+                </button>
+              )}
+            </div>
           )}
         </div>
 
