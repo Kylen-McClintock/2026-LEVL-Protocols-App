@@ -840,6 +840,34 @@ export function isCurrentCircadianSlot(slotName: string, currentHour?: number): 
   }
 }
 
+/**
+ * Calculates whether a given circadian time slot has passed by at least graceHours (default 1.5 hours)
+ */
+export function isCircadianSlotPast(
+  slotName: string, 
+  currentDate: Date = new Date(),
+  graceHours: number = 1.5,
+  actualWakeTimeStr?: string | null,
+  idealWakeTimeStr: string = '06:30'
+): boolean {
+  if (!slotName || slotName.toLowerCase().includes('anytime')) return false
+
+  const config = getAdaptiveCircadianConfig(slotName, actualWakeTimeStr, idealWakeTimeStr)
+  if (config.key === 'anytime') return false
+
+  const nowH = currentDate.getHours() + currentDate.getMinutes() / 60
+
+  // For slots that do not cross midnight:
+  if (config.startHour <= config.endHour) {
+    const threshold = config.endHour + graceHours
+    return nowH >= threshold
+  } else {
+    // Crosses midnight (e.g. bedtime 22:00 to 05:00)
+    const threshold = config.endHour + graceHours
+    return nowH >= threshold && nowH < config.startHour
+  }
+}
+
 export const CHRONOLOGICAL_CIRCADIAN_SLOTS: string[] = [
   'waking',
   'morning_routine',

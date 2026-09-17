@@ -77,7 +77,7 @@ import { getScoredLongevityTips } from '@/lib/ranking/tipPersonalization'
 import { getMacroCategory } from '@/lib/utils/categories'
 import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getModalityMacroType } from '@/lib/utils/modalityColors'
-import { getCircadianConfig, getAdaptiveCircadianConfig, isCurrentCircadianSlot, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS, isLateNightCarryoverWindow } from '@/lib/utils/circadianConfig'
+import { getCircadianConfig, getAdaptiveCircadianConfig, isCurrentCircadianSlot, isCircadianSlotPast, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS, isLateNightCarryoverWindow } from '@/lib/utils/circadianConfig'
 import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
 import AdaptiveSleepTriageCard from '@/components/today/AdaptiveSleepTriageCard'
 import { OutcomeLensView } from '@/components/outcomes/OutcomeLensView'
@@ -3043,7 +3043,26 @@ function TodayPageContent() {
     }
     // Default to collapsed if it's a supplement stack with 3+ modalities
     const isSupp = isSupplementGroup(groupName, groupTasks)
-    return isSupp && groupTasks.length >= 3
+    if (isSupp && groupTasks.length >= 3) {
+      return true
+    }
+
+    // In Chronological View on the current day:
+    // Auto-collapse time blocks that have passed by >= 1.5 hours so the user is not intimidated by earlier missed tasks
+    if (isCurrentDay && viewMode === 'chronological') {
+      const isPast = isCircadianSlotPast(
+        groupName,
+        new Date(),
+        1.5,
+        userActualWakeTime,
+        profile?.ideal_wake_time || '06:30'
+      )
+      if (isPast) {
+        return true
+      }
+    }
+
+    return false
   }
 
   const toggleGroupCollapse = (groupName: string, groupTasks: DailyProtocolTask[]) => {
@@ -3712,13 +3731,28 @@ function TodayPageContent() {
               </div>
 
               {/* Bottom Subtle Tap To Expand Bar */}
-              <div className="flex items-center justify-between text-[11px] text-purple-400/90 group-hover:text-purple-300 font-semibold pt-1 border-t border-white/5">
+              <div className="flex items-center justify-between text-[11px] text-purple-400/90 group-hover:text-purple-300 font-semibold pt-1 border-t border-white/5 gap-2 flex-wrap">
                 <span className="flex items-center gap-1">
                   <span>▾ Tap to view full cards & dosages ({groupTasks.length})</span>
                 </span>
-                <span className="text-[10px] text-slate-400 font-normal">
-                  {completedCount === groupTasks.length ? '✓ All Done' : `${groupTasks.length - completedCount} Remaining`}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    {completedCount === groupTasks.length ? '✓ All Done' : `${completedCount}/${groupTasks.length} Logged`}
+                  </span>
+                  {completedCount < groupTasks.length && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleCompleteGroup(groupName, groupTasks)
+                      }}
+                      className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/30 px-2 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
+                      title={`Mark all remaining tasks in ${formatSlotName(groupName)} completed`}
+                    >
+                      <Check size={10} strokeWidth={2.5} /> Log All
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
