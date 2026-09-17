@@ -459,6 +459,10 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
             protocolName={activeProtoPreset?.protocolName}
             currentDose={`${customDoseInput ? customDoseInput : customValue} ${unit}`}
             currentTiming={getEffectiveTimingString()}
+            currentDosesPerDay={dosesPerDay}
+            currentTimingSlots={[dose1Timing, dose2Timing, dose3Timing]}
+            currentNotes={personalNotes}
+            currentWeeklyFrequency={weeklyFrequency}
             userProfile={userProfile}
             onApplyDose={(dose) => {
               const cleaned = dose.replace(/[^\d.]/g, '')
@@ -497,6 +501,8 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
             onAppendNotes={(note) => {
               setPersonalNotes(prev => prev ? `${prev}\n\n${note}` : note)
             }}
+            onSetNotes={setPersonalNotes}
+            onSetWeeklyFrequency={setWeeklyFrequency}
           />
 
           {/* SECTION 1: Active Context Recommendation Card */}

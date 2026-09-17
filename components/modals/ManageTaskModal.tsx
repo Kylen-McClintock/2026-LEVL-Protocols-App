@@ -574,6 +574,13 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
             protocolName={prescribedProtocolName}
             currentDose={customDose}
             currentTiming={selectedSlot}
+            currentDosesPerDay={dosesPerDay}
+            currentTimingSlots={[dose1Timing, dose2Timing, dose3Timing]}
+            currentScheduleMode={scheduleMode}
+            currentDays={selectedDays}
+            currentRestIntervalDays={restDaysBetween}
+            currentAdaptationStrategy={skipPolicy === 'fixed' ? 'strict_fixed' : skipPolicy === 'shift_sequence' ? 'cascade_shift' : 'roll_forward'}
+            currentNotes={personalNotes}
             userProfile={userProfile}
             onApplyDose={(dose) => setCustomDose(dose)}
             onApplyTiming={(timing) => {
@@ -604,6 +611,7 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
             onAppendNotes={(note) => {
               setPersonalNotes(prev => prev ? `${prev}\n\n${note}` : note)
             }}
+            onSetNotes={setPersonalNotes}
           />
 
           {/* CLINICAL CONTRAINDICATION & INTERACTION ALERT */}

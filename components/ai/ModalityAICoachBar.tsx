@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import {
   Sparkles,
   Send,
@@ -37,6 +37,14 @@ interface ModalityAICoachBarProps {
   protocolName?: string
   currentDose?: string | number
   currentTiming?: string
+  currentDosesPerDay?: number
+  currentTimingSlots?: string[]
+  currentScheduleMode?: 'days_of_week' | 'rest_interval' | 'specific_dates' | 'as_needed'
+  currentDays?: string[]
+  currentRestIntervalDays?: number
+  currentAdaptationStrategy?: 'roll_forward' | 'strict_fixed' | 'cascade_shift'
+  currentNotes?: string
+  currentWeeklyFrequency?: string
   userProfile?: UserProfile | null
   activeStackNames?: string[]
   onApplyDose?: (dose: string) => void
@@ -49,6 +57,8 @@ interface ModalityAICoachBarProps {
     strategy?: 'roll_forward' | 'strict_fixed' | 'cascade_shift'
   ) => void
   onAppendNotes?: (notes: string) => void
+  onSetNotes?: (notes: string) => void
+  onSetWeeklyFrequency?: (freq: string) => void
 }
 
 interface AICoachResponse {
@@ -74,13 +84,23 @@ export const ModalityAICoachBar: React.FC<ModalityAICoachBarProps> = ({
   protocolName,
   currentDose,
   currentTiming,
+  currentDosesPerDay,
+  currentTimingSlots,
+  currentScheduleMode,
+  currentDays,
+  currentRestIntervalDays,
+  currentAdaptationStrategy,
+  currentNotes,
+  currentWeeklyFrequency,
   userProfile,
   activeStackNames = [],
   onApplyDose,
   onApplyTiming,
   onApplyMultiDose,
   onApplyCadence,
-  onAppendNotes
+  onAppendNotes,
+  onSetNotes,
+  onSetWeeklyFrequency
 }) => {
   const [query, setQuery] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -91,6 +111,20 @@ export const ModalityAICoachBar: React.FC<ModalityAICoachBarProps> = ({
   const [appliedMultiDose, setAppliedMultiDose] = useState(false)
   const [appliedCadence, setAppliedCadence] = useState(false)
   const [appliedNotes, setAppliedNotes] = useState(false)
+
+  // Snapshot user's active configuration before AI suggestions are applied so the user can unclick to revert
+  const previousStateRef = useRef<{
+    dose?: string
+    timing?: string
+    dosesPerDay?: number
+    timingSlots?: string[]
+    scheduleMode?: string
+    days?: string[]
+    restIntervalDays?: number
+    adaptationStrategy?: string
+    notes?: string
+    weeklyFrequency?: string
+  }>({})
 
   const quickPrompts = [
     { label: 'Circadian Timing', prompt: `What is the ideal circadian timing window for ${modalityName} given my active stack?` },
@@ -112,6 +146,20 @@ export const ModalityAICoachBar: React.FC<ModalityAICoachBarProps> = ({
     setAppliedCadence(false)
     setAppliedNotes(false)
 
+    // Snapshot user's active configuration before AI suggestions apply so they can unclick to revert
+    previousStateRef.current = {
+      dose: currentDose !== undefined ? String(currentDose) : undefined,
+      timing: currentTiming,
+      dosesPerDay: currentDosesPerDay,
+      timingSlots: currentTimingSlots ? [...currentTimingSlots] : undefined,
+      scheduleMode: currentScheduleMode,
+      days: currentDays ? [...currentDays] : undefined,
+      restIntervalDays: currentRestIntervalDays,
+      adaptationStrategy: currentAdaptationStrategy,
+      notes: currentNotes,
+      weeklyFrequency: currentWeeklyFrequency
+    }
+
     try {
       const res = await fetch('/api/protocol-coach', {
         method: 'POST',
@@ -129,9 +177,45 @@ export const ModalityAICoachBar: React.FC<ModalityAICoachBarProps> = ({
       })
 
       if (!res.ok) throw new Error('AI Coach response failed')
-      const data = await res.json()
+      const data: AICoachResponse = await res.json()
       setResponse(data)
       if (!questionText) setQuery('')
+
+      // Auto-apply suggestions immediately so the user does not have to manually click
+      if (data.suggestedDose && onApplyDose) {
+        onApplyDose(data.suggestedDose)
+        setAppliedDose(true)
+      }
+
+      if (data.suggestedDosesPerDay && data.suggestedDosesPerDay > 1 && onApplyMultiDose) {
+        const slots = data.suggestedTimingSlots || []
+        onApplyMultiDose(data.suggestedDosesPerDay, slots[0], slots[1], slots[2])
+        setAppliedMultiDose(true)
+      }
+
+      if (data.suggestedTiming && (!data.suggestedDosesPerDay || data.suggestedDosesPerDay === 1) && onApplyTiming) {
+        onApplyTiming(data.suggestedTiming)
+        setAppliedTiming(true)
+      }
+
+      if (data.suggestedScheduleMode && onApplyCadence) {
+        onApplyCadence(
+          data.suggestedScheduleMode,
+          data.suggestedDays || undefined,
+          data.suggestedRestIntervalDays ?? undefined,
+          data.suggestedAdaptationStrategy || undefined
+        )
+        setAppliedCadence(true)
+      }
+
+      if (data.suggestedNotes && (onAppendNotes || onSetNotes)) {
+        if (onAppendNotes) {
+          onAppendNotes(data.suggestedNotes)
+        } else if (onSetNotes) {
+          onSetNotes(previousStateRef.current.notes ? `${previousStateRef.current.notes}\n\n${data.suggestedNotes}` : data.suggestedNotes)
+        }
+        setAppliedNotes(true)
+      }
     } catch (err) {
       console.error('Modality AI Coach error:', err)
       setResponse({
@@ -141,6 +225,8 @@ export const ModalityAICoachBar: React.FC<ModalityAICoachBarProps> = ({
       setIsLoading(false)
     }
   }
+
+  const anyApplied = appliedDose || appliedMultiDose || appliedTiming || appliedCadence || appliedNotes
 
   return (
     <div className="w-full bg-gradient-to-br from-purple-950/40 via-slate-900/90 to-cyan-950/30 border border-purple-500/30 hover:border-purple-500/50 rounded-2xl p-4 shadow-xl transition-all space-y-3">
@@ -228,7 +314,7 @@ export const ModalityAICoachBar: React.FC<ModalityAICoachBarProps> = ({
       {response && isExpanded && (
         <div className="pt-2 border-t border-purple-500/20 space-y-3 animate-in fade-in slide-in-from-top-2">
           
-          {/* Scientific Pushback Warning Banner (if user asked for contra-indicated or unscientific configuration) */}
+          {/* Scientific Pushback Warning Banner */}
           {response.scientificPushback && (
             <div className="p-3 rounded-xl bg-amber-950/60 border border-amber-500/50 text-amber-200 text-xs flex items-start gap-2.5 shadow-lg">
               <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
@@ -263,127 +349,190 @@ export const ModalityAICoachBar: React.FC<ModalityAICoachBarProps> = ({
 
           {/* Action Chips for Recommended Dosing / Multi-Dose / Timing / Cadence */}
           {(response.suggestedDose || response.suggestedTiming || response.suggestedDosesPerDay || response.suggestedScheduleMode || response.suggestedNotes || response.synergyHighlight) && (
-            <div className="flex items-center gap-2 flex-wrap pt-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
-                One-Click Actions:
-              </span>
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between gap-2 flex-wrap text-[10px]">
+                {anyApplied ? (
+                  <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-emerald-400">
+                    <Check size={12} className="text-emerald-400" />
+                    <span>Suggestions Applied Below</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-purple-400">
+                    <Sparkles size={12} className="text-purple-400" />
+                    <span>One-Click Actions</span>
+                  </div>
+                )}
+                <span className="text-slate-400 font-normal">
+                  {anyApplied ? '(Tap any action to unapply / revert)' : '(Tap any action to apply to schedule)'}
+                </span>
+              </div>
 
-              {/* 1. Apply Dose */}
-              {response.suggestedDose && onApplyDose && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (response.suggestedDose) {
-                      onApplyDose(response.suggestedDose)
-                      setAppliedDose(true)
-                    }
-                  }}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
-                    appliedDose
-                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                      : 'bg-teal-500/10 hover:bg-teal-500/20 border-teal-500/40 text-teal-300 hover:text-white'
-                  }`}
-                >
-                  {appliedDose ? <Check size={13} /> : <Scale size={13} />}
-                  <span>{appliedDose ? 'Applied Dose' : 'Apply Dose'}: {response.suggestedDose}</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* 1. Apply / Revert Dose */}
+                {response.suggestedDose && onApplyDose && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (appliedDose) {
+                        if (previousStateRef.current.dose !== undefined) {
+                          onApplyDose(previousStateRef.current.dose)
+                        }
+                        setAppliedDose(false)
+                      } else {
+                        if (response.suggestedDose) {
+                          onApplyDose(response.suggestedDose)
+                          setAppliedDose(true)
+                        }
+                      }
+                    }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
+                      appliedDose
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                        : 'bg-teal-500/10 hover:bg-teal-500/20 border-teal-500/40 text-teal-300 hover:text-white'
+                    }`}
+                    title={appliedDose ? 'Applied to schedule below. Click to unapply / revert' : 'Click to apply recommended dose'}
+                  >
+                    {appliedDose ? <Check size={13} className="text-emerald-400" /> : <Scale size={13} />}
+                    <span>{appliedDose ? 'Applied Dose' : 'Apply Dose'}: {response.suggestedDose}</span>
+                  </button>
+                )}
 
-              {/* 2. Split Multi-Dose Times of Day */}
-              {response.suggestedDosesPerDay && response.suggestedDosesPerDay > 1 && onApplyMultiDose && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const slots = response.suggestedTimingSlots || []
-                    onApplyMultiDose(response.suggestedDosesPerDay!, slots[0], slots[1], slots[2])
-                    setAppliedMultiDose(true)
-                  }}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
-                    appliedMultiDose
-                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                      : 'bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/40 text-purple-300 hover:text-white'
-                  }`}
-                >
-                  {appliedMultiDose ? <Check size={13} /> : <Zap size={13} />}
-                  <span>
-                    {appliedMultiDose ? 'Applied Split' : `Split into ${response.suggestedDosesPerDay}x Daily`}
-                    {response.suggestedTimingSlots?.length ? ` (${response.suggestedTimingSlots.map(formatSlotName).join(' & ')})` : ''}
-                  </span>
-                </button>
-              )}
+                {/* 2. Split / Revert Multi-Dose Times of Day */}
+                {response.suggestedDosesPerDay && response.suggestedDosesPerDay > 1 && onApplyMultiDose && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (appliedMultiDose) {
+                        const prevCount = previousStateRef.current.dosesPerDay || 1
+                        const prevSlots = previousStateRef.current.timingSlots || ['morning']
+                        onApplyMultiDose(prevCount, prevSlots[0], prevSlots[1], prevSlots[2])
+                        setAppliedMultiDose(false)
+                      } else {
+                        const slots = response.suggestedTimingSlots || []
+                        onApplyMultiDose(response.suggestedDosesPerDay!, slots[0], slots[1], slots[2])
+                        setAppliedMultiDose(true)
+                      }
+                    }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
+                      appliedMultiDose
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                        : 'bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/40 text-purple-300 hover:text-white'
+                    }`}
+                    title={appliedMultiDose ? 'Applied to schedule below. Click to unapply / revert' : 'Click to split schedule'}
+                  >
+                    {appliedMultiDose ? <Check size={13} className="text-emerald-400" /> : <Zap size={13} />}
+                    <span>
+                      {appliedMultiDose ? 'Applied Split' : `Split into ${response.suggestedDosesPerDay}x Daily`}
+                      {response.suggestedTimingSlots?.length ? ` (${response.suggestedTimingSlots.map(formatSlotName).join(' & ')})` : ''}
+                    </span>
+                  </button>
+                )}
 
-              {/* 3. Set Single Circadian Timing Window */}
-              {response.suggestedTiming && (!response.suggestedDosesPerDay || response.suggestedDosesPerDay === 1) && onApplyTiming && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (response.suggestedTiming) {
-                      onApplyTiming(response.suggestedTiming)
-                      setAppliedTiming(true)
-                    }
-                  }}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
-                    appliedTiming
-                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                      : 'bg-cyan-500/10 hover:bg-cyan-500/20 border-cyan-500/40 text-cyan-300 hover:text-white'
-                  }`}
-                >
-                  {appliedTiming ? <Check size={13} /> : <Clock size={13} />}
-                  <span>{appliedTiming ? 'Applied Timing' : 'Set Timing'}: {formatSlotName(response.suggestedTiming)}</span>
-                </button>
-              )}
+                {/* 3. Set / Revert Single Circadian Timing Window */}
+                {response.suggestedTiming && (!response.suggestedDosesPerDay || response.suggestedDosesPerDay === 1) && onApplyTiming && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (appliedTiming) {
+                        if (previousStateRef.current.timing) {
+                          onApplyTiming(previousStateRef.current.timing)
+                        }
+                        setAppliedTiming(false)
+                      } else {
+                        if (response.suggestedTiming) {
+                          onApplyTiming(response.suggestedTiming)
+                          setAppliedTiming(true)
+                        }
+                      }
+                    }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
+                      appliedTiming
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                        : 'bg-cyan-500/10 hover:bg-cyan-500/20 border-cyan-500/40 text-cyan-300 hover:text-white'
+                    }`}
+                    title={appliedTiming ? 'Applied to schedule below. Click to unapply / revert' : 'Click to set circadian timing'}
+                  >
+                    {appliedTiming ? <Check size={13} className="text-emerald-400" /> : <Clock size={13} />}
+                    <span>{appliedTiming ? 'Applied Timing' : 'Set Timing'}: {formatSlotName(response.suggestedTiming)}</span>
+                  </button>
+                )}
 
-              {/* 4. Set Rest Cadence & Schedule */}
-              {response.suggestedScheduleMode && onApplyCadence && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onApplyCadence(
-                      response.suggestedScheduleMode!,
-                      response.suggestedDays || undefined,
-                      response.suggestedRestIntervalDays ?? undefined,
-                      response.suggestedAdaptationStrategy || undefined
-                    )
-                    setAppliedCadence(true)
-                  }}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
-                    appliedCadence
-                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                      : 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/40 text-blue-300 hover:text-white'
-                  }`}
-                >
-                  {appliedCadence ? <Check size={13} /> : <RefreshCw size={13} />}
-                  <span>
-                    {appliedCadence ? 'Applied Schedule' : 'Set Schedule'}: {
-                      response.suggestedScheduleMode === 'days_of_week' && response.suggestedDays?.length
-                        ? `${response.suggestedDays.join(', ')}`
-                        : response.suggestedRestIntervalDays !== null && response.suggestedRestIntervalDays !== undefined
-                          ? `Every ${(response.suggestedRestIntervalDays || 0) + 1} Days (${response.suggestedRestIntervalDays}d rest)`
-                          : 'Optimized Cadence'
-                    }
-                  </span>
-                </button>
-              )}
+                {/* 4. Set / Revert Rest Cadence & Schedule */}
+                {response.suggestedScheduleMode && onApplyCadence && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (appliedCadence) {
+                        const prevMode = (previousStateRef.current.scheduleMode as any) || 'days_of_week'
+                        onApplyCadence(
+                          prevMode === 'rest_interval' ? 'rest_interval' : 'days_of_week',
+                          previousStateRef.current.days,
+                          previousStateRef.current.restIntervalDays,
+                          (previousStateRef.current.adaptationStrategy as any)
+                        )
+                        setAppliedCadence(false)
+                      } else {
+                        onApplyCadence(
+                          response.suggestedScheduleMode!,
+                          response.suggestedDays || undefined,
+                          response.suggestedRestIntervalDays ?? undefined,
+                          response.suggestedAdaptationStrategy || undefined
+                        )
+                        setAppliedCadence(true)
+                      }
+                    }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
+                      appliedCadence
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                        : 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/40 text-blue-300 hover:text-white'
+                    }`}
+                    title={appliedCadence ? 'Applied to schedule below. Click to unapply / revert' : 'Click to apply schedule'}
+                  >
+                    {appliedCadence ? <Check size={13} className="text-emerald-400" /> : <RefreshCw size={13} />}
+                    <span>
+                      {appliedCadence ? 'Applied Schedule' : 'Set Schedule'}: {
+                        response.suggestedScheduleMode === 'days_of_week' && response.suggestedDays?.length
+                          ? `${response.suggestedDays.join(', ')}`
+                          : response.suggestedRestIntervalDays !== null && response.suggestedRestIntervalDays !== undefined
+                            ? `Every ${(response.suggestedRestIntervalDays || 0) + 1} Days (${response.suggestedRestIntervalDays}d rest)`
+                            : 'Optimized Cadence'
+                      }
+                    </span>
+                  </button>
+                )}
 
-              {/* 5. Append to Notes */}
-              {onAppendNotes && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const snippet = response.suggestedNotes || `[AI Synergy Note]: ${response.synergyHighlight || response.advice.slice(0, 140) + '...'}`
-                    onAppendNotes(snippet)
-                    setAppliedNotes(true)
-                  }}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
-                    appliedNotes
-                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                      : 'bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/40 text-indigo-300 hover:text-white'
-                  }`}
-                >
-                  {appliedNotes ? <Check size={13} /> : <FileText size={13} />}
-                  <span>{appliedNotes ? 'Appended to Notes' : 'Append to Personal Notes'}</span>
-                </button>
-              )}
+                {/* 5. Append / Revert Notes */}
+                {(onAppendNotes || onSetNotes) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (appliedNotes) {
+                        if (onSetNotes && previousStateRef.current.notes !== undefined) {
+                          onSetNotes(previousStateRef.current.notes)
+                        }
+                        setAppliedNotes(false)
+                      } else {
+                        const snippet = response.suggestedNotes || `[AI Synergy Note]: ${response.synergyHighlight || response.advice.slice(0, 140) + '...'}`
+                        if (onAppendNotes) {
+                          onAppendNotes(snippet)
+                        } else if (onSetNotes) {
+                          onSetNotes(previousStateRef.current.notes ? `${previousStateRef.current.notes}\n\n${snippet}` : snippet)
+                        }
+                        setAppliedNotes(true)
+                      }
+                    }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 transition-all cursor-pointer ${
+                      appliedNotes
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                        : 'bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/40 text-indigo-300 hover:text-white'
+                    }`}
+                    title={appliedNotes ? 'Appended to notes below. Click to unapply / revert' : 'Click to append to personal notes'}
+                  >
+                    {appliedNotes ? <Check size={13} className="text-emerald-400" /> : <FileText size={13} />}
+                    <span>{appliedNotes ? 'Appended to Notes' : 'Append to Personal Notes'}</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
