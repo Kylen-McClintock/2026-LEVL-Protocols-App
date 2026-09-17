@@ -14,6 +14,8 @@ import { addToBench, moveModalityToBench, eliminateModality, getBenchItem, saveO
 import { ELIMINATION_REASON_OPTIONS } from '../views/ExpandedModalityDetailBanner'
 import { ModalityExecutionGuide } from '../modals/ModalityExecutionGuide'
 import { ModalitySafetyCard } from './ModalitySafetyCard'
+import { getModalitySafetyProfile } from '@/lib/safety/modalitySafetyKnowledgeBase'
+import { detectContraindications } from '@/lib/safety/contraindicationEngine'
 import { getModalityVideoInfo } from '@/lib/data/modalityVideos'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { UserBenchItem, OutcomeDimension, UserProfile, DailyWellbeingCheckin } from '@/lib/types'
@@ -768,6 +770,14 @@ export default function ProtocolTaskCard({
     default_timing_slot: task.timing_slot || 'morning',
     functional_impacts: {}
   } as any
+
+  const isModerateOrHighSafetyRisk = useMemo(() => {
+    if (!modality) return false
+    const activeContra = detectContraindications(modality, userProfile)
+    if (activeContra.length > 0) return true
+    const profile = getModalitySafetyProfile(modality)
+    return profile.riskLevel === 'moderate_risk' || profile.riskLevel === 'high_risk'
+  }, [modality, userProfile])
 
   const isPeptideOrRiskyModality = useMemo(() => {
     const cat = (modality?.category || '').toLowerCase()
@@ -3601,12 +3611,14 @@ export default function ProtocolTaskCard({
                 )
               })()}
 
-              {/* Dedicated Safety: Considerations and Risks Section (Collapsed by Default) */}
-              <ModalitySafetyCard
-                modality={modality}
-                userProfile={userProfile}
-                defaultOpen={false}
-              />
+              {/* Dedicated Safety: Considerations and Risks Section (Shown on card only if moderate to high risk) */}
+              {isModerateOrHighSafetyRisk && (
+                <ModalitySafetyCard
+                  modality={modality}
+                  userProfile={userProfile}
+                  defaultOpen={false}
+                />
+              )}
 
               {/* Main Actions */}
               <div className="grid grid-cols-2 gap-2 mb-3">
@@ -3699,6 +3711,14 @@ export default function ProtocolTaskCard({
 
           {showGeekMode && (
             <div className="border-t border-white/5 pt-4 space-y-4 animate-in fade-in slide-in-from-top-2">
+              {/* If safety/risk is low or high-safety, show the collapsed one-row safety briefing within Geek Mode */}
+              {!isModerateOrHighSafetyRisk && (
+                <ModalitySafetyCard
+                  modality={modality}
+                  userProfile={userProfile}
+                  defaultOpen={false}
+                />
+              )}
               <GeekMode modality={modality} />
               
               <div className="flex items-center gap-2 pt-2">

@@ -38,57 +38,56 @@ export const ModalitySafetyCard: React.FC<ModalitySafetyCardProps> = ({
   const activeContraindications = detectContraindications(modality, userProfile)
   const hasUserContraindication = activeContraindications.length > 0
 
+  const briefingText = hasUserContraindication && activeContraindications[0]
+    ? `${activeContraindications[0].headline}: ${activeContraindications[0].clinicalRationale}`
+    : safetyProfile.safetySummary || safetyProfile.importantConsiderations?.[0] || 'General safety profile with minimal physiological risk.'
+
   return (
-    <div className={`w-full bg-slate-950/90 border border-slate-800 rounded-2xl overflow-hidden shadow-md my-2.5 transition-all ${className}`}>
-      {/* Header Accordion Toggle - Collapsed by Default */}
+    <div className={`w-full bg-slate-950/90 border border-slate-800 hover:border-slate-700/80 rounded-xl overflow-hidden shadow-sm my-2 transition-all ${className}`}>
+      {/* Header Accordion Toggle - Exactly 1 Row with Start of Safety Briefing */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-3 sm:p-4 text-left bg-slate-900/70 hover:bg-slate-900 transition-colors cursor-pointer group"
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left bg-slate-900/70 hover:bg-slate-900 transition-colors cursor-pointer group"
+        title={briefingText}
       >
-        <div className="flex items-center gap-2.5 min-w-0 pr-2">
-          <div className={`p-1.5 rounded-xl border shrink-0 transition-transform group-hover:scale-105 ${
+        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+          <div className={`p-1 rounded-lg border shrink-0 transition-transform group-hover:scale-105 ${
             hasUserContraindication
-              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
+              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.3)]'
               : safetyProfile.riskLevel === 'moderate_risk'
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
               : safetyProfile.riskLevel === 'high_risk'
-              ? 'bg-red-500/20 text-red-300 border-red-500/40 shadow-[0_0_12px_rgba(239,68,68,0.3)]'
+              ? 'bg-red-500/20 text-red-300 border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
               : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
           }`}>
             {hasUserContraindication ? (
-              <AlertTriangle size={16} className="animate-pulse text-rose-400" />
+              <AlertTriangle size={13} className="animate-pulse text-rose-400" />
             ) : safetyProfile.riskLevel === 'high_risk' ? (
-              <AlertOctagon size={16} className="text-red-400" />
+              <AlertOctagon size={13} className="text-red-400" />
+            ) : safetyProfile.riskLevel === 'moderate_risk' ? (
+              <ShieldAlert size={13} className="text-amber-400" />
             ) : (
-              <ShieldAlert size={16} />
+              <ShieldCheck size={13} className="text-emerald-400" />
             )}
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="text-xs sm:text-sm font-extrabold text-white tracking-tight">
-                Safety: Considerations and Risks
-              </h4>
-              <span className={`text-[9px] sm:text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${safetyProfile.riskBadgeClass}`}>
-                {safetyProfile.riskLevelLabel}
-              </span>
-              {hasUserContraindication && (
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">
-                  ⚠️ Profile Conflict Detected
-                </span>
-              )}
-            </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate mt-0.5">
-              Precautions, contraindications &amp; mitigation protocols
-            </p>
+
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+            <span className="text-xs font-bold text-white shrink-0 whitespace-nowrap">
+              Safety Considerations &amp; Risks:
+            </span>
+            <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border shrink-0 whitespace-nowrap ${safetyProfile.riskBadgeClass}`}>
+              {hasUserContraindication ? 'Conflict' : safetyProfile.riskLevelLabel.replace(' Profile', '')}
+            </span>
+            <span className="text-xs text-slate-400 truncate flex-1 min-w-0 font-normal">
+              {briefingText}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="text-slate-400 flex items-center gap-1 text-[11px] sm:text-xs font-bold">
-            <span>{isOpen ? 'Hide Safety Specs' : 'View Safety Specs'}</span>
-            {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </div>
+        <div className="flex items-center gap-1 shrink-0 text-slate-400 text-xs font-medium pl-1">
+          <span className="hidden sm:inline text-[11px] text-slate-400 font-semibold">{isOpen ? 'Hide' : 'Specs'}</span>
+          {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </div>
       </button>
 
