@@ -41,7 +41,7 @@ export default function MinimalistAgingCoach({
       provider_name: p.provider_name,
       bioage_outputs: p.bioage_outputs
     })),
-    biomarkers: (biomarkers || []).slice(0, 40).map((b: any) => ({
+    biomarkers: (biomarkers || []).slice(0, 100).map((b: any) => ({
       raw_name: b.raw_name || b.biomarker_id,
       normalized_value: b.normalized_value ?? b.raw_value,
       normalized_unit: b.normalized_unit || b.raw_unit,

@@ -48,24 +48,24 @@ function buildCompactClientContext(raw: {
       provider_name: p.provider_name,
       bioage_outputs: p.bioage_outputs
     })),
-    biomarkers: (raw.biomarkers || []).slice(0, 40).map((b: any) => ({
+    biomarkers: (raw.biomarkers || []).slice(0, 100).map((b: any) => ({
       raw_name: b.raw_name || b.biomarker_id,
       normalized_value: b.normalized_value ?? b.raw_value,
       normalized_unit: b.normalized_unit || b.raw_unit,
       lab_flag: b.lab_flag
     })),
-    biologicalMeasurements: (raw.biologicalMeasurements || []).slice(0, 15).map((m: any) => ({
+    biologicalMeasurements: (raw.biologicalMeasurements || []).slice(0, 30).map((m: any) => ({
       measurement_id: m.measurement_id || m.name,
       value: m.value,
       unit: m.unit
     })),
-    benchItems: (raw.benchItems || []).slice(0, 30).map((b: any) => ({
+    benchItems: (raw.benchItems || []).slice(0, 100).map((b: any) => ({
       id: b.id,
       modality_id: b.modality_id,
       modality: b.modality ? { id: b.modality.id, name: b.modality.display_name || b.modality.name } : undefined,
       protocol: b.protocol ? { id: b.protocol.id, name: b.protocol.name } : undefined
     })),
-    todayTasks: (raw.todayTasks || []).slice(0, 30).map((t: any) => {
+    todayTasks: (raw.todayTasks || []).slice(0, 100).map((t: any) => {
       const m = t.modality || t.protocol_step?.modality || t.loose_modality
       return {
         id: t.id,

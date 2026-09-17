@@ -77,7 +77,7 @@ export async function POST(req: Request) {
 - KDM Biological Age: ${bioOutputs?.kdm_age || 'Calculated'} (Age Gap: ${bioOutputs?.kdm_age_gap || 'N/A'})
 - Homeostatic Dysregulation Score: ${bioOutputs?.hd_score || 'N/A'}
 - Measured Biomarkers (${bRecords.length} lab records available):
-${bRecords.slice(0, 50).map((b: any) => `  • ${b.raw_name || b.biomarker_id}: ${b.normalized_value ?? b.raw_value} ${b.normalized_unit || b.raw_unit || ''} (Flag: ${b.lab_flag || 'normal'})`).join('\n')}`
+${bRecords.slice(0, 100).map((b: any) => `  • ${b.raw_name || b.biomarker_id}: ${b.normalized_value ?? b.raw_value} ${b.normalized_unit || b.raw_unit || ''} (Flag: ${b.lab_flag || 'normal'})`).join('\n')}`
         }
 
         let physSummary = 'No physiological age assessments recorded yet'
