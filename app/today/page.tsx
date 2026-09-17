@@ -95,6 +95,22 @@ function formatSlotName(str: string): string {
     .join(' ')
 }
 
+export function normalizeChronologicalTimeBlock(slot: string): string {
+  if (!slot) return 'anytime'
+  const s = slot.toLowerCase().trim()
+  if (s === 'morning_supplement_stack' || s === 'am_stack' || s === 'fasted_am') return 'morning'
+  if (s === 'evening_supplement_stack' || s === 'pm_stack' || s === 'dinner_stack') return 'evening'
+  if (s === 'midday_stack' || s === 'lunch_stack') return 'midday'
+  return slot
+}
+
+export function isTaskSupplement(task: DedupedTask): boolean {
+  const mod = task.protocol_step?.modality || task.loose_modality
+  const cat = (mod?.category || '').toLowerCase()
+  const type = (mod?.modality_type || '').toLowerCase()
+  return cat.includes('supplement') || cat.includes('nutraceutical') || cat.includes('peptide') || type === 'supplement'
+}
+
 const TIME_BLOCKS = [
   'waking',
   'morning_routine',
@@ -2310,11 +2326,12 @@ function TodayPageContent() {
       } else {
         const modality = task.protocol_step?.modality || task.loose_modality
         const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
-        groupKey = (isSplitTask && task.timing_slot && task.timing_slot !== 'anytime')
+        const rawGroupKey = (isSplitTask && task.timing_slot && task.timing_slot !== 'anytime')
           ? task.timing_slot
           : (task.timing_slot && task.timing_slot !== 'anytime'
             ? task.timing_slot
             : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot))
+        groupKey = normalizeChronologicalTimeBlock(rawGroupKey)
       }
       if (!groups[groupKey]) groups[groupKey] = []
       groups[groupKey].push(task)
@@ -2372,16 +2389,18 @@ function TodayPageContent() {
       
       // If task is a split task, or already has a concrete assigned timing_slot, RESPECT IT!
       // Do NOT recalculate and override it into an arbitrary block!
-      const slot = (isSplitTask && task.timing_slot && task.timing_slot !== 'anytime')
+      const rawSlot = (isSplitTask && task.timing_slot && task.timing_slot !== 'anytime')
         ? task.timing_slot
         : (task.timing_slot && task.timing_slot !== 'anytime'
           ? task.timing_slot
           : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, task.execution_details?.custom_timing))
 
+      const slot = normalizeChronologicalTimeBlock(rawSlot)
+
       if (!groups[slot]) groups[slot] = []
       groups[slot].push({
         ...task,
-        timing_slot: slot
+        timing_slot: rawSlot
       })
     })
 
@@ -2889,6 +2908,16 @@ function TodayPageContent() {
     }
     if (viewMode === 'protocol') {
       setCollapsedGroups(prev => ({ ...prev, [groupName]: true }))
+    }
+  }
+
+  const handleCompleteMultipleTasks = async (targetTasks: DedupedTask[]) => {
+    const d = new Date()
+    const nowIso = d.toISOString()
+    for (const t of targetTasks) {
+      if (t.status !== 'completed') {
+        await handleStatusChange(t.id, 'completed', undefined, nowIso)
+      }
     }
   }
 
@@ -3694,9 +3723,8 @@ function TodayPageContent() {
             </div>
           ) : (
             <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
-              {groupTasks
-                .sort((a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0))
-                .map(task => {
+              {(() => {
+                const renderCard = (task: DedupedTask) => {
                   const mId = task.modality_id || task.protocol_step?.modality_id || ''
                   const benchItem = benchItems.find(b => b.modality_id === mId)
                   return (
@@ -3721,7 +3749,61 @@ function TodayPageContent() {
                       isIgnited={isIgnited}
                     />
                   )
-                })}
+                }
+
+                const sortedTasks = [...groupTasks].sort(
+                  (a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0)
+                )
+
+                if (viewMode === 'protocol') {
+                  return sortedTasks.map(renderCard)
+                }
+
+                const nonSuppTasks = sortedTasks.filter(t => !isTaskSupplement(t))
+                const suppTasks = sortedTasks.filter(t => isTaskSupplement(t))
+                const hasMultipleSupps = suppTasks.length >= 2
+                const allSuppsCompleted = suppTasks.length > 0 && suppTasks.every(t => t.status === 'completed')
+
+                if (!hasMultipleSupps) {
+                  return sortedTasks.map(renderCard)
+                }
+
+                return (
+                  <>
+                    {nonSuppTasks.map(renderCard)}
+
+                    {/* In-Block Supplement Stack Sub-Line */}
+                    <div className="pt-2.5 pb-1 flex items-center justify-between gap-3 border-t border-white/10 my-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-purple-950/40 border border-purple-500/30 flex items-center justify-center text-[11px] shrink-0 text-purple-300 shadow-sm">
+                          💊
+                        </span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-purple-200">
+                          {formatSlotName(groupName)} Supplements ({suppTasks.length})
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {allSuppsCompleted ? (
+                          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
+                            <Check size={11} strokeWidth={2.5} /> All Taken
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleCompleteMultipleTasks(suppTasks)}
+                            className="text-[10px] font-semibold text-purple-300 hover:text-white bg-purple-950/50 hover:bg-purple-900/60 border border-purple-500/30 px-2.5 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
+                            title="Take all supplements in this stack"
+                          >
+                            <Check size={11} strokeWidth={2.5} /> Take All
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {suppTasks.map(renderCard)}
+                  </>
+                )
+              })()}
             </div>
           )}
         </div>
