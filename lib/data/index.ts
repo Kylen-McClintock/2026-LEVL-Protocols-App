@@ -394,6 +394,45 @@ export async function getOutcomeDimensions(forceRefresh = false): Promise<Outcom
 
 let isRevalidatingCatalog = false
 
+function populateModsMap(map: Map<string, Modality>, mods: Modality[]) {
+  mods.forEach(m => {
+    if (!m) return
+    if (m.id) {
+      map.set(m.id, m)
+      const idLower = m.id.toLowerCase().trim()
+      map.set(idLower, m)
+      map.set(idLower.replace(/_/g, '-'), m)
+      map.set(idLower.replace(/-/g, '_'), m)
+    }
+    if (m.slug) {
+      map.set(m.slug, m)
+      const slugLower = m.slug.toLowerCase().trim()
+      map.set(slugLower, m)
+      map.set(slugLower.replace(/_/g, '-'), m)
+      map.set(slugLower.replace(/-/g, '_'), m)
+    }
+    if (m.name) {
+      map.set(m.name.toLowerCase().trim(), m)
+    }
+    if (m.display_name) {
+      map.set(m.display_name.toLowerCase().trim(), m)
+    }
+  })
+}
+
+export function resolveModalityFromMap(idOrSlug: string | undefined | null, map: Map<string, Modality>): Modality | undefined {
+  if (!idOrSlug) return undefined
+  const raw = idOrSlug.trim()
+  if (map.has(raw)) return map.get(raw)
+  const lower = raw.toLowerCase()
+  if (map.has(lower)) return map.get(lower)
+  const under = lower.replace(/-/g, '_')
+  if (map.has(under)) return map.get(under)
+  const dash = lower.replace(/_/g, '-')
+  if (map.has(dash)) return map.get(dash)
+  return undefined
+}
+
 export async function getCatalogMaps(forceRefresh = false) {
   const now = Date.now()
   if (!forceRefresh && catalogMapsCache && (now - catalogMapsCache.timestamp < 1000 * 60 * 30)) {
@@ -411,10 +450,7 @@ export async function getCatalogMaps(forceRefresh = false) {
     const cachedProtos = getPersistentCache<any[]>('protocols_with_steps')
     if (cachedMods && cachedMods.length > 0 && cachedProtos && cachedProtos.length > 0) {
       const modsMap = new Map<string, Modality>()
-      cachedMods.forEach(m => {
-        if (m.id) modsMap.set(m.id, m)
-        if (m.slug) modsMap.set(m.slug, m)
-      })
+      populateModsMap(modsMap, cachedMods)
       const stepsMap = new Map<string, any>()
       const protocolsMap = new Map<string, Protocol>()
       cachedProtos.forEach(p => {
@@ -423,7 +459,7 @@ export async function getCatalogMaps(forceRefresh = false) {
         if (p.steps && Array.isArray(p.steps)) {
           p.steps.forEach((s: any) => {
             if (s.id) {
-              const mod = s.modality || (s.modality_id ? modsMap.get(s.modality_id) : undefined)
+              const mod = s.modality || resolveModalityFromMap(s.modality_id, modsMap)
               stepsMap.set(s.id, { ...s, protocol: p, modality: mod })
             }
           })
@@ -439,10 +475,7 @@ export async function getCatalogMaps(forceRefresh = false) {
   const builtInMods = mergeBuiltInModalities([])
   const builtInProtos = mergeBuiltInProtocols([])
   const modsMap = new Map<string, Modality>()
-  builtInMods.forEach(m => {
-    if (m.id) modsMap.set(m.id, m)
-    if (m.slug) modsMap.set(m.slug, m)
-  })
+  populateModsMap(modsMap, builtInMods)
   const stepsMap = new Map<string, any>()
   const protocolsMap = new Map<string, Protocol>()
   builtInProtos.forEach(p => {
@@ -451,7 +484,7 @@ export async function getCatalogMaps(forceRefresh = false) {
     if (p.steps && Array.isArray(p.steps)) {
       p.steps.forEach((s: any) => {
         if (s.id) {
-          const mod = s.modality || (s.modality_id ? modsMap.get(s.modality_id) : undefined)
+          const mod = s.modality || resolveModalityFromMap(s.modality_id, modsMap)
           stepsMap.set(s.id, { ...s, protocol: p, modality: mod })
         }
       })
@@ -468,10 +501,7 @@ export async function getCatalogMaps(forceRefresh = false) {
       getProtocolsWithSteps(false)
     ]).then(([modalities, protocolsWithSteps]) => {
       const freshModsMap = new Map<string, Modality>()
-      modalities.forEach(m => {
-        if (m.id) freshModsMap.set(m.id, m)
-        if (m.slug) freshModsMap.set(m.slug, m)
-      })
+      populateModsMap(freshModsMap, modalities)
       const freshStepsMap = new Map<string, any>()
       const freshProtocolsMap = new Map<string, Protocol>()
       protocolsWithSteps.forEach(p => {
@@ -480,7 +510,7 @@ export async function getCatalogMaps(forceRefresh = false) {
         if (p.steps && Array.isArray(p.steps)) {
           p.steps.forEach((s: any) => {
             if (s.id) {
-              const mod = s.modality || (s.modality_id ? freshModsMap.get(s.modality_id) : undefined)
+              const mod = s.modality || resolveModalityFromMap(s.modality_id, freshModsMap)
               freshStepsMap.set(s.id, { ...s, protocol: p, modality: mod })
             }
           })
@@ -1159,14 +1189,22 @@ function hydrateTasksInMemory(
 
     // Attach loose modality if present (prioritizing step modality)
     const resolvedModId = t.protocol_step?.modality_id || t.modality_id
-    if (!t.loose_modality && resolvedModId && modsMap.has(resolvedModId)) {
-      t.loose_modality = modsMap.get(resolvedModId)
+    if (!t.loose_modality && resolvedModId) {
+      t.loose_modality = resolveModalityFromMap(resolvedModId, modsMap)
     }
 
     // If protocol_step is still missing, infer from stepsMap matching modality_id
     if (!t.protocol_step && resolvedModId) {
+      const normResolved = resolvedModId.toLowerCase().trim()
+      const underResolved = normResolved.replace(/-/g, '_')
+      const dashResolved = normResolved.replace(/_/g, '-')
       for (const step of Array.from(stepsMap.values())) {
-        if (step.modality_id === resolvedModId || step.modality?.id === resolvedModId) {
+        const stepModId = (step.modality_id || step.modality?.id || '').toLowerCase().trim()
+        if (
+          stepModId === normResolved ||
+          stepModId === underResolved ||
+          stepModId === dashResolved
+        ) {
           t.protocol_step = step
           break
         }
@@ -1223,7 +1261,7 @@ function hydrateTasksInMemory(
     }
 
     // Resolve optimal timing slot with custom timing priority
-    const resolvedMod = t.protocol_step?.modality || t.loose_modality || (resolvedModId && modsMap.get(resolvedModId))
+    const resolvedMod = t.protocol_step?.modality || t.loose_modality || resolveModalityFromMap(resolvedModId, modsMap)
     const effectiveCustomTiming = t.execution_details?.custom_timing || (resolvedModId && benchMap.get(resolvedModId)?.custom_timing)
     t.timing_slot = resolveOptimalTimingSlot(resolvedMod, t.protocol_step, t.timing_slot, null, effectiveCustomTiming)
 

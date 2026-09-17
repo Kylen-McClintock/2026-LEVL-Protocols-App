@@ -298,7 +298,7 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
                         
                         <div className="flex-1 bg-white/5 rounded-lg p-3 group-hover:bg-white/10 transition-colors">
                           <div className="flex justify-between items-start">
-                            <p className="text-sm font-medium text-white">{step.modality?.display_name || step.modality?.name || 'Modality'}</p>
+                            <p className="text-sm font-medium text-white">{step.modality?.display_name || step.modality?.name || (step as any).name || (step as any).title || (step.modality_id ? step.modality_id.replace(/[_-]/g, ' ') : 'Protocol Step')}</p>
                             
                             {/* Optionality Badge */}
                             {step.optionality && step.optionality !== 'required' && (

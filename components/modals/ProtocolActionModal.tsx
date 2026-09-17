@@ -127,7 +127,17 @@ export default function ProtocolActionModal({
 
   // Active Modality Names list
   const activeModalityNames = useMemo(() => {
-    return groupTasks.map(t => t.protocol_step?.modality?.display_name || t.protocol_step?.modality?.name || t.loose_modality?.name || 'Modality').filter(Boolean)
+    return groupTasks.map(t => 
+      t.protocol_step?.modality?.display_name || 
+      t.protocol_step?.modality?.name || 
+      t.loose_modality?.display_name || 
+      t.loose_modality?.name || 
+      t.execution_details?.custom_name || 
+      t.execution_details?.modality_name ||
+      (t.protocol_step as any)?.title || 
+      (t.protocol_step as any)?.name ||
+      (t.modality_id ? t.modality_id.replace(/[_-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Protocol Task')
+    ).filter(Boolean)
   }, [groupTasks])
 
   const [selectedModalityIds, setSelectedModalityIds] = useState<Set<string>>(new Set(activeModalityIds))

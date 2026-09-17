@@ -627,6 +627,69 @@ function TodayPageContent() {
   const [asNeededSlot, setAsNeededSlot] = useState<string | undefined>(undefined)
   const [asNeededModalityId, setAsNeededModalityId] = useState<string | undefined>(undefined)
 
+  const resolveTaskModality = useCallback((task: DailyProtocolTask | null | undefined, fallbackModalityId?: string): Modality | undefined => {
+    if (task?.loose_modality) return task.loose_modality
+    if (task?.protocol_step?.modality) return task.protocol_step.modality
+    const rawId = task?.modality_id || task?.protocol_step?.modality_id || fallbackModalityId
+    if (rawId && allModalities.length > 0) {
+      const rawLower = rawId.toLowerCase().trim()
+      const rawUnderscore = rawLower.replace(/-/g, '_')
+      const rawDash = rawLower.replace(/_/g, '-')
+      const found = allModalities.find(m => {
+        const mId = m.id?.toLowerCase().trim()
+        const mSlug = m.slug?.toLowerCase().trim()
+        return mId === rawLower || mId === rawUnderscore || mId === rawDash ||
+               mSlug === rawLower || mSlug === rawUnderscore || mSlug === rawDash
+      })
+      if (found) return found
+    }
+    if (rawId && benchItems.length > 0) {
+      const bench = benchItems.find(b => b.modality_id === rawId || (b as any).id === rawId)
+      if (bench?.modality) return bench.modality
+    }
+    return undefined
+  }, [allModalities, benchItems])
+
+  const resolveTaskModalityName = useCallback((task: DailyProtocolTask | null | undefined, fallbackModalityId?: string): string => {
+    const mod = resolveTaskModality(task, fallbackModalityId)
+    if (mod?.display_name) return mod.display_name
+    if (mod?.name) return mod.name
+
+    const rawId = task?.modality_id || task?.protocol_step?.modality_id || fallbackModalityId
+    if (rawId && allModalities.length > 0) {
+      const rawLower = rawId.toLowerCase().trim()
+      const rawUnderscore = rawLower.replace(/-/g, '_')
+      const rawDash = rawLower.replace(/_/g, '-')
+      const found = allModalities.find(m => {
+        const mId = m.id?.toLowerCase().trim()
+        const mSlug = m.slug?.toLowerCase().trim()
+        return mId === rawLower || mId === rawUnderscore || mId === rawDash ||
+               mSlug === rawLower || mSlug === rawUnderscore || mSlug === rawDash
+      })
+      if (found?.display_name) return found.display_name
+      if (found?.name) return found.name
+    }
+
+    if (rawId && benchItems.length > 0) {
+      const bench = benchItems.find(b => b.modality_id === rawId || (b as any).id === rawId)
+      if (bench?.modality?.display_name) return bench.modality.display_name
+      if (bench?.modality?.name) return bench.modality.name
+    }
+
+    if (task?.execution_details?.custom_name) return task.execution_details.custom_name
+    if (task?.execution_details?.modality_name) return task.execution_details.modality_name
+    if ((task?.protocol_step as any)?.title) return (task?.protocol_step as any).title
+    if ((task?.protocol_step as any)?.name) return (task?.protocol_step as any).name
+
+    if (rawId) {
+      return rawId
+        .replace(/[_-]/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase())
+    }
+
+    return 'Protocol Task'
+  }, [resolveTaskModality, allModalities, benchItems])
+
   const asNeededQuickPills = useMemo(() => {
     const fromBench = benchItems
       .filter(b => {
@@ -644,7 +707,7 @@ function TodayPageContent() {
       })
       .map(b => ({
         id: b.modality_id,
-        name: b.modality?.display_name || b.modality?.name || 'Modality'
+        name: b.modality?.display_name || b.modality?.name || resolveTaskModalityName(null, b.modality_id)
       }))
 
     if (fromBench.length > 0) return fromBench.slice(0, 6)
@@ -1333,8 +1396,8 @@ function TodayPageContent() {
 
     if (status === 'completed') {
       const completedTask = tasks.find(t => t.id === id || t.id === baseId)
-      const modName = completedTask?.loose_modality?.name || completedTask?.protocol_step?.modality?.name || 'Modality'
-      const dose = completedTask?.loose_modality?.dose_or_exposure || completedTask?.protocol_step?.modality?.dose_or_exposure
+      const modName = resolveTaskModalityName(completedTask)
+      const dose = completedTask?.execution_details?.custom_dose || completedTask?.loose_modality?.dose_or_exposure || completedTask?.protocol_step?.modality?.dose_or_exposure
       setCompletionToast({ id: baseId, name: modName, dose })
       setRecentlyCompletedIds(prev => new Set(prev).add(id).add(baseId))
 
@@ -1634,8 +1697,7 @@ function TodayPageContent() {
     }
 
     if (mId) {
-      const targetMod = allModalities.find(m => m.id === mId)
-      const modName = targetMod?.display_name || targetMod?.name || 'Modality'
+      const modName = resolveTaskModalityName(typeof taskOrModalityId === 'object' ? taskOrModalityId : null, mId)
       setActionFeedback({
         type: 'bench',
         message: `Moved "${modName}" to Bench`
@@ -1676,7 +1738,7 @@ function TodayPageContent() {
     const mId = task.modality_id || task.protocol_step?.modality_id
     if (mId) {
       const localUserId = profile.local_user_id
-      const modName = task.protocol_step?.modality?.display_name || task.protocol_step?.modality?.name || task.loose_modality?.display_name || task.loose_modality?.name || 'Modality'
+      const modName = resolveTaskModalityName(task)
       setActionFeedback({
         type: 'eliminate',
         message: `Eliminated "${modName}" from Schedule (Still in Library)`
@@ -3254,8 +3316,8 @@ function TodayPageContent() {
                 >
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                     {tasksToRender.map((t) => {
-                      const mod = t.loose_modality || t.protocol_step?.modality
-                      const name = mod?.display_name || mod?.name || 'Modality'
+                      const mod = resolveTaskModality(t)
+                      const name = resolveTaskModalityName(t)
                       const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
                       const dose = t.execution_details?.custom_dose || bench?.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount}${t.protocol_step.dose_unit || ''}` : '') || mod?.dose_or_exposure || ''
                       const isDone = t.status === 'completed'
@@ -3371,20 +3433,14 @@ function TodayPageContent() {
                 <CircadianIcon size={isAnytime ? 12 : 17} strokeWidth={isIgnited ? 2.2 : 1.7} />
               </div>
 
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                  <span className={`${isAnytime ? 'text-[11px] sm:text-xs font-bold tracking-normal' : 'text-sm font-extrabold tracking-wider'} uppercase transition-colors ${
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className={`${isAnytime ? 'text-[11px] sm:text-xs font-bold tracking-normal' : 'text-sm font-extrabold tracking-wider'} uppercase transition-colors truncate ${
                     isIgnited ? (isAnytime ? 'text-slate-300 group-hover:text-purple-300' : 'text-white group-hover:text-purple-200') : 'text-slate-400 group-hover:text-slate-200'
                   }`}>
                     {isAnytime ? 'Anytime / Flexible' : formatSlotName(groupName)}
                   </span>
-                  {isNow && (
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      <span>Live Window</span>
-                    </span>
-                  )}
-                  <span className={`text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-mono font-bold transition-colors ${
+                  <span className={`text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 transition-colors ${
                     isIgnited ? (isAnytime ? 'bg-purple-950/50 text-purple-300 border border-purple-800/40' : 'bg-slate-800/90 text-slate-300') : 'bg-slate-900 text-slate-500'
                   }`}>
                     {completedCount > 0 ? `${completedCount}/${groupTasks.length}` : groupTasks.length}
@@ -3393,16 +3449,26 @@ function TodayPageContent() {
                 {isAnytime ? (
                   <span className="text-[10px] text-slate-500 mt-0.5">Flexible window • Complete anytime today</span>
                 ) : (
-                  <>
-                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                      <span className={`text-[11px] font-semibold transition-colors ${
-                        isIgnited ? 'text-slate-300' : 'text-slate-400'
-                      }`}>
-                        {circadian.timeRange}
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mt-0.5">
+                    {/* Compact Live Badge (only rendered when this block is currently live) */}
+                    {isNow && (
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse flex items-center gap-1 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        <span>Live</span>
                       </span>
+                    )}
 
-                      {/* NON-LIVE WINDOW: Just have that text with correct colors & gradients, no parenthesis detail */}
-                      {!isNow && circadian.pulseBadge && (
+                    {/* Circadian Time Range */}
+                    <span className={`text-[11px] font-semibold shrink-0 transition-colors ${
+                      isIgnited ? 'text-slate-300' : 'text-slate-400'
+                    }`}>
+                      {circadian.timeRange}
+                    </span>
+
+                    {/* Biological Window / Circadian Phase Badge */}
+                    {circadian.pulseBadge && (
+                      <>
+                        <span className="text-slate-600 text-[10px] select-none shrink-0">•</span>
                         <span 
                           onClick={(e) => {
                             e.stopPropagation()
@@ -3417,8 +3483,8 @@ function TodayPageContent() {
                               switchToDailyPulse()
                             }
                           }}
-                          title="Click to explore Daily Pulse"
-                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 hover:shadow-md active:scale-95 ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
+                          title={`${circadian.pulseBadge.fromPhase && circadian.pulseBadge.toPhase ? `${circadian.pulseBadge.fromPhase.name} (${circadian.pulseBadge.fromPhase.mechanism}) ➔ ${circadian.pulseBadge.toPhase.name} (${circadian.pulseBadge.toPhase.mechanism})` : circadian.pulseBadge.label} • Click to explore Daily Pulse`}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 hover:shadow-md active:scale-95 shrink-0 ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
                           style={circadian.pulseBadge.badgeGradientCSS ? { background: circadian.pulseBadge.badgeGradientCSS } : undefined}
                         >
                           <span 
@@ -3456,74 +3522,9 @@ function TodayPageContent() {
                             </span>
                           )}
                         </span>
-                      )}
-                    </div>
-
-                    {/* LIVE WINDOW ONLY: On the row right below the time window (separate line/row, not separated section):
-                        Say: Biological Window: [growth/cellular renewal etc] ([autophagy/mtor, etc]) */}
-                    {isNow && circadian.pulseBadge && (
-                      <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                        <span className="text-[10px] font-normal text-slate-400">
-                          Biological Window:
-                        </span>
-                        <span 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            switchToDailyPulse()
-                          }}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              switchToDailyPulse()
-                            }
-                          }}
-                          title="Click to explore Daily Pulse"
-                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 hover:shadow-md active:scale-95 ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
-                          style={circadian.pulseBadge.badgeGradientCSS ? { background: circadian.pulseBadge.badgeGradientCSS } : undefined}
-                        >
-                          <span 
-                            className="w-1.5 h-1.5 rounded-full shrink-0 shadow-sm" 
-                            style={{ 
-                              background: circadian.pulseBadge.dotGradientCSS || undefined,
-                              backgroundColor: !circadian.pulseBadge.dotGradientCSS ? (circadian.pulseBadge.dotColor || '#10B981') : undefined 
-                            }} 
-                          />
-                          {circadian.pulseBadge.fromPhase && circadian.pulseBadge.toPhase ? (
-                            <span className="flex items-center gap-1 font-bold">
-                              <span className={circadian.pulseBadge.fromPhase.textClass}>
-                                {circadian.pulseBadge.fromPhase.name} <span className="opacity-80 font-mono text-[9px]">({circadian.pulseBadge.fromPhase.mechanism})</span>
-                              </span>
-                              <span 
-                                className="font-black text-[10px] px-0.5 select-none shrink-0"
-                                style={{
-                                  backgroundImage: circadian.pulseBadge.arrowGradientCSS || 'linear-gradient(to right, #38BDF8, #34D399)',
-                                  WebkitBackgroundClip: 'text',
-                                  backgroundClip: 'text',
-                                  WebkitTextFillColor: 'transparent',
-                                  color: 'transparent',
-                                  display: 'inline-block'
-                                }}
-                              >
-                                {circadian.pulseBadge.dividerChar || '➔'}
-                              </span>
-                              <span className={circadian.pulseBadge.toPhase.textClass}>
-                                {circadian.pulseBadge.toPhase.name} <span className="opacity-80 font-mono text-[9px]">({circadian.pulseBadge.toPhase.mechanism})</span>
-                              </span>
-                            </span>
-                          ) : (
-                            <span className={circadian.pulseBadge.badgeText}>
-                              {circadian.pulseBadge.label} {circadian.pulseBadge.mechanism && (
-                                <span className="opacity-80 font-mono text-[9px]">({circadian.pulseBadge.mechanism})</span>
-                              )}
-                            </span>
-                          )}
-                        </span>
-                      </div>
+                      </>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
 
@@ -3651,8 +3652,8 @@ function TodayPageContent() {
               {/* Capsule Chips Wrap */}
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5 supplement-tray-chips">
                 {groupTasks.map((t) => {
-                  const mod = t.loose_modality || t.protocol_step?.modality
-                  const name = mod?.display_name || mod?.name || 'Modality'
+                  const mod = resolveTaskModality(t)
+                  const name = resolveTaskModalityName(t)
                   const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
                   const dose = t.execution_details?.custom_dose || bench?.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount}${t.protocol_step.dose_unit || ''}` : '') || mod?.dose_or_exposure || ''
                   const isDone = t.status === 'completed'
