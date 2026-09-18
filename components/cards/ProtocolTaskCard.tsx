@@ -763,15 +763,16 @@ export default function ProtocolTaskCard({
     }
   }
 
-  const rawModality = task.protocol_step?.modality || task.loose_modality
-  const modality = rawModality || {
+  const rawModality = task.protocol_step?.modality || task.loose_modality || initialBenchItem?.modality
+  const fallbackTitle = task.execution_details?.custom_name || task.execution_details?.modality_name || (task.protocol_step as any)?.title || (task.modality_id ? task.modality_id.replace(/[_-]/g, ' ') : '')
+  const modality = rawModality || (fallbackTitle ? {
     id: task.modality_id || task.protocol_step?.modality_id || 'unknown',
-    name: 'Scheduled Modality',
-    display_name: 'Scheduled Modality',
-    category: 'general',
+    name: fallbackTitle,
+    display_name: fallbackTitle,
+    category: task.execution_details?.custom_category || 'general',
     default_timing_slot: task.timing_slot || 'morning',
     functional_impacts: {}
-  } as any
+  } as any : null)
 
   const isModerateOrHighSafetyRisk = useMemo(() => {
     if (!modality) return false
@@ -1538,7 +1539,7 @@ export default function ProtocolTaskCard({
     isHorizontalSwipeRef.current = null
   }
 
-  if (!rawModality) return null
+  if (!modality) return null
 
   return (
     <div 

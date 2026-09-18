@@ -136,14 +136,14 @@ function SupplementCompactRow({
   return (
     <div
       onClick={onOpenDetails}
-      className={`flex items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer group select-none ${
+      className={`flex items-center justify-between gap-2 px-2.5 py-2 sm:py-2.5 rounded-xl border transition-all cursor-pointer group select-none min-w-0 overflow-hidden ${
         isDone
           ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/50 hover:bg-emerald-950/30'
-          : 'bg-slate-900/60 border-white/10 hover:border-purple-500/40 hover:bg-slate-900/90 shadow-sm'
+          : 'bg-slate-900/70 border-white/10 hover:border-purple-500/40 hover:bg-slate-900/90 shadow-sm'
       }`}
     >
-      {/* Left: Checkbox & Name & Dose */}
-      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+      {/* Left: Consistent Green Complete Circle Button & Icon & Name & Dose */}
+      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
         <button
           type="button"
           onClick={(e) => {
@@ -151,40 +151,43 @@ function SupplementCompactRow({
             triggerHaptic('success')
             onStatusChange(task.id, isDone ? 'pending' : 'completed')
           }}
-          className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0 active:scale-90 ${
+          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 touch-manipulation shrink-0 ${
             isDone
-              ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-sm'
-              : 'border-slate-700 bg-slate-950/80 text-transparent hover:border-purple-400 group-hover:border-purple-400/60'
+              ? 'bg-emerald-500 text-slate-950 scale-105 shadow-[0_0_12px_rgba(16,185,129,0.8)]'
+              : 'bg-emerald-500/20 border border-emerald-500/60 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 hover:shadow-[0_0_10px_rgba(16,185,129,0.5)]'
           }`}
-          title={isDone ? "Mark as pending" : "Mark as completed"}
+          title={isDone ? "Mark as pending" : "Complete modality instantly"}
+          aria-label="Complete supplement"
         >
-          <Check size={13} strokeWidth={3} className={isDone ? 'opacity-100 text-slate-950' : 'opacity-0 group-hover:opacity-40 text-purple-300'} />
+          <Check size={14} strokeWidth={isDone ? 3 : 2.5} />
         </button>
 
-        <ModalityIcon modality={modality} modalityName={modalityName} size={16} className={`shrink-0 ${isDone ? 'opacity-70' : 'opacity-100'}`} glow={!isDone} />
+        <ModalityIcon modality={modality} modalityName={modalityName} size={15} className={`shrink-0 ${isDone ? 'opacity-60' : 'opacity-100'}`} glow={!isDone} />
 
-        <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap sm:flex-nowrap">
-          <span className={`text-xs sm:text-sm font-bold truncate transition-colors ${
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-hidden">
+          <span className={`text-xs sm:text-[13px] font-bold truncate transition-colors min-w-0 ${
             isDone ? 'line-through text-slate-400' : 'text-white group-hover:text-purple-200'
           }`}>
             {modalityName}
           </span>
           {dose && (
-            <span className={`text-[10px] sm:text-[11px] font-mono px-2 py-0.5 rounded-md border shrink-0 ${
-              isDone 
-                ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400/90' 
-                : 'bg-purple-950/50 border-purple-800/40 text-purple-300'
-            }`}>
+            <span 
+              className={`text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0 truncate max-w-[85px] sm:max-w-[120px] ${
+                isDone 
+                  ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400/90' 
+                  : 'bg-purple-950/50 border-purple-800/40 text-purple-300'
+              }`}
+              title={dose}
+            >
               {dose}
             </span>
           )}
         </div>
       </div>
 
-      {/* Right: Expand affordance */}
-      <div className="flex items-center gap-1.5 shrink-0 text-slate-500 group-hover:text-purple-300 transition-colors">
-        <span className="hidden sm:inline text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">Details</span>
-        <ChevronDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
+      {/* Right: Subtle Details Affordance */}
+      <div className="flex items-center gap-1 shrink-0 text-slate-500 group-hover:text-purple-300 transition-colors pl-1">
+        <ChevronDown size={13} className="group-hover:translate-y-0.5 transition-transform" />
       </div>
     </div>
   )
@@ -2471,7 +2474,7 @@ function TodayPageContent() {
   }, [routineTasks, profile, benchItems, resolveTaskModality])
 
   const sortedChronologicalGroups = useMemo(() => {
-    const rawEntries = Object.entries(chronologicalGroups)
+    const rawEntries = Object.entries(chronologicalGroups).filter(([_, tasks]) => tasks && tasks.length > 0)
     if (rawEntries.length === 0) return []
 
     // Separate anytime group from fixed time slots
@@ -3534,15 +3537,20 @@ function TodayPageContent() {
                     >
                       {/* Top Row: Time Block Name & Time Range */}
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-extrabold uppercase text-slate-200 group-hover/past-row:text-white transition-colors">
-                          {formatSlotName(gName)} • {gCircadian.timeRange}
-                        </span>
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <span className="text-xs font-extrabold uppercase text-slate-200 group-hover/past-row:text-white transition-colors">
+                            {formatSlotName(gName)}
+                          </span>
+                          <span className="text-[11px] font-medium text-slate-500">
+                            • {gCircadian.timeRange}
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Bottom Row: (x modalities logged / y total) and text "Catch Up" with expandable chevron */}
+                      {/* Bottom Row: (x logged / y total) and text "Catch Up" with expandable chevron */}
                       <div className="flex items-center justify-between mt-1 text-[11px]">
                         <span className="font-mono text-slate-400">
-                          ({gCompleted} modalities logged / {gTasks.length} total)
+                          ({gCompleted} logged / {gTasks.length} total)
                         </span>
                         <span className="flex items-center gap-1 font-bold text-purple-400 group-hover/past-row:text-purple-300 transition-colors">
                           <span>Catch Up</span>
@@ -3554,26 +3562,43 @@ function TodayPageContent() {
                     {/* Expanded Modalities for this Previous Time Block */}
                     {isBlockExpanded && (
                       <div className="pt-3 mt-2 border-t border-white/5 space-y-2">
-                        {gTasks.map(t => {
-                          if (isTaskSupplement(t)) {
-                            const mod = resolveTaskModality(t)
-                            const name = resolveTaskModalityName(t)
-                            const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
-                            return (
-                              <SupplementCompactRow
-                                key={t.id}
-                                task={t}
-                                modality={mod}
-                                modalityName={name}
-                                benchItem={bench}
-                                onStatusChange={handleStatusChange}
-                                onOpenDetails={() => {}}
-                                completionMode={completionMode}
-                              />
-                            )
-                          }
-                          return renderCard(t, undefined, false)
-                        })}
+                        {(() => {
+                          const nonSuppPast = gTasks.filter(t => !isTaskSupplement(t))
+                          const suppPast = gTasks.filter(t => isTaskSupplement(t))
+
+                          return (
+                            <>
+                              {nonSuppPast.map(t => renderCard(t, undefined, false))}
+                              {suppPast.length > 0 && (
+                                <div className={`grid gap-2 pt-1 ${
+                                  suppPast.length === 1 
+                                    ? 'grid-cols-1' 
+                                    : suppPast.length === 2 
+                                      ? 'grid-cols-1 sm:grid-cols-2' 
+                                      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                                }`}>
+                                  {suppPast.map(t => {
+                                    const mod = resolveTaskModality(t)
+                                    const name = resolveTaskModalityName(t)
+                                    const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
+                                    return (
+                                      <SupplementCompactRow
+                                        key={t.id}
+                                        task={t}
+                                        modality={mod}
+                                        modalityName={name}
+                                        benchItem={bench}
+                                        onStatusChange={handleStatusChange}
+                                        onOpenDetails={() => {}}
+                                        completionMode={completionMode}
+                                      />
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </>
+                          )
+                        })()}
                       </div>
                     )}
                   </div>
@@ -3831,59 +3856,70 @@ function TodayPageContent() {
                     const suppTasks = sortedTasks.filter(t => isTaskSupplement(t))
                     const allSuppsCompleted = suppTasks.length > 0 && suppTasks.every(t => t.status === 'completed')
                     const suppCompletedCount = suppTasks.filter(t => t.status === 'completed').length
-                    const isSuppStackExpanded = expandedSupplementBlocks[groupName] ?? false
+                    
+                    // If 3 or less supplements, visible by default; if 4 or more, collapsed by default
+                    const defaultSuppExpanded = suppTasks.length <= 3
+                    const isSuppStackExpanded = expandedSupplementBlocks[groupName] ?? defaultSuppExpanded
 
                     return (
                       <>
                         {/* Non-Supplement Modalities (Habits, Exercise, Sunlight, etc.) */}
                         {nonSuppTasks.map(t => renderCard(t, undefined, isIgnited))}
 
-                        {/* Supplement Stacking: If 2+ supplements, render 1-row nested stack */}
-                        {suppTasks.length >= 2 ? (
+                        {/* Supplement Stacking */}
+                        {suppTasks.length > 0 && (
                           <div className="pt-1.5">
-                            {/* 1-Row Nested Supplement Stack Header */}
-                            <div 
-                              onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
-                              className="p-2 sm:p-2.5 rounded-xl bg-purple-950/25 hover:bg-purple-950/40 border border-purple-500/25 transition-all cursor-pointer select-none flex items-center justify-between group my-1"
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="w-5 h-5 rounded-md bg-purple-900/50 border border-purple-500/30 flex items-center justify-center text-[11px] shrink-0 text-purple-300">
-                                  💊
-                                </span>
-                                <span className="text-xs font-bold text-purple-200 group-hover:text-white transition-colors truncate">
-                                  {formatSlotName(groupName)} Supplements ({suppTasks.length})
-                                </span>
-                                <span className="text-[10px] text-purple-300/70 font-mono shrink-0">
-                                  • {suppCompletedCount}/{suppTasks.length} Taken
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                                {allSuppsCompleted ? (
-                                  <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                    <Check size={11} strokeWidth={2.5} /> All Taken
+                            {/* If 2+ supplements: 1-Row Nested Supplement Stack Header */}
+                            {suppTasks.length >= 2 && (
+                              <div 
+                                onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
+                                className="p-2 sm:p-2.5 rounded-xl bg-purple-950/25 hover:bg-purple-950/40 border border-purple-500/25 transition-all cursor-pointer select-none flex items-center justify-between group my-1"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="w-5 h-5 rounded-md bg-purple-900/50 border border-purple-500/30 flex items-center justify-center text-[11px] shrink-0 text-purple-300">
+                                    💊
                                   </span>
-                                ) : (
+                                  <span className="text-xs font-bold text-purple-200 group-hover:text-white transition-colors truncate">
+                                    {formatSlotName(groupName)} Supplements ({suppTasks.length})
+                                  </span>
+                                  <span className="text-[10px] text-purple-300/70 font-mono shrink-0">
+                                    • {suppCompletedCount}/{suppTasks.length} Taken
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                                  {allSuppsCompleted ? (
+                                    <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                      <Check size={11} strokeWidth={2.5} /> All Taken
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCompleteMultipleTasks(suppTasks)}
+                                      className="text-[10px] font-bold text-purple-200 hover:text-white bg-purple-900/60 hover:bg-purple-800 border border-purple-500/40 px-2.5 py-0.5 rounded-md transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                                    >
+                                      <Check size={11} strokeWidth={2.5} /> Take All
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
-                                    onClick={() => handleCompleteMultipleTasks(suppTasks)}
-                                    className="text-[10px] font-bold text-purple-200 hover:text-white bg-purple-900/60 hover:bg-purple-800 border border-purple-500/40 px-2.5 py-0.5 rounded-md transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                                    onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
+                                    className="p-1 text-purple-400 group-hover:text-purple-200 cursor-pointer"
                                   >
-                                    <Check size={11} strokeWidth={2.5} /> Take All
+                                    <ChevronDown size={14} className={`transition-transform duration-200 ${isSuppStackExpanded ? 'rotate-180' : ''}`} />
                                   </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
-                                  className="p-1 text-purple-400 group-hover:text-purple-200 cursor-pointer"
-                                >
-                                  <ChevronDown size={14} className={`transition-transform duration-200 ${isSuppStackExpanded ? 'rotate-180' : ''}`} />
-                                </button>
+                                </div>
                               </div>
-                            </div>
+                            )}
 
-                            {/* When Expanded: render compact supplement rows */}
-                            {isSuppStackExpanded && (
-                              <div className="space-y-1.5 pt-1.5 pl-1 sm:pl-2 animate-in fade-in">
+                            {/* When Expanded or Single Supp: render compact supplement rows next to each other */}
+                            {(suppTasks.length === 1 || isSuppStackExpanded) && (
+                              <div className={`grid gap-2 pt-1 animate-in fade-in ${
+                                suppTasks.length === 1 
+                                  ? 'grid-cols-1' 
+                                  : suppTasks.length === 2 
+                                    ? 'grid-cols-1 sm:grid-cols-2' 
+                                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                              }`}>
                                 {suppTasks.map(t => {
                                   const mod = resolveTaskModality(t)
                                   const name = resolveTaskModalityName(t)
@@ -3904,10 +3940,7 @@ function TodayPageContent() {
                               </div>
                             )}
                           </div>
-                        ) : suppTasks.length === 1 ? (
-                          /* If only 1 supplement, render directly without extra stack wrapper */
-                          renderCard(suppTasks[0], undefined, isIgnited)
-                        ) : null}
+                        )}
                       </>
                     )
                   })()}

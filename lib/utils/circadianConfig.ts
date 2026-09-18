@@ -818,9 +818,12 @@ export function isCircadianSlotPast(
     const threshold = config.endHour + graceHours
     return nowH >= threshold
   } else {
-    // Crosses midnight (e.g. bedtime 22:00 to 05:00)
-    const threshold = config.endHour + graceHours
-    return nowH >= threshold && nowH < config.startHour
+    // Crosses midnight (e.g. bedtime 22:00 to 05:00).
+    // On today's active schedule, bedtime is the final block of today.
+    // Throughout today's daytime (before 22:00) and evening, tonight's bedtime is in the future.
+    // Between 22:00 and 05:00, bedtime is currently live/ongoing.
+    // Therefore, bedtime is NEVER a past block on today's view.
+    return false
   }
 }
 
