@@ -3715,13 +3715,13 @@ function TodayPageContent() {
             >
               {/* Consolidated 2-Row Time Block Header */}
               <div className={`flex flex-col gap-1 sm:gap-1.5 ${isAnytime ? 'border-b border-dashed border-white/10 pb-2' : 'border-b border-white/10 pb-2 sm:pb-2.5'}`}>
-                {/* Row 1: Identity & Action Controls */}
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-                    className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-none min-w-0"
-                  >
+                {/* Row 1: Identity & Collapse Trigger */}
+                <div 
+                  onClick={() => toggleGroupCollapse(groupName, groupTasks)}
+                  className="w-full flex items-center justify-between gap-2 text-left group cursor-pointer focus:outline-none select-none py-0.5"
+                >
+                  {/* Left: Circadian Sky Beacon Icon & Title & Badges */}
+                  <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                     {/* Circadian Sky Beacon Icon */}
                     <div 
                       ref={(el) => { beaconRefs.current[groupName] = el }}
@@ -3743,7 +3743,8 @@ function TodayPageContent() {
                     </div>
 
                     <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                      <span className={`${isAnytime ? 'text-[11px] sm:text-xs font-bold tracking-normal' : 'text-xs sm:text-sm font-extrabold tracking-wider'} uppercase transition-colors truncate ${
+                      {/* Full Slot Name - Never Cut Off */}
+                      <span className={`${isAnytime ? 'text-[11px] sm:text-xs font-bold tracking-normal' : 'text-xs sm:text-sm font-black tracking-wider'} uppercase transition-colors whitespace-nowrap shrink-0 ${
                         isIgnited
                           ? (isAnytime ? 'text-slate-300 group-hover:text-purple-300' : 'text-white group-hover:text-purple-200') 
                           : 'text-slate-200 group-hover:text-white'
@@ -3751,7 +3752,7 @@ function TodayPageContent() {
                         {isAnytime ? 'Anytime / Flexible' : formatSlotName(groupName)}
                       </span>
 
-                      {/* Live Pill (in Row 1 next to Title!) */}
+                      {/* Live Pill */}
                       {isNow && (
                         <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse flex items-center gap-1 shrink-0">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
@@ -3769,17 +3770,65 @@ function TodayPageContent() {
                       }`}>
                         {completedCount}/{groupTasks.length}
                       </span>
+                    </div>
+                  </div>
 
+                  {/* Right: Expand/Collapse Chevron at Far Right Edge */}
+                  <div className="flex items-center pl-2 shrink-0 text-slate-400 group-hover:text-white transition-colors">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors">
                       <ChevronDown 
-                        size={isAnytime ? 12 : 15} 
-                        className={`transition-transform duration-200 shrink-0 ${
-                          isIgnited ? 'text-slate-400 group-hover:text-white' : 'text-slate-600'
+                        size={16} 
+                        className={`transition-transform duration-200 ${
+                          isIgnited ? 'text-slate-300 group-hover:text-white' : 'text-slate-500'
                         } ${isCollapsed ? '-rotate-90' : ''}`} 
                       />
                     </div>
-                  </button>
+                  </div>
+                </div>
 
-                  {/* Action Buttons (Right side of Row 1) */}
+                {/* Row 2: Circadian Context (Left) & Action Controls (Right) */}
+                <div className="flex items-center justify-between gap-2 pl-8 sm:pl-11 pt-0.5">
+                  {/* Left: Time Range & Biological Window Context */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] text-slate-400 whitespace-nowrap overflow-hidden text-ellipsis min-w-0">
+                    {isAnytime ? (
+                      <span className="text-[10px] sm:text-[11px] text-slate-500">
+                        Flexible window • Complete anytime today
+                      </span>
+                    ) : (
+                      <>
+                        <span className={`font-semibold shrink-0 ${isIgnited ? 'text-slate-300' : 'text-slate-400'}`}>
+                          {circadian.timeRange}
+                        </span>
+
+                        {circadian.pulseBadge && (
+                          <>
+                            <span className="text-slate-600 text-[10px] select-none shrink-0">•</span>
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                switchToDailyPulse()
+                              }}
+                              role="button"
+                              tabIndex={0}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 shrink-0 ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
+                              style={circadian.pulseBadge.badgeGradientCSS ? { background: circadian.pulseBadge.badgeGradientCSS } : undefined}
+                            >
+                              <span 
+                                className="w-1.5 h-1.5 rounded-full shrink-0" 
+                                style={{ 
+                                  background: circadian.pulseBadge.dotGradientCSS || undefined,
+                                  backgroundColor: !circadian.pulseBadge.dotGradientCSS ? (circadian.pulseBadge.dotColor || '#10B981') : undefined 
+                                }} 
+                              />
+                              <span className="truncate max-w-[100px] sm:max-w-none">{circadian.pulseBadge.label}</span>
+                            </span>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Right: Action Buttons (Right side of Row 2) */}
                   <div className="flex items-center gap-1 sm:gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
                     <button
                       type="button"
@@ -3788,7 +3837,7 @@ function TodayPageContent() {
                         setAsNeededModalityId(undefined)
                         setIsAdHocModalOpen(true)
                       }}
-                      className="font-bold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg text-[10px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all active:scale-95 shrink-0 shadow-sm"
+                      className="font-bold flex items-center gap-1 cursor-pointer px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all active:scale-95 shrink-0 shadow-sm"
                       title={`Log an As Needed modality for ${formatSlotName(groupName)}`}
                     >
                       <Plus size={11} className="stroke-[2.5]" />
@@ -3797,7 +3846,7 @@ function TodayPageContent() {
                     <button
                       type="button"
                       onClick={() => handleStartGroupTracking(groupName, groupTasks)}
-                      className={`font-semibold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition-colors ${
+                      className={`font-semibold flex items-center gap-1 cursor-pointer px-2 py-0.5 sm:py-1 rounded-lg transition-colors ${
                         isAnytime 
                           ? 'text-[10px] sm:text-[11px] text-slate-400 hover:text-purple-300 hover:bg-white/5' 
                           : 'text-[10px] sm:text-xs text-purple-400 hover:text-purple-300 hover:bg-white/5'
@@ -3811,7 +3860,7 @@ function TodayPageContent() {
                       className={`font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
                         isAnytime 
                           ? 'text-[10px] sm:text-[11px] text-emerald-400/90 hover:text-emerald-300 px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20' 
-                          : 'text-[10px] sm:text-xs text-emerald-400 hover:text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30'
+                          : 'text-[10px] sm:text-xs text-emerald-400 hover:text-emerald-300 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30'
                       }`}
                     >
                       <Check size={isAnytime ? 11 : 12} strokeWidth={2.5} /> 
@@ -3820,44 +3869,6 @@ function TodayPageContent() {
                     </button>
                   </div>
                 </div>
-
-                {/* Row 2: Time Range & Biological Window Context (Single line, strictly NO wrapping!) */}
-                {isAnytime ? (
-                  <div className="text-[10px] text-slate-500 pl-8 sm:pl-11">
-                    Flexible window • Complete anytime today
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 sm:gap-2 pl-8 sm:pl-11 text-[11px] text-slate-400 whitespace-nowrap overflow-hidden text-ellipsis">
-                    <span className={`font-semibold shrink-0 ${isIgnited ? 'text-slate-300' : 'text-slate-400'}`}>
-                      {circadian.timeRange}
-                    </span>
-
-                    {circadian.pulseBadge && (
-                      <>
-                        <span className="text-slate-600 text-[10px] select-none shrink-0">•</span>
-                        <span 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            switchToDailyPulse()
-                          }}
-                          role="button"
-                          tabIndex={0}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 shrink-0 ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
-                          style={circadian.pulseBadge.badgeGradientCSS ? { background: circadian.pulseBadge.badgeGradientCSS } : undefined}
-                        >
-                          <span 
-                            className="w-1.5 h-1.5 rounded-full shrink-0" 
-                            style={{ 
-                              background: circadian.pulseBadge.dotGradientCSS || undefined,
-                              backgroundColor: !circadian.pulseBadge.dotGradientCSS ? (circadian.pulseBadge.dotColor || '#10B981') : undefined 
-                            }} 
-                          />
-                          <span>{circadian.pulseBadge.label}</span>
-                        </span>
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Group Tracking Slider Panel */}
