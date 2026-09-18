@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookmarkPlus, Plus, Check, Link as LinkIcon, Info, ShieldCheck, User, Zap, ExternalLink, Scale, CheckCircle2, Bookmark, Dna, Layers } from 'lucide-react'
+import { BookmarkPlus, Plus, Check, Link as LinkIcon, Info, ShieldCheck, User, Zap, ExternalLink, Scale, CheckCircle2, Bookmark, Dna, Layers, ChevronDown, ChevronUp } from 'lucide-react'
 import { Protocol, ProtocolStep } from '@/lib/types'
 import ProtocolAvatar, { ProtocolCategoryPills } from '@/components/ui/ProtocolAvatar'
 import { getProtocolVisualTheme } from '@/lib/utils/protocolThemes'
@@ -13,6 +13,7 @@ import { getProtocolFingerprint } from '@/lib/data/protocolFingerprints'
 type ProtocolCardProps = {
   protocol: Protocol | any // Using any to tolerate partial/mock data for now
   activeStatus?: 'today' | 'bench' | null
+  isFocusMode?: boolean
   onAddToBench: (protocolId: string) => Promise<void>
   onAddToToday: (protocolId: string) => Promise<void>
   onCompare?: (protocol: Protocol) => void
@@ -41,7 +42,7 @@ export const PROTOCOL_SYNERGY_MAP: Record<string, string> = {
   'semax_selank_cognitive_flow_protocol': '🧠 Neurotrophic Flow & Circadian Brain Shield: Semax elevates prefrontal BDNF for rapid learning and focus, Selank calms amygdala performance anxiety via GABA-A modulation, and morning sunlight plus optic flow locks in effortless cognitive productivity.'
 }
 
-export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onAddToToday, onCompare, isPinnedForCompare }: ProtocolCardProps) {
+export default function ProtocolCard({ protocol, activeStatus, isFocusMode = false, onAddToBench, onAddToToday, onCompare, isPinnedForCompare }: ProtocolCardProps) {
   const router = useRouter()
   const [addedToBench, setAddedToBench] = useState(false)
   const [addedToToday, setAddedToToday] = useState(false)
@@ -124,6 +125,95 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
     : isCurrentlyOnBench
     ? 'border-cyan-500/40 bg-cyan-950/10 shadow-[0_0_15px_rgba(6,182,212,0.12)]'
     : 'border-white/10 glass-card'
+
+  if (isFocusMode && !expanded) {
+    return (
+      <div
+        onClick={() => setExpanded(true)}
+        className={`rounded-xl overflow-hidden transition-all duration-200 w-full min-w-0 p-3 sm:p-3.5 cursor-pointer flex items-center justify-between gap-3 group border hover:border-slate-700 shadow-sm relative ${
+          isCurrentlyActiveInToday
+            ? 'bg-emerald-950/25 border-emerald-500/30'
+            : isCurrentlyOnBench
+            ? 'bg-cyan-950/25 border-cyan-500/30'
+            : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900/90'
+        }`}
+      >
+        {/* Subtle theme accent line */}
+        <div 
+          className="h-[2px] w-full absolute top-0 left-0 transition-opacity duration-300 opacity-70 group-hover:opacity-100" 
+          style={{ background: visualTheme.accentBorderCSS }} 
+        />
+
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <ProtocolAvatar 
+            protocolName={protocol.name}
+            protocolInfo={protocol}
+            themeOverride={visualTheme}
+            size={32}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <h3 className="font-bold text-sm sm:text-base text-white truncate group-hover:text-purple-300 transition-colors">
+                {protocol.name}
+              </h3>
+              {isCurrentlyActiveInToday && (
+                <span className="flex items-center gap-1 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                  <CheckCircle2 size={10} className="text-emerald-400" /> Added
+                </span>
+              )}
+              {isCurrentlyOnBench && !isCurrentlyActiveInToday && (
+                <span className="flex items-center gap-1 bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                  <Bookmark size={10} className="text-cyan-400" /> In Bench
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 mt-0.5 truncate">
+              <span className="text-[10px] uppercase font-semibold text-slate-400">{protocol.steps?.length || 0} Steps</span>
+              <span className="opacity-40">•</span>
+              <span>{protocol.primary_goal || protocol.goal || 'General Health'}</span>
+              {protocol.source_id && (
+                <>
+                  <span className="opacity-40">•</span>
+                  <span>By {protocol.source_id}</span>
+                </>
+              )}
+              {protocol.evidence_level && (
+                <>
+                  <span className="opacity-40">•</span>
+                  <span className="text-slate-300">{protocol.evidence_level}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleToday(e)
+            }}
+            disabled={isAddingToday}
+            className={`h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+              isCurrentlyActiveInToday
+                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 cursor-pointer'
+                : 'bg-levl-accent hover:bg-levl-accent/90 text-white cursor-pointer shadow-sm active:scale-95'
+            }`}
+          >
+            {isCurrentlyActiveInToday ? (
+              <><CheckCircle2 size={13} className="text-emerald-400" /> <span className="hidden sm:inline">Added</span></>
+            ) : (
+              <><Plus size={13} /> <span>{isAddingToday ? '...' : 'Add'}</span></>
+            )}
+          </button>
+
+          <ChevronDown size={16} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`rounded-xl overflow-hidden transition-all duration-300 w-full min-w-0 relative group shadow-md ${cardContainerStyle}`}>
@@ -473,6 +563,22 @@ export default function ProtocolCard({ protocol, activeStatus, onAddToBench, onA
           </button>
         )}
       </div>
+
+      {isFocusMode && (
+        <div className="flex justify-end px-4 pb-3 pt-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setExpanded(false)
+            }}
+            className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer py-1 px-2.5 rounded-lg hover:bg-white/5 transition-colors"
+          >
+            <span>Collapse back to focus</span>
+            <ChevronUp size={13} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -72,6 +72,30 @@ function ExplorePageContent() {
     return tabParam === 'protocols' ? 'protocols' : 'modalities'
   })
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isFocusMode, setIsFocusMode] = useState(false)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('levl_explore_focus_mode')
+      if (saved !== null) {
+        setIsFocusMode(saved === 'true')
+      }
+    } catch {
+      // Ignore localStorage access errors
+    }
+  }, [])
+
+  const toggleFocusMode = () => {
+    setIsFocusMode(prev => {
+      const next = !prev
+      try {
+        localStorage.setItem('levl_explore_focus_mode', String(next))
+      } catch {
+        // Ignore localStorage access errors
+      }
+      return next
+    })
+  }
 
   const [todayModalityIds, setTodayModalityIds] = useState<Set<string>>(new Set())
   const [benchModalityIds, setBenchModalityIds] = useState<Set<string>>(new Set())
@@ -1150,33 +1174,49 @@ function ExplorePageContent() {
           </Link>
         </div>
 
-        <div className="space-y-2 pt-2">
-          {/* Top Row: Title & Action Buttons */}
-          <div className="flex justify-between items-center gap-3">
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Compass size={24} className="text-levl-accent" /> Explore
-              </h1>
-              <p className="text-levl-text-secondary text-xs sm:text-sm">Discover what works for you.</p>
-            </div>
+        <div className="space-y-2.5 pt-2">
+          {/* Row 1: Big Heading and 'Discover what works for you.' to the right on the same line */}
+          <div className="flex flex-wrap items-baseline gap-2.5 sm:gap-3">
+            <h1 className="text-2xl font-bold flex items-center gap-2 shrink-0">
+              <Compass size={24} className="text-levl-accent" /> Explore
+            </h1>
+            <span className="text-levl-text-secondary text-xs sm:text-sm font-medium">
+              • Discover what works for you.
+            </span>
+          </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-sky-500/20 cursor-pointer active:scale-95"
-              >
-                <Sparkles size={13} />
-                <span>+ Create Modality</span>
-              </button>
-              <Link
-                href="/guide#explore"
-                className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
-                title="View Explore Catalog Guide"
-              >
-                <HelpCircle size={13} className="text-purple-400" /> Guide
-              </Link>
-            </div>
+          {/* Row 2: Action buttons in a single row below */}
+          <div className="flex items-center gap-2 flex-wrap pt-0.5">
+            <button
+              type="button"
+              onClick={toggleFocusMode}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                isFocusMode
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-500/15'
+                  : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60'
+              }`}
+              title={isFocusMode ? "Switch to Detailed View" : "Switch to Focus Mode"}
+            >
+              <Target size={13} className={isFocusMode ? "text-amber-400" : "text-slate-400"} />
+              <span>{isFocusMode ? "✦ Focus Active" : "Focus Mode"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-sky-500/20 cursor-pointer active:scale-95"
+            >
+              <Sparkles size={13} />
+              <span>+ Create Modality</span>
+            </button>
+
+            <Link
+              href="/guide#explore"
+              className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+              title="View Explore Catalog Guide"
+            >
+              <HelpCircle size={13} className="text-purple-400" /> Guide
+            </Link>
           </div>
 
           {/* Full-Width Sort & Count Status Row */}
@@ -1707,6 +1747,7 @@ function ExplorePageContent() {
                   <div key={mod.id} ref={isLast ? lastElementRef : null} className="min-w-0 w-full">
                     <ExploreCard 
                       modality={mod}
+                      isFocusMode={isFocusMode}
                       userProfile={profile}
                       searchScore={searchScore}
                       popularityScore={sortMode === 'popularity' ? calculateModalityPopularityScore(mod) : undefined}
@@ -1845,6 +1886,7 @@ function ExplorePageContent() {
                 <div key={protocol.id} className="min-w-0 w-full">
                   <ProtocolCard 
                     protocol={protocol}
+                    isFocusMode={isFocusMode}
                     activeStatus={getProtocolActiveStatus(protocol)}
                     onAddToBench={handleAddProtocolToBench}
                     onAddToToday={handleAddProtocolToToday}

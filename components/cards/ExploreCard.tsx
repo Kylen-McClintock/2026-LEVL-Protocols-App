@@ -32,6 +32,7 @@ type ExploreCardProps = {
     deltaEffort: number
     outcomeName: string
   }
+  isFocusMode?: boolean
   onAddToBench: (modalityId: string) => Promise<void>
   onAddToToday: (modalityId: string) => Promise<void>
   onCompare?: (exploring: Modality, active: Modality, source: 'today' | 'bench') => void
@@ -52,6 +53,7 @@ export default function ExploreCard({
   benchModalities = [],
   stackFitResult,
   marginalImpact,
+  isFocusMode = false,
   onAddToBench, 
   onAddToToday,
   onCompare,
@@ -115,6 +117,106 @@ export default function ExploreCard({
     : hasConflict
     ? 'border-red-500/30 bg-red-950/10'
     : 'glass-card'
+
+  if (isFocusMode && !expanded) {
+    return (
+      <div 
+        onClick={() => setExpanded(true)}
+        className={`rounded-xl overflow-hidden transition-all duration-200 w-full min-w-0 p-3 sm:p-3.5 cursor-pointer flex items-center justify-between gap-3 group border hover:border-slate-700 shadow-sm ${
+          isCurrentlyActiveInToday
+            ? 'bg-emerald-950/25 border-emerald-500/30'
+            : isCurrentlyOnBench
+            ? 'bg-cyan-950/25 border-cyan-500/30'
+            : hasContraindication
+            ? 'bg-rose-950/25 border-rose-500/30'
+            : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900/90'
+        }`}
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <ModalityIcon modality={modality} size={20} className="shrink-0 text-slate-300" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <h3 className="font-bold text-sm sm:text-base text-white truncate group-hover:text-amber-200/90 transition-colors">
+                {modality.display_name || modality.name}
+              </h3>
+              {isCurrentlyActiveInToday && (
+                <span className="flex items-center gap-1 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                  <CheckCircle2 size={10} className="text-emerald-400" /> In Today
+                </span>
+              )}
+              {isCurrentlyOnBench && !isCurrentlyActiveInToday && (
+                <span className="flex items-center gap-1 bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                  <Bookmark size={10} className="text-cyan-400" /> Saved
+                </span>
+              )}
+              {hasContraindication && (
+                <span className="flex items-center gap-1 bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                  <AlertTriangle size={10} className="text-rose-400" /> Precaution
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 mt-0.5 truncate">
+              <span className="uppercase text-[10px] font-semibold tracking-wider text-slate-400">{modality.category}</span>
+              <span className="opacity-40">•</span>
+              <span>Longevity {modality.overall_longevity_benefit || 8}/10</span>
+              {longevityReport.primaryVector && (
+                <>
+                  <span className="opacity-40">•</span>
+                  <span className="text-slate-300">{longevityReport.primaryVector.outcomeName.split('&')[0].trim()}</span>
+                </>
+              )}
+              {modality.cadence_layer && (
+                <>
+                  <span className="opacity-40">•</span>
+                  <span className="capitalize">{modality.cadence_layer.replace('_', ' ')}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (isCurrentlyActiveInToday) {
+                router.push(`/today?modality=${encodeURIComponent(modality.id)}&name=${encodeURIComponent(modality.display_name || modality.name)}`)
+              } else if (!isCurrentlyOnBench) {
+                setIsScheduling(true)
+              }
+            }}
+            disabled={isCurrentlyOnBench && !isCurrentlyActiveInToday}
+            className={`h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+              isCurrentlyActiveInToday
+                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 cursor-pointer'
+                : isCurrentlyOnBench
+                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 cursor-default'
+                : 'bg-levl-accent hover:bg-levl-accent/90 text-white cursor-pointer shadow-sm active:scale-95'
+            }`}
+          >
+            {isCurrentlyActiveInToday ? (
+              <><CheckCircle2 size={13} className="text-emerald-400" /> <span className="hidden sm:inline">In Today</span></>
+            ) : isCurrentlyOnBench ? (
+              <><Bookmark size={13} className="text-cyan-400" /> <span className="hidden sm:inline">Saved</span></>
+            ) : (
+              <><Plus size={13} /> <span>Add</span></>
+            )}
+          </button>
+
+          <ChevronDown size={16} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
+        </div>
+
+        <ScheduleModalityModal 
+          isOpen={isScheduling}
+          onClose={() => setIsScheduling(false)}
+          modality={modality}
+          onSuccess={handleScheduleSuccess}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className={`rounded-xl overflow-hidden transition-all duration-300 w-full min-w-0 ${cardContainerStyle}`}>
@@ -584,6 +686,22 @@ export default function ExploreCard({
         )}
 
         {showGeekMode && <GeekMode modality={modality} />}
+
+        {isFocusMode && (
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setExpanded(false)
+              }}
+              className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer py-1 px-2.5 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              <span>Collapse back to focus</span>
+              <ChevronUp size={13} />
+            </button>
+          </div>
+        )}
       </div>
 
       <ScheduleModalityModal 
