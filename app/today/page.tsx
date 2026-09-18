@@ -2348,7 +2348,7 @@ function TodayPageContent() {
     dedupedTasks.forEach(task => {
       if (!isTaskMatchingActiveFilter(task)) return
 
-      const modality = task.protocol_step?.modality || task.loose_modality
+      const modality = resolveTaskModality(task) || task.protocol_step?.modality || task.loose_modality
       const mId = (
         task.modality_id || 
         task.protocol_step?.modality_id || 
@@ -2356,7 +2356,30 @@ function TodayPageContent() {
         modality?.id || 
         ''
       ).trim().toLowerCase()
-      if (task.status === 'contraindicated' || task.status_reason?.toLowerCase().includes('eliminated') || (mId && benchedOrEliminatedModalityIds.has(mId))) {
+
+      // Filter out orphan/corrupt records with no modality, no step, and no custom name
+      const hasValidModalityOrTitle = Boolean(
+        modality || 
+        task.protocol_step?.modality || 
+        task.loose_modality || 
+        task.execution_details?.custom_name || 
+        task.execution_details?.modality_name || 
+        (task.protocol_step as any)?.title ||
+        (task.modality_id && task.modality_id.trim() !== '')
+      )
+      if (!hasValidModalityOrTitle) return
+
+      const rawNormalizedId = mId.replace(/_/g, '-')
+      const rawUnderscoreId = mId.replace(/-/g, '_')
+      if (
+        task.status === 'contraindicated' || 
+        task.status_reason?.toLowerCase().includes('eliminated') || 
+        (mId && (
+          benchedOrEliminatedModalityIds.has(mId) || 
+          benchedOrEliminatedModalityIds.has(rawNormalizedId) || 
+          benchedOrEliminatedModalityIds.has(rawUnderscoreId)
+        ))
+      ) {
         return
       }
 
@@ -2384,7 +2407,14 @@ function TodayPageContent() {
         }
       } else if (isSkipped) {
         // Never show benched or eliminated modalities in the skipped section!
-        if (task.status_reason?.toLowerCase().includes('eliminated') || (mId && benchedOrEliminatedModalityIds.has(mId))) {
+        if (
+          task.status_reason?.toLowerCase().includes('eliminated') || 
+          (mId && (
+            benchedOrEliminatedModalityIds.has(mId) || 
+            benchedOrEliminatedModalityIds.has(rawNormalizedId) || 
+            benchedOrEliminatedModalityIds.has(rawUnderscoreId)
+          ))
+        ) {
           return
         }
         // If viewing a future date, never show benched modalities in the skipped section (only on the day it was skipped)
@@ -2408,7 +2438,7 @@ function TodayPageContent() {
       allSkippedTasks: skippedTop,
       infrequentTasks: infrequent 
     }
-  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline, filterLens, selectedOutcomes, isFocusMode])
+  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline, filterLens, selectedOutcomes, isFocusMode, resolveTaskModality])
 
   const sortedCompletedGroups = useMemo(() => {
     if (allCompletedTasks.length === 0) return []
@@ -2649,6 +2679,7 @@ function TodayPageContent() {
     const active: [string, DedupedTask[]][] = []
 
     sortedChronologicalGroups.forEach(([gName, gTasks]) => {
+      if (!gTasks || gTasks.length === 0) return
       const isAnytime = gName.toLowerCase().includes('anytime')
       const isPast = !isAnytime && isCircadianSlotPast(
         gName,
@@ -3289,12 +3320,17 @@ function TodayPageContent() {
 
   const renderTimelineBlocks = () => {
     const renderCard = (task: DedupedTask, pGroupName?: string, isGroupIgnited: boolean = true) => {
-      const mId = task.modality_id || task.protocol_step?.modality_id || ''
+      const resolvedMod = resolveTaskModality(task)
+      const taskWithMod: DedupedTask = {
+        ...task,
+        loose_modality: task.loose_modality || resolvedMod
+      }
+      const mId = taskWithMod.modality_id || taskWithMod.protocol_step?.modality_id || resolvedMod?.id || ''
       const benchItem = benchItems.find(b => b.modality_id === mId)
       return (
         <ProtocolTaskCard 
           key={task.id} 
-          task={task} 
+          task={taskWithMod} 
           onStatusChange={handleStatusChange} 
           onTrackOutcomes={openTracker}
           initialBenchItem={benchItem}
@@ -3562,6 +3598,7 @@ function TodayPageContent() {
             {/* List of Previous Time Blocks */}
             <div className="divide-y divide-white/5">
               {pastGroups.map(([gName, gTasks]) => {
+                if (!gTasks || gTasks.length === 0) return null
                 const gCircadian = getAdaptiveCircadianConfig(gName, userActualWakeTime, profile?.ideal_wake_time || '06:30')
                 const gCompleted = gTasks.filter(t => t.status === 'completed').length
                 const isBlockExpanded = expandedPastBlocks[gName] ?? isAllPastExpanded
@@ -3656,6 +3693,7 @@ function TodayPageContent() {
 
         {/* Active and Upcoming Chronological Time Blocks */}
         {activeTimelineGroups.map(([groupName, groupTasks]) => {
+          if (!groupTasks || groupTasks.length === 0) return null
           const circadian = getAdaptiveCircadianConfig(groupName, userActualWakeTime, profile?.ideal_wake_time || '06:30')
           const CircadianIcon = circadian.icon
           const isNow = isCurrentDay && isCurrentCircadianSlot(groupName)
@@ -3967,6 +4005,13 @@ function TodayPageContent() {
                                     : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
                               }`}>
                                 {suppTasks.map(t => {
+                                  if (expandedSupplementId === t.id) {
+                                    return (
+                                      <div key={t.id} className="col-span-full">
+                                        {renderCard(t, undefined, isIgnited)}
+                                      </div>
+                                    )
+                                  }
                                   const mod = resolveTaskModality(t)
                                   const name = resolveTaskModalityName(t)
                                   const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
@@ -3978,7 +4023,8 @@ function TodayPageContent() {
                                       modalityName={name}
                                       benchItem={bench}
                                       onStatusChange={handleStatusChange}
-                                      onOpenDetails={() => {}}
+                                      onOpenRescheduleModal={handleOpenRescheduleModal}
+                                      onOpenDetails={() => setExpandedSupplementId(prev => prev === t.id ? null : t.id)}
                                       completionMode={completionMode}
                                     />
                                   )
