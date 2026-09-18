@@ -1,4 +1,5 @@
 import { Modality, UserProfile, DailyProtocolTask } from '../types'
+import { getModalityLongevityScore } from '../data/longevityKnowledgeBase'
 
 export type EffortLevel = 'level_1' | 'level_2' | 'level_3' | 'level_4' | 'level_5'
 
@@ -348,9 +349,7 @@ export function evaluateModalityLongevity(
     ? Math.max(1, Math.min(5, (modality as any).effect_size))
     : 4
 
-  const baseBenefit = typeof modality.overall_longevity_benefit === 'number'
-    ? Math.max(1, Math.min(10, modality.overall_longevity_benefit))
-    : 8
+  const baseBenefit = getModalityLongevityScore(modality).score
 
   // Multi-Dimensional Longevity Impact (0 to 10 scale)
   const longevityImpactScore = Math.round(

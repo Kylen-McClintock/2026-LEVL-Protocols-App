@@ -1,4 +1,5 @@
 import { Modality, DailyProtocolTask, UserProfile } from '../types'
+import { getModalityLongevityScore } from '@/lib/data/longevityKnowledgeBase'
 import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
 import {
   MODALITY_HALLMARK_PROFILES,
@@ -473,7 +474,7 @@ export function identifyBioGaps(
         const effort = getEffortMetadata(m)
         const cost = getCostMetadata(m.cost_tier)
         const evidenceLevel = typeof m.evidence_quality === 'number' ? m.evidence_quality : 4
-        const longevityImpactScore = typeof m.overall_longevity_benefit === 'number' ? m.overall_longevity_benefit : 8.0
+        const longevityImpactScore = getModalityLongevityScore(m).score
 
         // Apply Effort Filter
         if (effortFilter === 'level_1' && effort.level !== 1) return
@@ -756,7 +757,7 @@ export function calculateHallmarkCoverage(
   activeModMap.forEach(({ count, modality }) => {
     const rawHallmarks: string[] = (modality as any).hallmarks_of_aging_impact || []
     const evidence = typeof modality.evidence_quality === 'number' ? modality.evidence_quality : 4
-    const benefit = typeof modality.overall_longevity_benefit === 'number' ? modality.overall_longevity_benefit : 7
+    const benefit = getModalityLongevityScore(modality).score
     const effort = getEffortMetadata(modality)
 
     // Base impact per modality = (Evidence Quality * 4.5) + (Benefit * 1.5)
@@ -798,7 +799,7 @@ export function calculateHallmarkCoverage(
   simulatedModMap.forEach(({ modality }) => {
     const rawHallmarks: string[] = (modality as any).hallmarks_of_aging_impact || []
     const evidence = typeof modality.evidence_quality === 'number' ? modality.evidence_quality : 4
-    const benefit = typeof modality.overall_longevity_benefit === 'number' ? modality.overall_longevity_benefit : 7
+    const benefit = getModalityLongevityScore(modality).score
     const baseImpact = Math.min(35, (evidence * 4.5) + (benefit * 1.5))
 
     rawHallmarks.forEach(rawH => {

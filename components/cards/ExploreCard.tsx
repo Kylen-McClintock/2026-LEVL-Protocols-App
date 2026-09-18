@@ -6,7 +6,7 @@ import { Modality, UserProfile, UserBenchItem } from '@/lib/types'
 import { BookmarkPlus, Plus, Check, Info, Sparkles, Search, CalendarPlus, CheckCircle2, Bookmark, Scale, ArrowRightLeft, AlertTriangle, History, Ban, Flame, ShieldCheck, Layers, ChevronDown, ChevronUp, Dna } from 'lucide-react'
 import GeekMode from './GeekMode'
 import ModalityLongevityDrawer from './ModalityLongevityDrawer'
-import { getAllModalityLongevityImpacts } from '@/lib/data/longevityKnowledgeBase'
+import { getAllModalityLongevityImpacts, getModalityLongevityScore } from '@/lib/data/longevityKnowledgeBase'
 import ScheduleModalityModal from '../modals/ScheduleModalityModal'
 import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import { evaluateStackFit, StackFitResult } from '@/lib/synergy/stackFitEngine'
@@ -71,6 +71,7 @@ export default function ExploreCard({
   const [showBenchConfirm, setShowBenchConfirm] = useState(false)
 
   const longevityReport = getAllModalityLongevityImpacts(modality)
+  const longevityScore = getModalityLongevityScore(modality)
 
   const stackFit = stackFitResult || (
     (todayModalities.length > 0 || benchModalities.length > 0)
@@ -159,7 +160,7 @@ export default function ExploreCard({
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 mt-0.5 truncate">
               <span className="uppercase text-[10px] font-semibold tracking-wider text-slate-400">{modality.category}</span>
               <span className="opacity-40">•</span>
-              <span>Longevity {modality.overall_longevity_benefit || 8}/10</span>
+              <span>Longevity {longevityScore.formatted}/10</span>
               {longevityReport.primaryVector && (
                 <>
                   <span className="opacity-40">•</span>
@@ -462,7 +463,7 @@ export default function ExploreCard({
         <div className="flex justify-between items-center mt-3 border-t border-white/5 pt-3 gap-2">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <span className="text-xs text-levl-text-secondary shrink-0">
-              Longevity: <strong className="text-emerald-400 font-mono font-bold text-sm">{modality.overall_longevity_benefit || 8}/10</strong>
+              Longevity: <strong className="text-emerald-400 font-mono font-bold text-sm">{longevityScore.formatted}/10</strong>
             </span>
             {longevityReport.primaryVector && (
               <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 font-mono font-bold shrink-0 ${
@@ -604,7 +605,7 @@ export default function ExploreCard({
       )}
 
       <div className="p-4 pt-0 space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <button 
             onClick={(e) => {
               e.stopPropagation()
@@ -615,7 +616,7 @@ export default function ExploreCard({
               }
             }}
             disabled={isCurrentlyOnBench && !isCurrentlyActiveInToday}
-            className={`flex-1 flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
+            className={`flex-1 w-full sm:w-auto flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
               isCurrentlyActiveInToday
                 ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.15)]'
                 : isCurrentlyOnBench 
@@ -641,44 +642,46 @@ export default function ExploreCard({
             )}
           </button>
 
-          {onPinForCompare && (
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {onPinForCompare && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onPinForCompare(modality); }}
+                className={`flex-1 sm:flex-none h-9 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  isPinnedForCompare 
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm' 
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+                }`}
+                title="Pin modality to compare side-by-side"
+              >
+                <Scale size={14} />
+                <span>{isPinnedForCompare ? 'Selected' : 'Compare'}</span>
+              </button>
+            )}
+
             <button 
-              onClick={(e) => { e.stopPropagation(); onPinForCompare(modality); }}
-              className={`h-9 px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-                isPinnedForCompare 
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm' 
-                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+              onClick={(e) => { e.stopPropagation(); setShowLongevityDrawer(!showLongevityDrawer); }}
+              className={`flex-1 sm:flex-none h-9 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                showLongevityDrawer 
+                  ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
+                  : 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white'
               }`}
-              title="Pin modality to compare side-by-side"
             >
-              <Scale size={14} />
-              <span className="hidden sm:inline">{isPinnedForCompare ? 'Selected' : 'Compare'}</span>
+              <Dna size={14} />
+              <span>Longevity</span>
             </button>
-          )}
 
-          <button 
-            onClick={(e) => { e.stopPropagation(); setShowLongevityDrawer(!showLongevityDrawer); }}
-            className={`h-9 px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-              showLongevityDrawer 
-                ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
-                : 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white'
-            }`}
-          >
-            <Dna size={14} />
-            <span>Longevity</span>
-          </button>
-
-          <button 
-            onClick={(e) => { e.stopPropagation(); setShowGeekMode(!showGeekMode); }}
-            className={`h-9 px-3.5 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer ${
-              showGeekMode 
-                ? 'bg-levl-purple text-white border-levl-purple shadow-md' 
-                : 'bg-levl-purple/10 border-levl-purple/30 text-purple-300 hover:bg-levl-purple hover:text-white'
-            }`}
-          >
-            <Info size={14} />
-            <span>Geek Mode</span>
-          </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowGeekMode(!showGeekMode); }}
+              className={`flex-1 sm:flex-none h-9 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                showGeekMode 
+                  ? 'bg-levl-purple text-white border-levl-purple shadow-md' 
+                  : 'bg-levl-purple/10 border-levl-purple/30 text-purple-300 hover:bg-levl-purple hover:text-white'
+              }`}
+            >
+              <Info size={14} />
+              <span>Geek Mode</span>
+            </button>
+          </div>
         </div>
 
         {showLongevityDrawer && !showGeekMode && (

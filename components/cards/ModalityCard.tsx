@@ -5,7 +5,7 @@ import { DailySession, Modality, UserProfile } from '@/lib/types'
 import { Info, Check, X, Activity, ChevronDown, ChevronUp, Dna } from 'lucide-react'
 import GeekMode from './GeekMode'
 import ModalityLongevityDrawer from './ModalityLongevityDrawer'
-import { getAllModalityLongevityImpacts } from '@/lib/data/longevityKnowledgeBase'
+import { getAllModalityLongevityImpacts, getModalityLongevityScore } from '@/lib/data/longevityKnowledgeBase'
 import { generateCoachInsight } from '@/lib/ranking/insights'
 import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import OutcomePill from '@/components/outcomes/OutcomePill'
@@ -181,8 +181,8 @@ export default function ModalityCard({ session, userProfile, onComplete, onSkip,
 
           <div className="bg-black/30 rounded-lg p-3 border border-white/5 space-y-2">
             <h4 className="text-xs font-semibold text-levl-text-secondary uppercase">Why this is ranked for you</h4>
-            {modality.overall_longevity_benefit && (
-              <p className="text-sm">Personal Longevity Impact: <span className="text-levl-accent font-bold">{modality.overall_longevity_benefit}</span></p>
+            {modality && (
+              <p className="text-sm">Personal Longevity Impact: <span className="text-levl-accent font-bold">{getModalityLongevityScore(modality).formatted}/10</span></p>
             )}
             <p className="text-xs text-levl-text-secondary italic">{generateCoachInsight(modality, userProfile)}</p>
           </div>

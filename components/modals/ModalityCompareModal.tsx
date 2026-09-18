@@ -6,6 +6,7 @@ import { X, Scale, Check, ArrowRightLeft, Sparkles, AlertCircle, Bookmark, Exter
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { createDailyTask, addToBench, removeModalityEntirely } from '@/lib/data'
 import { compareModalitiesOutcomes } from '@/lib/outcomes/modalityOutcomeComparison'
+import { getModalityLongevityScore } from '@/lib/data/longevityKnowledgeBase'
 
 type ModalityCompareModalProps = {
   isOpen: boolean
@@ -204,8 +205,8 @@ export default function ModalityCompareModal({
             {/* Longevity Benefit */}
             <div className="grid grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)] sm:grid-cols-[130px_minmax(0,1fr)_minmax(0,1fr)] gap-4 p-3.5 border-b border-slate-800/60 text-slate-200 items-center">
               <div className="font-semibold text-slate-400">Longevity Benefit</div>
-              <div className="font-bold text-purple-300 capitalize min-w-0 break-words">{exploringModality.overall_longevity_benefit || 'High'}</div>
-              <div className="font-bold text-teal-300 capitalize min-w-0 break-words">{activeModality.overall_longevity_benefit || 'High'}</div>
+              <div className="font-bold text-purple-300 capitalize min-w-0 break-words">{getModalityLongevityScore(exploringModality).formatted}/10</div>
+              <div className="font-bold text-teal-300 capitalize min-w-0 break-words">{getModalityLongevityScore(activeModality).formatted}/10</div>
             </div>
 
             {/* Evidence Quality */}
