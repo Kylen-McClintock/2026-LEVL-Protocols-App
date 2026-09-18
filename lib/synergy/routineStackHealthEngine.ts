@@ -16,6 +16,7 @@ import {
 } from '@/lib/data/protocolFingerprints'
 import { resolveSlotFromTimingString } from '@/lib/data/resolveOptimalTiming'
 import { canonicalizeTimingSlot } from '@/lib/utils/timingSlots'
+import { isBiologicallyPlausibleConflict } from './formulationLogic'
 
 // ============================================================================
 // Types & Contracts
@@ -391,10 +392,10 @@ export function auditRoutineStackHealth(
           continue
         }
 
-        const aIsTrigger = rule.triggers.some(t => itemA.normKey.includes(t) || t.includes(itemA.normKey))
-        const bIsTarget = rule.targets.some(t => itemB.normKey.includes(t) || t.includes(itemB.normKey))
-        const bIsTrigger = rule.triggers.some(t => itemB.normKey.includes(t) || t.includes(itemB.normKey))
-        const aIsTarget = rule.targets.some(t => itemA.normKey.includes(t) || t.includes(itemA.normKey))
+        const aIsTrigger = rule.triggers.some(t => itemA.normKey.includes(t))
+        const bIsTarget = rule.targets.some(t => itemB.normKey.includes(t))
+        const bIsTrigger = rule.triggers.some(t => itemB.normKey.includes(t))
+        const aIsTarget = rule.targets.some(t => itemA.normKey.includes(t))
 
         let triggerItem = null
         let targetItem = null
@@ -408,6 +409,18 @@ export function auditRoutineStackHealth(
         }
 
         if (triggerItem && targetItem) {
+          // Route-of-administration & formulation filter:
+          // Topical skin serums/creams NEVER blunt muscle hypertrophy or systemic ROS!
+          if (!isBiologicallyPlausibleConflict(
+            rule.id,
+            rule.type,
+            triggerItem.modality,
+            targetItem.modality,
+            triggerItem.task,
+            targetItem.task
+          )) {
+            continue
+          }
           // Adenosine receptor blockade conflict:
           // Never trigger conflict if caffeine is scheduled during midday or earlier time blocks (or <= 1:00 PM)
           if (rule.id === 'late_caffeine_sleep') {

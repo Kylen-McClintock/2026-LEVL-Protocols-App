@@ -1,5 +1,6 @@
 import { DailyProtocolTask, UserProfile } from '@/lib/types'
 import { format } from 'date-fns'
+import { isTopicalOrSkincareModality, isDecafOrNonCaffeinatedModality } from './formulationLogic'
 
 export interface PreFlightSpacingNudge {
   id: string
@@ -65,6 +66,9 @@ export function detectPreFlightSpacingNudge(
   if (task.status !== 'pending') return null
 
   const taskText = extractTaskSearchText(task)
+  const taskMod = task.loose_modality || task.protocol_step?.modality
+  const isTopical = isTopicalOrSkincareModality(taskMod, task)
+  const isDecaf = isDecafOrNonCaffeinatedModality(taskMod, task)
   const currentSlot = (task.timing_slot || task.protocol_step?.timing_slot || '').toLowerCase()
   const bedtimeStr = (userProfile as any)?.sleep_schedule?.bed_time || userProfile?.ideal_bedtime || '22:30'
   const hoursUntilBed = getHoursUntilBed(bedtimeStr, now)
@@ -124,14 +128,17 @@ export function detectPreFlightSpacingNudge(
 
   // -------------------------------------------------------------
   // 2. HIGH-DOSE ANTIOXIDANTS vs. WORKOUT ROS (3h Cooldown)
+  // Topical facial serums and creams act epidermally and NEVER blunt muscular ROS!
   // -------------------------------------------------------------
   const isAntioxidant = 
-    taskText.includes('vitamin c') || 
-    taskText.includes('ascorbic') || 
-    taskText.includes('vitamin e') || 
-    taskText.includes('nac') || 
-    taskText.includes('n-acetyl') || 
-    taskText.includes('resveratrol')
+    !isTopical && (
+      taskText.includes('vitamin c') || 
+      taskText.includes('ascorbic') || 
+      taskText.includes('vitamin e') || 
+      taskText.includes('nac') || 
+      taskText.includes('n-acetyl') || 
+      taskText.includes('resveratrol')
+    )
 
   if (isAntioxidant && recentTasks && recentTasks.length > 0) {
     const completedWorkout = recentTasks.find(t => {
@@ -237,8 +244,11 @@ export function detectPreFlightSpacingNudge(
     taskText.includes('curfew') || 
     taskText.includes('cessation')
 
+  // Topical eye serums and decaffeinated drinks do not cause central adenosine antagonism
   const isCaffeine = 
-    !isCutoffHabit && (
+    !isCutoffHabit && 
+    !isTopical && 
+    !isDecaf && (
       taskText.includes('caffeine') || 
       taskText.includes('coffee') || 
       taskText.includes('pre-workout') || 

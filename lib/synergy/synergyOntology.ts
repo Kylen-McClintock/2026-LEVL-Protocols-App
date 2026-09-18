@@ -1,6 +1,8 @@
 import { Modality } from '@/lib/types'
+import { isTopicalOrSkincareModality, isDecafOrNonCaffeinatedModality } from './formulationLogic'
 
 export interface ModalityBiochemicalProfile {
+  isTopical?: boolean
   isFatSolubleLipophilic?: boolean
   isMethylDonorConsumer?: boolean
   isMethylDonor?: boolean
@@ -34,7 +36,9 @@ export function classifyModalityOntology(modality: Modality): ModalityBiochemica
   const cat = normStr(modality.category)
   const desc = normStr(modality.brief_description)
 
-  const profile: ModalityBiochemicalProfile = {}
+  const profile: ModalityBiochemicalProfile = {
+    isTopical: isTopicalOrSkincareModality(modality)
+  }
 
   // 1. Fat-Soluble / Lipophilic (requires dietary lipids for absorption)
   if (
@@ -88,14 +92,19 @@ export function classifyModalityOntology(modality: Modality): ModalityBiochemica
     profile.primaryCompoundFamily = 'Divalent Trace Mineral'
   }
 
-  // 5. High-Dose Antioxidants (Scavenges beneficial post-exercise ROS)
+  // 5. High-Dose Systemic Antioxidants (Scavenges beneficial post-exercise ROS)
+  // Topical skin serums (Vitamin C serum, etc.) act epidermally and NEVER scavenge muscular ROS!
   if (
-    (id.includes('vitaminc') || name.includes('vitaminc')) ||
-    (id.includes('vitamine') || name.includes('vitamine')) ||
-    (id.includes('nac') || name.includes('nac') || id.includes('glutathione'))
+    !profile.isTopical && (
+      (id.includes('vitaminc') || name.includes('vitaminc')) ||
+      (id.includes('vitamine') || name.includes('vitamine')) ||
+      (id.includes('nac') || name.includes('nac') || id.includes('glutathione'))
+    )
   ) {
     profile.isHighDoseAntioxidant = true
     profile.primaryCompoundFamily = 'Exogenous Antioxidant'
+  } else if (profile.isTopical && (id.includes('vitaminc') || name.includes('vitaminc') || id.includes('retinol') || id.includes('serum'))) {
+    profile.primaryCompoundFamily = 'Topical Skincare Formulation'
   }
 
   // 6. mTOR Stimulators & Mechanical Hypertrophy
@@ -142,13 +151,16 @@ export function classifyModalityOntology(modality: Modality): ModalityBiochemica
     profile.primaryCompoundFamily = 'GABAergic / Sleep Enhancer'
   }
 
-  // 9. Central Nervous System Stimulants
+  // 9. Central Nervous System Stimulants (Excludes topical eye creams and decaf)
+  const isDecaf = isDecafOrNonCaffeinatedModality(modality)
   if (
-    id.includes('caffeine') || name.includes('caffeine') ||
-    id.includes('coffee') || name.includes('coffee') ||
-    id.includes('preworkout') || name.includes('preworkout') ||
-    id.includes('modafinil') || id.includes('tyrosine') || name.includes('tyrosine') ||
-    id.includes('cordyceps') || name.includes('cordyceps')
+    !profile.isTopical && !isDecaf && (
+      id.includes('caffeine') || name.includes('caffeine') ||
+      id.includes('coffee') || name.includes('coffee') ||
+      id.includes('preworkout') || name.includes('preworkout') ||
+      id.includes('modafinil') || id.includes('tyrosine') || name.includes('tyrosine') ||
+      id.includes('cordyceps') || name.includes('cordyceps')
+    )
   ) {
     profile.isCentralStimulant = true
     profile.primaryCompoundFamily = 'CNS / Adenosine Antagonist'

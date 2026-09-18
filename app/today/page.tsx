@@ -34,7 +34,7 @@ import {
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
-  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search, Scale, Shield, ShieldAlert,
+  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search, Scale, Shield, ShieldAlert, ShieldCheck,
   Flame
 } from 'lucide-react'
 
@@ -4251,6 +4251,22 @@ function TodayPageContent() {
               <span>Log</span>
             </button>
 
+            {/* Routine Health & Conflict Optimizer Option */}
+            <button
+              type="button"
+              onClick={() => setIsStackHealthModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 hover:border-purple-400 text-purple-300 hover:text-purple-200 text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 shadow-sm shadow-purple-500/10 active:scale-95"
+              title="Audit routine health, pharmacological spacing, and resolve biochemical conflicts"
+            >
+              <ShieldCheck size={13} className="text-purple-400" />
+              <span>Routine Health &amp; Conflicts</span>
+              {routineAudit.conflictCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-rose-500/90 text-white text-[9px] font-mono font-bold">
+                  {routineAudit.conflictCount}
+                </span>
+              )}
+            </button>
+
             {asNeededQuickPills.map(item => (
               <button
                 key={item.id}
@@ -5326,6 +5342,7 @@ function TodayPageContent() {
           dateStr={dateStr}
           initialTimingSlot={asNeededSlot}
           initialModalityId={asNeededModalityId}
+          onOpenStackHealth={() => setIsStackHealthModalOpen(true)}
           onLogged={async () => {
             await refreshTodayTasks()
             const bItems = await getBenchItems(profile.local_user_id)

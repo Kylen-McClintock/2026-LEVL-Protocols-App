@@ -20,7 +20,8 @@ import {
   Droplets,
   Pill,
   Moon,
-  Wind
+  Wind,
+  ShieldCheck
 } from 'lucide-react'
 import { Modality, UserBenchItem, DailyProtocolTask } from '@/lib/types'
 import { 
@@ -44,6 +45,7 @@ type AdHocLoggerModalProps = {
   dateStr?: string
   initialTimingSlot?: string
   initialModalityId?: string
+  onOpenStackHealth?: () => void
 }
 
 const CATEGORY_OPTIONS = [
@@ -66,7 +68,8 @@ export default function AdHocLoggerModal({
   todayTasks = [],
   dateStr,
   initialTimingSlot,
-  initialModalityId
+  initialModalityId,
+  onOpenStackHealth
 }: AdHocLoggerModalProps) {
   const [allModalities, setAllModalities] = useState<Modality[]>([])
   const [internalBenchItems, setInternalBenchItems] = useState<UserBenchItem[]>([])
@@ -472,6 +475,37 @@ export default function AdHocLoggerModal({
                     </div>
                   </div>
                   <ChevronRight size={16} className="text-amber-400 group-hover:translate-x-1 transition-transform shrink-0" />
+                </div>
+              )}
+
+              {/* Routine Health & Conflict Optimizer Option */}
+              {!query.trim() && onOpenStackHealth && (
+                <div 
+                  onClick={() => {
+                    onClose()
+                    onOpenStackHealth()
+                  }}
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/50 via-slate-900/80 to-indigo-950/40 border border-purple-500/30 hover:border-purple-400/60 cursor-pointer group transition-all shadow-md active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 group-hover:scale-110 transition-transform">
+                      <ShieldCheck size={16} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-extrabold text-white group-hover:text-purple-200 transition-colors">
+                          Routine Health &amp; Conflict Optimizer
+                        </span>
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                          Audit &amp; Fix
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        Audit schedule, detect pharmacological timing clashes &amp; resolve conflicts
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-purple-400 group-hover:translate-x-1 transition-transform shrink-0" />
                 </div>
               )}
 

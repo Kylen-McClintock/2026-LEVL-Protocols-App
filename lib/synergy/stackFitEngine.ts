@@ -218,10 +218,12 @@ export function evaluateStackFit(
       }
     }
 
-    // High-Dose Antioxidants vs Workout Hormesis
+    // High-Dose Systemic Antioxidants vs Workout Hormesis (excludes topical skin serums)
     if (
-      (exploringOntology.isHighDoseAntioxidant && otherOntology.isMtorStimulator) ||
-      (exploringOntology.isMtorStimulator && otherOntology.isHighDoseAntioxidant)
+      !exploringOntology.isTopical &&
+      !otherOntology.isTopical &&
+      ((exploringOntology.isHighDoseAntioxidant && otherOntology.isMtorStimulator) ||
+       (exploringOntology.isMtorStimulator && otherOntology.isHighDoseAntioxidant))
     ) {
       if (!conflicts.some(c => c.matchedModalityId === other.id && c.conflictType === 'hypertrophy_blunting')) {
         conflicts.push({
