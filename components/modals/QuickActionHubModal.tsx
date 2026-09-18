@@ -74,6 +74,39 @@ export default function QuickActionHubModal({
             {/* Action Grid */}
             <div className="p-4 sm:p-5 overflow-y-auto space-y-2.5 flex-1">
               
+              {/* Option: Routine Stack Health & Conflict Optimizer */}
+              <button
+                onClick={() => {
+                  onClose()
+                  if (typeof window !== 'undefined') {
+                    if (window.location.pathname === '/today') {
+                      window.dispatchEvent(new CustomEvent('levl_open_stack_health'))
+                    } else {
+                      router.push('/today?openStackHealth=true')
+                    }
+                  }
+                }}
+                className="w-full text-left p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/20 via-indigo-500/15 to-emerald-500/15 border border-purple-500/40 hover:border-purple-400/70 hover:bg-purple-500/25 transition-all group flex items-center justify-between cursor-pointer shadow-lg shadow-purple-500/10"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/30 to-emerald-500/30 border border-purple-500/50 flex items-center justify-center text-purple-200 group-hover:scale-105 transition-transform shadow-md shadow-purple-500/20">
+                    <ShieldCheck size={20} className="text-purple-300" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-white group-hover:text-purple-200 transition-colors flex items-center gap-1.5">
+                      Routine Health &amp; Conflict Optimizer
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/30 border border-purple-500/40 text-purple-300 font-mono font-bold">
+                        ✦ AUDIT
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      Audit biochemical conflicts, pharmacological spacing, and synergize routine timing
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight size={16} className="text-slate-500 group-hover:text-purple-300 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+              </button>
+
               {/* Option 1: Voice Protocol Log */}
               <button
                 onClick={() => {

@@ -35,7 +35,7 @@ import {
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
   Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search, Scale, Shield, ShieldAlert, ShieldCheck,
-  Flame
+  Flame, SkipForward
 } from 'lucide-react'
 
 import { evaluateDailyBandwidth, DailyBandwidthMode, BandwidthEvaluation } from '@/lib/adaptive/dailyBandwidthEngine'
@@ -117,6 +117,7 @@ interface SupplementCompactRowProps {
   modalityName: string
   benchItem?: UserBenchItem
   onStatusChange: (taskId: string, status: string) => void
+  onOpenRescheduleModal?: (task: DedupedTask) => void
   onOpenDetails: () => void
   completionMode: string
 }
@@ -127,6 +128,7 @@ function SupplementCompactRow({
   modalityName,
   benchItem,
   onStatusChange,
+  onOpenRescheduleModal,
   onOpenDetails,
   completionMode
 }: SupplementCompactRowProps) {
@@ -136,33 +138,15 @@ function SupplementCompactRow({
   return (
     <div
       onClick={onOpenDetails}
-      className={`flex items-center justify-between gap-2 px-2.5 py-2 sm:py-2.5 rounded-xl border transition-all cursor-pointer group select-none min-w-0 overflow-hidden ${
+      className={`flex items-center justify-between gap-2 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl border transition-all cursor-pointer group select-none min-w-0 overflow-hidden ${
         isDone
           ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/50 hover:bg-emerald-950/30'
           : 'bg-slate-900/70 border-white/10 hover:border-purple-500/40 hover:bg-slate-900/90 shadow-sm'
       }`}
     >
-      {/* Left: Consistent Green Complete Circle Button & Icon & Name & Dose */}
+      {/* Left: Icon & Name & Dose */}
       <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            triggerHaptic('success')
-            onStatusChange(task.id, isDone ? 'pending' : 'completed')
-          }}
-          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-90 touch-manipulation shrink-0 ${
-            isDone
-              ? 'bg-emerald-500 text-slate-950 scale-105 shadow-[0_0_12px_rgba(16,185,129,0.8)]'
-              : 'bg-emerald-500/20 border border-emerald-500/60 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 hover:shadow-[0_0_10px_rgba(16,185,129,0.5)]'
-          }`}
-          title={isDone ? "Mark as pending" : "Complete modality instantly"}
-          aria-label="Complete supplement"
-        >
-          <Check size={14} strokeWidth={isDone ? 3 : 2.5} />
-        </button>
-
-        <ModalityIcon modality={modality} modalityName={modalityName} size={15} className={`shrink-0 ${isDone ? 'opacity-60' : 'opacity-100'}`} glow={!isDone} />
+        <ModalityIcon modality={modality} modalityName={modalityName} size={16} className={`shrink-0 ${isDone ? 'opacity-60' : 'opacity-100'}`} glow={!isDone} />
 
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-hidden">
           <span className={`text-xs sm:text-[13px] font-bold truncate transition-colors min-w-0 ${
@@ -185,9 +169,52 @@ function SupplementCompactRow({
         </div>
       </div>
 
-      {/* Right: Subtle Details Affordance */}
-      <div className="flex items-center gap-1 shrink-0 text-slate-500 group-hover:text-purple-300 transition-colors pl-1">
-        <ChevronDown size={13} className="group-hover:translate-y-0.5 transition-transform" />
+      {/* Right: Skip/Push & Green Complete Buttons (Matching ProtocolTaskCard!) */}
+      <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+        {isDone ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              triggerHaptic('selection')
+              onStatusChange(task.id, 'pending')
+            }}
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center bg-emerald-500 text-slate-950 scale-105 shadow-[0_0_12px_rgba(16,185,129,0.8)] cursor-pointer active:scale-90 touch-manipulation transition-transform"
+            title="Mark as pending (Undo)"
+            aria-label="Undo completion"
+          >
+            <Check size={14} strokeWidth={3} />
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                triggerHaptic('selection')
+                if (onOpenRescheduleModal) onOpenRescheduleModal(task)
+              }}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 active:scale-90 transition-all cursor-pointer touch-manipulation shrink-0"
+              title="Snooze, reschedule, or skip supplement"
+              aria-label="Skip or push supplement"
+            >
+              <SkipForward size={12} className="ml-0.5" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                triggerHaptic('success')
+                onStatusChange(task.id, 'completed')
+              }}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center bg-emerald-500/20 border border-emerald-500/60 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 hover:shadow-[0_0_10px_rgba(16,185,129,0.5)] active:scale-90 transition-all cursor-pointer touch-manipulation shrink-0"
+              title="Complete supplement instantly"
+              aria-label="Complete supplement"
+            >
+              <Check size={14} strokeWidth={2.5} />
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -457,6 +484,17 @@ function TodayPageContent() {
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([])
   const [isStackHealthModalOpen, setIsStackHealthModalOpen] = useState(false)
   const [expandedSupplementBlocks, setExpandedSupplementBlocks] = useState<Record<string, boolean>>({})
+  const [expandedSupplementId, setExpandedSupplementId] = useState<string | null>(null)
+
+  // Listen for Quick Action Hub opening Routine Stack Health & Conflict Optimizer
+  useEffect(() => {
+    const handleOpenStackHealth = () => setIsStackHealthModalOpen(true)
+    window.addEventListener('levl_open_stack_health', handleOpenStackHealth)
+    if (searchParams?.get('openStackHealth') === 'true') {
+      setIsStackHealthModalOpen(true)
+    }
+    return () => window.removeEventListener('levl_open_stack_health', handleOpenStackHealth)
+  }, [searchParams])
 
   // Bidirectional View Mode sync with TopStickyHeader
   useEffect(() => {
@@ -3578,6 +3616,13 @@ function TodayPageContent() {
                                       : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
                                 }`}>
                                   {suppPast.map(t => {
+                                    if (expandedSupplementId === t.id) {
+                                      return (
+                                        <div key={t.id} className="col-span-full">
+                                          {renderCard(t, undefined, false)}
+                                        </div>
+                                      )
+                                    }
                                     const mod = resolveTaskModality(t)
                                     const name = resolveTaskModalityName(t)
                                     const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
@@ -3589,7 +3634,8 @@ function TodayPageContent() {
                                         modalityName={name}
                                         benchItem={bench}
                                         onStatusChange={handleStatusChange}
-                                        onOpenDetails={() => {}}
+                                        onOpenRescheduleModal={handleOpenRescheduleModal}
+                                        onOpenDetails={() => setExpandedSupplementId(prev => prev === t.id ? null : t.id)}
                                         completionMode={completionMode}
                                       />
                                     )
