@@ -2094,3 +2094,172 @@ SET
   functional_impacts = '{"Mood":{"score":8,"studies":[{"title":"Effects of Light on Human Circadian Rhythms, Sleep and Mood","url":"https://pubmed.ncbi.nlm.nih.gov/31082163/","notes":"Natural daylight exposure triggers retinal ganglion melanopsin signaling, enhancing monoaminergic tone and affective stability."}]},"Focus":{"score":8,"studies":[{"title":"High-lux morning photic stimulation and cognitive vigilance","url":"https://pubmed.ncbi.nlm.nih.gov/28417937/","notes":"Morning photon stimulation synchronizes suprachiasmatic nucleus (SCN) firing and elevates daytime cognitive vigilance."}]},"Energy":{"score":9,"studies":[{"title":"Circadian Light and Sleep Quality in Shift Workers and Healthy Adults","url":"https://pubmed.ncbi.nlm.nih.gov/28417937/","notes":"High-lux morning exposure anchors the cortisol awakening response, clearing sleep inertia and elevating daytime alertness."}]},"Sleep Quality":{"score":9,"studies":[{"title":"Effects of Light on Human Circadian Rhythms, Sleep and Mood","url":"https://pubmed.ncbi.nlm.nih.gov/31082163/","notes":"Morning light sets a 14-16 hour circadian timer for pineal melatonin synthesis, reducing sleep latency by 45% and increasing slow-wave sleep amplitude."}]},"brain_longevity":{"score":80,"tier":"synergistic","evidence_grade":"Grade A (Human RCT)","effect_size":"Circadian phase advance, -45% sleep latency, +50% nocturnal melatonin amplitude","biomarkers":["Dim Light Melatonin Onset (DLMO)","Morning Cortisol Awakening Response (CAR)","Sleep Latency","Slow-Wave Sleep Power"],"mechanism":"High-lux natural photon flux (>10,000 lux) activates intrinsically photosensitive retinal ganglion cells (ipRGCs) via melanopsin. Glutamatergic transmission across the retinohypothalamic tract (RHT) synchronizes the central suprachiasmatic nucleus (SCN) master clock, driving an acute cortisol wakefulness surge and setting a 14-16h circadian timer for pineal melatonin release.","studies":[{"pmid":"28417937","title":"Circadian Light and Sleep Quality in Shift Workers and Healthy Adults","url":"https://pubmed.ncbi.nlm.nih.gov/28417937/","type":"RCT"},{"pmid":"31082163","title":"Effects of Light on Human Circadian Rhythms, Sleep and Mood","url":"https://pubmed.ncbi.nlm.nih.gov/31082163/","type":"Review"}]},"metabolic_health":{"score":68,"tier":"marginal","evidence_grade":"Grade B (Clinical Trial)","effect_size":"Improves postprandial glucose disposal through circadian alignment of peripheral metabolic clocks","biomarkers":["Fasting Glucose","HOMA-IR"],"mechanism":"Circadian clock gene alignment (CLOCK, BMAL1, PER) normalizes autonomic hepatic glucose output and insulin sensitivity.","studies":[{"pmid":"29879102","title":"Circadian misalignment impairs glucose tolerance and insulin sensitivity in humans","url":"https://pubmed.ncbi.nlm.nih.gov/29879102/","type":"Clinical Trial"}]}}'::jsonb
 WHERE id IN ('morning_sunlight', 'morning_sunlight_exposure');
 
+-- =========================================================================
+-- Modality Title Generalization & Dosage Separation Migration
+-- Strips hardcoded dosages from names and display_names while preserving
+-- route of administration (e.g. SubQ vs Oral) and physiological stimuli.
+-- Automatically synchronizes with LongevityReviews.org
+-- =========================================================================
+
+UPDATE modalities SET 
+  display_name = 'Ceramide & Ectoin Barrier Cream',
+  name = 'Ceramide NP & Ectoin Barrier Recovery Cream'
+WHERE id = 'ceramide_ectoin_barrier_cream';
+
+UPDATE modalities SET 
+  display_name = 'Topical GHK-Cu Copper Peptide Serum',
+  name = 'Topical GHK-Cu Copper Tripeptide Serum'
+WHERE id = 'topical_ghk_cu_serum';
+
+UPDATE modalities SET 
+  display_name = 'Micro-Retinoid (Topical)',
+  name = 'Micro-Encapsulated Retinoid (Topical)'
+WHERE id = 'micro_retinoid_tretinoin';
+
+UPDATE modalities SET 
+  display_name = 'Antioxidant C+E+Ferulic Serum',
+  name = 'Antioxidant C + E + Ferulic Acid Serum'
+WHERE id = 'antioxidant_vitamin_c_ferulic';
+
+UPDATE modalities SET 
+  display_name = 'Mineral SPF 50+ Sunscreen',
+  name = 'Mineral Zinc Oxide SPF 50+ Sunscreen'
+WHERE id = 'mineral_sunscreen_spf50';
+
+UPDATE modalities SET 
+  display_name = 'Hydrolyzed Collagen Peptides',
+  name = 'Hydrolyzed Collagen Peptides (Types I & III)'
+WHERE id = 'hydrolyzed_collagen_peptides';
+
+UPDATE modalities SET 
+  display_name = 'BPC-157 Peptide (SubQ)',
+  name = 'BPC-157 Peptide (SubQ)'
+WHERE id = 'bpc157_subq';
+
+UPDATE modalities SET 
+  display_name = 'TB-500 Thymosin Beta-4 (SubQ)',
+  name = 'TB-500 (Thymosin Beta-4 SubQ)'
+WHERE id = 'tb500_subq';
+
+UPDATE modalities SET 
+  display_name = 'Ipamorelin (SubQ)',
+  name = 'Ipamorelin Growth Hormone Secretagogue (SubQ)'
+WHERE id = 'ipamorelin_subq';
+
+UPDATE modalities SET 
+  display_name = 'CJC-1295 No DAC (SubQ)',
+  name = 'CJC-1295 (No DAC / Mod GRF 1-29 SubQ)'
+WHERE id = 'cjc1295_no_dac_subq';
+
+UPDATE modalities SET 
+  display_name = 'GHK-Cu Peptide (SubQ)',
+  name = 'GHK-Cu (Copper Tripeptide-1 SubQ)'
+WHERE id = 'ghk_cu_subq';
+
+UPDATE modalities SET 
+  display_name = 'Tirzepatide (SubQ)',
+  name = 'Tirzepatide (Dual GIP/GLP-1 Receptor Agonist SubQ)'
+WHERE id = 'tirzepatide_subq';
+
+UPDATE modalities SET 
+  display_name = 'KPV Peptide (SubQ)',
+  name = 'KPV (Alpha-MSH 11-13 Tripeptide SubQ)'
+WHERE id = 'kpv_subq';
+
+UPDATE modalities SET 
+  display_name = 'AOD-9604 Lipolytic Fragment (SubQ)',
+  name = 'AOD-9604 (Lipolytic hGH Fragment 177-191 SubQ)'
+WHERE id = 'aod9604_subq';
+
+UPDATE modalities SET 
+  display_name = 'Glycine Supplementation',
+  name = 'Glycine Supplementation'
+WHERE id IN ('glycine_3g', 'glycine');
+
+UPDATE modalities SET 
+  display_name = 'Apigenin',
+  name = 'Apigenin Flavonoid'
+WHERE id = 'apigenin';
+
+UPDATE modalities SET 
+  display_name = 'L-Theanine',
+  name = 'L-Theanine Amino Acid'
+WHERE id = 'l_theanine';
+
+UPDATE modalities SET 
+  display_name = 'Berberine HCl',
+  name = 'Berberine HCl Glucose Disposal Agent'
+WHERE id = 'means_berberine_gda';
+
+UPDATE modalities SET 
+  display_name = 'Vitamin D3 + K2 (MK-7)',
+  name = 'Vitamin D3 (Cholecalciferol) + Vitamin K2 (MK-7)'
+WHERE id = 'rhonda_vitamin_d3_k2';
+
+UPDATE modalities SET 
+  display_name = 'Viscous Soluble Fiber & Plant Phytosterols',
+  name = 'Viscous Soluble Fiber & Plant Phytosterols'
+WHERE id = 'dayspring_viscous_fiber_phytosterols';
+
+UPDATE modalities SET 
+  display_name = 'Dietary Inorganic Nitrate + L-Citrulline Malate',
+  name = 'Dietary Inorganic Nitrate + L-Citrulline Malate'
+WHERE id = 'dayspring_inorganic_nitrate_citrulline';
+
+UPDATE modalities SET 
+  display_name = 'Progressive Endurance Long Run',
+  name = 'Progressive Endurance Long Run (Cardiovascular Base)'
+WHERE id = 'hm_progressive_longrun';
+
+UPDATE modalities SET 
+  display_name = 'VILPA Vigorous Micro-Bursts',
+  name = 'VILPA (Vigorous Intermittent Lifestyle Physical Activity)'
+WHERE id = 'vilpa_micro_bursts';
+
+UPDATE modalities SET 
+  display_name = 'Circadian Caffeine Delay',
+  name = 'Circadian Adenosine Caffeine Delay'
+WHERE id = 'delay_caffeine';
+
+UPDATE modalities SET 
+  display_name = 'Sleep Rescue: Lateral Eye Movement Sweep',
+  name = 'Sleep Rescue: Lateral Eye Movement Sweep'
+WHERE id = 'sleep_rescue_eye_movement';
+
+UPDATE modalities SET 
+  display_name = 'Retinal Astaxanthin',
+  name = 'Retinal Astaxanthin Microalgal Extract'
+WHERE id = 'retinal_astaxanthin';
+
+UPDATE modalities SET 
+  display_name = 'Low-Dose Aspirin',
+  name = 'Low-Dose Aspirin (Cardiovascular Prevention)'
+WHERE id = 'low-dose-aspirin';
+
+UPDATE modalities SET 
+  display_name = 'Sublingual NMN + TMG',
+  name = 'Sublingual Micronized NMN + TMG Complex'
+WHERE id = 'sinclair_nmn_tmg';
+
+UPDATE modalities SET 
+  display_name = 'Glycine Supplementation',
+  name = 'Glycine Supplementation'
+WHERE id = 'glycine_supplementation';
+
+UPDATE modalities SET 
+  display_name = 'Metformin or Berberine (AMPK)',
+  name = 'Metformin or Berberine HCl AMPK Activator'
+WHERE id = 'sinclair_metformin_berberine';
+
+UPDATE modalities SET 
+  display_name = 'MCHA Whole-Bone Calcium + Boron',
+  name = 'Microcrystalline Hydroxyapatite (MCHA) + Boron Fructoborate'
+WHERE id = 'microcrystalline_hydroxyapatite_boron';
+
+UPDATE modalities SET 
+  display_name = 'High-Flavanol Cocoa Flavanols',
+  name = 'High-Flavanol Cocoa Extract (Epicatechin)'
+WHERE id = 'high_flavanol_cocoa_epicatechin';
+
+
+
