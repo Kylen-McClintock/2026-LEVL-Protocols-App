@@ -98,9 +98,9 @@ function formatSlotName(str: string): string {
 export function normalizeChronologicalTimeBlock(slot: string): string {
   if (!slot) return 'anytime'
   const s = slot.toLowerCase().trim()
-  if (s === 'morning_supplement_stack' || s === 'am_stack' || s === 'fasted_am') return 'morning'
-  if (s === 'evening_supplement_stack' || s === 'pm_stack' || s === 'dinner_stack') return 'evening'
-  if (s === 'midday_stack' || s === 'lunch_stack') return 'midday'
+  if (s === 'am_stack' || s === 'fasted_am') return 'morning_supplement_stack'
+  if (s === 'pm_stack' || s === 'dinner_stack') return 'evening_supplement_stack'
+  if (s === 'lunch_stack') return 'midday_stack'
   return slot
 }
 
@@ -3567,10 +3567,9 @@ function TodayPageContent() {
         <div 
           key={groupName} 
           ref={(el) => { groupHeaderRefs.current[groupName] = el }}
-          onClick={isPastCollapsed ? () => toggleGroupCollapse(groupName, groupTasks) : undefined}
           className={`relative ${
             isPastCollapsed
-              ? 'rounded-2xl border border-purple-500/30 hover:border-purple-400/60 bg-slate-900/40 hover:bg-slate-900/80 p-3 sm:p-3.5 shadow-md hover:shadow-lg transition-all cursor-pointer my-2 active:scale-[0.99] group/past-block'
+              ? 'rounded-2xl border border-purple-500/30 hover:border-purple-400/60 bg-slate-900/40 hover:bg-slate-900/80 p-3 sm:p-3.5 shadow-md hover:shadow-lg transition-all my-2 group/past-block'
               : isAnytime 
                 ? (completionMode === 'fast' ? 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2 sm:p-2.5 space-y-2 my-2' : 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2.5 sm:p-3 space-y-2.5 my-3')
                 : (completionMode === 'fast' ? 'pl-1.5 sm:pl-2.5 space-y-2' : 'pl-1.5 sm:pl-2.5 space-y-3')
@@ -3579,7 +3578,10 @@ function TodayPageContent() {
           <div className={`flex items-center justify-between ${isPastCollapsed ? '' : isAnytime ? 'border-b border-dashed border-white/10 pb-2' : 'border-b border-white/10 pb-2.5'} flex-wrap gap-2`}>
             <button
               type="button"
-              onClick={() => toggleGroupCollapse(groupName, groupTasks)}
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleGroupCollapse(groupName, groupTasks)
+              }}
               className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-none flex-1 min-w-0"
             >
               {/* Circadian Sky Beacon Icon */}
@@ -3604,15 +3606,17 @@ function TodayPageContent() {
 
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className={`${isAnytime ? 'text-[11px] sm:text-xs font-bold tracking-normal' : 'text-sm font-extrabold tracking-wider'} uppercase transition-colors truncate ${
-                    isIgnited ? (isAnytime ? 'text-slate-300 group-hover:text-purple-300' : 'text-white group-hover:text-purple-200') : 'text-slate-400 group-hover:text-slate-200'
+                  <span className={`${isAnytime ? 'text-[11px] sm:text-xs font-bold tracking-normal' : 'text-sm font-extrabold tracking-wider'} uppercase transition-colors ${
+                    isIgnited || isPastCollapsed
+                      ? (isAnytime ? 'text-slate-300 group-hover:text-purple-300' : 'text-white group-hover:text-purple-200') 
+                      : 'text-slate-200 group-hover:text-white'
                   }`}>
                     {isAnytime ? 'Anytime / Flexible' : formatSlotName(groupName)}
                   </span>
                   <span className={`text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-mono font-bold shrink-0 transition-colors ${
                     completedCount === groupTasks.length && groupTasks.length > 0
                       ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40'
-                      : isIgnited 
+                      : isIgnited || isPastCollapsed
                         ? (isAnytime ? 'bg-purple-950/50 text-purple-300 border border-purple-800/40' : 'bg-slate-800/90 text-slate-200 border border-white/10') 
                         : 'bg-slate-900 text-slate-400 border border-white/5'
                   }`}>
@@ -3852,8 +3856,71 @@ function TodayPageContent() {
             </div>
           )}
 
-          {/* If Collapsed, hide all modalities completely. If Expanded, render modality task cards */}
-          {!isCollapsed && (
+          {/* Collapsed Modality Preview Tray OR Expanded Modality Task Cards */}
+          {isCollapsed ? (
+            <div 
+              onClick={() => toggleGroupCollapse(groupName, groupTasks)}
+              className="mt-2 pt-2.5 border-t border-white/10 space-y-2.5 cursor-pointer group/tray select-none"
+            >
+              {/* Modality Chips Tray */}
+              <div className="flex flex-wrap items-center gap-1.5 supplement-tray-chips">
+                {groupTasks.map((t) => {
+                  const mod = resolveTaskModality(t)
+                  const name = resolveTaskModalityName(t)
+                  const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
+                  const dose = t.execution_details?.custom_dose || bench?.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount}${t.protocol_step.dose_unit || ''}` : '') || mod?.dose_or_exposure || ''
+                  const isDone = t.status === 'completed'
+
+                  return (
+                    <span 
+                      key={t.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        triggerHaptic('success')
+                        handleStatusChange(t.id, isDone ? 'pending' : 'completed')
+                      }}
+                      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-all cursor-pointer shadow-sm active:scale-95 ${
+                        isDone 
+                          ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300 hover:bg-emerald-950/60'
+                          : 'bg-black/50 border-purple-500/30 hover:border-purple-400 text-slate-200 hover:bg-purple-950/40'
+                      }`}
+                      title={isDone ? `${name} (Done) • Click to uncheck` : `${name} (Pending) • Click to log`}
+                    >
+                      {isDone ? (
+                        <Check size={11} className="text-emerald-400 stroke-[3] shrink-0" />
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                      )}
+                      <ModalityIcon modality={mod} modalityName={name} size={13} className={`shrink-0 ${isDone ? 'opacity-70' : 'opacity-100'}`} glow={!isDone} />
+                      <span className={`supplement-name truncate max-w-[150px] sm:max-w-[200px] ${isDone ? 'line-through opacity-80 text-slate-300' : 'text-white'}`}>
+                        {name}
+                      </span>
+                      {dose && (
+                        <span className={`supplement-dose text-[10px] font-mono font-normal shrink-0 ${isDone ? 'text-emerald-400/80' : 'text-purple-300'}`}>
+                          • {dose}
+                        </span>
+                      )}
+                    </span>
+                  )
+                })}
+              </div>
+
+              {/* Bottom Visual Expand Indicator */}
+              <div className="flex items-center justify-between text-[11px] text-purple-400/90 group-hover/tray:text-purple-300 font-semibold pt-1 border-t border-white/5">
+                <div className="flex items-center gap-1.5">
+                  <ChevronDown size={13} className="group-hover/tray:translate-y-0.5 transition-transform" />
+                  <span className="text-[11px] font-bold">
+                    {groupTasks.length} {groupTasks.length === 1 ? 'Modality' : 'Modalities'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-semibold ${completedCount === groupTasks.length ? 'text-emerald-400' : 'text-amber-300'}`}>
+                    {completedCount === groupTasks.length ? '✓ All Logged' : `${groupTasks.length - completedCount} Pending`}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
             <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
               {(() => {
                 const renderCard = (task: DedupedTask) => {
@@ -3904,44 +3971,61 @@ function TodayPageContent() {
                   <>
                     {nonSuppTasks.map(renderCard)}
 
-                    {/* In-Block Supplement Stack Sub-Line */}
-                    <div className="pt-2 pb-1 flex items-center justify-between gap-3 border-t border-white/10 my-1">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
-                        className="flex items-center gap-2 text-left cursor-pointer group select-none"
-                        title={isSuppStackExpanded ? "Collapse to compact rows" : "Click to view full cards for all supplements"}
-                      >
-                        <span className="w-5 h-5 rounded-md bg-purple-950/40 border border-purple-500/30 flex items-center justify-center text-[11px] shrink-0 text-purple-300 shadow-sm group-hover:bg-purple-900/60 transition-colors">
-                          💊
-                        </span>
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-purple-200 group-hover:text-white transition-colors flex items-center gap-1.5">
-                          <span>{formatSlotName(groupName)} Supplements ({suppTasks.length})</span>
-                          {isSuppStackExpanded ? (
-                            <ChevronUp size={13} className="text-purple-400 group-hover:-translate-y-0.5 transition-transform" />
-                          ) : (
-                            <ChevronDown size={13} className="text-purple-400 group-hover:translate-y-0.5 transition-transform" />
-                          )}
-                        </span>
-                      </button>
-
-                      <div className="flex items-center gap-2">
-                        {allSuppsCompleted ? (
-                          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
-                            <Check size={11} strokeWidth={2.5} /> All Taken
+                    {/* In-Block Supplement Stack Sub-Line (only shown when mixed with non-supplements) */}
+                    {nonSuppTasks.length > 0 && (
+                      <div className="pt-2 pb-1 flex items-center justify-between gap-3 border-t border-white/10 my-1">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
+                          className="flex items-center gap-2 text-left cursor-pointer group select-none"
+                          title={isSuppStackExpanded ? "Collapse to compact rows" : "Click to view full cards for all supplements"}
+                        >
+                          <span className="w-5 h-5 rounded-md bg-purple-950/40 border border-purple-500/30 flex items-center justify-center text-[11px] shrink-0 text-purple-300 shadow-sm group-hover:bg-purple-900/60 transition-colors">
+                            💊
                           </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleCompleteMultipleTasks(suppTasks)}
-                            className="text-[10px] font-semibold text-purple-300 hover:text-white bg-purple-950/50 hover:bg-purple-900/60 border border-purple-500/30 px-2.5 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
-                            title="Take all supplements in this stack"
-                          >
-                            <Check size={11} strokeWidth={2.5} /> Take All
-                          </button>
-                        )}
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-purple-200 group-hover:text-white transition-colors flex items-center gap-1.5">
+                            <span>Supplements ({suppTasks.length})</span>
+                            {isSuppStackExpanded ? (
+                              <ChevronUp size={13} className="text-purple-400 group-hover:-translate-y-0.5 transition-transform" />
+                            ) : (
+                              <ChevronDown size={13} className="text-purple-400 group-hover:translate-y-0.5 transition-transform" />
+                            )}
+                          </span>
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                          {allSuppsCompleted ? (
+                            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
+                              <Check size={11} strokeWidth={2.5} /> All Taken
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleCompleteMultipleTasks(suppTasks)}
+                              className="text-[10px] font-semibold text-purple-300 hover:text-white bg-purple-950/50 hover:bg-purple-900/60 border border-purple-500/30 px-2.5 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
+                              title="Take all supplements in this stack"
+                            >
+                              <Check size={11} strokeWidth={2.5} /> Take All
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Pure Stack Header Toggle: When block contains only supplements, show subtle expand/collapse cards toggle */}
+                    {nonSuppTasks.length === 0 && (
+                      <div className="flex items-center justify-end pb-1">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
+                          className="text-[10px] font-semibold text-purple-400 hover:text-purple-200 flex items-center gap-1 cursor-pointer transition-colors"
+                          title={isSuppStackExpanded ? "Collapse to compact rows" : "Expand all full cards"}
+                        >
+                          <span>{isSuppStackExpanded ? "Collapse to compact rows" : "Expand all full cards"}</span>
+                          {isSuppStackExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+                      </div>
+                    )}
 
                     {/* Collapsed Mode: Display ONE ROW PER SUPPLEMENT. Expanded Mode: Show ALL full cards */}
                     {isSuppStackExpanded ? (
