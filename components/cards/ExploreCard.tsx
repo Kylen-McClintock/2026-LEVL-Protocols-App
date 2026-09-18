@@ -134,14 +134,14 @@ function ExploreCard({
             ? 'bg-cyan-950/25 border-cyan-500/30'
             : hasContraindication
             ? 'bg-rose-950/25 border-rose-500/30'
-            : 'bg-slate-900/60 border-slate-800 hover:bg-slate-900/90'
+            : 'glass-card hover:border-slate-400/40'
         }`}
       >
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <ModalityIcon modality={modality} size={20} className="shrink-0 text-slate-300" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <h3 className="font-bold text-sm sm:text-base text-white truncate group-hover:text-amber-200/90 transition-colors">
+              <h3 className="font-bold text-sm sm:text-base text-levl-text-primary truncate group-hover:text-emerald-500 transition-colors">
                 {modality.display_name || modality.name}
               </h3>
               {isCurrentlyActiveInToday && (
@@ -233,7 +233,7 @@ function ExploreCard({
           <div className="flex items-start gap-2.5 min-w-0">
             <ModalityIcon modality={modality} size={20} className="shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
-              <h3 className="font-bold text-lg text-white break-words">
+              <h3 className="font-bold text-lg text-levl-text-primary break-words">
                 {modality.display_name || modality.name}
               </h3>
             
@@ -334,7 +334,7 @@ function ExploreCard({
             <div className="mt-2 p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-[11px] text-rose-200 flex items-start gap-2 animate-in fade-in">
               <AlertTriangle size={13} className="text-rose-400 shrink-0 mt-0.5" />
               <div className="min-w-0 flex-1 leading-snug">
-                <span className="font-extrabold text-white">{contraindications[0].headline}: </span>
+                <span className="font-extrabold text-levl-text-primary">{contraindications[0].headline}: </span>
                 <span className="text-slate-300">{contraindications[0].clinicalRationale}</span>
               </div>
             </div>
@@ -394,7 +394,7 @@ function ExploreCard({
             <div className="flex items-center gap-2 min-w-0">
               <Scale size={14} className="text-amber-400 shrink-0" />
               <span className="truncate">
-                Similar to <strong className="text-white">{similarActiveModality.modality.display_name || similarActiveModality.modality.name}</strong> ({similarActiveModality.source === 'today' ? "in Today's plan" : "on Bench"})
+                Similar to <strong className="text-levl-text-primary">{similarActiveModality.modality.display_name || similarActiveModality.modality.name}</strong> ({similarActiveModality.source === 'today' ? "in Today's plan" : "on Bench"})
               </span>
             </div>
             <span className="text-[10px] font-bold uppercase bg-amber-500/20 text-amber-200 border border-amber-500/40 px-2 py-1 rounded-lg shrink-0 flex items-center gap-1 ml-2">
@@ -492,7 +492,7 @@ function ExploreCard({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5">
               <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">Evidence Quality</span>
-              <span className="text-xs font-bold text-white font-mono">
+              <span className="text-xs font-bold text-levl-text-primary font-mono">
                 {modality.evidence_quality ? `${modality.evidence_quality}/5 (Clinical RCTs)` : 'Grade A (5/5)'}
               </span>
             </div>

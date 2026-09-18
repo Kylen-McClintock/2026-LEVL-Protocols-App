@@ -59,6 +59,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+              try {
+                var t = localStorage.getItem('levl_theme');
+                if (t === 'light') {
+                  document.documentElement.classList.remove('dark');
+                  document.documentElement.classList.add('light');
+                } else {
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.classList.remove('light');
+                }
+              } catch(e) {}
+            })();`,
+          }}
+        />
+      </head>
       <body className={`${inter.className} min-h-screen desktop-body-layout pb-16 relative`} suppressHydrationWarning>
         <AuthProvider>
           <OrientationController />

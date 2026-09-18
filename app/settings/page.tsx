@@ -19,6 +19,7 @@ import HardwareAccessCard from '@/components/profile/HardwareAccessCard'
 import BloodworkProfileCard from '@/components/profile/BloodworkProfileCard'
 import NegativeLongevityFactorsCard from '@/components/profile/NegativeLongevityFactorsCard'
 import MedicalHistoryPrescriptionsCard from '@/components/profile/MedicalHistoryPrescriptionsCard'
+import ThemeAppearanceSettingsCard from '@/components/profile/ThemeAppearanceSettingsCard'
 import TemperatureUnitSettingsCard from '@/components/profile/TemperatureUnitSettingsCard'
 import FontSizeSettingsCard from '@/components/profile/FontSizeSettingsCard'
 import DataSovereigntyCard from '@/components/profile/DataSovereigntyCard'
@@ -395,6 +396,11 @@ export default function SettingsPage() {
             onUpdated={(updated) => setProfile(updated)} 
           />
         )}
+
+        <ThemeAppearanceSettingsCard 
+          profile={profile} 
+          onUpdated={(updated) => setProfile(updated)} 
+        />
 
         <FontSizeSettingsCard 
           profile={profile || undefined} 
