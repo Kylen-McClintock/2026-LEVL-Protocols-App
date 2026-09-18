@@ -4209,36 +4209,6 @@ function TodayPageContent() {
               </button>
             )}
 
-            {/* Stack Health & Conflict Optimizer Pill */}
-            {calendarViewMode === 'today' && dedupedTasks.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic('selection')
-                  setIsStackHealthModalOpen(true)
-                }}
-                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
-                  routineAudit.criticalCount > 0
-                    ? 'bg-rose-950/60 hover:bg-rose-900/70 border border-rose-500/50 text-rose-200 animate-pulse'
-                    : routineAudit.conflictCount > 0
-                    ? 'bg-amber-950/60 hover:bg-amber-900/70 border border-amber-500/40 text-amber-300'
-                    : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
-                }`}
-                title="Audit My Routine — Live conflict & synergy optimizer"
-                aria-label="Audit Routine Stack Health"
-              >
-                <Scale size={13} className={routineAudit.conflictCount > 0 ? "text-amber-400" : "text-emerald-400"} />
-                <span className="hidden xs:inline">Stack Health</span>
-                <span className={`px-1.5 py-0.2 rounded-md font-mono text-[10px] ${
-                  routineAudit.conflictCount > 0 ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
-                }`}>
-                  {routineAudit.overallScore}%
-                </span>
-                {routineAudit.conflictCount > 0 && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping shrink-0" />
-                )}
-              </button>
-            )}
 
 
             {calendarViewMode !== 'today' && calendarViewMode !== 'pulse' && multiDayStats && multiDayStats.total > 0 && (
@@ -4330,21 +4300,6 @@ function TodayPageContent() {
               <span>Log</span>
             </button>
 
-            {/* Routine Health & Conflict Optimizer Option */}
-            <button
-              type="button"
-              onClick={() => setIsStackHealthModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 hover:border-purple-400 text-purple-300 hover:text-purple-200 text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 shadow-sm shadow-purple-500/10 active:scale-95"
-              title="Audit routine health, pharmacological spacing, and resolve biochemical conflicts"
-            >
-              <ShieldCheck size={13} className="text-purple-400" />
-              <span>Routine Health &amp; Conflicts</span>
-              {routineAudit.conflictCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-rose-500/90 text-white text-[9px] font-mono font-bold">
-                  {routineAudit.conflictCount}
-                </span>
-              )}
-            </button>
 
             {asNeededQuickPills.map(item => (
               <button
