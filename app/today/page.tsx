@@ -98,9 +98,9 @@ function formatSlotName(str: string): string {
 export function normalizeChronologicalTimeBlock(slot: string): string {
   if (!slot) return 'anytime'
   const s = slot.toLowerCase().trim()
-  if (s === 'am_stack' || s === 'fasted_am') return 'morning_supplement_stack'
-  if (s === 'pm_stack' || s === 'dinner_stack') return 'evening_supplement_stack'
-  if (s === 'lunch_stack') return 'midday_stack'
+  if (s === 'am_stack' || s === 'fasted_am' || s === 'morning_supplement_stack' || s.includes('morning_supplement')) return 'morning'
+  if (s === 'pm_stack' || s === 'dinner_stack' || s === 'evening_supplement_stack' || s.includes('evening_supplement')) return 'evening'
+  if (s === 'lunch_stack' || s === 'midday_stack' || s.includes('midday_stack')) return 'midday'
   return slot
 }
 
@@ -108,16 +108,13 @@ const TIME_BLOCKS = [
   'waking',
   'morning_routine',
   'morning',
-  'morning_supplement_stack',
   'first_meal',
   'midday',
-  'midday_stack',
   'afternoon',
   'late_afternoon',
   'pre_meal',
   'post_meal',
   'evening',
-  'evening_supplement_stack',
   'wind_down',
   'pre_bed',
   'bedtime',
@@ -129,16 +126,16 @@ function getTimeBlockOrder(slot: string): number {
   const s = slot.toLowerCase().trim()
   if (s.includes('wake') || s.includes('sunrise') || s.includes('dawn')) return 0
   if (s.includes('morning_routine')) return 1
-  if (s.includes('morning_supplement') || s.includes('fasted_am') || s.includes('am_stack') || s.includes('am stack')) return 3
   if (s.includes('first_meal') || s.includes('breakfast') || s.includes('first meal') || s.includes('meal_1')) return 4
+  if (s.includes('morning_supplement') || s.includes('fasted_am') || s.includes('am_stack') || s.includes('am stack')) return 2
   if (s.includes('morning') || s.includes('am')) return 2
-  if (s.includes('midday_stack') || s.includes('lunch_stack')) return 6
-  if (s.includes('midday') || s.includes('noon') || s.includes('lunch')) return 5
+  // Check afternoon BEFORE checking any midday or noon substrings to prevent "afternoon".includes("noon") false match!
   if (s.includes('afternoon') || s.includes('workout') || s.includes('training')) return 7
   if (s.includes('late_afternoon')) return 8
+  if (s.includes('midday') || s.includes('lunch') || s === 'noon' || s === 'solar_noon') return 5
   if (s.includes('pre_meal') || s.includes('pre-meal') || s.includes('pre meal')) return 9
   if (s.includes('post_meal') || s.includes('postprandial') || s.includes('post meal') || s.includes('post-meal')) return 10
-  if (s.includes('evening_supplement') || s.includes('dinner_stack') || s.includes('pm_stack') || s.includes('pm stack')) return 12
+  if (s.includes('evening_supplement') || s.includes('dinner_stack') || s.includes('pm_stack') || s.includes('pm stack')) return 11
   if (s.includes('evening') || s.includes('dinner') || s.includes('dusk')) return 11
   if (s.includes('wind_down') || s.includes('winddown') || s.includes('wind down') || s.includes('wind-down') || s.includes('wind')) return 13
   if (s.includes('pre_bed') || s.includes('pre-bed') || s.includes('pre bed')) return 14
@@ -2647,6 +2644,65 @@ function TodayPageContent() {
 
   const activeGroups = viewMode === 'chronological' ? sortedChronologicalGroups : sortedProtocolGroups
 
+  const { pastGroups, activeTimelineGroups } = useMemo(() => {
+    if (viewMode !== 'chronological' || !isCurrentDay) {
+      return { 
+        pastGroups: [] as [string, DedupedTask[]][], 
+        activeTimelineGroups: sortedChronologicalGroups 
+      }
+    }
+
+    const past: [string, DedupedTask[]][] = []
+    const active: [string, DedupedTask[]][] = []
+
+    sortedChronologicalGroups.forEach(([gName, gTasks]) => {
+      const isAnytime = gName.toLowerCase().includes('anytime')
+      const isPast = !isAnytime && isCircadianSlotPast(
+        gName,
+        new Date(),
+        0.0,
+        userActualWakeTime,
+        profile?.ideal_wake_time || '06:30'
+      )
+
+      if (isPast) {
+        past.push([gName, gTasks])
+      } else {
+        active.push([gName, gTasks])
+      }
+    })
+
+    return { pastGroups: past, activeTimelineGroups: active }
+  }, [viewMode, isCurrentDay, sortedChronologicalGroups, userActualWakeTime, profile?.ideal_wake_time])
+
+  const [isAllPastExpanded, setIsAllPastExpanded] = useState(false)
+  const [expandedPastBlocks, setExpandedPastBlocks] = useState<Record<string, boolean>>({})
+
+  const toggleAllPastBlocks = () => {
+    const nextVal = !isAllPastExpanded
+    setIsAllPastExpanded(nextVal)
+    const nextBlocks: Record<string, boolean> = {}
+    pastGroups.forEach(([gName]) => {
+      nextBlocks[gName] = nextVal
+    })
+    setExpandedPastBlocks(nextBlocks)
+  }
+
+  const togglePastBlock = (gName: string) => {
+    setExpandedPastBlocks(prev => {
+      const current = prev[gName] ?? isAllPastExpanded
+      return { ...prev, [gName]: !current }
+    })
+  }
+
+  const pastTotalCount = useMemo(() => {
+    return pastGroups.reduce((acc, [, tasks]) => acc + tasks.length, 0)
+  }, [pastGroups])
+
+  const pastCompletedCount = useMemo(() => {
+    return pastGroups.reduce((acc, [, tasks]) => acc + tasks.filter(t => t.status === 'completed').length, 0)
+  }, [pastGroups])
+
   // Fallback static gradient stops
   const fallbackCircadianGradientCSS = useMemo(() => {
     const groupKeys = activeGroups.map(([groupName]) => groupName)
@@ -3239,410 +3295,482 @@ function TodayPageContent() {
   }
 
   const renderTimelineBlocks = () => {
-    return activeGroups.map(([groupName, groupTasks]) => {
-      const isProtocolGroup = viewMode === 'protocol'
-      const matchedProtocol = isProtocolGroup 
-        ? availableProtocols.find((p: any) => p.name === groupName || p.id === groupTasks[0]?.protocol_step?.protocol_id) || groupTasks[0]?.protocol_step?.protocol
-        : null
-      const isCollapsed = isGroupCollapsed(groupName, groupTasks)
-      const totalCount = groupTasks.length
-      const completedCount = groupTasks.filter(t => t.status === 'completed').length
-      const isAllCompleted = completedCount === totalCount && totalCount > 0
-      const isCardCollapsed = isAllCompleted && isProtocolCardCollapsed(groupName, groupTasks)
+    const renderCard = (task: DedupedTask, pGroupName?: string, isGroupIgnited: boolean = true) => {
+      const mId = task.modality_id || task.protocol_step?.modality_id || ''
+      const benchItem = benchItems.find(b => b.modality_id === mId)
+      return (
+        <ProtocolTaskCard 
+          key={task.id} 
+          task={task} 
+          onStatusChange={handleStatusChange} 
+          onTrackOutcomes={openTracker}
+          initialBenchItem={benchItem}
+          recentTasks={tasks}
+          allOutcomes={allOutcomes}
+          userProfile={profile}
+          wellbeingCheckin={wellbeingCheckin}
+          onSaveCustomOutcomes={handleSaveCustomOutcomes}
+          onOutcomesSaved={handleOutcomesSaved}
+          outcomesRefreshKey={outcomesRefreshKey}
+          onOpenRescheduleModal={handleOpenRescheduleModal}
+          completionMode={completionMode}
+          isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
+          isProtocolGroupView={viewMode === 'protocol'}
+          protocolGroupName={pGroupName}
+          isIgnited={isGroupIgnited}
+        />
+      )
+    }
 
-      if (isProtocolGroup && groupName !== 'Standalone & Individual Modalities') {
-        // In Focus Mode, hide completely finished protocols
-        if (isFocusMode && isAllCompleted) {
-          return null
-        }
+    if (viewMode === 'protocol') {
+      return sortedProtocolGroups.map(([groupName, groupTasks]) => {
+        const matchedProtocol = availableProtocols.find((p: any) => p.name === groupName || p.id === groupTasks[0]?.protocol_step?.protocol_id) || groupTasks[0]?.protocol_step?.protocol
+        const isCollapsed = isGroupCollapsed(groupName, groupTasks)
+        const totalCount = groupTasks.length
+        const completedCount = groupTasks.filter(t => t.status === 'completed').length
+        const isAllCompleted = completedCount === totalCount && totalCount > 0
+        const isCardCollapsed = isAllCompleted && isProtocolCardCollapsed(groupName, groupTasks)
 
-        const protoId = matchedProtocol?.id || groupTasks[0]?.protocol_step?.protocol_id || ''
-        const protoSlug = groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+        if (groupName !== 'Standalone & Individual Modalities') {
+          // In Focus Mode, hide completely finished protocols
+          if (isFocusMode && isAllCompleted) {
+            return null
+          }
 
-        const sortedGroupTasks = [...groupTasks].sort((a, b) => {
-          const orderA = a.protocol_step?.display_order ?? 999
-          const orderB = b.protocol_step?.display_order ?? 999
-          if (orderA !== orderB) return orderA - orderB
+          const protoId = matchedProtocol?.id || groupTasks[0]?.protocol_step?.protocol_id || ''
+          const protoSlug = groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
-          const slotA = getTimeBlockOrder((a.timing_slot || a.protocol_step?.timing_slot || a.loose_modality?.default_timing_slot || 'anytime').toLowerCase())
-          const slotB = getTimeBlockOrder((b.timing_slot || b.protocol_step?.timing_slot || b.loose_modality?.default_timing_slot || 'anytime').toLowerCase())
-          if (slotA !== slotB) return slotA - slotB
+          const sortedGroupTasks = [...groupTasks].sort((a, b) => {
+            const orderA = a.protocol_step?.display_order ?? 999
+            const orderB = b.protocol_step?.display_order ?? 999
+            if (orderA !== orderB) return orderA - orderB
 
-          return (a.protocol_step?.modality?.name || a.loose_modality?.name || '').localeCompare(
-            b.protocol_step?.modality?.name || b.loose_modality?.name || ''
-          )
-        })
+            const slotA = getTimeBlockOrder((a.timing_slot || a.protocol_step?.timing_slot || a.loose_modality?.default_timing_slot || 'anytime').toLowerCase())
+            const slotB = getTimeBlockOrder((b.timing_slot || b.protocol_step?.timing_slot || b.loose_modality?.default_timing_slot || 'anytime').toLowerCase())
+            if (slotA !== slotB) return slotA - slotB
 
-        // In Focus Mode, hide completed, snoozed, and skipped tasks within the protocol
-        const tasksToRender = isFocusMode
-          ? sortedGroupTasks.filter(t => t.status !== 'completed' && t.status !== 'skipped' && t.status !== 'not_today')
-          : sortedGroupTasks
+            return (a.protocol_step?.modality?.name || a.loose_modality?.name || '').localeCompare(
+              b.protocol_step?.modality?.name || b.loose_modality?.name || ''
+            )
+          })
 
-        if (isFocusMode && tasksToRender.length === 0) {
-          return null
-        }
+          // In Focus Mode, hide completed, snoozed, and skipped tasks within the protocol
+          const tasksToRender = isFocusMode
+            ? sortedGroupTasks.filter(t => t.status !== 'completed' && t.status !== 'skipped' && t.status !== 'not_today')
+            : sortedGroupTasks
 
-        const visualTheme = getProtocolVisualTheme(matchedProtocol || groupName, groupTasks)
+          if (isFocusMode && tasksToRender.length === 0) {
+            return null
+          }
 
-        // When in collapse all mode (or collapsed), completed protocol renders minimal single-line bar
-        if (isCardCollapsed) {
+          const visualTheme = getProtocolVisualTheme(matchedProtocol || groupName, groupTasks)
+
+          // When in collapse all mode (or collapsed), completed protocol renders minimal single-line bar
+          if (isCardCollapsed) {
+            return (
+              <div 
+                key={groupName} 
+                id={`protocol-group-${protoSlug}`}
+                data-protocol-id={protoId}
+                data-protocol-name={groupName.toLowerCase()}
+                onClick={() => toggleProtocolCardCollapse(groupName)}
+                className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-purple-500/20 hover:border-purple-500/40 shadow-xl mb-4 relative overflow-hidden backdrop-blur-md transition-all duration-300 cursor-pointer group hover:bg-slate-900/70"
+              >
+                {/* Top Edge Signature Protocol Gradient Ribbon */}
+                <div 
+                  className="h-[2.5px] w-full absolute top-0 left-0 transition-opacity duration-300 opacity-80 group-hover:opacity-100" 
+                  style={{ background: visualTheme.accentBorderCSS }} 
+                />
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                      <Check size={12} className="text-emerald-400 stroke-[3]" />
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-slate-200 group-hover:text-white truncate">
+                      {groupName}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 shrink-0">
+                      {completedCount}/{totalCount}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
+                </div>
+              </div>
+            )
+          }
+
           return (
             <div 
               key={groupName} 
               id={`protocol-group-${protoSlug}`}
               data-protocol-id={protoId}
               data-protocol-name={groupName.toLowerCase()}
-              onClick={() => toggleProtocolCardCollapse(groupName)}
-              className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-purple-500/20 hover:border-purple-500/40 shadow-xl mb-4 relative overflow-hidden backdrop-blur-md transition-all duration-300 cursor-pointer group hover:bg-slate-900/70"
+              className="p-4 sm:p-5 rounded-3xl bg-slate-950/70 border border-purple-500/30 shadow-2xl space-y-4 mb-6 relative overflow-hidden backdrop-blur-md transition-all duration-500"
             >
-              {/* Top Edge Signature Protocol Gradient Ribbon */}
-              <div 
-                className="h-[2.5px] w-full absolute top-0 left-0 transition-opacity duration-300 opacity-80 group-hover:opacity-100" 
-                style={{ background: visualTheme.accentBorderCSS }} 
+              {/* Ambient subtle glow */}
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              {/* Protocol Overview Card with Description */}
+              <ProtocolOverviewHeaderCard
+                protocolName={groupName}
+                protocolInfo={matchedProtocol as any}
+                groupTasks={groupTasks}
+                allOutcomes={allOutcomes}
+                onCompleteAll={() => handleCompleteGroup(groupName, groupTasks)}
+                onTrackGroup={() => handleStartGroupTracking(groupName, groupTasks)}
+                isTrackingActive={activeGroupTrackKey === groupName}
+                isFutureTimeline={isFutureTimeline}
+                onCollapseProtocol={isAllCompleted ? () => toggleProtocolCardCollapse(groupName) : undefined}
               />
 
-              <div className="space-y-2.5 relative z-10">
-                {/* Line 1: Full-width protocol name as clickable link to protocol focus page */}
-                <h2 className="text-base sm:text-lg font-bold text-white tracking-wide break-words leading-snug w-full">
-                  <Link 
-                    href={`/protocols/${encodeURIComponent(matchedProtocol?.id || groupName)}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="hover:underline hover:text-purple-300 transition-colors inline items-center gap-1.5 max-w-full"
-                    title="Click to view full protocol focus page"
-                  >
-                    <span>{groupName}</span>
-                    <ExternalLink size={14} className="text-purple-400 opacity-80 inline-block ml-1.5 align-middle shrink-0" />
-                  </Link>
-                </h2>
-
-                {/* Line 2: Avatar + Modality count (Left), Completed Status Badge & Expand Chevron (Right) */}
-                <div className="flex items-center justify-between gap-3 pt-0.5 w-full flex-wrap">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <ProtocolAvatar 
-                      protocolName={groupName}
-                      protocolInfo={matchedProtocol as any}
-                      groupTasksOrSteps={groupTasks}
-                      themeOverride={visualTheme}
-                      size={28}
-                    />
-                    <span className="text-xs text-slate-400 font-medium tracking-wide">
-                      {totalCount} {totalCount === 1 ? 'Modality' : 'Modalities'} • <span className="text-purple-300/80">Tap to expand</span>
+              {/* Group Tracking Slider Panel */}
+              {activeGroupTrackKey === groupName && (
+                <div className="p-4 bg-slate-900/90 border border-purple-500/40 rounded-xl space-y-4 animate-in fade-in shadow-xl backdrop-blur-md">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Activity size={14} /> Group Tracking: {groupName}
                     </span>
-                  </div>
-
-                  {/* Right: Completed Status Badge & Expand Chevron */}
-                  <div className="flex items-center gap-2 shrink-0 ml-auto">
-                    <span className="text-xs px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 flex items-center gap-1.5 font-semibold shadow-sm">
-                      <Check size={13} className="text-emerald-400 stroke-[3]" />
-                      <span>Completed ({completedCount}/{totalCount})</span>
-                    </span>
-
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleProtocolCardCollapse(groupName)
-                      }}
-                      className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-                      title="Expand protocol details and modalities"
-                      aria-label="Expand protocol details and modalities"
+                      onClick={() => setActiveGroupTrackKey(null)}
+                      className="text-slate-400 hover:text-white text-xs cursor-pointer"
                     >
-                      <ChevronDown className="w-4 h-4 text-slate-300 group-hover:text-white transition-colors" />
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {Object.entries(groupTrackValues).map(([outcomeId, val]) => {
+                      const outcome = allOutcomes.find(o => o.id === outcomeId)
+                      if (!outcome) return null
+                      const colorCfg = getOutcomeColorConfig(val, outcome.directionality)
+                      return (
+                        <div key={outcomeId} className="p-3 bg-black/40 border border-white/10 rounded-lg space-y-2">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-white">{outcome.name}</span>
+                            <span className={`font-mono font-bold px-2 py-0.5 rounded ${colorCfg.badgeBg} ${colorCfg.textColor}`}>
+                              {val} / 10
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="10"
+                            value={val}
+                            onChange={(e) => {
+                              const nVal = Number(e.target.value)
+                              setGroupTrackValues(prev => ({ ...prev, [outcomeId]: nVal }))
+                              setTouchedGroupOutcomes(prev => ({ ...prev, [outcomeId]: true }))
+                            }}
+                            className="w-full cursor-pointer"
+                            style={{ accentColor: colorCfg.accentHex }}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveGroupTracking(groupTasks, true)}
+                      disabled={isSavingGroupTrack}
+                      className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Check size={14} /> Save & Mark Group Complete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveGroupTracking(groupTasks, false)}
+                      disabled={isSavingGroupTrack}
+                      className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                    >
+                      Save Only
                     </button>
                   </div>
                 </div>
+              )}
+
+              {/* Enclosed Protocol Modalities with Collapse Header */}
+              <div className="pt-2 pl-2 sm:pl-3 border-l-2 border-purple-500/30 space-y-3">
+                <div className="flex items-center justify-between pb-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroupCollapse(groupName, groupTasks)}
+                    className="text-[11px] font-extrabold uppercase tracking-wider text-purple-300 hover:text-purple-200 flex items-center gap-1.5 cursor-pointer focus:outline-none"
+                  >
+                    <ChevronDown 
+                      size={14} 
+                      className={`transition-transform duration-200 ${isCollapsed ? '-rotate-90 text-purple-400' : 'text-purple-300'}`} 
+                    />
+                    <span>Protocol Modalities ({groupTasks.length})</span>
+                  </button>
+                  <span className="text-[10px] font-mono text-purple-300/70">
+                    {completedCount}/{groupTasks.length} Completed
+                  </span>
+                </div>
+
+                {!isCollapsed && (
+                  <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
+                    {tasksToRender.map(task => renderCard(task, groupName, true))}
+                  </div>
+                )}
               </div>
             </div>
           )
         }
 
+        // Standalone & Individual Modalities in Protocol Mode
         return (
-          <div 
-            key={groupName} 
-            id={`protocol-group-${protoSlug}`}
-            data-protocol-id={protoId}
-            data-protocol-name={groupName.toLowerCase()}
-            className="p-4 sm:p-5 rounded-3xl bg-slate-950/70 border border-purple-500/30 shadow-2xl space-y-4 mb-6 relative overflow-hidden backdrop-blur-md transition-all duration-500"
-          >
-            {/* Ambient subtle glow */}
-            <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            {/* Protocol Overview Card with Description */}
-            <ProtocolOverviewHeaderCard
-              protocolName={groupName}
-              protocolInfo={matchedProtocol as any}
-              groupTasks={groupTasks}
-              allOutcomes={allOutcomes}
-              onCompleteAll={() => handleCompleteGroup(groupName, groupTasks)}
-              onTrackGroup={() => handleStartGroupTracking(groupName, groupTasks)}
-              isTrackingActive={activeGroupTrackKey === groupName}
-              isFutureTimeline={isFutureTimeline}
-              onCollapseProtocol={isAllCompleted ? () => toggleProtocolCardCollapse(groupName) : undefined}
-            />
-
-            {/* Group Tracking Slider Panel */}
-            {activeGroupTrackKey === groupName && (
-              <div className="p-4 bg-slate-900/90 border border-purple-500/40 rounded-xl space-y-4 animate-in fade-in shadow-xl backdrop-blur-md">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Activity size={14} /> Group Tracking: {groupName}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveGroupTrackKey(null)}
-                    className="text-slate-400 hover:text-white text-xs cursor-pointer"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {Object.entries(groupTrackValues).map(([outcomeId, val]) => {
-                    const outcome = allOutcomes.find(o => o.id === outcomeId)
-                    if (!outcome) return null
-                    const colorCfg = getOutcomeColorConfig(val, outcome.directionality)
-                    return (
-                      <div key={outcomeId} className="p-3 bg-black/40 border border-white/10 rounded-lg space-y-2">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-white">{outcome.name}</span>
-                          <span className={`font-mono font-bold px-2 py-0.5 rounded ${colorCfg.badgeBg} ${colorCfg.textColor}`}>
-                            {val} / 10
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="10"
-                          value={val}
-                          onChange={(e) => {
-                            const nVal = Number(e.target.value)
-                            setGroupTrackValues(prev => ({ ...prev, [outcomeId]: nVal }))
-                            setTouchedGroupOutcomes(prev => ({ ...prev, [outcomeId]: true }))
-                          }}
-                          className="w-full cursor-pointer"
-                          style={{ accentColor: colorCfg.accentHex }}
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSaveGroupTracking(groupTasks, true)}
-                    disabled={isSavingGroupTrack}
-                    className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <Check size={14} /> Save & Mark Group Complete
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSaveGroupTracking(groupTasks, false)}
-                    disabled={isSavingGroupTrack}
-                    className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
-                  >
-                    Save Only
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Enclosed Protocol Modalities with Collapse Header */}
-            <div className="pt-2 pl-2 sm:pl-3 border-l-2 border-purple-500/30 space-y-3">
-              <div className="flex items-center justify-between pb-1">
-                <button
-                  type="button"
-                  onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-                  className="text-[11px] font-extrabold uppercase tracking-wider text-purple-300 hover:text-purple-200 flex items-center gap-1.5 cursor-pointer focus:outline-none"
-                >
-                  <ChevronDown 
-                    size={14} 
-                    className={`transition-transform duration-200 ${isCollapsed ? '-rotate-90 text-purple-400' : 'text-purple-300'}`} 
-                  />
-                  <span>Protocol Modalities ({groupTasks.length})</span>
-                </button>
-                <span className="text-[10px] font-mono text-purple-300/70">
-                  {completedCount}/{groupTasks.length} Completed
-                </span>
-              </div>
-
-              {isCollapsed ? (
-                <div 
-                  onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-                  className="bg-slate-900/60 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-3.5 space-y-3 cursor-pointer transition-all hover:bg-slate-900/80 shadow-md group"
-                >
-                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    {tasksToRender.map((t) => {
-                      const mod = resolveTaskModality(t)
-                      const name = resolveTaskModalityName(t)
-                      const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
-                      const dose = t.execution_details?.custom_dose || bench?.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount}${t.protocol_step.dose_unit || ''}` : '') || mod?.dose_or_exposure || ''
-                      const isDone = t.status === 'completed'
-
-                      return (
-                        <span 
-                          key={t.id}
-                          className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-all ${
-                            isDone 
-                              ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300'
-                              : 'bg-black/40 border-white/10 text-slate-200 group-hover:border-purple-500/30'
-                          }`}
-                        >
-                          {isDone ? (
-                            <Check size={11} className="text-emerald-400 stroke-[3] shrink-0" />
-                          ) : null}
-                          <ModalityIcon modality={mod} modalityName={name} size={13} className={`shrink-0 ${isDone ? 'opacity-70' : 'opacity-90'}`} glow={false} />
-                          <span className={isDone ? 'line-through opacity-80' : 'text-white'}>{name}</span>
-                          {dose && (
-                            <span className={`text-[10px] font-mono font-normal ${isDone ? 'text-emerald-400/80' : 'text-purple-300/90'}`}>
-                              • {dose}
-                            </span>
-                          )}
-                        </span>
-                      )
-                    })}
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-purple-400/90 group-hover:text-purple-300 font-semibold pt-1 border-t border-white/5">
-                    <span className="flex items-center gap-1">
-                      <span>▾ Tap to view full cards & dosages ({tasksToRender.length})</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-normal">
-                      {completedCount === groupTasks.length ? '✓ All Done' : `${groupTasks.length - completedCount} Remaining`}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
-                  {tasksToRender.map(task => {
-                    const mId = task.modality_id || task.protocol_step?.modality_id || ''
-                    const benchItem = benchItems.find(b => b.modality_id === mId)
-                    return (
-                      <ProtocolTaskCard 
-                        key={task.id} 
-                        task={task} 
-                        onStatusChange={handleStatusChange} 
-                        onTrackOutcomes={openTracker}
-                        initialBenchItem={benchItem}
-                        recentTasks={tasks}
-                        allOutcomes={allOutcomes}
-                        userProfile={profile}
-                        wellbeingCheckin={wellbeingCheckin}
-                        onSaveCustomOutcomes={handleSaveCustomOutcomes}
-                        onOutcomesSaved={handleOutcomesSaved}
-                        outcomesRefreshKey={outcomesRefreshKey}
-                        onOpenRescheduleModal={handleOpenRescheduleModal}
-                        completionMode={completionMode}
-                        isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
-                        isProtocolGroupView={true}
-                        protocolGroupName={groupName}
-                        isIgnited={true}
-                      />
-                    )
-                  })}
-                </div>
-              )}
+          <div key={groupName} className="p-4 rounded-3xl bg-slate-950/70 border border-white/10 space-y-3 mb-6">
+            <div className="flex items-center justify-between pb-1 border-b border-white/10">
+              <span className="text-xs font-bold uppercase text-slate-300">
+                {groupName}
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">
+                {completedCount}/{groupTasks.length} Completed
+              </span>
+            </div>
+            <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
+              {groupTasks.map(task => renderCard(task, groupName, true))}
             </div>
           </div>
         )
-      }
+      })
+    }
 
-      // Default Chronological Time Blocks rendering with Circadian Sky Beacons
-      const circadian = getAdaptiveCircadianConfig(groupName, userActualWakeTime, profile?.ideal_wake_time || '06:30')
-      const CircadianIcon = circadian.icon
-      const isNow = isCurrentDay && isCurrentCircadianSlot(groupName)
-      const isIgnited = ignitedGroupKeys.has(groupName)
-      const isAnytime = groupName === 'anytime'
-      const isPast = isCurrentDay && !isAnytime && isCircadianSlotPast(
-        groupName,
-        new Date(),
-        1.0,
-        userActualWakeTime,
-        profile?.ideal_wake_time || '06:30'
-      )
-      const isPastCollapsed = isCollapsed && isPast
-
-      return (
-        <div 
-          key={groupName} 
-          ref={(el) => { groupHeaderRefs.current[groupName] = el }}
-          className={`relative ${
-            isPastCollapsed
-              ? 'rounded-2xl border border-purple-500/30 hover:border-purple-400/60 bg-slate-900/40 hover:bg-slate-900/80 p-3 sm:p-3.5 shadow-md hover:shadow-lg transition-all my-2 group/past-block'
-              : isAnytime 
-                ? (completionMode === 'fast' ? 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2 sm:p-2.5 space-y-2 my-2' : 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2.5 sm:p-3 space-y-2.5 my-3')
-                : (completionMode === 'fast' ? 'pl-1.5 sm:pl-2.5 space-y-2' : 'pl-1.5 sm:pl-2.5 space-y-3')
-          } group/circadian-block`}
-        >
-          <div className={`flex items-center justify-between ${isPastCollapsed ? '' : isAnytime ? 'border-b border-dashed border-white/10 pb-2' : 'border-b border-white/10 pb-2.5'} flex-wrap gap-2`}>
+    // Chronological Mode
+    return (
+      <>
+        {/* Unified "Previous" Section (One header, strictly 2-row items, NO preview trays) */}
+        {pastGroups.length > 0 && (
+          <div className="mb-4 sm:mb-6 rounded-2xl border border-purple-500/25 bg-slate-900/60 overflow-hidden backdrop-blur-md shadow-lg">
+            {/* "Previous" Header */}
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleGroupCollapse(groupName, groupTasks)
-              }}
-              className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-none flex-1 min-w-0"
+              onClick={toggleAllPastBlocks}
+              className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 bg-slate-900/90 hover:bg-slate-800/90 border-b border-white/5 flex items-center justify-between cursor-pointer select-none transition-colors group text-left"
             >
-              {/* Circadian Sky Beacon Icon */}
-              <div 
-                ref={(el) => { beaconRefs.current[groupName] = el }}
-                className={`${isAnytime ? 'w-6 h-6 rounded-lg' : 'w-9 h-9 rounded-2xl'} border flex items-center justify-center shrink-0 transition-all duration-500 ${
-                  isIgnited || isPastCollapsed
-                    ? `${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 opacity-100 ${isNow ? circadian.activeRing : ''}`
-                    : 'bg-slate-950/60 border-slate-800 text-slate-500/70 scale-95 opacity-40 shadow-none'
-                }`}
-                style={{
-                  background: isIgnited ? circadian.badgeGradientCSS : (isPastCollapsed ? 'rgba(88, 28, 135, 0.25)' : undefined),
-                  boxShadow: isIgnited
-                    ? (isNow 
-                        ? `0 0 22px ${circadian.skyColorHex}99, inset 0 0 10px ${circadian.skyColorHex}33` 
-                        : (isAnytime ? `0 0 8px ${circadian.skyColorHex}25` : `0 0 14px ${circadian.skyColorHex}40`))
-                    : undefined
-                }}
-              >
-                <CircadianIcon size={isAnytime ? 12 : 17} strokeWidth={isIgnited || isPastCollapsed ? 2.2 : 1.7} />
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-purple-300 group-hover:text-purple-200">
+                  Previous
+                </span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-white/10">
+                  {pastCompletedCount}/{pastTotalCount} Logged
+                </span>
               </div>
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-400 group-hover:text-purple-300">
+                <span>{isAllPastExpanded ? 'Collapse All' : 'Catch Up All'}</span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${isAllPastExpanded ? 'rotate-180' : ''}`} />
+              </div>
+            </button>
 
-              <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className={`${isAnytime ? 'text-[11px] sm:text-xs font-bold tracking-normal' : 'text-sm font-extrabold tracking-wider'} uppercase transition-colors ${
-                    isIgnited || isPastCollapsed
-                      ? (isAnytime ? 'text-slate-300 group-hover:text-purple-300' : 'text-white group-hover:text-purple-200') 
-                      : 'text-slate-200 group-hover:text-white'
-                  }`}>
-                    {isAnytime ? 'Anytime / Flexible' : formatSlotName(groupName)}
-                  </span>
-                  <span className={`text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full font-mono font-bold shrink-0 transition-colors ${
-                    completedCount === groupTasks.length && groupTasks.length > 0
-                      ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40'
-                      : isIgnited || isPastCollapsed
-                        ? (isAnytime ? 'bg-purple-950/50 text-purple-300 border border-purple-800/40' : 'bg-slate-800/90 text-slate-200 border border-white/10') 
-                        : 'bg-slate-900 text-slate-400 border border-white/5'
-                  }`}>
-                    {completedCount}/{groupTasks.length} Completed
-                  </span>
-                </div>
-                {isAnytime ? (
-                  <span className="text-[10px] text-slate-500 mt-0.5">Flexible window • Complete anytime today</span>
-                ) : (
-                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mt-0.5">
-                    {/* Compact Live Badge (only rendered when this block is currently live) */}
-                    {isNow && (
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse flex items-center gap-1 shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                        <span>Live</span>
-                      </span>
+            {/* List of Previous Time Blocks */}
+            <div className="divide-y divide-white/5">
+              {pastGroups.map(([gName, gTasks]) => {
+                const gCircadian = getAdaptiveCircadianConfig(gName, userActualWakeTime, profile?.ideal_wake_time || '06:30')
+                const gCompleted = gTasks.filter(t => t.status === 'completed').length
+                const isBlockExpanded = expandedPastBlocks[gName] ?? isAllPastExpanded
+
+                return (
+                  <div key={gName} className="p-3 sm:p-3.5 hover:bg-white/[0.02] transition-colors">
+                    {/* 2-Row Time Block Item (Clicking anywhere within those rows brings up those modalities) */}
+                    <div 
+                      onClick={() => togglePastBlock(gName)}
+                      className="cursor-pointer select-none group/past-row"
+                    >
+                      {/* Top Row: Time Block Name & Time Range */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold uppercase text-slate-200 group-hover/past-row:text-white transition-colors">
+                          {formatSlotName(gName)} • {gCircadian.timeRange}
+                        </span>
+                      </div>
+
+                      {/* Bottom Row: (x modalities logged / y total) and text "Catch Up" with expandable chevron */}
+                      <div className="flex items-center justify-between mt-1 text-[11px]">
+                        <span className="font-mono text-slate-400">
+                          ({gCompleted} modalities logged / {gTasks.length} total)
+                        </span>
+                        <span className="flex items-center gap-1 font-bold text-purple-400 group-hover/past-row:text-purple-300 transition-colors">
+                          <span>Catch Up</span>
+                          <ChevronDown size={13} className={`transition-transform duration-200 ${isBlockExpanded ? 'rotate-180 text-purple-300' : ''}`} />
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Expanded Modalities for this Previous Time Block */}
+                    {isBlockExpanded && (
+                      <div className="pt-3 mt-2 border-t border-white/5 space-y-2">
+                        {gTasks.map(t => {
+                          if (isTaskSupplement(t)) {
+                            const mod = resolveTaskModality(t)
+                            const name = resolveTaskModalityName(t)
+                            const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
+                            return (
+                              <SupplementCompactRow
+                                key={t.id}
+                                task={t}
+                                modality={mod}
+                                modalityName={name}
+                                benchItem={bench}
+                                onStatusChange={handleStatusChange}
+                                onOpenDetails={() => {}}
+                                completionMode={completionMode}
+                              />
+                            )
+                          }
+                          return renderCard(t, undefined, false)
+                        })}
+                      </div>
                     )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
-                    {/* Circadian Time Range */}
-                    <span className={`text-[11px] font-semibold shrink-0 transition-colors ${
-                      isIgnited ? 'text-slate-300' : 'text-slate-400'
-                    }`}>
+        {/* Active and Upcoming Chronological Time Blocks */}
+        {activeTimelineGroups.map(([groupName, groupTasks]) => {
+          const circadian = getAdaptiveCircadianConfig(groupName, userActualWakeTime, profile?.ideal_wake_time || '06:30')
+          const CircadianIcon = circadian.icon
+          const isNow = isCurrentDay && isCurrentCircadianSlot(groupName)
+          const isIgnited = ignitedGroupKeys.has(groupName)
+          const isAnytime = groupName === 'anytime'
+          const isCollapsed = isGroupCollapsed(groupName, groupTasks)
+          const totalCount = groupTasks.length
+          const completedCount = groupTasks.filter(t => t.status === 'completed').length
+
+          return (
+            <div 
+              key={groupName} 
+              ref={(el) => { groupHeaderRefs.current[groupName] = el }}
+              className={`relative ${
+                isAnytime 
+                  ? (completionMode === 'fast' ? 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2 sm:p-2.5 space-y-2 my-2' : 'ml-1 sm:ml-2 pl-2 sm:pl-2.5 border-l-2 border-dashed border-purple-500/25 bg-purple-950/10 rounded-2xl p-2.5 sm:p-3 space-y-2.5 my-3')
+                  : (completionMode === 'fast' ? 'pl-1.5 sm:pl-2.5 space-y-2' : 'pl-1.5 sm:pl-2.5 space-y-3')
+              } group/circadian-block`}
+            >
+              {/* Consolidated 2-Row Time Block Header */}
+              <div className={`flex flex-col gap-1 sm:gap-1.5 ${isAnytime ? 'border-b border-dashed border-white/10 pb-2' : 'border-b border-white/10 pb-2 sm:pb-2.5'}`}>
+                {/* Row 1: Identity & Action Controls */}
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroupCollapse(groupName, groupTasks)}
+                    className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-none min-w-0"
+                  >
+                    {/* Circadian Sky Beacon Icon */}
+                    <div 
+                      ref={(el) => { beaconRefs.current[groupName] = el }}
+                      className={`${isAnytime ? 'w-6 h-6 rounded-lg' : 'w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl'} border flex items-center justify-center shrink-0 transition-all duration-500 ${
+                        isIgnited
+                          ? `${circadian.badgeBorder} ${circadian.badgeText} ${circadian.glowShadow} scale-100 opacity-100 ${isNow ? circadian.activeRing : ''}`
+                          : 'bg-slate-950/60 border-slate-800 text-slate-500/70 scale-95 opacity-40 shadow-none'
+                      }`}
+                      style={{
+                        background: isIgnited ? circadian.badgeGradientCSS : undefined,
+                        boxShadow: isIgnited
+                          ? (isNow 
+                              ? `0 0 22px ${circadian.skyColorHex}99, inset 0 0 10px ${circadian.skyColorHex}33` 
+                              : (isAnytime ? `0 0 8px ${circadian.skyColorHex}25` : `0 0 14px ${circadian.skyColorHex}40`))
+                          : undefined
+                      }}
+                    >
+                      <CircadianIcon size={isAnytime ? 12 : 16} strokeWidth={isIgnited ? 2.2 : 1.7} />
+                    </div>
+
+                    <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                      <span className={`${isAnytime ? 'text-[11px] sm:text-xs font-bold tracking-normal' : 'text-xs sm:text-sm font-extrabold tracking-wider'} uppercase transition-colors truncate ${
+                        isIgnited
+                          ? (isAnytime ? 'text-slate-300 group-hover:text-purple-300' : 'text-white group-hover:text-purple-200') 
+                          : 'text-slate-200 group-hover:text-white'
+                      }`}>
+                        {isAnytime ? 'Anytime / Flexible' : formatSlotName(groupName)}
+                      </span>
+
+                      {/* Live Pill (in Row 1 next to Title!) */}
+                      {isNow && (
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse flex items-center gap-1 shrink-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                          <span>Live</span>
+                        </span>
+                      )}
+
+                      {/* Completed / Total Pill */}
+                      <span className={`text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 transition-colors ${
+                        completedCount === groupTasks.length && groupTasks.length > 0
+                          ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40'
+                          : isIgnited
+                            ? (isAnytime ? 'bg-purple-950/50 text-purple-300 border border-purple-800/40' : 'bg-slate-800/90 text-slate-200 border border-white/10') 
+                            : 'bg-slate-900 text-slate-400 border border-white/5'
+                      }`}>
+                        {completedCount}/{groupTasks.length}
+                      </span>
+
+                      <ChevronDown 
+                        size={isAnytime ? 12 : 15} 
+                        className={`transition-transform duration-200 shrink-0 ${
+                          isIgnited ? 'text-slate-400 group-hover:text-white' : 'text-slate-600'
+                        } ${isCollapsed ? '-rotate-90' : ''}`} 
+                      />
+                    </div>
+                  </button>
+
+                  {/* Action Buttons (Right side of Row 1) */}
+                  <div className="flex items-center gap-1 sm:gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAsNeededSlot(groupName)
+                        setAsNeededModalityId(undefined)
+                        setIsAdHocModalOpen(true)
+                      }}
+                      className="font-bold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg text-[10px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all active:scale-95 shrink-0 shadow-sm"
+                      title={`Log an As Needed modality for ${formatSlotName(groupName)}`}
+                    >
+                      <Plus size={11} className="stroke-[2.5]" />
+                      <span className="hidden sm:inline">As Needed</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStartGroupTracking(groupName, groupTasks)}
+                      className={`font-semibold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition-colors ${
+                        isAnytime 
+                          ? 'text-[10px] sm:text-[11px] text-slate-400 hover:text-purple-300 hover:bg-white/5' 
+                          : 'text-[10px] sm:text-xs text-purple-400 hover:text-purple-300 hover:bg-white/5'
+                      }`}
+                    >
+                      <Activity size={isAnytime ? 11 : 12} /> {activeGroupTrackKey === groupName ? 'Close' : 'Track'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCompleteGroup(groupName, groupTasks)}
+                      className={`font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
+                        isAnytime 
+                          ? 'text-[10px] sm:text-[11px] text-emerald-400/90 hover:text-emerald-300 px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20' 
+                          : 'text-[10px] sm:text-xs text-emerald-400 hover:text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30'
+                      }`}
+                    >
+                      <Check size={isAnytime ? 11 : 12} strokeWidth={2.5} /> 
+                      <span className="hidden sm:inline">Complete All</span>
+                      <span className="sm:hidden">All</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Row 2: Time Range & Biological Window Context (Single line, strictly NO wrapping!) */}
+                {isAnytime ? (
+                  <div className="text-[10px] text-slate-500 pl-8 sm:pl-11">
+                    Flexible window • Complete anytime today
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 sm:gap-2 pl-8 sm:pl-11 text-[11px] text-slate-400 whitespace-nowrap overflow-hidden text-ellipsis">
+                    <span className={`font-semibold shrink-0 ${isIgnited ? 'text-slate-300' : 'text-slate-400'}`}>
                       {circadian.timeRange}
                     </span>
 
-                    {/* Biological Window / Circadian Phase Badge */}
                     {circadian.pulseBadge && (
                       <>
                         <span className="text-slate-600 text-[10px] select-none shrink-0">•</span>
@@ -3653,51 +3781,17 @@ function TodayPageContent() {
                           }}
                           role="button"
                           tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              switchToDailyPulse()
-                            }
-                          }}
-                          title={`${circadian.pulseBadge.fromPhase && circadian.pulseBadge.toPhase ? `${circadian.pulseBadge.fromPhase.name} (${circadian.pulseBadge.fromPhase.mechanism}) ➔ ${circadian.pulseBadge.toPhase.name} (${circadian.pulseBadge.toPhase.mechanism})` : circadian.pulseBadge.label} • Click to explore Daily Pulse`}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 hover:shadow-md active:scale-95 shrink-0 ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-105 shrink-0 ${circadian.pulseBadge.badgeBg} ${circadian.pulseBadge.badgeBorder} ${circadian.pulseBadge.badgeText}`}
                           style={circadian.pulseBadge.badgeGradientCSS ? { background: circadian.pulseBadge.badgeGradientCSS } : undefined}
                         >
                           <span 
-                            className="w-1.5 h-1.5 rounded-full shrink-0 shadow-sm" 
+                            className="w-1.5 h-1.5 rounded-full shrink-0" 
                             style={{ 
                               background: circadian.pulseBadge.dotGradientCSS || undefined,
                               backgroundColor: !circadian.pulseBadge.dotGradientCSS ? (circadian.pulseBadge.dotColor || '#10B981') : undefined 
                             }} 
                           />
-                          {circadian.pulseBadge.fromPhase && circadian.pulseBadge.toPhase ? (
-                            <span className="flex items-center gap-1 font-bold">
-                              <span className={circadian.pulseBadge.fromPhase.textClass}>
-                                {circadian.pulseBadge.fromPhase.name}
-                              </span>
-                              <span 
-                                className="font-black text-[10px] px-0.5 select-none shrink-0"
-                                style={{
-                                  backgroundImage: circadian.pulseBadge.arrowGradientCSS || 'linear-gradient(to right, #38BDF8, #34D399)',
-                                  WebkitBackgroundClip: 'text',
-                                  backgroundClip: 'text',
-                                  WebkitTextFillColor: 'transparent',
-                                  color: 'transparent',
-                                  display: 'inline-block'
-                                }}
-                              >
-                                {circadian.pulseBadge.dividerChar || '➔'}
-                              </span>
-                              <span className={circadian.pulseBadge.toPhase.textClass}>
-                                {circadian.pulseBadge.toPhase.name}
-                              </span>
-                            </span>
-                          ) : (
-                            <span className={circadian.pulseBadge.badgeText}>
-                              {circadian.pulseBadge.label}
-                            </span>
-                          )}
+                          <span>{circadian.pulseBadge.label}</span>
                         </span>
                       </>
                     )}
@@ -3705,360 +3799,173 @@ function TodayPageContent() {
                 )}
               </div>
 
-              {!isPastCollapsed && (
-                <ChevronDown 
-                  size={isAnytime ? 13 : 16} 
-                  className={`transition-transform duration-200 ml-1 ${
-                    isIgnited ? 'text-slate-400 group-hover:text-white' : 'text-slate-600'
-                  } ${isCollapsed ? '-rotate-90' : ''}`} 
-                />
-              )}
-            </button>
-
-            {isPastCollapsed ? (
-              <div className="flex items-center gap-2 shrink-0 ml-auto" onClick={(e) => e.stopPropagation()}>
-                {/* Visual Unlogged Pulsing Amber Pip */}
-                {completedCount < groupTasks.length && (
-                  <span className="relative flex h-2.5 w-2.5 shrink-0" title="Tasks pending to log">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500 shadow-sm" />
-                  </span>
-                )}
-
-                {/* 1-Click Log All Remaining Button */}
-                {completedCount < groupTasks.length && (
-                  <button
-                    type="button"
-                    onClick={() => handleCompleteGroup(groupName, groupTasks)}
-                    className="text-[10px] sm:text-xs font-bold text-emerald-400 hover:text-white bg-emerald-950/50 hover:bg-emerald-900/80 border border-emerald-500/40 px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm active:scale-95 shrink-0"
-                    title="1-click log all tasks in this time block"
-                  >
-                    <Check size={12} strokeWidth={2.5} /> Log All
-                  </button>
-                )}
-
-                {/* Prominent Visual Expand Button */}
-                <button
-                  type="button"
-                  onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-                  className="w-8 h-8 rounded-xl bg-purple-950/70 border border-purple-500/40 text-purple-300 group-hover/past-block:text-white group-hover/past-block:bg-purple-900 group-hover/past-block:border-purple-400 flex items-center justify-center transition-all shadow-sm group-hover/past-block:scale-105 active:scale-95 shrink-0 cursor-pointer"
-                  title="Expand time block"
-                >
-                  <ChevronDown size={17} strokeWidth={2.5} className="group-hover/past-block:translate-y-0.5 transition-transform" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAsNeededSlot(groupName)
-                    setAsNeededModalityId(undefined)
-                    setIsAdHocModalOpen(true)
-                  }}
-                  className="font-bold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg text-[11px] sm:text-xs text-amber-300 hover:text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all active:scale-95 shrink-0 shadow-sm"
-                  title={`Log an As Needed modality for ${formatSlotName(groupName)}`}
-                >
-                  <Plus size={12} className="stroke-[2.5]" />
-                  <span className="hidden min-[420px]:inline">As Needed</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStartGroupTracking(groupName, groupTasks)}
-                  className={`font-semibold flex items-center gap-1 cursor-pointer px-2 py-1 rounded-lg transition-colors ${
-                    isAnytime 
-                      ? 'text-[11px] text-slate-400 hover:text-purple-300 hover:bg-white/5' 
-                      : 'text-xs text-purple-400 hover:text-purple-300 hover:bg-white/5'
-                  }`}
-                >
-                  <Activity size={isAnytime ? 12 : 13} /> {activeGroupTrackKey === groupName ? 'Close' : 'Track'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleCompleteGroup(groupName, groupTasks)}
-                  className={`font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
-                    isAnytime 
-                      ? 'text-[11px] text-emerald-400/90 hover:text-emerald-300 px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20' 
-                      : 'text-xs text-emerald-400 hover:text-emerald-300 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30'
-                  }`}
-                >
-                  <Check size={isAnytime ? 12 : 13} strokeWidth={2.5} /> Complete All
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Group Tracking Slider Panel */}
-          {activeGroupTrackKey === groupName && (
-            <div className="p-4 bg-slate-900/90 border border-purple-500/40 rounded-xl space-y-4 animate-in fade-in shadow-xl backdrop-blur-md">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Activity size={14} /> Group Tracking: {groupName}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setActiveGroupTrackKey(null)}
-                  className="text-slate-400 hover:text-white text-xs cursor-pointer"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {Object.entries(groupTrackValues).map(([outcomeId, val]) => {
-                  const outcome = allOutcomes.find(o => o.id === outcomeId)
-                  if (!outcome) return null
-                  const colorCfg = getOutcomeColorConfig(val, outcome.directionality)
-                  return (
-                    <div key={outcomeId} className="p-3 bg-black/40 border border-white/10 rounded-lg space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-bold text-white">{outcome.name}</span>
-                        <span className={`font-mono font-bold px-2 py-0.5 rounded ${colorCfg.badgeBg} ${colorCfg.textColor}`}>
-                          {val} / 10
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="10"
-                        value={val}
-                        onChange={(e) => {
-                          const nVal = Number(e.target.value)
-                          setGroupTrackValues(prev => ({ ...prev, [outcomeId]: nVal }))
-                          setTouchedGroupOutcomes(prev => ({ ...prev, [outcomeId]: true }))
-                        }}
-                        className="w-full cursor-pointer"
-                        style={{ accentColor: colorCfg.accentHex }}
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleSaveGroupTracking(groupTasks, true)}
-                  disabled={isSavingGroupTrack}
-                  className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Check size={14} /> Save & Mark Group Complete
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSaveGroupTracking(groupTasks, false)}
-                  disabled={isSavingGroupTrack}
-                  className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
-                >
-                  Save Only
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Collapsed Modality Preview Tray OR Expanded Modality Task Cards */}
-          {isCollapsed ? (
-            <div 
-              onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-              className="mt-2 pt-2.5 border-t border-white/10 space-y-2.5 cursor-pointer group/tray select-none"
-            >
-              {/* Modality Chips Tray */}
-              <div className="flex flex-wrap items-center gap-1.5 supplement-tray-chips">
-                {groupTasks.map((t) => {
-                  const mod = resolveTaskModality(t)
-                  const name = resolveTaskModalityName(t)
-                  const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
-                  const dose = t.execution_details?.custom_dose || bench?.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount}${t.protocol_step.dose_unit || ''}` : '') || mod?.dose_or_exposure || ''
-                  const isDone = t.status === 'completed'
-
-                  return (
-                    <span 
-                      key={t.id}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        triggerHaptic('success')
-                        handleStatusChange(t.id, isDone ? 'pending' : 'completed')
-                      }}
-                      className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border transition-all cursor-pointer shadow-sm active:scale-95 ${
-                        isDone 
-                          ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300 hover:bg-emerald-950/60'
-                          : 'bg-black/50 border-purple-500/30 hover:border-purple-400 text-slate-200 hover:bg-purple-950/40'
-                      }`}
-                      title={isDone ? `${name} (Done) • Click to uncheck` : `${name} (Pending) • Click to log`}
-                    >
-                      {isDone ? (
-                        <Check size={11} className="text-emerald-400 stroke-[3] shrink-0" />
-                      ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
-                      )}
-                      <ModalityIcon modality={mod} modalityName={name} size={13} className={`shrink-0 ${isDone ? 'opacity-70' : 'opacity-100'}`} glow={!isDone} />
-                      <span className={`supplement-name truncate max-w-[150px] sm:max-w-[200px] ${isDone ? 'line-through opacity-80 text-slate-300' : 'text-white'}`}>
-                        {name}
-                      </span>
-                      {dose && (
-                        <span className={`supplement-dose text-[10px] font-mono font-normal shrink-0 ${isDone ? 'text-emerald-400/80' : 'text-purple-300'}`}>
-                          • {dose}
-                        </span>
-                      )}
+              {/* Group Tracking Slider Panel */}
+              {activeGroupTrackKey === groupName && (
+                <div className="p-4 bg-slate-900/90 border border-purple-500/40 rounded-xl space-y-4 animate-in fade-in shadow-xl backdrop-blur-md">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Activity size={14} /> Group Tracking: {groupName}
                     </span>
-                  )
-                })}
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveGroupTrackKey(null)}
+                      className="text-slate-400 hover:text-white text-xs cursor-pointer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
 
-              {/* Bottom Visual Expand Indicator */}
-              <div className="flex items-center justify-between text-[11px] text-purple-400/90 group-hover/tray:text-purple-300 font-semibold pt-1 border-t border-white/5">
-                <div className="flex items-center gap-1.5">
-                  <ChevronDown size={13} className="group-hover/tray:translate-y-0.5 transition-transform" />
-                  <span className="text-[11px] font-bold">
-                    {groupTasks.length} {groupTasks.length === 1 ? 'Modality' : 'Modalities'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-semibold ${completedCount === groupTasks.length ? 'text-emerald-400' : 'text-amber-300'}`}>
-                    {completedCount === groupTasks.length ? '✓ All Logged' : `${groupTasks.length - completedCount} Pending`}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
-              {(() => {
-                const renderCard = (task: DedupedTask) => {
-                  const mId = task.modality_id || task.protocol_step?.modality_id || ''
-                  const benchItem = benchItems.find(b => b.modality_id === mId)
-                  return (
-                    <ProtocolTaskCard 
-                      key={task.id} 
-                      task={task} 
-                      onStatusChange={handleStatusChange} 
-                      onTrackOutcomes={openTracker}
-                      initialBenchItem={benchItem}
-                      recentTasks={tasks}
-                      allOutcomes={allOutcomes}
-                      userProfile={profile}
-                      wellbeingCheckin={wellbeingCheckin}
-                      onSaveCustomOutcomes={handleSaveCustomOutcomes}
-                      onOutcomesSaved={handleOutcomesSaved}
-                      outcomesRefreshKey={outcomesRefreshKey}
-                      onOpenRescheduleModal={handleOpenRescheduleModal}
-                      completionMode={completionMode}
-                      isRecentlyCompleted={recentlyCompletedIds.has(task.id) || recentlyCompletedIds.has(task.id.split('-split-')[0])}
-                      isProtocolGroupView={viewMode === 'protocol'}
-                      protocolGroupName={viewMode === 'protocol' ? groupName : undefined}
-                      isIgnited={isIgnited}
-                    />
-                  )
-                }
-
-                const sortedTasks = [...groupTasks].sort(
-                  (a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0)
-                )
-
-                if (viewMode === 'protocol') {
-                  return sortedTasks.map(renderCard)
-                }
-
-                const nonSuppTasks = sortedTasks.filter(t => !isTaskSupplement(t))
-                const suppTasks = sortedTasks.filter(t => isTaskSupplement(t))
-                const allSuppsCompleted = suppTasks.length > 0 && suppTasks.every(t => t.status === 'completed')
-                const isSuppStackExpanded = expandedSupplementBlocks[groupName] ?? false
-
-                if (suppTasks.length === 0) {
-                  return sortedTasks.map(renderCard)
-                }
-
-                return (
-                  <>
-                    {nonSuppTasks.map(renderCard)}
-
-                    {/* In-Block Supplement Stack Sub-Line (only shown when mixed with non-supplements) */}
-                    {nonSuppTasks.length > 0 && (
-                      <div className="pt-2 pb-1 flex items-center justify-between gap-3 border-t border-white/10 my-1">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
-                          className="flex items-center gap-2 text-left cursor-pointer group select-none"
-                          title={isSuppStackExpanded ? "Collapse to compact rows" : "Click to view full cards for all supplements"}
-                        >
-                          <span className="w-5 h-5 rounded-md bg-purple-950/40 border border-purple-500/30 flex items-center justify-center text-[11px] shrink-0 text-purple-300 shadow-sm group-hover:bg-purple-900/60 transition-colors">
-                            💊
-                          </span>
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-purple-200 group-hover:text-white transition-colors flex items-center gap-1.5">
-                            <span>Supplements ({suppTasks.length})</span>
-                            {isSuppStackExpanded ? (
-                              <ChevronUp size={13} className="text-purple-400 group-hover:-translate-y-0.5 transition-transform" />
-                            ) : (
-                              <ChevronDown size={13} className="text-purple-400 group-hover:translate-y-0.5 transition-transform" />
-                            )}
-                          </span>
-                        </button>
-
-                        <div className="flex items-center gap-2">
-                          {allSuppsCompleted ? (
-                            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
-                              <Check size={11} strokeWidth={2.5} /> All Taken
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {Object.entries(groupTrackValues).map(([outcomeId, val]) => {
+                      const outcome = allOutcomes.find(o => o.id === outcomeId)
+                      if (!outcome) return null
+                      const colorCfg = getOutcomeColorConfig(val, outcome.directionality)
+                      return (
+                        <div key={outcomeId} className="p-3 bg-black/40 border border-white/10 rounded-lg space-y-2">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-white">{outcome.name}</span>
+                            <span className={`font-mono font-bold px-2 py-0.5 rounded ${colorCfg.badgeBg} ${colorCfg.textColor}`}>
+                              {val} / 10
                             </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleCompleteMultipleTasks(suppTasks)}
-                              className="text-[10px] font-semibold text-purple-300 hover:text-white bg-purple-950/50 hover:bg-purple-900/60 border border-purple-500/30 px-2.5 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1 shadow-sm active:scale-95"
-                              title="Take all supplements in this stack"
-                            >
-                              <Check size={11} strokeWidth={2.5} /> Take All
-                            </button>
-                          )}
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="10"
+                            value={val}
+                            onChange={(e) => {
+                              const nVal = Number(e.target.value)
+                              setGroupTrackValues(prev => ({ ...prev, [outcomeId]: nVal }))
+                              setTouchedGroupOutcomes(prev => ({ ...prev, [outcomeId]: true }))
+                            }}
+                            className="w-full cursor-pointer"
+                            style={{ accentColor: colorCfg.accentHex }}
+                          />
                         </div>
-                      </div>
-                    )}
+                      )
+                    })}
+                  </div>
 
-                    {/* Pure Stack Header Toggle: When block contains only supplements, show subtle expand/collapse cards toggle */}
-                    {nonSuppTasks.length === 0 && (
-                      <div className="flex items-center justify-end pb-1">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
-                          className="text-[10px] font-semibold text-purple-400 hover:text-purple-200 flex items-center gap-1 cursor-pointer transition-colors"
-                          title={isSuppStackExpanded ? "Collapse to compact rows" : "Expand all full cards"}
-                        >
-                          <span>{isSuppStackExpanded ? "Collapse to compact rows" : "Expand all full cards"}</span>
-                          {isSuppStackExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                        </button>
-                      </div>
-                    )}
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveGroupTracking(groupTasks, true)}
+                      disabled={isSavingGroupTrack}
+                      className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Check size={14} /> Save & Mark Group Complete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveGroupTracking(groupTasks, false)}
+                      disabled={isSavingGroupTrack}
+                      className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                    >
+                      Save Only
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                    {/* Collapsed Mode: Display ONE ROW PER SUPPLEMENT. Expanded Mode: Show ALL full cards */}
-                    {isSuppStackExpanded ? (
-                      suppTasks.map(renderCard)
-                    ) : (
-                      <div className="space-y-1.5 pt-0.5">
-                        {suppTasks.map(t => {
-                          const mod = resolveTaskModality(t)
-                          const name = resolveTaskModalityName(t)
-                          const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
-                          return (
-                            <SupplementCompactRow
-                              key={t.id}
-                              task={t}
-                              modality={mod}
-                              modalityName={name}
-                              benchItem={bench}
-                              onStatusChange={handleStatusChange}
-                              onOpenDetails={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: true }))}
-                              completionMode={completionMode}
-                            />
-                          )
-                        })}
-                      </div>
-                    )}
-                  </>
-                )
-              })()}
+              {/* Active Block Tasks */}
+              {!isCollapsed && (
+                <div className={completionMode === 'fast' ? "space-y-1.5 pt-1" : "space-y-3 pt-1"}>
+                  {(() => {
+                    const sortedTasks = [...groupTasks].sort(
+                      (a, b) => (a.protocol_step?.display_order || 0) - (b.protocol_step?.display_order || 0)
+                    )
+
+                    const nonSuppTasks = sortedTasks.filter(t => !isTaskSupplement(t))
+                    const suppTasks = sortedTasks.filter(t => isTaskSupplement(t))
+                    const allSuppsCompleted = suppTasks.length > 0 && suppTasks.every(t => t.status === 'completed')
+                    const suppCompletedCount = suppTasks.filter(t => t.status === 'completed').length
+                    const isSuppStackExpanded = expandedSupplementBlocks[groupName] ?? false
+
+                    return (
+                      <>
+                        {/* Non-Supplement Modalities (Habits, Exercise, Sunlight, etc.) */}
+                        {nonSuppTasks.map(t => renderCard(t, undefined, isIgnited))}
+
+                        {/* Supplement Stacking: If 2+ supplements, render 1-row nested stack */}
+                        {suppTasks.length >= 2 ? (
+                          <div className="pt-1.5">
+                            {/* 1-Row Nested Supplement Stack Header */}
+                            <div 
+                              onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
+                              className="p-2 sm:p-2.5 rounded-xl bg-purple-950/25 hover:bg-purple-950/40 border border-purple-500/25 transition-all cursor-pointer select-none flex items-center justify-between group my-1"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="w-5 h-5 rounded-md bg-purple-900/50 border border-purple-500/30 flex items-center justify-center text-[11px] shrink-0 text-purple-300">
+                                  💊
+                                </span>
+                                <span className="text-xs font-bold text-purple-200 group-hover:text-white transition-colors truncate">
+                                  {formatSlotName(groupName)} Supplements ({suppTasks.length})
+                                </span>
+                                <span className="text-[10px] text-purple-300/70 font-mono shrink-0">
+                                  • {suppCompletedCount}/{suppTasks.length} Taken
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                                {allSuppsCompleted ? (
+                                  <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    <Check size={11} strokeWidth={2.5} /> All Taken
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCompleteMultipleTasks(suppTasks)}
+                                    className="text-[10px] font-bold text-purple-200 hover:text-white bg-purple-900/60 hover:bg-purple-800 border border-purple-500/40 px-2.5 py-0.5 rounded-md transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                                  >
+                                    <Check size={11} strokeWidth={2.5} /> Take All
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedSupplementBlocks(prev => ({ ...prev, [groupName]: !isSuppStackExpanded }))}
+                                  className="p-1 text-purple-400 group-hover:text-purple-200 cursor-pointer"
+                                >
+                                  <ChevronDown size={14} className={`transition-transform duration-200 ${isSuppStackExpanded ? 'rotate-180' : ''}`} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* When Expanded: render compact supplement rows */}
+                            {isSuppStackExpanded && (
+                              <div className="space-y-1.5 pt-1.5 pl-1 sm:pl-2 animate-in fade-in">
+                                {suppTasks.map(t => {
+                                  const mod = resolveTaskModality(t)
+                                  const name = resolveTaskModalityName(t)
+                                  const bench = benchItems.find(b => b.modality_id === (t.modality_id || mod?.id))
+                                  return (
+                                    <SupplementCompactRow
+                                      key={t.id}
+                                      task={t}
+                                      modality={mod}
+                                      modalityName={name}
+                                      benchItem={bench}
+                                      onStatusChange={handleStatusChange}
+                                      onOpenDetails={() => {}}
+                                      completionMode={completionMode}
+                                    />
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ) : suppTasks.length === 1 ? (
+                          /* If only 1 supplement, render directly without extra stack wrapper */
+                          renderCard(suppTasks[0], undefined, isIgnited)
+                        ) : null}
+                      </>
+                    )
+                  })()}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )
-    })
+          )
+        })}
+      </>
+    )
   }
 
   if (!isMounted) {
