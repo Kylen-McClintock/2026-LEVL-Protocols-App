@@ -275,6 +275,34 @@ export async function getModalities(forceRefresh = false): Promise<Modality[]> {
   return merged
 }
 
+export function getCachedModalitiesSync(): Modality[] {
+  const now = Date.now()
+  if (modalitiesCache?.data && modalitiesCache.data.length > 0) {
+    return modalitiesCache.data
+  }
+  const persistent = getPersistentCache<Modality[]>('modalities')
+  if (persistent && persistent.length > 0) {
+    const merged = mergeBuiltInModalities(persistent)
+    modalitiesCache = { data: merged, timestamp: now }
+    return merged
+  }
+  return mergeBuiltInModalities([])
+}
+
+export function getCachedProtocolsWithStepsSync(): any[] {
+  const now = Date.now()
+  if (protocolsWithStepsCache?.data && protocolsWithStepsCache.data.length > 0) {
+    return protocolsWithStepsCache.data
+  }
+  const persistent = getPersistentCache<any[]>('protocols_with_steps')
+  if (persistent && persistent.length > 0) {
+    const merged = mergeBuiltInProtocols(persistent)
+    protocolsWithStepsCache = { data: merged, timestamp: now }
+    return merged
+  }
+  return mergeBuiltInProtocols([])
+}
+
 export async function getModalityById(id: string): Promise<Modality | null> {
   const all = await getModalities()
   return all.find(m => m.id === id || m.slug === id) || null

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Modality, UserProfile, UserBenchItem } from '@/lib/types'
 import { BookmarkPlus, Plus, Check, Info, Sparkles, Search, CalendarPlus, CheckCircle2, Bookmark, Scale, ArrowRightLeft, AlertTriangle, History, Ban, Flame, ShieldCheck, Layers, ChevronDown, ChevronUp, Dna } from 'lucide-react'
@@ -41,7 +41,7 @@ type ExploreCardProps = {
   isPinnedForCompare?: boolean
 }
 
-export default function ExploreCard({ 
+function ExploreCard({ 
   modality, 
   userProfile, 
   searchScore, 
@@ -70,32 +70,36 @@ export default function ExploreCard({
   const [isScheduling, setIsScheduling] = useState(false)
   const [showBenchConfirm, setShowBenchConfirm] = useState(false)
 
-  const longevityReport = getAllModalityLongevityImpacts(modality)
-  const longevityScore = getModalityLongevityScore(modality)
+  const longevityReport = useMemo(() => getAllModalityLongevityImpacts(modality), [modality])
+  const longevityScore = useMemo(() => getModalityLongevityScore(modality), [modality])
 
-  const stackFit = stackFitResult || (
-    (todayModalities.length > 0 || benchModalities.length > 0)
-      ? evaluateStackFit(modality, todayModalities, benchModalities, userProfile)
-      : null
-  )
+  const stackFit = useMemo(() => {
+    if (stackFitResult) return stackFitResult
+    if ((todayModalities?.length || 0) === 0 && (benchModalities?.length || 0) === 0) return null
+    return evaluateStackFit(modality, todayModalities, benchModalities, userProfile)
+  }, [modality, stackFitResult, todayModalities, benchModalities, userProfile])
 
   const isCurrentlyActiveInToday = activeStatus === 'today' || addedToToday
   const isCurrentlyOnBench = activeStatus === 'bench' || addedToBench
 
   // Detect conflict warnings from NBA analysis
-  const conflictWarnings = (modality.nba_result?.reasons || []).filter(r => 
-    r.toLowerCase().includes('exceeds') ||
-    r.toLowerCase().includes('discipline') ||
-    r.toLowerCase().includes('lacks') ||
-    r.toLowerCase().includes('conflict') ||
-    r.toLowerCase().includes('not recommended') ||
-    r.toLowerCase().includes('unnecessary') ||
-    r.toLowerCase().includes('contraindicat')
-  )
+  const conflictWarnings = useMemo(() => {
+    return (modality.nba_result?.reasons || []).filter(r => 
+      r.toLowerCase().includes('exceeds') ||
+      r.toLowerCase().includes('discipline') ||
+      r.toLowerCase().includes('lacks') ||
+      r.toLowerCase().includes('conflict') ||
+      r.toLowerCase().includes('not recommended') ||
+      r.toLowerCase().includes('unnecessary') ||
+      r.toLowerCase().includes('contraindicat')
+    )
+  }, [modality.nba_result?.reasons])
   const hasConflict = conflictWarnings.length > 0
 
   // Clinical Contraindication & Interaction Screening
-  const contraindications = detectContraindications(modality, userProfile)
+  const contraindications = useMemo(() => {
+    return detectContraindications(modality, userProfile)
+  }, [modality, userProfile])
   const hasContraindication = contraindications.length > 0
 
   const handleScheduleSuccess = (destination: 'today' | 'tomorrow' | 'bench') => {
@@ -716,3 +720,5 @@ export default function ExploreCard({
     </div>
   )
 }
+
+export default memo(ExploreCard)

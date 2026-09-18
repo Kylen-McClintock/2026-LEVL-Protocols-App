@@ -7,6 +7,8 @@ import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { 
   getModalities, 
   getProtocolsWithSteps, 
+  getCachedModalitiesSync,
+  getCachedProtocolsWithStepsSync,
   getOrCreateUserProfile, 
   addToBench, 
   addProtocolToBench, 
@@ -16,6 +18,7 @@ import {
   getDailyProtocolTasks,
   getOutcomeDimensions
 } from '@/lib/data'
+import { getLatestBiomarkerMeasurements } from '@/lib/data/bloodworkData'
 import { Modality, UserProfile, UserBenchItem, OutcomeDimension, DailyProtocolTask, Protocol } from '@/lib/types'
 import { CategoryFiltersBar, MainCategory, SUB_CATEGORIES_MAP, FilterLens } from '@/components/ui/ViewSelectorHeader'
 import { SolarDiurnalSlider } from '@/components/ui/SolarDiurnalSlider'
@@ -65,9 +68,13 @@ function ExplorePageContent() {
   const sortParam = searchParams.get('sort')
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [modalities, setModalities] = useState<Modality[]>([])
-  const [protocols, setProtocols] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [modalities, setModalities] = useState<Modality[]>(() => getCachedModalitiesSync())
+  const [protocols, setProtocols] = useState<any[]>(() => getCachedProtocolsWithStepsSync())
+  const [loading, setLoading] = useState<boolean>(() => {
+    const initial = getCachedModalitiesSync()
+    return initial.length === 0
+  })
+  const [isRevalidating, setIsRevalidating] = useState(false)
   const [activeTab, setActiveTab] = useState<'modalities' | 'protocols'>(() => {
     return tabParam === 'protocols' ? 'protocols' : 'modalities'
   })
@@ -247,94 +254,87 @@ function ExplorePageContent() {
   }, [loading])
 
   const loadData = useCallback(async () => {
+    setIsRevalidating(true)
     const localUserId = getLocalUserId()
     const todayStr = new Date().toISOString().split('T')[0]
 
-    const { getLatestBiomarkerMeasurements } = await import('@/lib/data/bloodworkData')
+    try {
+      const [fetchedProfile, allMods, allProtos, benchItems, todayTasks, userBiomarkers, fetchedDims] = await Promise.all([
+        getOrCreateUserProfile(localUserId),
+        getModalities(),
+        getProtocolsWithSteps(),
+        getBenchItems(localUserId),
+        getDailyProtocolTasks(localUserId, todayStr),
+        getLatestBiomarkerMeasurements(localUserId),
+        getOutcomeDimensions()
+      ])
 
-    const [fetchedProfile, allMods, allProtos, benchItems, todayTasks, userBiomarkers, fetchedDims] = await Promise.all([
-      getOrCreateUserProfile(localUserId),
-      getModalities(),
-      getProtocolsWithSteps(),
-      getBenchItems(localUserId),
-      getDailyProtocolTasks(localUserId, todayStr),
-      getLatestBiomarkerMeasurements(localUserId),
-      getOutcomeDimensions()
-    ])
+      setOutcomeDimensions(fetchedDims || [])
+      setTodayTasksList(todayTasks || [])
 
-    setOutcomeDimensions(fetchedDims || [])
-    setTodayTasksList(todayTasks || [])
+      const todayIds = new Set<string>()
+      const benchIds = new Set<string>()
+      const todayProtoIds = new Set<string>()
+      const benchProtoIds = new Set<string>()
+      const activeMap = new Map<string, { modality: Modality, source: 'today' | 'bench' }>()
+      const bHistoryMap = new Map<string, UserBenchItem>()
 
-    const todayIds = new Set<string>()
-    const benchIds = new Set<string>()
-    const todayProtoIds = new Set<string>()
-    const benchProtoIds = new Set<string>()
-    const activeMap = new Map<string, { modality: Modality, source: 'today' | 'bench' }>()
-    const bHistoryMap = new Map<string, UserBenchItem>()
+      todayTasks.forEach(task => {
+        const mId = task.modality_id || task.protocol_step?.modality_id
+        if (mId) {
+          todayIds.add(mId)
+          const mod = allMods.find(m => m.id === mId)
+          if (mod) activeMap.set(mId, { modality: mod, source: 'today' })
+        }
+        const pId = task.protocol_step?.protocol_id || (task as any).user_protocol_instance?.protocol_id
+        if (pId) todayProtoIds.add(pId)
+        if (task.protocol_step?.protocol?.name) todayProtoIds.add(task.protocol_step.protocol.name.toLowerCase())
+      })
 
-    todayTasks.forEach(task => {
-      const mId = task.modality_id || task.protocol_step?.modality_id
-      if (mId) {
-        todayIds.add(mId)
-        const mod = allMods.find(m => m.id === mId)
-        if (mod) activeMap.set(mId, { modality: mod, source: 'today' })
-      }
-      const pId = task.protocol_step?.protocol_id || (task as any).user_protocol_instance?.protocol_id
-      if (pId) todayProtoIds.add(pId)
-      if (task.protocol_step?.protocol?.name) todayProtoIds.add(task.protocol_step.protocol.name.toLowerCase())
-    })
-
-    benchItems.forEach(item => {
-      if (item.protocol_id) {
-        benchProtoIds.add(item.protocol_id)
-      }
-      if (item.modality_id) {
-        bHistoryMap.set(item.modality_id, item)
-        if (item.status === 'active' || item.status === 'benched') {
-          benchIds.add(item.modality_id)
-          if (!activeMap.has(item.modality_id)) {
-            const mod = item.modality || allMods.find(m => m.id === item.modality_id)
-            if (mod) activeMap.set(item.modality_id, { modality: mod, source: 'bench' })
+      benchItems.forEach(item => {
+        if (item.protocol_id) {
+          benchProtoIds.add(item.protocol_id)
+        }
+        if (item.modality_id) {
+          bHistoryMap.set(item.modality_id, item)
+          if (item.status === 'active' || item.status === 'benched') {
+            benchIds.add(item.modality_id)
+            if (!activeMap.has(item.modality_id)) {
+              const mod = item.modality || allMods.find(m => m.id === item.modality_id)
+              if (mod) activeMap.set(item.modality_id, { modality: mod, source: 'bench' })
+            }
           }
         }
-      }
-    })
+      })
 
-    const biomarkerMap: Record<string, { raw_value: number; normalized_value: number; lab_flag?: string }> = {}
-    userBiomarkers.forEach(b => {
-      biomarkerMap[b.biomarker_id] = {
-        raw_value: b.raw_value,
-        normalized_value: b.normalized_value,
-        lab_flag: b.lab_flag
-      }
-    })
+      const biomarkerMap: Record<string, { raw_value: number; normalized_value: number; lab_flag?: string }> = {}
+      userBiomarkers.forEach(b => {
+        biomarkerMap[b.biomarker_id] = {
+          raw_value: b.raw_value,
+          normalized_value: b.normalized_value,
+          lab_flag: b.lab_flag
+        }
+      })
 
-    const ranked = sortModalitiesByNBA(allMods, fetchedProfile, { biomarkers: biomarkerMap })
-    setProfile(fetchedProfile)
-    setModalities(ranked)
-    setProtocols(allProtos)
-    setTodayModalityIds(todayIds)
-    setBenchModalityIds(benchIds)
-    setTodayProtocolIds(todayProtoIds)
-    setBenchProtocolIds(benchProtoIds)
-    setActiveModalitiesMap(activeMap)
-    setBenchHistoryMap(bHistoryMap)
-    setLoading(false)
+      const ranked = sortModalitiesByNBA(allMods, fetchedProfile, { biomarkers: biomarkerMap })
+      setProfile(fetchedProfile)
+      setModalities(ranked)
+      setProtocols(allProtos)
+      setTodayModalityIds(todayIds)
+      setBenchModalityIds(benchIds)
+      setTodayProtocolIds(todayProtoIds)
+      setBenchProtocolIds(benchProtoIds)
+      setActiveModalitiesMap(activeMap)
+      setBenchHistoryMap(bHistoryMap)
+    } catch (err) {
+      console.error('Failed to load explore data in background:', err)
+    } finally {
+      setLoading(false)
+      setIsRevalidating(false)
+    }
   }, [])
 
   useEffect(() => {
-    // SWR instant hydration: paint cached modalities immediately if available
-    try {
-      const cached = localStorage.getItem('levl_cached_modalities')
-      if (cached) {
-        const parsed = JSON.parse(cached)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setModalities(parsed)
-          setLoading(false)
-        }
-      }
-    } catch (e) {}
-
     loadData()
   }, [loadData])
 
@@ -626,262 +626,352 @@ function ExplorePageContent() {
     }
   }
 
-  const filteredModalities = modalities.filter(mod => {
-    if (filterBenchHistoryStatus === 'tried_history' && !benchHistoryMap.has(mod.id)) return false
-    if (filterBenchHistoryStatus === 'benched') {
-      const item = benchHistoryMap.get(mod.id)
-      if (!item || (item.status !== 'benched' && item.status !== 'active')) return false
+  // Memoized sub-lists to avoid running modalities.filter() repeatedly on every card render
+  const todayModalitiesList = useMemo(() => {
+    return modalities.filter(m => todayModalityIds.has(m.id))
+  }, [modalities, todayModalityIds])
+
+  const benchModalitiesList = useMemo(() => {
+    return modalities.filter(m => benchModalityIds.has(m.id))
+  }, [modalities, benchModalityIds])
+
+  // Precompute popularity scores map for O(1) sort comparisons
+  const modalityPopularityMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const m of modalities) {
+      map.set(m.id, calculateModalityPopularityScore(m))
     }
-    if (filterBenchHistoryStatus === 'eliminated') {
-      const item = benchHistoryMap.get(mod.id)
-      if (!item || item.status !== 'eliminated') return false
+    return map
+  }, [modalities])
+
+  const protocolPopularityMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const p of protocols) {
+      map.set(p.id, calculateProtocolPopularityScore(p))
     }
-    // Category Filtering with Multi-Select Main Categories & Sub-Categories
-    const isAllMain = selectedMainCategories.includes('all') || selectedMainCategories.length === 0
-    if (!isAllMain) {
-      const modName = (mod.name || mod.display_name || '').toLowerCase()
-      const modCategory = (mod.category || '').toLowerCase()
-      const modType = (mod.modality_type || '').toLowerCase()
-      const macroCategory = getMacroCategory(mod.category, mod.modality_type).toLowerCase()
+    return map
+  }, [protocols])
 
-      const matchesMain = selectedMainCategories.some(mc => {
-        if (mc === 'peptides') {
-          return macroCategory.includes('peptide') || modCategory.includes('peptide') || modType.includes('peptide') ||
-            modName.includes('bpc') || modName.includes('tb-500') || modName.includes('tb500') || modName.includes('cjc') || modName.includes('ipamorelin') || modName.includes('semax') || modName.includes('selank') || modName.includes('epithalon') || modName.includes('epitalon') || modName.includes('ghk') || modName.includes('tirzepatide') || modName.includes('semaglutide') || modName.includes('retatrutide') || modName.includes('mots') || modName.includes('ss-31') || modName.includes('ss31') || modName.includes('elamipretide') || modName.includes('aod') || modName.includes('ta1') || modName.includes('ta-1') || modName.includes('thymosin') || modName.includes('pt141') || modName.includes('pt-141') || modName.includes('oxytocin') || modName.includes('bremelanotide') || modName.includes('sermorelin') || modName.includes('igf1') || modName.includes('igf-1') || modName.includes('lr3') || modName.includes('kisspeptin') || !!mod.peptide_metadata?.is_peptide
+  // Precomputed similar active modalities map to avoid heavy nested loops during card render
+  const similarActiveModalitiesMap = useMemo(() => {
+    const map = new Map<string, { modality: Modality, source: 'today' | 'bench' } | null>()
+    const activeList = Array.from(activeModalitiesMap.values())
+    if (activeList.length === 0) return map
+
+    for (const mod of modalities) {
+      if (todayModalityIds.has(mod.id) || benchModalityIds.has(mod.id)) {
+        map.set(mod.id, null)
+        continue
+      }
+      const modName = (mod.display_name || mod.name || '').toLowerCase()
+      const modCat = (mod.category || '').toLowerCase()
+
+      let matched: { modality: Modality, source: 'today' | 'bench' } | null = null
+      for (const active of activeList) {
+        if (active.modality.id === mod.id) continue
+        const actName = (active.modality.display_name || active.modality.name || '').toLowerCase()
+        const actCat = (active.modality.category || '').toLowerCase()
+
+        for (const family of MODALITY_FAMILIES) {
+          if (family.some(k => modName.includes(k) || modCat.includes(k)) &&
+              family.some(k => actName.includes(k) || actCat.includes(k))) {
+            matched = active
+            break
+          }
         }
+        if (matched) break
 
-        if (mc === 'fitness') {
-          return macroCategory.includes('fitness') || macroCategory.includes('physical') || macroCategory.includes('movement') ||
-            modCategory.includes('cardio') || modCategory.includes('strength') || modCategory.includes('workout') || modCategory.includes('exercise') || modCategory.includes('movement') || modCategory.includes('endurance') || modCategory.includes('hiit') || modCategory.includes('vo2') || modCategory.includes('aerobic') || modCategory.includes('resistance') || modCategory.includes('physical') || modCategory.includes('flexibility') || modCategory.includes('stretching') || modCategory.includes('recovery') ||
-            modType.includes('exercise') || modType.includes('physical') ||
-            modName.includes('vo2') || modName.includes('cpet') || modName.includes('hiit') || modName.includes('cardio') || modName.includes('sprint') || modName.includes('strength') || modName.includes('lifting') || modName.includes('workout') || modName.includes('exercise') || modName.includes('training') || modName.includes('running') || modName.includes('cycling') || modName.includes('walk') || modName.includes('rowing') || modName.includes('soleus') || modName.includes('handgrip') || modName.includes('calisthenics')
+        const isGenericCategory = modCat.includes('supplement') || modCat.includes('nutrition') || modCat.includes('other') || modCat.includes('general')
+        if (!isGenericCategory && modCat && actCat && modCat === actCat) {
+          const modImpacts = mod.functional_impacts || {}
+          const actImpacts = active.modality.functional_impacts || {}
+          const sharedHighImpacts = Object.keys(modImpacts).filter(k => 
+            (modImpacts[k]?.score || 0) >= 8 && (actImpacts[k]?.score || 0) >= 8
+          )
+          if (sharedHighImpacts.length >= 2) {
+            matched = active
+            break
+          }
         }
+      }
+      map.set(mod.id, matched)
+    }
+    return map
+  }, [modalities, activeModalitiesMap, todayModalityIds, benchModalityIds])
 
-        if (mc === 'nutrition') {
-          return macroCategory.includes('nutrition') || macroCategory.includes('supplement') || macroCategory.includes('biochemistry') ||
-            modCategory.includes('supplement') || modCategory.includes('fasting') || modCategory.includes('diet') || modCategory.includes('food') || modCategory.includes('nutraceutical') || modCategory.includes('biochemistry') || modCategory.includes('autophagy') ||
-            modType.includes('supplement') || modType.includes('fasting') || modType.includes('nutrition') ||
-            modName.includes('supplement') || modName.includes('fasting') || modName.includes('vitamin') || modName.includes('magnesium') || modName.includes('omega') || modName.includes('creatine') || modName.includes('protein') || modName.includes('diet') || modName.includes('berberine') || modName.includes('curcumin') || modName.includes('pudding')
-        }
+  const filteredModalities = useMemo(() => {
+    return modalities.filter(mod => {
+      if (filterBenchHistoryStatus === 'tried_history' && !benchHistoryMap.has(mod.id)) return false
+      if (filterBenchHistoryStatus === 'benched') {
+        const item = benchHistoryMap.get(mod.id)
+        if (!item || (item.status !== 'benched' && item.status !== 'active')) return false
+      }
+      if (filterBenchHistoryStatus === 'eliminated') {
+        const item = benchHistoryMap.get(mod.id)
+        if (!item || item.status !== 'eliminated') return false
+      }
+      // Category Filtering with Multi-Select Main Categories & Sub-Categories
+      const isAllMain = selectedMainCategories.includes('all') || selectedMainCategories.length === 0
+      if (!isAllMain) {
+        const modName = (mod.name || mod.display_name || '').toLowerCase()
+        const modCategory = (mod.category || '').toLowerCase()
+        const modType = (mod.modality_type || '').toLowerCase()
+        const macroCategory = getMacroCategory(mod.category, mod.modality_type).toLowerCase()
 
-        if (mc === 'sleep') {
-          return macroCategory.includes('sleep') || macroCategory.includes('circadian') || macroCategory.includes('recovery') ||
-            modCategory.includes('sleep') || modCategory.includes('circadian') || modCategory.includes('light') || modCategory.includes('photobiomodulation') || modCategory.includes('wind_down') || modCategory.includes('evening') || modCategory.includes('night') ||
-            modName.includes('sleep') || modName.includes('circadian') || modName.includes('light') || modName.includes('sauna') || modName.includes('mouth tap') || modName.includes('screen time') || modName.includes('caffeine') || modName.includes('bedtime')
-        }
-
-        if (mc === 'mind') {
-          return macroCategory.includes('mind') || macroCategory.includes('nervous') || macroCategory.includes('mental') || macroCategory.includes('cognitive') ||
-            modCategory.includes('mind') || modCategory.includes('mental') || modCategory.includes('nervous') || modCategory.includes('breath') || modCategory.includes('meditation') || modCategory.includes('cognitive') || modCategory.includes('vagal') || modCategory.includes('autonomic') || modCategory.includes('airway') || modCategory.includes('cranial') ||
-            modType.includes('breathwork') || modType.includes('meditation') ||
-            modName.includes('breath') || modName.includes('sigh') || modName.includes('meditat') || modName.includes('mindful') || modName.includes('focus') || modName.includes('optic flow') || modName.includes('nsdr') || modName.includes('yoga nidra') || modName.includes('wim hof')
-        }
-
-        if (mc === 'other') {
-          return macroCategory.includes('other') || macroCategory.includes('tracking') || macroCategory.includes('diagnostic') || macroCategory.includes('cellular') || macroCategory.includes('longevity') ||
-            modCategory.includes('diagnostic') || modCategory.includes('tracking') || modCategory.includes('screening') || modCategory.includes('biomarker') || modCategory.includes('lab') || modCategory.includes('genomic') || modCategory.includes('environmental') || modCategory.includes('skin') || modCategory.includes('hair') || modCategory.includes('cellular') || modCategory.includes('longevity') || modCategory.includes('pharmacotherapy') ||
-            modType.includes('diagnostic_test') || modType.includes('prescription_supported') || modType.includes('hardware') ||
-            modName.includes('mri') || modName.includes('dexa') || modName.includes('cac') || modName.includes('apob') || modName.includes('galleri') || modName.includes('grail') || modName.includes('dunedinpace') || modName.includes('abpm') || modName.includes('blood pressure') || modName.includes('oral') || modName.includes('pathogen') || modName.includes('metal') || modName.includes('rapamycin') || modName.includes('metformin')
-        }
-
-        return false
-      })
-
-      if (!matchesMain) return false
-
-      if (selectedSubCategories.length > 0) {
-        const matchesSub = selectedSubCategories.some(subId => {
-          // 1. Injury & Joint Repair
-          if (subId === 'injury_joint_repair' || subId === 'tissue_repair') {
-            return modName.includes('bpc') || modName.includes('tb-500') || modName.includes('tb500') || modName.includes('kpv') || modName.includes('wolverine') || modName.includes('tissue') || modName.includes('repair') || modName.includes('joint') || modName.includes('tendon') || modName.includes('ligament') || modName.includes('cartilage') || modName.includes('collagen') || modCategory.includes('tissue') || modCategory.includes('repair') || modCategory.includes('thermal')
-          }
-          // 2. Fat Loss & Metabolism
-          if (subId === 'fat_loss_metabolism' || subId === 'metabolic_glp1') {
-            return modName.includes('tirzepatide') || modName.includes('semaglutide') || modName.includes('retatrutide') || modName.includes('glp') || modName.includes('aod') || modName.includes('mots') || modName.includes('tesamorelin') || modName.includes('lipolysis') || modName.includes('fat') || modName.includes('weight') || modName.includes('fasting') || modCategory.includes('fasting') || modCategory.includes('metabolic')
-          }
-          // 3. Muscle & Recovery
-          if (subId === 'muscle_recovery' || subId === 'gh_secretagogues') {
-            return modName.includes('cjc') || modName.includes('ipamorelin') || modName.includes('tesamorelin') || modName.includes('sermorelin') || modName.includes('igf') || modName.includes('ghrp') || modName.includes('growth hormone') || modName.includes('secretagogue') || modName.includes('muscle') || modName.includes('strength') || modName.includes('hypertrophy') || modName.includes('recovery') || modCategory.includes('strength')
-          }
-          // 4. Focus, Brain & Mood
-          if (subId === 'focus_brain_mood' || subId === 'nootropics_brain') {
-            return modName.includes('semax') || modName.includes('selank') || modName.includes('dihexa') || modName.includes('cerebrolysin') || modName.includes('p21') || modName.includes('focus') || modName.includes('brain') || modName.includes('mood') || modName.includes('optic flow') || modName.includes('sunlight') || modCategory.includes('mind') || modCategory.includes('cognitive')
-          }
-          // 5. Skin & Aesthetics
-          if (subId === 'skin_aesthetics') {
-            return modName.includes('ghk') || modName.includes('copper') || modName.includes('skin') || modName.includes('collagen') || modName.includes('hair') || modName.includes('dermatology') || modName.includes('red light') || modName.includes('photobiomodulation') || modCategory.includes('skin') || modCategory.includes('photobiomodulation')
-          }
-          // 6. Immunity & Gut Health
-          if (subId === 'immunity_gut') {
-            return modName.includes('ta1') || modName.includes('ta-1') || modName.includes('thymosin') || modName.includes('kpv') || modName.includes('bpc') || modName.includes('gut') || modName.includes('immune') || modName.includes('barrier') || modCategory.includes('immune') || modCategory.includes('gut')
-          }
-          // 7. Libido & Vitality
-          if (subId === 'libido_vitality') {
-            return modName.includes('pt141') || modName.includes('pt-141') || modName.includes('bremelanotide') || modName.includes('kisspeptin') || modName.includes('oxytocin') || modName.includes('libido') || modName.includes('sexual') || modCategory.includes('sexual') || modCategory.includes('vitality')
-          }
-          // 8. Cellular Longevity & Anti-Aging
-          if (subId === 'cellular_longevity' || subId === 'longevity_biologics') {
-            return modName.includes('epithalon') || modName.includes('epitalon') || modName.includes('ghk') || modName.includes('mots') || modName.includes('ss-31') || modName.includes('ss31') || modName.includes('foxo4') || modName.includes('thymalin') || modName.includes('rapamycin') || modName.includes('metformin') || modName.includes('longevity') || modName.includes('telomere') || modName.includes('mitochondria') || modCategory.includes('longevity') || modCategory.includes('cellular')
+        const matchesMain = selectedMainCategories.some(mc => {
+          if (mc === 'peptides') {
+            return macroCategory.includes('peptide') || modCategory.includes('peptide') || modType.includes('peptide') ||
+              modName.includes('bpc') || modName.includes('tb-500') || modName.includes('tb500') || modName.includes('cjc') || modName.includes('ipamorelin') || modName.includes('semax') || modName.includes('selank') || modName.includes('epithalon') || modName.includes('epitalon') || modName.includes('ghk') || modName.includes('tirzepatide') || modName.includes('semaglutide') || modName.includes('retatrutide') || modName.includes('mots') || modName.includes('ss-31') || modName.includes('ss31') || modName.includes('elamipretide') || modName.includes('aod') || modName.includes('ta1') || modName.includes('ta-1') || modName.includes('thymosin') || modName.includes('pt141') || modName.includes('pt-141') || modName.includes('oxytocin') || modName.includes('bremelanotide') || modName.includes('sermorelin') || modName.includes('igf1') || modName.includes('igf-1') || modName.includes('lr3') || modName.includes('kisspeptin') || !!mod.peptide_metadata?.is_peptide
           }
 
-          // Other fitness/nutrition/sleep/mind categories
-          if (subId === 'cardio') return modCategory.includes('cardio') || modCategory.includes('endurance') || modCategory.includes('hiit') || modCategory.includes('vo2') || modCategory.includes('aerobic') || modName.includes('cardio') || modName.includes('vo2') || modName.includes('hiit') || modName.includes('cpet') || modName.includes('sprint') || modName.includes('run') || modName.includes('cycling') || modName.includes('walk')
-          if (subId === 'strength') return modCategory.includes('strength') || modCategory.includes('resistance') || modCategory.includes('weight') || modCategory.includes('lifting') || modName.includes('strength') || modName.includes('lifting') || modName.includes('workout') || modName.includes('squat') || modName.includes('deadlift') || modName.includes('handgrip') || modName.includes('soleus')
-          if (subId === 'flexibility') return modCategory.includes('flexibility') || modCategory.includes('stretch') || modCategory.includes('yoga') || modCategory.includes('mobility') || modName.includes('stretch') || modName.includes('flexibility') || modName.includes('yoga') || modName.includes('mobility')
-          if (subId === 'thermal') return modCategory.includes('sauna') || modCategory.includes('cold') || modCategory.includes('heat') || modCategory.includes('thermal') || modCategory.includes('cryo') || modName.includes('sauna') || modName.includes('cold') || modName.includes('ice') || modName.includes('cryo')
-          if (subId === 'supplements') return modCategory.includes('supplement') || modCategory.includes('stack') || modCategory.includes('vitamin') || modType.includes('supplement') || modName.includes('supplement') || modName.includes('vitamin') || modName.includes('magnesium') || modName.includes('omega') || modName.includes('creatine')
-          if (subId === 'fasting') return modCategory.includes('fasting') || modCategory.includes('autophagy') || modType.includes('fasting') || modName.includes('fasting') || modName.includes('fast') || modName.includes('omad')
-          if (subId === 'whole_foods') return modCategory.includes('diet') || modCategory.includes('food') || modCategory.includes('nutrition') || modName.includes('diet') || modName.includes('food') || modName.includes('pudding')
-          if (subId === 'hygiene') return modCategory.includes('hygiene') || modCategory.includes('sleep') || modName.includes('sleep') || modName.includes('mouth tap') || modName.includes('screen')
-          if (subId === 'circadian') return modCategory.includes('circadian') || modCategory.includes('light') || modName.includes('circadian') || modName.includes('light') || modName.includes('sunlight')
-          if (subId === 'wind_down') return modCategory.includes('wind_down') || modCategory.includes('evening') || modName.includes('evening') || modName.includes('night') || modName.includes('bedtime')
-          if (subId === 'nervous_system') return modCategory.includes('nervous') || modCategory.includes('vagus') || modName.includes('nervous') || modName.includes('vagus') || modName.includes('autonomic')
-          if (subId === 'breathwork') return modCategory.includes('breath') || modCategory.includes('sigh') || modType.includes('breathwork') || modName.includes('breath') || modName.includes('sigh')
-          if (subId === 'meditation') return modCategory.includes('meditation') || modCategory.includes('mindfulness') || modType.includes('meditation') || modName.includes('meditat') || modName.includes('mindful')
-          if (subId === 'skin') return modCategory.includes('skin') || modCategory.includes('hair') || modCategory.includes('dermatology') || modName.includes('skin') || modName.includes('hair')
-          if (subId === 'biomarkers') return modCategory.includes('diagnostic') || modCategory.includes('biomarker') || modCategory.includes('lab') || modCategory.includes('tracking') || modType.includes('diagnostic_test') || modName.includes('mri') || modName.includes('dexa') || modName.includes('cac') || modName.includes('apob') || modName.includes('vo2') || modName.includes('dunedinpace') || modName.includes('abpm') || modName.includes('scan') || modName.includes('test')
-          if (subId === 'environmental') return modCategory.includes('environment') || modCategory.includes('toxin') || modCategory.includes('air') || modName.includes('toxin') || modName.includes('metal')
-          return modCategory.includes(subId) || modName.includes(subId)
+          if (mc === 'fitness') {
+            return macroCategory.includes('fitness') || macroCategory.includes('physical') || macroCategory.includes('movement') ||
+              modCategory.includes('cardio') || modCategory.includes('strength') || modCategory.includes('workout') || modCategory.includes('exercise') || modCategory.includes('movement') || modCategory.includes('endurance') || modCategory.includes('hiit') || modCategory.includes('vo2') || modCategory.includes('aerobic') || modCategory.includes('resistance') || modCategory.includes('physical') || modCategory.includes('flexibility') || modCategory.includes('stretching') || modCategory.includes('recovery') ||
+              modType.includes('exercise') || modType.includes('physical') ||
+              modName.includes('vo2') || modName.includes('cpet') || modName.includes('hiit') || modName.includes('cardio') || modName.includes('sprint') || modName.includes('strength') || modName.includes('lifting') || modName.includes('workout') || modName.includes('exercise') || modName.includes('training') || modName.includes('running') || modName.includes('cycling') || modName.includes('walk') || modName.includes('rowing') || modName.includes('soleus') || modName.includes('handgrip') || modName.includes('calisthenics')
+          }
+
+          if (mc === 'nutrition') {
+            return macroCategory.includes('nutrition') || macroCategory.includes('supplement') || macroCategory.includes('biochemistry') ||
+              modCategory.includes('supplement') || modCategory.includes('fasting') || modCategory.includes('diet') || modCategory.includes('food') || modCategory.includes('nutraceutical') || modCategory.includes('biochemistry') || modCategory.includes('autophagy') ||
+              modType.includes('supplement') || modType.includes('fasting') || modType.includes('nutrition') ||
+              modName.includes('supplement') || modName.includes('fasting') || modName.includes('vitamin') || modName.includes('magnesium') || modName.includes('omega') || modName.includes('creatine') || modName.includes('protein') || modName.includes('diet') || modName.includes('berberine') || modName.includes('curcumin') || modName.includes('pudding')
+          }
+
+          if (mc === 'sleep') {
+            return macroCategory.includes('sleep') || macroCategory.includes('circadian') || macroCategory.includes('recovery') ||
+              modCategory.includes('sleep') || modCategory.includes('circadian') || modCategory.includes('light') || modCategory.includes('photobiomodulation') || modCategory.includes('wind_down') || modCategory.includes('evening') || modCategory.includes('night') ||
+              modName.includes('sleep') || modName.includes('circadian') || modName.includes('light') || modName.includes('sauna') || modName.includes('mouth tap') || modName.includes('screen time') || modName.includes('caffeine') || modName.includes('bedtime')
+          }
+
+          if (mc === 'mind') {
+            return macroCategory.includes('mind') || macroCategory.includes('nervous') || macroCategory.includes('mental') || macroCategory.includes('cognitive') ||
+              modCategory.includes('mind') || modCategory.includes('mental') || modCategory.includes('nervous') || modCategory.includes('breath') || modCategory.includes('meditation') || modCategory.includes('cognitive') || modCategory.includes('vagal') || modCategory.includes('autonomic') || modCategory.includes('airway') || modCategory.includes('cranial') ||
+              modType.includes('breathwork') || modType.includes('meditation') ||
+              modName.includes('breath') || modName.includes('sigh') || modName.includes('meditat') || modName.includes('mindful') || modName.includes('focus') || modName.includes('optic flow') || modName.includes('nsdr') || modName.includes('yoga nidra') || modName.includes('wim hof')
+          }
+
+          if (mc === 'other') {
+            return macroCategory.includes('other') || macroCategory.includes('tracking') || macroCategory.includes('diagnostic') || macroCategory.includes('cellular') || macroCategory.includes('longevity') ||
+              modCategory.includes('diagnostic') || modCategory.includes('tracking') || modCategory.includes('screening') || modCategory.includes('biomarker') || modCategory.includes('lab') || modCategory.includes('genomic') || modCategory.includes('environmental') || modCategory.includes('skin') || modCategory.includes('hair') || modCategory.includes('cellular') || modCategory.includes('longevity') || modCategory.includes('pharmacotherapy') ||
+              modType.includes('diagnostic_test') || modType.includes('prescription_supported') || modType.includes('hardware') ||
+              modName.includes('mri') || modName.includes('dexa') || modName.includes('cac') || modName.includes('apob') || modName.includes('galleri') || modName.includes('grail') || modName.includes('dunedinpace') || modName.includes('abpm') || modName.includes('blood pressure') || modName.includes('oral') || modName.includes('pathogen') || modName.includes('metal') || modName.includes('rapamycin') || modName.includes('metformin')
+          }
+
+          return false
         })
-        if (!matchesSub) return false
+
+        if (!matchesMain) return false
+
+        if (selectedSubCategories.length > 0) {
+          const matchesSub = selectedSubCategories.some(subId => {
+            // 1. Injury & Joint Repair
+            if (subId === 'injury_joint_repair' || subId === 'tissue_repair') {
+              return modName.includes('bpc') || modName.includes('tb-500') || modName.includes('tb500') || modName.includes('kpv') || modName.includes('wolverine') || modName.includes('tissue') || modName.includes('repair') || modName.includes('joint') || modName.includes('tendon') || modName.includes('ligament') || modName.includes('cartilage') || modName.includes('collagen') || modCategory.includes('tissue') || modCategory.includes('repair') || modCategory.includes('thermal')
+            }
+            // 2. Fat Loss & Metabolism
+            if (subId === 'fat_loss_metabolism' || subId === 'metabolic_glp1') {
+              return modName.includes('tirzepatide') || modName.includes('semaglutide') || modName.includes('retatrutide') || modName.includes('glp') || modName.includes('aod') || modName.includes('mots') || modName.includes('tesamorelin') || modName.includes('lipolysis') || modName.includes('fat') || modName.includes('weight') || modName.includes('fasting') || modCategory.includes('fasting') || modCategory.includes('metabolic')
+            }
+            // 3. Muscle & Recovery
+            if (subId === 'muscle_recovery' || subId === 'gh_secretagogues') {
+              return modName.includes('cjc') || modName.includes('ipamorelin') || modName.includes('tesamorelin') || modName.includes('sermorelin') || modName.includes('igf') || modName.includes('ghrp') || modName.includes('growth hormone') || modName.includes('secretagogue') || modName.includes('muscle') || modName.includes('strength') || modName.includes('hypertrophy') || modName.includes('recovery') || modCategory.includes('strength')
+            }
+            // 4. Focus, Brain & Mood
+            if (subId === 'focus_brain_mood' || subId === 'nootropics_brain') {
+              return modName.includes('semax') || modName.includes('selank') || modName.includes('dihexa') || modName.includes('cerebrolysin') || modName.includes('p21') || modName.includes('focus') || modName.includes('brain') || modName.includes('mood') || modName.includes('optic flow') || modName.includes('sunlight') || modCategory.includes('mind') || modCategory.includes('cognitive')
+            }
+            // 5. Skin & Aesthetics
+            if (subId === 'skin_aesthetics') {
+              return modName.includes('ghk') || modName.includes('copper') || modName.includes('skin') || modName.includes('collagen') || modName.includes('hair') || modName.includes('dermatology') || modName.includes('red light') || modName.includes('photobiomodulation') || modCategory.includes('skin') || modCategory.includes('photobiomodulation')
+            }
+            // 6. Immunity & Gut Health
+            if (subId === 'immunity_gut') {
+              return modName.includes('ta1') || modName.includes('ta-1') || modName.includes('thymosin') || modName.includes('kpv') || modName.includes('bpc') || modName.includes('gut') || modName.includes('immune') || modName.includes('barrier') || modCategory.includes('immune') || modCategory.includes('gut')
+            }
+            // 7. Libido & Vitality
+            if (subId === 'libido_vitality') {
+              return modName.includes('pt141') || modName.includes('pt-141') || modName.includes('bremelanotide') || modName.includes('kisspeptin') || modName.includes('oxytocin') || modName.includes('libido') || modName.includes('sexual') || modCategory.includes('sexual') || modCategory.includes('vitality')
+            }
+            // 8. Cellular Longevity & Anti-Aging
+            if (subId === 'cellular_longevity' || subId === 'longevity_biologics') {
+              return modName.includes('epithalon') || modName.includes('epitalon') || modName.includes('ghk') || modName.includes('mots') || modName.includes('ss-31') || modName.includes('ss31') || modName.includes('foxo4') || modName.includes('thymalin') || modName.includes('rapamycin') || modName.includes('metformin') || modName.includes('longevity') || modName.includes('telomere') || modName.includes('mitochondria') || modCategory.includes('longevity') || modCategory.includes('cellular')
+            }
+
+            // Other fitness/nutrition/sleep/mind categories
+            if (subId === 'cardio') return modCategory.includes('cardio') || modCategory.includes('endurance') || modCategory.includes('hiit') || modCategory.includes('vo2') || modCategory.includes('aerobic') || modName.includes('cardio') || modName.includes('vo2') || modName.includes('hiit') || modName.includes('cpet') || modName.includes('sprint') || modName.includes('run') || modName.includes('cycling') || modName.includes('walk')
+            if (subId === 'strength') return modCategory.includes('strength') || modCategory.includes('resistance') || modCategory.includes('weight') || modCategory.includes('lifting') || modName.includes('strength') || modName.includes('lifting') || modName.includes('workout') || modName.includes('squat') || modName.includes('deadlift') || modName.includes('handgrip') || modName.includes('soleus')
+            if (subId === 'flexibility') return modCategory.includes('flexibility') || modCategory.includes('stretch') || modCategory.includes('yoga') || modCategory.includes('mobility') || modName.includes('stretch') || modName.includes('flexibility') || modName.includes('yoga') || modName.includes('mobility')
+            if (subId === 'thermal') return modCategory.includes('sauna') || modCategory.includes('cold') || modCategory.includes('heat') || modCategory.includes('thermal') || modCategory.includes('cryo') || modName.includes('sauna') || modName.includes('cold') || modName.includes('ice') || modName.includes('cryo')
+            if (subId === 'supplements') return modCategory.includes('supplement') || modCategory.includes('stack') || modCategory.includes('vitamin') || modType.includes('supplement') || modName.includes('supplement') || modName.includes('vitamin') || modName.includes('magnesium') || modName.includes('omega') || modName.includes('creatine')
+            if (subId === 'fasting') return modCategory.includes('fasting') || modCategory.includes('autophagy') || modType.includes('fasting') || modName.includes('fasting') || modName.includes('fast') || modName.includes('omad')
+            if (subId === 'whole_foods') return modCategory.includes('diet') || modCategory.includes('food') || modCategory.includes('nutrition') || modName.includes('diet') || modName.includes('food') || modName.includes('pudding')
+            if (subId === 'hygiene') return modCategory.includes('hygiene') || modCategory.includes('sleep') || modName.includes('sleep') || modName.includes('mouth tap') || modName.includes('screen')
+            if (subId === 'circadian') return modCategory.includes('circadian') || modCategory.includes('light') || modName.includes('circadian') || modName.includes('light') || modName.includes('sunlight')
+            if (subId === 'wind_down') return modCategory.includes('wind_down') || modCategory.includes('evening') || modName.includes('evening') || modName.includes('night') || modName.includes('bedtime')
+            if (subId === 'nervous_system') return modCategory.includes('nervous') || modCategory.includes('vagus') || modName.includes('nervous') || modName.includes('vagus') || modName.includes('autonomic')
+            if (subId === 'breathwork') return modCategory.includes('breath') || modCategory.includes('sigh') || modType.includes('breathwork') || modName.includes('breath') || modName.includes('sigh')
+            if (subId === 'meditation') return modCategory.includes('meditation') || modCategory.includes('mindfulness') || modType.includes('meditation') || modName.includes('meditat') || modName.includes('mindful')
+            if (subId === 'skin') return modCategory.includes('skin') || modCategory.includes('hair') || modCategory.includes('dermatology') || modName.includes('skin') || modName.includes('hair')
+            if (subId === 'biomarkers') return modCategory.includes('diagnostic') || modCategory.includes('biomarker') || modCategory.includes('lab') || modCategory.includes('tracking') || modType.includes('diagnostic_test') || modName.includes('mri') || modName.includes('dexa') || modName.includes('cac') || modName.includes('apob') || modName.includes('vo2') || modName.includes('dunedinpace') || modName.includes('abpm') || modName.includes('scan') || modName.includes('test')
+            if (subId === 'environmental') return modCategory.includes('environment') || modCategory.includes('toxin') || modCategory.includes('air') || modName.includes('toxin') || modName.includes('metal')
+            return modCategory.includes(subId) || modName.includes(subId)
+          })
+          if (!matchesSub) return false
+        }
       }
-    }
 
-    // Diurnal Time-of-Day Range Filtering
-    const [startSlot, endSlot] = diurnalRange
-    if (startSlot !== 0 || endSlot !== 4) {
-      const modName = (mod.name || mod.display_name || '').toLowerCase()
-      const modTiming = ((mod as any).timing_preference || (mod as any).preferred_time || (mod as any).timing || (mod as any).optimal_timing || (mod as any).cadence_layer || mod.category || '').toLowerCase()
+      // Diurnal Time-of-Day Range Filtering
+      const [startSlot, endSlot] = diurnalRange
+      if (startSlot !== 0 || endSlot !== 4) {
+        const modName = (mod.name || mod.display_name || '').toLowerCase()
+        const modTiming = ((mod as any).timing_preference || (mod as any).preferred_time || (mod as any).timing || (mod as any).optimal_timing || (mod as any).cadence_layer || mod.category || '').toLowerCase()
 
-      const matchedSlots: number[] = []
+        const matchedSlots: number[] = []
 
-      // Slot 0: Pre-Wake / Dawn
-      if (modTiming.includes('pre_wake') || modTiming.includes('dawn') || modTiming.includes('early_morning') || modName.includes('morning sunlight') || modName.includes('delay caffeine')) {
-        matchedSlots.push(0)
+        // Slot 0: Pre-Wake / Dawn
+        if (modTiming.includes('pre_wake') || modTiming.includes('dawn') || modTiming.includes('early_morning') || modName.includes('morning sunlight') || modName.includes('delay caffeine')) {
+          matchedSlots.push(0)
+        }
+        // Slot 1: Wake & Morning
+        if (modTiming.includes('morning') || modTiming.includes('wake') || modTiming.includes('breakfast') || modTiming.includes('am') || modName.includes('morning') || modName.includes('creatine') || modName.includes('caffeine') || modName.includes('d3')) {
+          matchedSlots.push(1)
+        }
+        // Slot 2: Midday / Afternoon
+        if (modTiming.includes('midday') || modTiming.includes('afternoon') || modTiming.includes('lunch') || modTiming.includes('noon') || modTiming.includes('post_workout') || modTiming.includes('exercise') || modName.includes('soleus') || modName.includes('walk') || modName.includes('hiit') || modName.includes('cpet') || modName.includes('cardio') || modName.includes('strength')) {
+          matchedSlots.push(2)
+        }
+        // Slot 3: Evening & Sunset
+        if (modTiming.includes('evening') || modTiming.includes('sunset') || modTiming.includes('dinner') || modTiming.includes('pm') || modName.includes('evening') || modName.includes('sauna') || modName.includes('screen time')) {
+          matchedSlots.push(3)
+        }
+        // Slot 4: Bedtime & Overnight
+        if (modTiming.includes('bedtime') || modTiming.includes('night') || modTiming.includes('overnight') || modTiming.includes('sleep') || modTiming.includes('wind_down') || modName.includes('sleep') || modName.includes('magnesium') || modName.includes('mouth tap') || modName.includes('blue light')) {
+          matchedSlots.push(4)
+        }
+
+        const isAnytimeOrDiagnostic = modTiming.includes('anytime') || modTiming.includes('flexible') || modTiming.includes('infrequent') || modTiming.includes('diagnostic') || modTiming.includes('tracking') || modTiming.includes('screening') || modName.includes('mri') || modName.includes('dexa') || modName.includes('cac') || modName.includes('apob') || modName.includes('rapamycin')
+
+        if (!isAnytimeOrDiagnostic) {
+          const slotsToTest = matchedSlots.length > 0 ? matchedSlots : [1, 2]
+          const hasSlotMatch = slotsToTest.some(slot => slot >= startSlot && slot <= endSlot)
+          if (!hasSlotMatch) return false
+        }
       }
-      // Slot 1: Wake & Morning
-      if (modTiming.includes('morning') || modTiming.includes('wake') || modTiming.includes('breakfast') || modTiming.includes('am') || modName.includes('morning') || modName.includes('creatine') || modName.includes('caffeine') || modName.includes('d3')) {
-        matchedSlots.push(1)
+
+      // Specific Execution Timing Chips Filtering
+      if (selectedSpecificTimings.length > 0) {
+        const modName = (mod.name || mod.display_name || '').toLowerCase()
+        const modSum = (mod.timing_summary || '').toLowerCase()
+        const modInst = (mod.instructions || '').toLowerCase()
+        const modProfileTiming = (((mod as any).relationships?.dosage_profile?.timing_preference) || '').toLowerCase()
+        const modTiming = ((mod as any).timing_preference || (mod as any).preferred_time || mod.category || '').toLowerCase()
+
+        const matchesAnySpecific = selectedSpecificTimings.some(timingId => {
+          if (timingId === 'upon_waking') return modProfileTiming.includes('waking') || modTiming.includes('waking') || modSum.includes('waking') || modName.includes('sunlight') || modName.includes('delay caffeine')
+          if (timingId === 'morning') return modProfileTiming.includes('morning') || modTiming.includes('morning') || modSum.includes('morning') || modSum.includes('breakfast')
+          if (timingId === 'pre_meal') return modProfileTiming.includes('pre_meal') || modTiming.includes('pre_meal') || modSum.includes('pre-meal') || modInst.includes('pre-meal') || modName.includes('acetic acid') || modName.includes('berberine')
+          if (timingId === 'post_meal') return modProfileTiming.includes('post_meal') || modTiming.includes('post_meal') || modSum.includes('post-meal') || modInst.includes('post-meal') || modName.includes('walk') || modName.includes('soleus')
+          if (timingId === 'midday') return modProfileTiming.includes('midday') || modTiming.includes('midday') || modSum.includes('midday') || modSum.includes('afternoon')
+          if (timingId === 'evening') return modProfileTiming.includes('evening') || modTiming.includes('evening') || modSum.includes('evening') || modSum.includes('sunset') || modName.includes('sauna')
+          if (timingId === 'wind_down') return modProfileTiming.includes('wind_down') || modTiming.includes('wind_down') || modSum.includes('wind down') || modSum.includes('screen') || modName.includes('breathwork') || modName.includes('blue light')
+          if (timingId === 'bedtime') return modProfileTiming.includes('bedtime') || modTiming.includes('bedtime') || modSum.includes('bedtime') || modSum.includes('overnight') || modName.includes('mouth tap') || modName.includes('sleep')
+          if (timingId === 'fasting_window') return modProfileTiming.includes('fasting') || modTiming.includes('fasting') || modSum.includes('fasting') || modName.includes('fasting')
+          if (timingId === 'infrequent') return modProfileTiming.includes('infrequent') || modTiming.includes('infrequent') || modSum.includes('infrequent') || modSum.includes('diagnostic') || modName.includes('mri') || modName.includes('dexa') || modName.includes('scan')
+
+          return modProfileTiming.includes(timingId) || modTiming.includes(timingId) || modSum.includes(timingId)
+        })
+
+        if (!matchesAnySpecific) return false
       }
-      // Slot 2: Midday / Afternoon
-      if (modTiming.includes('midday') || modTiming.includes('afternoon') || modTiming.includes('lunch') || modTiming.includes('noon') || modTiming.includes('post_workout') || modTiming.includes('exercise') || modName.includes('soleus') || modName.includes('walk') || modName.includes('hiit') || modName.includes('cpet') || modName.includes('cardio') || modName.includes('strength')) {
-        matchedSlots.push(2)
+
+      if (filterCost !== 'all' && mod.cost_tier !== filterCost) return false
+      if (filterEffort !== 'all' && mod.effort_level !== filterEffort) return false
+      
+      if (filterEvidence === 'high_evidence' && (mod.evidence_quality ?? 0) < 4) return false
+      if (filterEvidence === 'emerging' && (mod.evidence_quality ?? 0) >= 4) return false
+      
+      if (filterSafety !== 'all' && mod.safety_level !== filterSafety) return false
+      
+      if (selectedOutcomes.length > 0) {
+        const modOutcomes = mod.functional_outcomes_to_track || []
+        const hasMatch = selectedOutcomes.some(o => modOutcomes.includes(o))
+        if (!hasMatch) return false
       }
-      // Slot 3: Evening & Sunset
-      if (modTiming.includes('evening') || modTiming.includes('sunset') || modTiming.includes('dinner') || modTiming.includes('pm') || modName.includes('evening') || modName.includes('sauna') || modName.includes('screen time')) {
-        matchedSlots.push(3)
+      
+      if (searchQuery.trim().length > 0) {
+        const rel = modalityRelevanceMap.get(mod.id)
+        if (!rel || !rel.isMatch) return false
       }
-      // Slot 4: Bedtime & Overnight
-      if (modTiming.includes('bedtime') || modTiming.includes('night') || modTiming.includes('overnight') || modTiming.includes('sleep') || modTiming.includes('wind_down') || modName.includes('sleep') || modName.includes('magnesium') || modName.includes('mouth tap') || modName.includes('blue light')) {
-        matchedSlots.push(4)
+      
+      return true
+    }).sort((a, b) => {
+      const isSearchActive = searchQuery.trim().length > 0
+      const relA = isSearchActive ? (modalityRelevanceMap.get(a.id)?.score || 0) : 0
+      const relB = isSearchActive ? (modalityRelevanceMap.get(b.id)?.score || 0) : 0
+
+      // Direct Relevance: strictly sorts by semantic and lexical match strength
+      if (sortMode === 'relevance') {
+        if (relB !== relA) return relB - relA
+        return (modalityPopularityMap.get(b.id) || 0) - (modalityPopularityMap.get(a.id) || 0)
       }
 
-      const isAnytimeOrDiagnostic = modTiming.includes('anytime') || modTiming.includes('flexible') || modTiming.includes('infrequent') || modTiming.includes('diagnostic') || modTiming.includes('tracking') || modTiming.includes('screening') || modName.includes('mri') || modName.includes('dexa') || modName.includes('cac') || modName.includes('apob') || modName.includes('rapamycin')
-
-      if (!isAnytimeOrDiagnostic) {
-        const slotsToTest = matchedSlots.length > 0 ? matchedSlots : [1, 2]
-        const hasSlotMatch = slotsToTest.some(slot => slot >= startSlot && slot <= endSlot)
-        if (!hasSlotMatch) return false
+      // When an active search query is present and the user selects a specific ranking criterion:
+      if (isSearchActive) {
+        const tierA = relA >= 300 ? 2 : (relA >= 120 ? 1 : 0)
+        const tierB = relB >= 300 ? 2 : (relB >= 120 ? 1 : 0)
+        if (tierB !== tierA) return tierB - tierA
       }
-    }
 
-    // Specific Execution Timing Chips Filtering
-    if (selectedSpecificTimings.length > 0) {
-      const modName = (mod.name || mod.display_name || '').toLowerCase()
-      const modSum = (mod.timing_summary || '').toLowerCase()
-      const modInst = (mod.instructions || '').toLowerCase()
-      const modProfileTiming = (((mod as any).relationships?.dosage_profile?.timing_preference) || '').toLowerCase()
-      const modTiming = ((mod as any).timing_preference || (mod as any).preferred_time || mod.category || '').toLowerCase()
+      // 1. Most Popular & Proven: sorts by popularity score among the relevant matches
+      if (sortMode === 'popularity') {
+        const scoreA = modalityPopularityMap.get(a.id) || 0
+        const scoreB = modalityPopularityMap.get(b.id) || 0
+        if (scoreB !== scoreA) return scoreB - scoreA
+        if (isSearchActive && relB !== relA) return relB - relA
+        return 0
+      }
 
-      const matchesAnySpecific = selectedSpecificTimings.some(timingId => {
-        if (timingId === 'upon_waking') return modProfileTiming.includes('waking') || modTiming.includes('waking') || modSum.includes('waking') || modName.includes('sunlight') || modName.includes('delay caffeine')
-        if (timingId === 'morning') return modProfileTiming.includes('morning') || modTiming.includes('morning') || modSum.includes('morning') || modSum.includes('breakfast')
-        if (timingId === 'pre_meal') return modProfileTiming.includes('pre_meal') || modTiming.includes('pre_meal') || modSum.includes('pre-meal') || modInst.includes('pre-meal') || modName.includes('acetic acid') || modName.includes('berberine')
-        if (timingId === 'post_meal') return modProfileTiming.includes('post_meal') || modTiming.includes('post_meal') || modSum.includes('post-meal') || modInst.includes('post-meal') || modName.includes('walk') || modName.includes('soleus')
-        if (timingId === 'midday') return modProfileTiming.includes('midday') || modTiming.includes('midday') || modSum.includes('midday') || modSum.includes('afternoon')
-        if (timingId === 'evening') return modProfileTiming.includes('evening') || modTiming.includes('evening') || modSum.includes('evening') || modSum.includes('sunset') || modName.includes('sauna')
-        if (timingId === 'wind_down') return modProfileTiming.includes('wind_down') || modTiming.includes('wind_down') || modSum.includes('wind down') || modSum.includes('screen') || modName.includes('breathwork') || modName.includes('blue light')
-        if (timingId === 'bedtime') return modProfileTiming.includes('bedtime') || modTiming.includes('bedtime') || modSum.includes('bedtime') || modSum.includes('overnight') || modName.includes('mouth tap') || modName.includes('sleep')
-        if (timingId === 'fasting_window') return modProfileTiming.includes('fasting') || modTiming.includes('fasting') || modSum.includes('fasting') || modName.includes('fasting')
-        if (timingId === 'infrequent') return modProfileTiming.includes('infrequent') || modTiming.includes('infrequent') || modSum.includes('infrequent') || modSum.includes('diagnostic') || modName.includes('mri') || modName.includes('dexa') || modName.includes('scan')
+      // 3. Recommended (Next Best Action)
+      if (sortMode === 'nba') {
+        const nbaDiff = (b.nba_result?.score || 0) - (a.nba_result?.score || 0)
+        if (nbaDiff !== 0) return nbaDiff
+      }
+      
+      // 4. Scientific Evidence
+      if (sortMode === 'evidence') {
+        const evDiff = (b.evidence_quality || 0) - (a.evidence_quality || 0)
+        if (evDiff !== 0) return evDiff
+      }
+      
+      // 5. Longevity Benefit
+      if (sortMode === 'impact') {
+        const impDiff = (b.overall_longevity_benefit || 0) - (a.overall_longevity_benefit || 0)
+        if (impDiff !== 0) return impDiff
+      }
 
-        return modProfileTiming.includes(timingId) || modTiming.includes(timingId) || modSum.includes(timingId)
-      })
-
-      if (!matchesAnySpecific) return false
-    }
-
-    if (filterCost !== 'all' && mod.cost_tier !== filterCost) return false
-    if (filterEffort !== 'all' && mod.effort_level !== filterEffort) return false
-    
-    if (filterEvidence === 'high_evidence' && (mod.evidence_quality ?? 0) < 4) return false
-    if (filterEvidence === 'emerging' && (mod.evidence_quality ?? 0) >= 4) return false
-    
-    if (filterSafety !== 'all' && mod.safety_level !== filterSafety) return false
-    
-    if (selectedOutcomes.length > 0) {
-      const modOutcomes = mod.functional_outcomes_to_track || []
-      const hasMatch = selectedOutcomes.some(o => modOutcomes.includes(o))
-      if (!hasMatch) return false
-    }
-    
-    if (searchQuery.trim().length > 0) {
-      const rel = modalityRelevanceMap.get(mod.id)
-      if (!rel || !rel.isMatch) return false
-    }
-    
-    return true
-  }).sort((a, b) => {
-    const isSearchActive = searchQuery.trim().length > 0
-    const relA = isSearchActive ? (modalityRelevanceMap.get(a.id)?.score || 0) : 0
-    const relB = isSearchActive ? (modalityRelevanceMap.get(b.id)?.score || 0) : 0
-
-    // Direct Relevance: strictly sorts by semantic and lexical match strength
-    if (sortMode === 'relevance') {
-      if (relB !== relA) return relB - relA
-      return calculateModalityPopularityScore(b) - calculateModalityPopularityScore(a)
-    }
-
-    // When an active search query is present and the user selects a specific ranking criterion
-    // (Popularity, NBA, Scientific Evidence, Longevity Benefit):
-    // Group into Relevance Tiers so genuine strong matches (tier 2: score >= 300) rank ahead of secondary matches
-    if (isSearchActive) {
-      const tierA = relA >= 300 ? 2 : (relA >= 120 ? 1 : 0)
-      const tierB = relB >= 300 ? 2 : (relB >= 120 ? 1 : 0)
-      if (tierB !== tierA) return tierB - tierA
-    }
-
-    // 1. Most Popular & Proven: sorts by popularity score among the relevant matches
-    if (sortMode === 'popularity') {
-      const scoreA = calculateModalityPopularityScore(a)
-      const scoreB = calculateModalityPopularityScore(b)
-      if (scoreB !== scoreA) return scoreB - scoreA
       if (isSearchActive && relB !== relA) return relB - relA
-      return 0
-    }
 
-    // 3. Recommended (Next Best Action)
-    if (sortMode === 'nba') {
-      const nbaDiff = (b.nba_result?.score || 0) - (a.nba_result?.score || 0)
-      if (nbaDiff !== 0) return nbaDiff
-    }
-    
-    // 4. Scientific Evidence
-    if (sortMode === 'evidence') {
-      const evDiff = (b.evidence_quality || 0) - (a.evidence_quality || 0)
-      if (evDiff !== 0) return evDiff
-    }
-    
-    // 5. Longevity Benefit
-    if (sortMode === 'impact') {
-      const impDiff = (b.overall_longevity_benefit || 0) - (a.overall_longevity_benefit || 0)
-      if (impDiff !== 0) return impDiff
-    }
-
-    if (isSearchActive && relB !== relA) return relB - relA
-
-    return calculateModalityPopularityScore(b) - calculateModalityPopularityScore(a)
-  })
+      return (modalityPopularityMap.get(b.id) || 0) - (modalityPopularityMap.get(a.id) || 0)
+    })
+  }, [
+    modalities,
+    filterBenchHistoryStatus,
+    benchHistoryMap,
+    selectedMainCategories,
+    selectedSubCategories,
+    diurnalRange,
+    selectedSpecificTimings,
+    filterCost,
+    filterEffort,
+    filterEvidence,
+    filterSafety,
+    selectedOutcomes,
+    searchQuery,
+    modalityRelevanceMap,
+    sortMode,
+    modalityPopularityMap
+  ])
 
 
 
@@ -1033,99 +1123,119 @@ function ExplorePageContent() {
     return true
   }
 
-  const filteredProtocols = protocols.filter(proto => {
-    // Category match
-    if (!isProtocolCategoryMatch(proto)) return false
+  const filteredProtocols = useMemo(() => {
+    return protocols.filter(proto => {
+      // Category match
+      if (!isProtocolCategoryMatch(proto)) return false
 
-    // Cost, Effort, Evidence, Safety filters
-    if (filterCost !== 'all' && (proto.cost_tier && proto.cost_tier !== filterCost)) return false
-    if (filterEffort !== 'all' && (proto.difficulty_level && proto.difficulty_level !== filterEffort)) return false
-    if (filterEvidence === 'high_evidence' && proto.evidence_level && !['Level A', 'Meta-Analysis', 'High', 'RCT'].some(lvl => (proto.evidence_level || '').includes(lvl))) return false
-    if (filterSafety !== 'all' && (proto.safety_level && proto.safety_level !== filterSafety)) return false
+      // Cost, Effort, Evidence, Safety filters
+      if (filterCost !== 'all' && (proto.cost_tier && proto.cost_tier !== filterCost)) return false
+      if (filterEffort !== 'all' && (proto.difficulty_level && proto.difficulty_level !== filterEffort)) return false
+      if (filterEvidence === 'high_evidence' && proto.evidence_level && !['Level A', 'Meta-Analysis', 'High', 'RCT'].some(lvl => (proto.evidence_level || '').includes(lvl))) return false
+      if (filterSafety !== 'all' && (proto.safety_level && proto.safety_level !== filterSafety)) return false
 
-    // Search query: filter down to relevant protocol matches
-    if (searchQuery.trim().length > 0) {
-      const rel = protocolRelevanceMap.get(proto.id)
-      if (!rel || !rel.isMatch) return false
-    }
+      // Search query: filter down to relevant protocol matches
+      if (searchQuery.trim().length > 0) {
+        const rel = protocolRelevanceMap.get(proto.id)
+        if (!rel || !rel.isMatch) return false
+      }
 
-    return true
-  }).sort((a, b) => {
-    const isSearchActive = searchQuery.trim().length > 0
-    const relA = isSearchActive ? (protocolRelevanceMap.get(a.id)?.score || 0) : 0
-    const relB = isSearchActive ? (protocolRelevanceMap.get(b.id)?.score || 0) : 0
+      return true
+    }).sort((a, b) => {
+      const isSearchActive = searchQuery.trim().length > 0
+      const relA = isSearchActive ? (protocolRelevanceMap.get(a.id)?.score || 0) : 0
+      const relB = isSearchActive ? (protocolRelevanceMap.get(b.id)?.score || 0) : 0
 
-    // Direct Relevance: strictly sorts by semantic and lexical match strength
-    if (sortMode === 'relevance') {
-      if (relB !== relA) return relB - relA
-      return calculateProtocolPopularityScore(b) - calculateProtocolPopularityScore(a)
-    }
+      // Direct Relevance: strictly sorts by semantic and lexical match strength
+      if (sortMode === 'relevance') {
+        if (relB !== relA) return relB - relA
+        return (protocolPopularityMap.get(b.id) || 0) - (protocolPopularityMap.get(a.id) || 0)
+      }
 
-    // When an active search query is present and the user selects a specific ranking criterion:
-    // Group into Relevance Tiers so genuine strong matches (tier 2: score >= 300) rank ahead of secondary matches
-    if (isSearchActive) {
-      const tierA = relA >= 300 ? 2 : (relA >= 120 ? 1 : 0)
-      const tierB = relB >= 300 ? 2 : (relB >= 120 ? 1 : 0)
-      if (tierB !== tierA) return tierB - tierA
-    }
+      // When an active search query is present and the user selects a specific ranking criterion:
+      if (isSearchActive) {
+        const tierA = relA >= 300 ? 2 : (relA >= 120 ? 1 : 0)
+        const tierB = relB >= 300 ? 2 : (relB >= 120 ? 1 : 0)
+        if (tierB !== tierA) return tierB - tierA
+      }
 
-    // 1. Most Popular & Proven: sorts by popularity score among the relevant matches
-    if (sortMode === 'popularity') {
-      const scoreA = calculateProtocolPopularityScore(a)
-      const scoreB = calculateProtocolPopularityScore(b)
-      if (scoreB !== scoreA) return scoreB - scoreA
+      // 1. Most Popular & Proven: sorts by popularity score among the relevant matches
+      if (sortMode === 'popularity') {
+        const scoreA = protocolPopularityMap.get(a.id) || 0
+        const scoreB = protocolPopularityMap.get(b.id) || 0
+        if (scoreB !== scoreA) return scoreB - scoreA
+        if (isSearchActive && relB !== relA) return relB - relA
+        return 0
+      }
+
+      // 2. Difficulty order (Beginner -> Moderate -> Advanced -> Demanding)
+      if (sortMode === 'difficulty') {
+        const getDiffRank = (p: any) => {
+          const d = (p.difficulty_level || '').toLowerCase()
+          if (d.includes('beginner') || d.includes('easy') || d.includes('intro')) return 1
+          if (d.includes('moderate') || d.includes('intermediate')) return 2
+          if (d.includes('advanced')) return 3
+          if (d.includes('demanding') || d.includes('elite')) return 4
+          return 2
+        }
+        const rankDiff = getDiffRank(a) - getDiffRank(b)
+        if (rankDiff !== 0) return rankDiff
+      }
+
+      // 3. Step count (Highest to lowest)
+      if (sortMode === 'steps') {
+        const stepsA = a.steps?.length || a.protocol_steps?.length || 0
+        const stepsB = b.steps?.length || b.protocol_steps?.length || 0
+        if (stepsB !== stepsA) return stepsB - stepsA
+      }
+
+      // 4. Alphabetical by protocol name
+      if (sortMode === 'name') {
+        const nameDiff = (a.name || '').localeCompare(b.name || '')
+        if (nameDiff !== 0) return nameDiff
+      }
+
+      // 5. Scientific Evidence quality
+      if (sortMode === 'evidence') {
+        const getEvRank = (p: any) => {
+          const ev = (p.evidence_level || '').toLowerCase()
+          if (ev.includes('level a') || ev.includes('meta-analysis') || ev.includes('rct')) return 3
+          if (ev.includes('level b') || ev.includes('clinical')) return 2
+          return 1
+        }
+        const evDiff = getEvRank(b) - getEvRank(a)
+        if (evDiff !== 0) return evDiff
+      }
+
       if (isSearchActive && relB !== relA) return relB - relA
-      return 0
-    }
 
-    // 2. Difficulty order (Beginner -> Moderate -> Advanced -> Demanding)
-    if (sortMode === 'difficulty') {
-      const getDiffRank = (p: any) => {
-        const d = (p.difficulty_level || '').toLowerCase()
-        if (d.includes('beginner') || d.includes('easy') || d.includes('intro')) return 1
-        if (d.includes('moderate') || d.includes('intermediate')) return 2
-        if (d.includes('advanced')) return 3
-        if (d.includes('demanding') || d.includes('elite')) return 4
-        return 2
-      }
-      const rankDiff = getDiffRank(a) - getDiffRank(b)
-      if (rankDiff !== 0) return rankDiff
-    }
+      return (protocolPopularityMap.get(b.id) || 0) - (protocolPopularityMap.get(a.id) || 0)
+    })
+  }, [
+    protocols,
+    selectedProtocolCategory,
+    protocolDifficulty,
+    filterCost,
+    filterEffort,
+    filterEvidence,
+    filterSafety,
+    searchQuery,
+    protocolRelevanceMap,
+    sortMode,
+    protocolPopularityMap
+  ])
 
-    // 3. Step count (Highest to lowest)
-    if (sortMode === 'steps') {
-      const stepsA = a.steps?.length || a.protocol_steps?.length || 0
-      const stepsB = b.steps?.length || b.protocol_steps?.length || 0
-      if (stepsB !== stepsA) return stepsB - stepsA
-    }
-
-    // 4. Alphabetical by protocol name
-    if (sortMode === 'name') {
-      const nameDiff = (a.name || '').localeCompare(b.name || '')
-      if (nameDiff !== 0) return nameDiff
-    }
-
-    // 5. Scientific Evidence quality
-    if (sortMode === 'evidence') {
-      const getEvRank = (p: any) => {
-        const ev = (p.evidence_level || '').toLowerCase()
-        if (ev.includes('level a') || ev.includes('meta-analysis') || ev.includes('rct')) return 3
-        if (ev.includes('level b') || ev.includes('clinical')) return 2
-        return 1
-      }
-      const evDiff = getEvRank(b) - getEvRank(a)
-      if (evDiff !== 0) return evDiff
-    }
-
-    if (isSearchActive && relB !== relA) return relB - relA
-
-    return calculateProtocolPopularityScore(b) - calculateProtocolPopularityScore(a)
-  })
-
-  if (loading) {
+  if (loading && modalities.length === 0) {
     return (
-      <div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">
-        Loading global library...
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto pt-6 sm:pt-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-10 bg-slate-800/60 rounded-2xl w-64"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-44 bg-slate-900/80 border border-white/5 rounded-2xl p-4"></div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
@@ -1744,16 +1854,16 @@ function ExplorePageContent() {
                 } : undefined
                 
                 return (
-                  <div key={mod.id} ref={isLast ? lastElementRef : null} className="min-w-0 w-full">
+                  <div key={mod.id} ref={isLast ? lastElementRef : null} className="min-w-0 w-full" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 160px' }}>
                     <ExploreCard 
                       modality={mod}
                       isFocusMode={isFocusMode}
                       userProfile={profile}
                       searchScore={searchScore}
-                      popularityScore={sortMode === 'popularity' ? calculateModalityPopularityScore(mod) : undefined}
+                      popularityScore={sortMode === 'popularity' ? (modalityPopularityMap.get(mod.id) || 0) : undefined}
                       marginalImpact={marginalImpact}
-                      todayModalities={modalities.filter(m => todayModalityIds.has(m.id))}
-                      benchModalities={modalities.filter(m => benchModalityIds.has(m.id))}
+                      todayModalities={todayModalitiesList}
+                      benchModalities={benchModalitiesList}
                       activeStatus={
                         todayModalityIds.has(mod.id)
                           ? 'today'
@@ -1762,7 +1872,7 @@ function ExplorePageContent() {
                           : null
                       }
                       benchHistoryItem={benchHistoryMap.get(mod.id)}
-                      similarActiveModality={getSimilarActiveModality(mod)}
+                      similarActiveModality={similarActiveModalitiesMap.get(mod.id) || null}
                       onAddToBench={handleAddToBench}
                       onAddToToday={handleAddToToday}
                       onCompare={(exploring, active, source) => {
@@ -1883,7 +1993,7 @@ function ExplorePageContent() {
               </div>
             ) : (
               filteredProtocols.map(protocol => (
-                <div key={protocol.id} className="min-w-0 w-full">
+                <div key={protocol.id} className="min-w-0 w-full" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 160px' }}>
                   <ProtocolCard 
                     protocol={protocol}
                     isFocusMode={isFocusMode}
