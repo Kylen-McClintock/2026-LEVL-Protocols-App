@@ -79,6 +79,13 @@ import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getModalityMacroType } from '@/lib/utils/modalityColors'
 import { getCircadianConfig, getAdaptiveCircadianConfig, isCurrentCircadianSlot, isCircadianSlotPast, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS, isLateNightCarryoverWindow } from '@/lib/utils/circadianConfig'
 import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
+import { 
+  canonicalizeTimingSlot, 
+  getTimeBlockOrder, 
+  compareTimingSlots, 
+  formatSlotName, 
+  CANONICAL_TIMING_SLOTS 
+} from '@/lib/utils/timingSlots'
 import AdaptiveSleepTriageCard from '@/components/today/AdaptiveSleepTriageCard'
 import { OutcomeLensView } from '@/components/outcomes/OutcomeLensView'
 import { OutcomeOptimizationModal } from '@/components/modals/OutcomeOptimizationModal'
@@ -87,62 +94,11 @@ import NewUserWelcomeHub from '@/components/onboarding/NewUserWelcomeHub'
 import SampleDayPreviewTimeline from '@/components/today/SampleDayPreviewTimeline'
 import { OutcomeOptimizationState, AntagonisticClash } from '@/lib/outcomes/outcomeOptimizationEngine'
 
-function formatSlotName(str: string): string {
-  if (!str) return 'Anytime'
-  return str
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
 export function normalizeChronologicalTimeBlock(slot: string): string {
-  if (!slot) return 'anytime'
-  const s = slot.toLowerCase().trim()
-  if (s === 'am_stack' || s === 'fasted_am' || s === 'morning_supplement_stack' || s.includes('morning_supplement')) return 'morning'
-  if (s === 'pm_stack' || s === 'dinner_stack' || s === 'evening_supplement_stack' || s.includes('evening_supplement')) return 'evening'
-  if (s === 'lunch_stack' || s === 'midday_stack' || s.includes('midday_stack')) return 'midday'
-  return slot
+  return canonicalizeTimingSlot(slot)
 }
 
-const TIME_BLOCKS = [
-  'waking',
-  'morning_routine',
-  'morning',
-  'first_meal',
-  'midday',
-  'afternoon',
-  'late_afternoon',
-  'pre_meal',
-  'post_meal',
-  'evening',
-  'wind_down',
-  'pre_bed',
-  'bedtime',
-  'anytime'
-]
-
-function getTimeBlockOrder(slot: string): number {
-  if (!slot) return 50
-  const s = slot.toLowerCase().trim()
-  if (s.includes('wake') || s.includes('sunrise') || s.includes('dawn')) return 0
-  if (s.includes('morning_routine')) return 1
-  if (s.includes('first_meal') || s.includes('breakfast') || s.includes('first meal') || s.includes('meal_1')) return 4
-  if (s.includes('morning_supplement') || s.includes('fasted_am') || s.includes('am_stack') || s.includes('am stack')) return 2
-  if (s.includes('morning') || s.includes('am')) return 2
-  // Check afternoon BEFORE checking any midday or noon substrings to prevent "afternoon".includes("noon") false match!
-  if (s.includes('afternoon') || s.includes('workout') || s.includes('training')) return 7
-  if (s.includes('late_afternoon')) return 8
-  if (s.includes('midday') || s.includes('lunch') || s === 'noon' || s === 'solar_noon') return 5
-  if (s.includes('pre_meal') || s.includes('pre-meal') || s.includes('pre meal')) return 9
-  if (s.includes('post_meal') || s.includes('postprandial') || s.includes('post meal') || s.includes('post-meal')) return 10
-  if (s.includes('evening_supplement') || s.includes('dinner_stack') || s.includes('pm_stack') || s.includes('pm stack')) return 11
-  if (s.includes('evening') || s.includes('dinner') || s.includes('dusk')) return 11
-  if (s.includes('wind_down') || s.includes('winddown') || s.includes('wind down') || s.includes('wind-down') || s.includes('wind')) return 13
-  if (s.includes('pre_bed') || s.includes('pre-bed') || s.includes('pre bed')) return 14
-  if (s.includes('bed') || s.includes('night') || s.includes('sleep') || s.includes('overnight')) return 15
-  if (s.includes('anytime')) return 99
-  return 50
-}
+const TIME_BLOCKS = CANONICAL_TIMING_SLOTS
 
 
 function parseLocalDate(dStr?: string | null): Date {
@@ -2522,12 +2478,7 @@ function TodayPageContent() {
     const anytimeEntry = rawEntries.find(([group]) => group.toLowerCase().includes('anytime'))
     const timedEntries = rawEntries
       .filter(([group]) => !group.toLowerCase().includes('anytime'))
-      .sort(([groupA], [groupB]) => {
-        const orderA = getTimeBlockOrder(groupA)
-        const orderB = getTimeBlockOrder(groupB)
-        if (orderA !== orderB) return orderA - orderB
-        return groupA.localeCompare(groupB)
-      })
+      .sort(([groupA], [groupB]) => compareTimingSlots(groupA, groupB))
 
     if (!anytimeEntry) return timedEntries
 
@@ -2535,7 +2486,7 @@ function TodayPageContent() {
     if (!isCurrentDay) {
       const morningLastIdx = timedEntries.findIndex(([g]) => {
         const o = getTimeBlockOrder(g)
-        return o > 4 // after morning slots (0..4)
+        return o > 3 // after morning slots (0..3)
       })
       const insertAt = morningLastIdx !== -1 ? morningLastIdx : timedEntries.length
       const result = [...timedEntries]
@@ -2617,7 +2568,8 @@ function TodayPageContent() {
     if (lowerName.includes('huberman morning') || lowerName.includes('morning sunlight') || lowerName.includes('morning routine')) return 10
     if (lowerName.includes('morning') || lowerName.includes('wake')) return 20
     if (lowerName.includes('first meal') || lowerName.includes('first_meal') || lowerName.includes('breakfast')) return 30
-    if (lowerName.includes('metabolic') || lowerName.includes('midday') || lowerName.includes('afternoon') || lowerName.includes('lunch')) return 50
+    if (lowerName.includes('afternoon')) return 60
+    if (lowerName.includes('metabolic') || lowerName.includes('midday') || lowerName.includes('lunch') || lowerName.includes('solar_noon')) return 50
     if (lowerName.includes('standalone') || lowerName.includes('individual')) return 100
     if (lowerName.includes('pre-meal') || lowerName.includes('pre meal')) return 130
     if (lowerName.includes('post-meal') || lowerName.includes('post meal') || lowerName.includes('postprandial')) return 140

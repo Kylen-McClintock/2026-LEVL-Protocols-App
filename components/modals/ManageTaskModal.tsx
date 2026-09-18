@@ -58,6 +58,7 @@ import { getCircadianTipForModality } from '@/lib/utils/circadianTimingTips'
 import { resolveRecommendedDose, ProtocolDoseContext } from '@/lib/utils/resolveRecommendedDose'
 import { resolvePubMedCitation } from '@/lib/tracking/scientificCitations'
 import { UserProfile } from '@/lib/types'
+import { canonicalizeTimingSlot } from '@/lib/utils/timingSlots'
 import { isPeptideModality } from '@/lib/peptides/peptideCycleEngine'
 import PeptideTitrationPlanner from '@/components/peptides/PeptideTitrationPlanner'
 import { ModalityAICoachBar } from '@/components/ai/ModalityAICoachBar'
@@ -584,12 +585,13 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
             userProfile={userProfile}
             onApplyDose={(dose) => setCustomDose(dose)}
             onApplyTiming={(timing) => {
-              const lower = timing.toLowerCase()
-              if (lower.includes('morning') || lower.includes('wake') || lower.includes('am')) setSelectedSlot('morning')
-              else if (lower.includes('bed') || lower.includes('sleep') || lower.includes('night')) setSelectedSlot('pre_bed')
-              else if (lower.includes('midday') || lower.includes('noon') || lower.includes('lunch')) setSelectedSlot('midday')
-              else if (lower.includes('evening') || lower.includes('dinner') || lower.includes('pm')) setSelectedSlot('evening')
-              else if (lower.includes('meal') || lower.includes('food')) setSelectedSlot('with_meal')
+              const canonical = canonicalizeTimingSlot(timing)
+              if (canonical === 'morning' || canonical === 'waking' || canonical === 'morning_routine') setSelectedSlot('morning')
+              else if (canonical === 'pre_bed' || canonical === 'bedtime') setSelectedSlot('pre_bed')
+              else if (canonical === 'midday') setSelectedSlot('midday')
+              else if (canonical === 'afternoon' || canonical === 'late_afternoon') setSelectedSlot('afternoon')
+              else if (canonical === 'evening') setSelectedSlot('evening')
+              else if (timing.toLowerCase().includes('meal') || timing.toLowerCase().includes('food')) setSelectedSlot('with_meal')
               else setSelectedSlot('morning')
             }}
             onApplyMultiDose={(count, s1, s2, s3) => {

@@ -10,6 +10,7 @@ import {
   Clock,
   LucideIcon 
 } from 'lucide-react'
+import { canonicalizeTimingSlot } from './timingSlots'
 
 export type PulsePhaseType = 
   | 'growth' 
@@ -689,7 +690,7 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
 /**
  * Returns circadian metadata, atmospheric sky colors, and glowing beacon icons for a time slot
  */
-export function getCircadianConfig(slotName: string): CircadianSlotConfig {
+export function getCircadianConfig(slotName?: string | null): CircadianSlotConfig {
   if (!slotName) return CIRCADIAN_SLOTS.anytime
   const normalized = slotName.toLowerCase().trim()
 
@@ -697,54 +698,9 @@ export function getCircadianConfig(slotName: string): CircadianSlotConfig {
     return CIRCADIAN_SLOTS[normalized]
   }
 
-  // Fuzzy matching for custom or non-standard slot strings
-  if (normalized.includes('wake') || normalized.includes('sunrise') || normalized.includes('dawn')) {
-    return CIRCADIAN_SLOTS.waking
-  }
-  if (normalized.includes('morning_routine') || normalized.includes('fasted_am')) {
-    return CIRCADIAN_SLOTS.morning_routine
-  }
-  if (normalized.includes('first_meal') || normalized.includes('first meal') || normalized.includes('breakfast') || normalized.includes('meal_1')) {
-    return CIRCADIAN_SLOTS.first_meal
-  }
-  if (normalized.includes('morning_supplement') || normalized.includes('am_stack')) {
-    return CIRCADIAN_SLOTS.morning_supplement_stack
-  }
-  if (normalized.includes('morning') || normalized.includes('sunlight') || normalized.includes('am')) {
-    return CIRCADIAN_SLOTS.morning
-  }
-  if (normalized.includes('midday_stack') || normalized.includes('lunch_stack')) {
-    return CIRCADIAN_SLOTS.midday_stack
-  }
-  if (normalized.includes('noon') || normalized.includes('lunch') || normalized.includes('midday')) {
-    return CIRCADIAN_SLOTS.midday
-  }
-  if (normalized.includes('late_afternoon')) {
-    return CIRCADIAN_SLOTS.late_afternoon
-  }
-  if (normalized.includes('afternoon') || normalized.includes('workout') || normalized.includes('training')) {
-    return CIRCADIAN_SLOTS.afternoon
-  }
-  if (normalized.includes('pre_meal') || normalized.includes('pre-meal') || normalized.includes('pre meal')) {
-    return CIRCADIAN_SLOTS.pre_meal
-  }
-  if (normalized.includes('post_meal') || normalized.includes('post meal') || normalized.includes('postprandial')) {
-    return CIRCADIAN_SLOTS.post_meal
-  }
-  if (normalized.includes('evening_supplement') || normalized.includes('dinner_stack')) {
-    return CIRCADIAN_SLOTS.evening_supplement_stack
-  }
-  if (normalized.includes('evening') || normalized.includes('sunset') || normalized.includes('dinner') || normalized.includes('dusk')) {
-    return CIRCADIAN_SLOTS.evening
-  }
-  if (normalized.includes('wind') || normalized.includes('dim')) {
-    return CIRCADIAN_SLOTS.wind_down
-  }
-  if (normalized.includes('pre_bed') || normalized.includes('pre-bed')) {
-    return CIRCADIAN_SLOTS.pre_bed
-  }
-  if (normalized.includes('bed') || normalized.includes('sleep') || normalized.includes('night')) {
-    return CIRCADIAN_SLOTS.bedtime
+  const canonical = canonicalizeTimingSlot(slotName)
+  if (CIRCADIAN_SLOTS[canonical]) {
+    return CIRCADIAN_SLOTS[canonical]
   }
 
   return CIRCADIAN_SLOTS.anytime

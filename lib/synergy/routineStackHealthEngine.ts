@@ -15,6 +15,7 @@ import {
   ProtocolHallmarkScores
 } from '@/lib/data/protocolFingerprints'
 import { resolveSlotFromTimingString } from '@/lib/data/resolveOptimalTiming'
+import { canonicalizeTimingSlot } from '@/lib/utils/timingSlots'
 
 // ============================================================================
 // Types & Contracts
@@ -192,14 +193,20 @@ function resolveHourDecimal(timingSlot?: string, scheduledTime?: string, customT
     }
   }
 
-  const slot = (timingSlot || '').toLowerCase()
-  if (slot === 'fasted_am' || natural.includes('fasted') || natural.includes('waking')) return 7.0
-  if (slot.includes('morning')) return 8.5
-  if (slot.includes('midday') || natural.includes('lunch') || natural.includes('noon')) return 12.5
-  if (slot.includes('afternoon') || slot.includes('post_meal')) return 15.0
-  if (slot.includes('evening') || natural.includes('dinner')) return 18.5
-  if (slot.includes('wind_down')) return 20.5
-  if (slot.includes('bedtime') || slot.includes('pre_bed') || natural.includes('sleep')) return 22.5
+  const canonical = canonicalizeTimingSlot(timingSlot || natural)
+  if (canonical === 'waking') return 7.0
+  if (canonical === 'morning_routine') return 8.0
+  if (canonical === 'morning') return 8.5
+  if (canonical === 'first_meal') return 10.0
+  if (canonical === 'midday') return 12.5
+  if (canonical === 'afternoon') return 15.0
+  if (canonical === 'late_afternoon') return 16.5
+  if (canonical === 'pre_meal') return 17.5
+  if (canonical === 'post_meal') return 18.5
+  if (canonical === 'evening') return 19.5
+  if (canonical === 'wind_down') return 20.5
+  if (canonical === 'pre_bed') return 21.5
+  if (canonical === 'bedtime') return 22.5
 
   return 12.0 // fallback
 }

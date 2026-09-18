@@ -1,6 +1,7 @@
 import { DailyProtocolTask, UserProfile } from '@/lib/types'
 import { generateWaveforms, calculateAUCForVectors, WaveformEvent } from './waveformMapper'
 import { updateTaskExecutionDetails } from '@/lib/data'
+import { canonicalizeTimingSlot } from '@/lib/utils/timingSlots'
 
 export interface TimingOptimizationSuggestion {
   id: string
@@ -820,14 +821,20 @@ export function getTaskDecimalHour(task: DailyProtocolTask): number {
       return parsed.hour + parsed.minute / 60
     }
   }
-  const slot = (task.timing_slot || '').toLowerCase()
-  if (slot.includes('waking') || slot.includes('early')) return 6.5
-  if (slot.includes('morning_routine')) return 8.0
-  if (slot.includes('morning_supplement') || slot.includes('morning')) return 8.5
-  if (slot.includes('midday') || slot.includes('noon') || slot.includes('lunch')) return 12.0
-  if (slot.includes('afternoon') || slot.includes('post_workout')) return 14.5
-  if (slot.includes('evening') || slot.includes('dinner')) return 18.5
-  if (slot.includes('pre_bed') || slot.includes('bed') || slot.includes('night')) return 21.5
+  const canonical = canonicalizeTimingSlot(task.timing_slot)
+  if (canonical === 'waking') return 6.5
+  if (canonical === 'morning_routine') return 8.0
+  if (canonical === 'morning') return 8.5
+  if (canonical === 'first_meal') return 10.0
+  if (canonical === 'midday') return 12.0
+  if (canonical === 'afternoon') return 14.5
+  if (canonical === 'late_afternoon') return 16.5
+  if (canonical === 'pre_meal') return 17.5
+  if (canonical === 'post_meal') return 18.5
+  if (canonical === 'evening') return 19.5
+  if (canonical === 'wind_down') return 20.5
+  if (canonical === 'pre_bed') return 21.5
+  if (canonical === 'bedtime') return 22.5
   return 10.0
 }
 

@@ -1,5 +1,6 @@
 import { Modality, ProtocolStep, UserProfile, DailyProtocolTask } from '../types'
 import { getProtocolVisualTheme } from '../utils/protocolThemes'
+import { canonicalizeTimingSlot, getTimeBlockOrder, compareTimingSlots } from '../utils/timingSlots'
 
 /**
  * Smart Modality Timing Resolver Engine
@@ -416,48 +417,10 @@ export function resolveOptimalTimingSlot(
 }
 
 function normalizeSlot(slot: string): string {
-  const s = slot.toLowerCase().trim()
-  if (s.includes('wind_down') || s.includes('winddown') || s.includes('wind down') || s.includes('wind-down')) return 'wind_down'
-  if (s.includes('pre_bed') || s.includes('pre-bed') || s.includes('pre bed')) return 'pre_bed'
-  if (s.includes('bed') || s.includes('sleep') || s.includes('nightly') || s.includes('overnight')) return 'bedtime'
-  if (s.includes('evening_supplement') || s.includes('dinner_stack')) return 'evening_supplement_stack'
-  if (s.includes('evening') || s.includes('dinner')) return 'evening'
-  if (s.includes('post_meal') || s.includes('post-meal') || s.includes('post meal') || s.includes('postprandial')) return 'post_meal'
-  if (s.includes('pre_meal') || s.includes('pre-meal') || s.includes('pre meal')) return 'pre_meal'
-  if (s.includes('morning_supplement')) return 'morning_supplement_stack'
-  if (s.includes('morning') || s.includes('wake') || s.includes('waking')) return 'morning'
-  if (s.includes('midday_stack') || s.includes('lunch_stack')) return 'midday_stack'
-  if (s.includes('midday') || s.includes('lunch') || s.includes('noon')) return 'midday'
-  if (s.includes('afternoon') || s.includes('workout')) return 'afternoon'
-  return s
+  return canonicalizeTimingSlot(slot)
 }
 
-/**
- * Canonical mapping of timing slots to their circadian block sequence order (0 to 15, 99 for anytime).
- * Mirrors the Today feed grouping sequence.
- */
-export function getTimeBlockOrder(slot: string): number {
-  if (!slot) return 50
-  const s = slot.toLowerCase().trim()
-  if (s.includes('wake') || s.includes('sunrise') || s.includes('dawn')) return 0
-  if (s.includes('morning_routine')) return 1
-  if (s.includes('morning_supplement') || s.includes('fasted_am') || s.includes('am_stack') || s.includes('am stack')) return 3
-  if (s.includes('first_meal') || s.includes('breakfast') || s.includes('first meal') || s.includes('meal_1')) return 4
-  if (s.includes('morning') || s.includes('am')) return 2
-  if (s.includes('midday_stack') || s.includes('lunch_stack')) return 6
-  if (s.includes('midday') || s.includes('noon') || s.includes('lunch')) return 5
-  if (s.includes('afternoon') || s.includes('workout') || s.includes('training')) return 7
-  if (s.includes('late_afternoon')) return 8
-  if (s.includes('pre_meal') || s.includes('pre-meal') || s.includes('pre meal')) return 9
-  if (s.includes('post_meal') || s.includes('postprandial') || s.includes('post meal') || s.includes('post-meal')) return 10
-  if (s.includes('evening_supplement') || s.includes('dinner_stack') || s.includes('pm_stack') || s.includes('pm stack')) return 12
-  if (s.includes('evening') || s.includes('dinner') || s.includes('dusk')) return 11
-  if (s.includes('wind_down') || s.includes('winddown') || s.includes('wind down') || s.includes('wind-down') || s.includes('wind')) return 13
-  if (s.includes('pre_bed') || s.includes('pre-bed') || s.includes('pre bed')) return 14
-  if (s.includes('bed') || s.includes('night') || s.includes('sleep') || s.includes('overnight')) return 15
-  if (s.includes('anytime')) return 99
-  return 50
-}
+export { getTimeBlockOrder }
 
 /**
  * Calculates a task's chronological position (in minutes from midnight)
