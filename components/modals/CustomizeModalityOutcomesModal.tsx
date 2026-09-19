@@ -80,27 +80,27 @@ export default function CustomizeModalityOutcomesModal({
       <div className="bg-levl-bg border border-levl-border w-full max-w-xl rounded-2xl p-4 sm:p-6 shadow-2xl relative space-y-4 max-h-[85vh] flex flex-col my-auto">
         <button 
           onClick={onClose}
-          className="absolute top-3 right-3 sm:top-4 sm:right-4 text-levl-text-secondary hover:text-white p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors z-10"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 text-levl-text-secondary hover:text-levl-text-primary p-1.5 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors z-10"
         >
           <X size={18} />
         </button>
 
         <div className="pr-8 shrink-0">
-          <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider mb-1">
             <Sliders size={15} /> Customize Tracked Outcomes
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-white leading-tight">
+          <h2 className="text-lg sm:text-xl font-bold text-levl-text-primary leading-tight">
             {modality?.display_name || modality?.name || 'Protocol Stack Outcomes'}
           </h2>
-          <p className="text-[11px] text-gray-400 mt-1">
-            Toggle bio-signals to track for this modality. Items with a <span className="text-emerald-400 font-bold">green checkmark</span> are active.
+          <p className="text-[11px] text-levl-text-secondary mt-1">
+            Toggle bio-signals to track for this modality. Items with a <span className="text-emerald-600 dark:text-emerald-400 font-bold">green checkmark</span> are active.
           </p>
         </div>
 
         <div className="flex-1 overflow-y-auto pr-1 space-y-2 no-scrollbar min-h-0">
-          <div className="flex items-center justify-between text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">
+          <div className="flex items-center justify-between text-[10px] text-levl-text-secondary uppercase font-bold tracking-wider mb-1.5">
             <span>Outcome Library</span>
-            <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold">
+            <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold">
               {selectedIds.length} active
             </span>
           </div>
@@ -118,21 +118,21 @@ export default function CustomizeModalityOutcomesModal({
                   onClick={() => toggleOutcome(outcome.id)}
                   className={`p-2.5 sm:p-3.5 rounded-xl border text-left transition-all flex items-start justify-between gap-1.5 relative ${
                     isSelected 
-                      ? 'bg-emerald-950/30 border-emerald-500/60 text-white shadow-sm shadow-emerald-500/20' 
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
+                      ? 'bg-emerald-500/10 dark:bg-emerald-950/30 border-emerald-500/60 text-levl-text-primary shadow-sm shadow-emerald-500/15 ring-1 ring-emerald-500/30' 
+                      : 'bg-slate-100/70 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-400 hover:text-levl-text-primary hover:bg-slate-200/70 dark:hover:bg-white/10'
                   }`}
                 >
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="font-bold text-xs text-white leading-tight block truncate">{outcome.name}</span>
+                      <span className="font-bold text-xs text-levl-text-primary leading-tight block truncate">{outcome.name}</span>
                       {userPriority && (
-                        <span className="text-[8px] sm:text-[9px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/40 px-1 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">
+                        <span className="text-[8px] sm:text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/40 px-1 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">
                           <Star size={8} fill="currentColor" /> Goal
                         </span>
                       )}
                     </div>
 
-                    <span className="text-[9px] sm:text-[10px] opacity-70 block leading-tight">
+                    <span className="text-[9px] sm:text-[10px] text-levl-text-secondary block leading-tight">
                       Scale: 0-10 ({isLowerBetter ? '0 = Best' : '10 = Best'})
                     </span>
                   </div>
@@ -140,7 +140,7 @@ export default function CustomizeModalityOutcomesModal({
                   <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border transition-all ${
                     isSelected 
                       ? 'bg-emerald-500 border-emerald-400 text-white shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
-                      : 'border-white/20 bg-black/30 text-transparent'
+                      : 'border-slate-300 dark:border-white/20 bg-white dark:bg-black/30 text-transparent'
                   }`}>
                     <Check size={12} strokeWidth={3} />
                   </div>
@@ -150,11 +150,11 @@ export default function CustomizeModalityOutcomesModal({
           </div>
         </div>
 
-        <div className="pt-3 border-t border-white/10 flex items-center gap-3 shrink-0">
+        <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center gap-3 shrink-0">
           <button 
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-white/10 bg-white/5 text-gray-300 hover:text-white text-xs font-bold transition-colors"
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-gray-300 hover:text-levl-text-primary text-xs font-bold transition-colors"
           >
             Cancel
           </button>

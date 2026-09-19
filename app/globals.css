@@ -261,6 +261,53 @@ html.light {
     border-color: rgba(125, 211, 252, 0.6) !important;
   }
 
+  /* 12. Jewel Tone Accessible Contrast for Badges, Accents & Status Text in Light Mode */
+  html.light .text-purple-300:not(button[class*="bg-purple"]):not(a[class*="bg-purple"]):not([class*="bg-purple-600"]):not([class*="bg-purple-700"]):not(.keep-white),
+  html.light .text-purple-400:not(button[class*="bg-purple"]):not(a[class*="bg-purple"]):not([class*="bg-purple-600"]):not([class*="bg-purple-700"]):not(.keep-white) {
+    color: #7c3aed !important; /* Rich Purple 600 */
+  }
+
+  html.light .text-amber-300:not(button[class*="bg-amber"]):not(a[class*="bg-amber"]):not([class*="bg-amber-600"]):not(.keep-white),
+  html.light .text-amber-400:not(button[class*="bg-amber"]):not(a[class*="bg-amber"]):not([class*="bg-amber-600"]):not(.keep-white) {
+    color: #b45309 !important; /* Deep Amber 700 - 5.5:1 contrast */
+  }
+
+  html.light .text-blue-300:not(button[class*="bg-blue"]):not(a[class*="bg-blue"]):not([class*="bg-blue-600"]):not(.keep-white),
+  html.light .text-blue-400:not(button[class*="bg-blue"]):not(a[class*="bg-blue"]):not([class*="bg-blue-600"]):not(.keep-white) {
+    color: #0284c7 !important; /* Sky 600 / Blue 600 */
+  }
+
+  html.light .text-cyan-300:not(button[class*="bg-cyan"]):not(a[class*="bg-cyan"]):not([class*="bg-cyan-600"]):not(.keep-white),
+  html.light .text-cyan-400:not(button[class*="bg-cyan"]):not(a[class*="bg-cyan"]):not([class*="bg-cyan-600"]):not(.keep-white) {
+    color: #0891b2 !important; /* Cyan 600 */
+  }
+
+  html.light .text-emerald-300:not(button[class*="bg-emerald"]):not(a[class*="bg-emerald"]):not([class*="bg-emerald-600"]):not(.keep-white),
+  html.light .text-emerald-400:not(button[class*="bg-emerald"]):not(a[class*="bg-emerald"]):not([class*="bg-emerald-600"]):not(.keep-white) {
+    color: #059669 !important; /* Emerald 600 */
+  }
+
+  html.light .text-rose-300:not(button[class*="bg-rose"]):not(a[class*="bg-rose"]):not([class*="bg-rose-600"]):not(.keep-white),
+  html.light .text-rose-400:not(button[class*="bg-rose"]):not(a[class*="bg-rose"]):not([class*="bg-rose-600"]):not(.keep-white) {
+    color: #e11d48 !important; /* Rose 600 */
+  }
+
+  html.light .text-teal-300:not(button[class*="bg-teal"]):not(a[class*="bg-teal"]):not([class*="bg-teal-600"]):not(.keep-white),
+  html.light .text-teal-400:not(button[class*="bg-teal"]):not(a[class*="bg-teal"]):not([class*="bg-teal-600"]):not(.keep-white) {
+    color: #0d9488 !important; /* Teal 600 */
+  }
+
+  /* 13. Dark Gradient Card Containers -> Frosted Light Quartz */
+  html.light div[class*="rounded-2xl"][class*="from-slate-950"],
+  html.light div[class*="rounded-3xl"][class*="from-slate-950"],
+  html.light a[class*="rounded-2xl"][class*="from-slate-950"],
+  html.light a[class*="rounded-2xl"][class*="from-emerald-950"],
+  html.light a[class*="rounded-2xl"][class*="from-purple-950"] {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.90) 100%) !important;
+    border-color: rgba(226, 232, 240, 0.9) !important;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
+  }
+
   .pb-safe {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
