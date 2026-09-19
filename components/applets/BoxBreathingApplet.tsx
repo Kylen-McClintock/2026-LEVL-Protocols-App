@@ -5,6 +5,7 @@ import { Play, Pause, X, Volume2, VolumeX, Check, Sparkles, Shield, Zap } from '
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { saveBatchOutcomeObservations } from '@/lib/data'
 import { format } from 'date-fns'
+import BreathingPrompt from './BreathingPrompt'
 
 interface BoxBreathingAppletProps {
   isOpen: boolean
@@ -432,26 +433,20 @@ export default function BoxBreathingApplet({
         <>
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0 cursor-pointer" onClick={() => setIsPaused(!isPaused)} />
 
-          <div className={`z-10 flex flex-col items-center text-center space-y-2 pointer-events-none mt-auto mb-4 transition-all duration-1000 ${
-            elapsedSeconds >= 30 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-          }`}>
-            <div className="text-xs uppercase font-extrabold tracking-[0.2em] text-cyan-300/90 bg-cyan-500/10 border border-cyan-500/20 px-4 py-1.5 rounded-full backdrop-blur-md">
-              {phase === 'INHALE' && '1. Inhale Deeply (NOSE - 4s)'}
-              {phase === 'HOLD_FULL' && '2. Hold Full (LUNGS FULL - 4s)'}
-              {phase === 'EXHALE' && '3. Smooth Exhale (MOUTH or NOSE - 4s)'}
-              {phase === 'HOLD_EMPTY' && '4. Hold Empty (LUNGS EMPTY - 4s)'}
-            </div>
-
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-[0_0_25px_rgba(6,182,212,0.6)]">
-              {phase === 'INHALE' && 'NOSE INHALE'}
-              {phase === 'HOLD_FULL' && 'LUNGS FULL HOLD'}
-              {phase === 'EXHALE' && 'EXHALE RELEASE'}
-              {phase === 'HOLD_EMPTY' && 'LUNGS EMPTY HOLD'}
-            </h2>
-
-            <p className="text-xs font-mono text-gray-300">
-              {phase === 'INHALE' ? 'Inhale through NOSE ➔ Exhale through MOUTH or NOSE' : 'Tactical Panic Suppression'}
-            </p>
+          {/* Continuous Floating Breath Guidance Overlay with Smooth Fade-in/out */}
+          <div className="z-10 flex flex-col items-center text-center pointer-events-none mt-auto mb-6">
+            <BreathingPrompt
+              word={
+                phase === 'INHALE' ? 'Inhale' :
+                phase === 'HOLD_FULL' ? 'Hold' :
+                phase === 'EXHALE' ? 'Exhale' : 'Hold'
+              }
+              glowColor={
+                phase === 'INHALE' ? 'cyan' :
+                phase === 'HOLD_FULL' ? 'amber' :
+                phase === 'EXHALE' ? 'purple' : 'emerald'
+              }
+            />
           </div>
 
           <div className="w-full max-w-xl p-6 flex items-center justify-between z-20 backdrop-blur-md bg-black/40 border border-white/10 rounded-2xl mb-8">

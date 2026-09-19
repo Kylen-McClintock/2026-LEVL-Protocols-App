@@ -12,7 +12,7 @@ import { safeLocalStorageSet } from '@/lib/utils/storage'
 import UnifiedVoiceBar, { ParsedVoiceCheckinData } from '@/components/voice/UnifiedVoiceBar'
 import MindfulReflectionPrompt from '@/components/mindfulness/MindfulReflectionPrompt'
 import { getStoredCustomOutcomes } from '@/lib/data'
-import { fetchCurrentWeather, getCachedWeather, LocalWeatherData } from '@/lib/services/weatherService'
+import { fetchCurrentWeather, getCachedWeather, isWeatherTrackingEnabled, LocalWeatherData } from '@/lib/services/weatherService'
 import { ExternalConfounderData } from '@/lib/types'
 import CircadianTimePickerInput, { resolveCircadianLastMealTime } from '@/components/ui/CircadianTimePickerInput'
 
@@ -65,6 +65,19 @@ function WeatherUvMicroWidget({
   onRefresh?: () => void
   isRefreshing?: boolean
 }) {
+  if (!isWeatherTrackingEnabled()) {
+    return (
+      <a
+        href="/settings#weather-settings"
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-900/40 hover:bg-slate-900/80 border border-slate-800/60 text-[10px] text-slate-400 hover:text-slate-200 transition-colors shrink-0"
+        title="Weather tracking is disabled. Click to opt in."
+      >
+        <span>🌤️</span>
+        <span className="hidden xs:inline">Weather Opt-in</span>
+      </a>
+    )
+  }
+
   if (!weather) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-900/60 border border-slate-800/80 text-[10px] text-slate-400 font-medium shrink-0 animate-pulse">
@@ -851,7 +864,7 @@ export default function DailyWellbeingCheckin({
   }, [shouldStartConfoundersOpen])
 
   useEffect(() => {
-    const shouldFetch = !localWeather || localWeather.uv_index == null || localWeather.uv_index === 0
+    const shouldFetch = isWeatherTrackingEnabled() && (!localWeather || localWeather.uv_index == null || localWeather.uv_index === 0)
     if (shouldFetch) {
       const loadWeather = async () => {
         setIsFetchingWeather(true)
@@ -870,8 +883,21 @@ export default function DailyWellbeingCheckin({
     const handleWeatherUpdate = (e: any) => {
       if (e.detail) setLocalWeather(e.detail)
     }
+    const handleTrackingChanged = (e: any) => {
+      if (!e.detail?.enabled) {
+        setLocalWeather(null)
+      } else {
+        fetchCurrentWeather(true).then(d => {
+          if (d) setLocalWeather(d)
+        })
+      }
+    }
     window.addEventListener('levl_weather_updated', handleWeatherUpdate)
-    return () => window.removeEventListener('levl_weather_updated', handleWeatherUpdate)
+    window.addEventListener('levl_weather_tracking_changed', handleTrackingChanged)
+    return () => {
+      window.removeEventListener('levl_weather_updated', handleWeatherUpdate)
+      window.removeEventListener('levl_weather_tracking_changed', handleTrackingChanged)
+    }
   }, [])
 
   const handleManualWeatherRefresh = async () => {

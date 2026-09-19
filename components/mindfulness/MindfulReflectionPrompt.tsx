@@ -168,8 +168,8 @@ export default function MindfulReflectionPrompt({
                   : 'scale-75 bg-indigo-400 opacity-60'
               }`}
             />
-            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-              {breathPhase === 'inhale' ? 'Inhale slowly through nose' : breathPhase === 'hold' ? 'Hold softly and notice' : 'Slow smooth exhale'}
+            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider transition-opacity duration-300">
+              {breathPhase === 'inhale' ? 'Inhale' : breathPhase === 'hold' ? 'Hold' : 'Exhale'}
             </span>
           </div>
           <span className="text-xs font-mono font-black text-amber-300">

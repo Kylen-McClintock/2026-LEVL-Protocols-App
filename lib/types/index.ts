@@ -42,6 +42,8 @@ export type UserProfile = {
   last_period_start_date?: string // 'YYYY-MM-DD'
   average_cycle_length_days?: number // default 28
   birth_control_enabled?: boolean
+  // Environmental & Weather Tracking
+  weather_tracking_enabled?: boolean
   created_at: string
   updated_at: string
 }

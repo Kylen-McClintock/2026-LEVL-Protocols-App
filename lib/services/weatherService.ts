@@ -43,10 +43,73 @@ export function getWeatherConditionDetails(code: number): { condition: string; i
 }
 
 const WEATHER_CACHE_KEY = 'levl_cached_weather'
+const WEATHER_TRACKING_KEY = 'levl_weather_tracking_enabled'
 const CACHE_TTL_MS = 1000 * 60 * 60 // 1 hour
+
+/**
+ * Checks whether the user has explicitly opted into weather tracking.
+ * Default is FALSE (opt-in required for geolocation & environmental tracking).
+ */
+export function isWeatherTrackingEnabled(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return localStorage.getItem(WEATHER_TRACKING_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Updates the user's weather tracking opt-in / opt-out state.
+ * Syncs to localStorage, Supabase user profile (if localUserId provided), and dispatches window events.
+ */
+export async function setWeatherTrackingEnabled(enabled: boolean, localUserId?: string): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(WEATHER_TRACKING_KEY, enabled ? 'true' : 'false')
+    if (!enabled) {
+      localStorage.removeItem(WEATHER_CACHE_KEY)
+    }
+
+    if (localUserId) {
+      try {
+        const { updateUserProfile } = await import('@/lib/data')
+        await updateUserProfile(localUserId, {
+          weather_tracking_enabled: enabled,
+          outcome_preference_scores: {
+            weather_tracking_enabled: enabled
+          }
+        })
+      } catch (err) {
+        console.warn('Notice syncing weather preference to remote profile:', err)
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('levl_weather_tracking_changed', { detail: { enabled } }))
+    if (enabled) {
+      fetchCurrentWeather(true)
+    } else {
+      window.dispatchEvent(new CustomEvent('levl_weather_updated', { detail: null }))
+    }
+  } catch (err) {
+    console.warn('Notice setting weather tracking preference:', err)
+  }
+}
+
+/**
+ * Synchronizes the local weather tracking flag from an existing loaded UserProfile.
+ */
+export function syncWeatherTrackingFromProfile(profile: any) {
+  if (typeof window === 'undefined' || !profile) return
+  const pref = profile.weather_tracking_enabled ?? profile.outcome_preference_scores?.weather_tracking_enabled
+  if (typeof pref === 'boolean') {
+    localStorage.setItem(WEATHER_TRACKING_KEY, pref ? 'true' : 'false')
+  }
+}
 
 export function getCachedWeather(): LocalWeatherData | null {
   if (typeof window === 'undefined') return null
+  if (!isWeatherTrackingEnabled()) return null
   try {
     const raw = localStorage.getItem(WEATHER_CACHE_KEY)
     if (!raw) return null
@@ -62,6 +125,11 @@ export function getCachedWeather(): LocalWeatherData | null {
 
 export async function fetchCurrentWeather(forceRefresh = false): Promise<LocalWeatherData | null> {
   if (typeof window === 'undefined') return null
+
+  // Privacy protection: Weather tracking requires explicit user opt-in
+  if (!isWeatherTrackingEnabled()) {
+    return null
+  }
 
   if (!forceRefresh) {
     const cached = getCachedWeather()

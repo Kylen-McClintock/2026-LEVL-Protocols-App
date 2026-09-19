@@ -5,6 +5,7 @@ import { Play, Pause, X, Volume2, VolumeX, Check, Activity, Waves } from 'lucide
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { saveBatchOutcomeObservations } from '@/lib/data'
 import { format } from 'date-fns'
+import BreathingPrompt from './BreathingPrompt'
 
 interface CoherentBreathingAppletProps {
   isOpen: boolean
@@ -373,20 +374,12 @@ export default function CoherentBreathingApplet({
         <>
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0 cursor-pointer" onClick={() => setIsPaused(!isPaused)} />
 
-          <div className={`z-10 flex flex-col items-center text-center space-y-2 pointer-events-none mt-auto mb-4 transition-all duration-1000 ${
-            elapsedSeconds >= 30 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-          }`}>
-            <div className="text-xs uppercase font-extrabold tracking-[0.2em] text-blue-300/90 bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 rounded-full backdrop-blur-md">
-              {phase === 'INHALE' ? '1. Smooth Inhale (NOSE - 5.5s)' : '2. Relaxed Exhale (NOSE or MOUTH - 5.5s)'}
-            </div>
-
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-[0_0_25px_rgba(59,130,246,0.6)]">
-              {phase === 'INHALE' ? 'SMOOTH NOSE INHALE' : 'RELAXED EXHALE'}
-            </h2>
-
-            <p className="text-xs font-mono text-gray-300">
-              Inhale through NOSE ➔ Exhale through NOSE or MOUTH (0.1 Hz Baroreflex Coherence)
-            </p>
+          {/* Continuous Floating Breath Guidance Overlay with Smooth Fade-in/out */}
+          <div className="z-10 flex flex-col items-center text-center pointer-events-none mt-auto mb-6">
+            <BreathingPrompt
+              word={phase === 'INHALE' ? 'Inhale' : 'Exhale'}
+              glowColor={phase === 'INHALE' ? 'blue' : 'emerald'}
+            />
           </div>
 
           <div className="w-full max-w-xl p-6 flex items-center justify-between z-20 backdrop-blur-md bg-black/40 border border-white/10 rounded-2xl mb-8">

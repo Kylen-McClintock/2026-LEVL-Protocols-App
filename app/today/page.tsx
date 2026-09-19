@@ -270,7 +270,19 @@ function TodayPageContent() {
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem(`levl_cached_tasks_${initialDateStr}`)
-        if (cached) return JSON.parse(cached)
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed)) {
+            return parsed.map((t: any) => {
+              const isEnrolled = Boolean(t.protocol_step_id || t.user_protocol_instance_id || t.execution_details?.enrolled_protocol_id)
+              if (!isEnrolled) {
+                t.lineages = []
+                t.protocol_step = undefined
+              }
+              return t
+            })
+          }
+        }
       } catch (e) {}
     }
     return []
@@ -279,7 +291,17 @@ function TodayPageContent() {
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem('levl_cached_bench_items')
-        if (cached) return JSON.parse(cached)
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed)) {
+            return parsed.map((item: any) => {
+              if (!item.protocol_id) {
+                item.protocolTags = []
+              }
+              return item
+            })
+          }
+        }
       } catch (e) {}
     }
     return []

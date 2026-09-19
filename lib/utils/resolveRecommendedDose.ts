@@ -338,8 +338,8 @@ export function resolveRecommendedDose(
     if (!litRange || litRange.max > 8) litRange = { min: 1, max: 3, unit: 'hours before bed' }
   }
 
-  // Build list of active protocol presets
-  const allProtocolPresets: ProtocolDosePreset[] = activeProtocolsList.map((proto, idx) => {
+  // Build list of active protocol presets from explicit protocol context
+  const activeContextPresets: ProtocolDosePreset[] = activeProtocolsList.map((proto, idx) => {
     let val = proto.doseAmount || target?.value || (isHoursBeforeBed ? 2 : 1)
     let u = proto.doseUnit || unit
     let text = proto.doseText || modality.dose_or_exposure || `${val} ${u}`.trim()
@@ -365,7 +365,10 @@ export function resolveRecommendedDose(
     }
   })
 
-  // ONLY include Bryan Johnson Blueprint 2026 if this modality is ACTUALLY in Blueprint 2026!
+  // allProtocolPresets contains active context presets + reference comparison presets (for comparison drawer)
+  const allProtocolPresets: ProtocolDosePreset[] = [...activeContextPresets]
+
+  // ONLY include Bryan Johnson Blueprint 2026 as comparison if this modality is ACTUALLY in Blueprint 2026!
   const isActuallyInBlueprint = BRYAN_JOHNSON_2026_IDS.has(modality.id) || Boolean((modality as any).is_blueprint_2026)
   if (isActuallyInBlueprint && (profile?.blueprint_dose || modality.dose_or_exposure) && !allProtocolPresets.some(p => p.protocolName.toLowerCase().includes('blueprint'))) {
     const details = getProtocolSourceDetails('Bryan Johnson 2026 Blueprint', modality)
@@ -446,9 +449,9 @@ export function resolveRecommendedDose(
     }
   }
 
-  // 2. Specific Protocol Context Override (if pulled up under a specific active protocol)
-  if (allProtocolPresets.length > 0) {
-    const primaryProto = allProtocolPresets[0]
+  // 2. Specific Protocol Context Override (ONLY if caller provided an explicit active protocol context!)
+  if (activeContextPresets.length > 0) {
+    const primaryProto = activeContextPresets[0]
     
     // For peptides and high-risk modalities, ensure target never overshoots protocol prescription
     let safeTarget = target

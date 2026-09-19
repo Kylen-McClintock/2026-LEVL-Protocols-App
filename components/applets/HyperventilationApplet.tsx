@@ -5,6 +5,7 @@ import { Play, Pause, X, Volume2, VolumeX, Check, Flame, Zap } from 'lucide-reac
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { saveBatchOutcomeObservations } from '@/lib/data'
 import { format } from 'date-fns'
+import BreathingPrompt from './BreathingPrompt'
 
 interface HyperventilationAppletProps {
   isOpen: boolean
@@ -33,6 +34,7 @@ export default function HyperventilationApplet({
   const [phase, setPhase] = useState<HyperPhase>('RAPID_BREATHS')
   const [currentRound, setCurrentRound] = useState(1)
   const [breathCount, setBreathCount] = useState(1)
+  const [rapidSubPhase, setRapidSubPhase] = useState<'Inhale' | 'Exhale'>('Inhale')
   const [holdTimer, setHoldTimer] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
@@ -125,19 +127,29 @@ export default function HyperventilationApplet({
     let interval: NodeJS.Timeout
 
     if (phase === 'RAPID_BREATHS') {
+      let subStep = 0
+      setRapidSubPhase('Inhale')
       interval = setInterval(() => {
-        setBreathCount(prev => {
-          if (prev >= RAPID_BREATH_COUNT) {
-            setPhase('RETENTION_HOLD')
-            setHoldTimer(RETENTION_HOLD_SECONDS)
-            playShockwaveChime(320) // Deep retention tone
-            return 1
-          }
-          playShockwaveChime(440 + prev * 5)
-          return prev + 1
-        })
-        setElapsedSeconds(e => e + 1)
-      }, 1200) // 1.2s per breath cycle
+        subStep++
+        if (subStep % 2 === 1) {
+          // Half-cycle: smooth exhale
+          setRapidSubPhase('Exhale')
+        } else {
+          // Full-cycle: inhale for new breath
+          setRapidSubPhase('Inhale')
+          setBreathCount(prev => {
+            if (prev >= RAPID_BREATH_COUNT) {
+              setPhase('RETENTION_HOLD')
+              setHoldTimer(RETENTION_HOLD_SECONDS)
+              playShockwaveChime(320) // Deep retention tone
+              return 1
+            }
+            playShockwaveChime(440 + prev * 5)
+            return prev + 1
+          })
+          setElapsedSeconds(e => e + 1)
+        }
+      }, 600) // 600ms Inhale + 600ms Exhale = 1.2s per breath cycle
     } else if (phase === 'RETENTION_HOLD') {
       interval = setInterval(() => {
         setHoldTimer(prev => {
@@ -426,26 +438,25 @@ export default function HyperventilationApplet({
         <>
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0 cursor-pointer" onClick={() => setIsPaused(!isPaused)} />
 
-          <div className={`z-10 flex flex-col items-center text-center space-y-2 pointer-events-none mt-auto mb-4 transition-all duration-1000 ${
-            elapsedSeconds >= 30 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-          }`}>
-            <div className="text-xs uppercase font-extrabold tracking-[0.2em] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-4 py-1.5 rounded-full backdrop-blur-md">
-              Round {currentRound} of {TOTAL_ROUNDS} • {
-                phase === 'RAPID_BREATHS' ? `Breath ${breathCount} / 30 (Inhale Nose or Mouth ➔ Exhale Mouth)` :
-                phase === 'RETENTION_HOLD' ? `Exhale Hold (${holdTimer}s - Lungs Empty)` :
-                `Recovery Hold (${holdTimer}s - Deep Nose Inhale)`
+          {/* Continuous Floating Breath Guidance Overlay with Smooth Fade-in/out */}
+          <div className="z-10 flex flex-col items-center text-center pointer-events-none mt-auto mb-6">
+            <BreathingPrompt
+              word={
+                phase === 'RAPID_BREATHS' ? rapidSubPhase :
+                phase === 'RETENTION_HOLD' ? 'Hold' : 'Hold'
               }
-            </div>
-
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-[0_0_25px_rgba(245,158,11,0.6)]">
-              {phase === 'RAPID_BREATHS' && 'RAPID INHALE & RELEASE'}
-              {phase === 'RETENTION_HOLD' && 'EXHALE RETENTION HOLD'}
-              {phase === 'RECOVERY_HOLD' && 'RECOVERY INHALE HOLD'}
-            </h2>
-
-            <p className="text-xs font-mono text-gray-300">
-              {phase === 'RAPID_BREATHS' ? 'Inhale Nose or Mouth ➔ Unforced Exhale Mouth' : 'Controlled Epinephrine Reset'}
-            </p>
+              subtext={
+                phase === 'RAPID_BREATHS'
+                  ? `Round ${currentRound} of ${TOTAL_ROUNDS} • Breath ${breathCount} / ${RAPID_BREATH_COUNT}`
+                  : `Round ${currentRound} of ${TOTAL_ROUNDS} • ${holdTimer}s remaining`
+              }
+              glowColor={
+                phase === 'RAPID_BREATHS'
+                  ? (rapidSubPhase === 'Inhale' ? 'amber' : 'purple')
+                  : (phase === 'RETENTION_HOLD' ? 'indigo' : 'emerald')
+              }
+              fadeDurationMs={phase === 'RAPID_BREATHS' ? 150 : 240}
+            />
           </div>
 
           <div className="w-full max-w-xl p-6 flex items-center justify-between z-20 backdrop-blur-md bg-black/40 border border-white/10 rounded-2xl mb-8">

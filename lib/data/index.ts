@@ -14,6 +14,7 @@ import {
 } from '../types'
 import { resolveOptimalTimingSlot, resolveSlotFromTimingString, parseMultiDoseTimingSlots } from './resolveOptimalTiming'
 import { getSafeEfficacyStats } from '../utils/efficacyStats'
+import { getColorForProtocol } from '../utils/categories'
 
 // Persistent Catalog Cache Configuration (24 Hours TTL with SWR)
 const CATALOG_CACHE_PREFIX = 'levl_cat_v1_'
@@ -1221,24 +1222,6 @@ function hydrateTasksInMemory(
       t.loose_modality = resolveModalityFromMap(resolvedModId, modsMap)
     }
 
-    // If protocol_step is still missing, infer from stepsMap matching modality_id
-    if (!t.protocol_step && resolvedModId) {
-      const normResolved = resolvedModId.toLowerCase().trim()
-      const underResolved = normResolved.replace(/-/g, '_')
-      const dashResolved = normResolved.replace(/_/g, '-')
-      for (const step of Array.from(stepsMap.values())) {
-        const stepModId = (step.modality_id || step.modality?.id || '').toLowerCase().trim()
-        if (
-          stepModId === normResolved ||
-          stepModId === underResolved ||
-          stepModId === dashResolved
-        ) {
-          t.protocol_step = step
-          break
-        }
-      }
-    }
-
     if (t.protocol_step?.modality) {
       t.protocol_step = {
         ...t.protocol_step,
@@ -1255,13 +1238,31 @@ function hydrateTasksInMemory(
       }
     }
 
-    // Ensure lineages are always populated if protocol is identified
-    if ((!t.lineages || t.lineages.length === 0) && t.protocol_step?.protocol) {
-      t.lineages = [{
-        protocol_id: t.protocol_step.protocol.id,
-        protocol_name: t.protocol_step.protocol.name,
-        color_hex: (t.protocol_step.protocol as any).color_hex || '#A855F7'
-      }]
+    // Protocol identification & lineages:
+    // A task is ONLY part of a protocol if the user explicitly enrolled in that protocol
+    // (i.e. has a valid protocol_step_id, user_protocol_instance_id, or enrolled_protocol_id).
+    // Standalone modalities picked one at a time MUST NEVER be inferred or linked to catalog protocols!
+    const isEnrolledInProtocol = Boolean(
+      t.protocol_step_id || 
+      t.user_protocol_instance_id || 
+      t.execution_details?.enrolled_protocol_id
+    )
+
+    if (isEnrolledInProtocol) {
+      const enrolledProtocolId = t.execution_details?.enrolled_protocol_id || t.protocol_step?.protocol?.id || t.protocol_step?.protocol_id
+      const enrolledProtocolName = t.execution_details?.enrolled_protocol_name || t.protocol_step?.protocol?.name
+
+      if (enrolledProtocolName) {
+        t.lineages = [{
+          protocol_id: enrolledProtocolId || t.protocol_step?.protocol?.id,
+          protocol_name: enrolledProtocolName,
+          color_hex: (t.protocol_step?.protocol as any)?.color_hex || getColorForProtocol(enrolledProtocolName)
+        }]
+      }
+    } else {
+      // Standalone modality task: Strictly empty lineages and no protocol step
+      t.lineages = []
+      t.protocol_step = undefined
     }
 
     // Apply bench status override if non-completed and merge custom personalization
@@ -1320,7 +1321,16 @@ export async function getDailyProtocolTasks(
       const raw = localStorage.getItem('levl_cached_tasks_' + date)
       if (raw) {
         const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed) && parsed.length > 0) cachedTasks = parsed
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          cachedTasks = parsed.map((t: any) => {
+            const isEnrolled = Boolean(t.protocol_step_id || t.user_protocol_instance_id || t.execution_details?.enrolled_protocol_id)
+            if (!isEnrolled) {
+              t.lineages = []
+              t.protocol_step = undefined
+            }
+            return t
+          })
+        }
       }
     } catch (e) {}
   }
@@ -3495,7 +3505,11 @@ export async function addProtocolToToday(localUserId: string, date: string, prot
       scheduled_date: t.scheduled_date,
       timing_slot: t.timing_slot || 'anytime',
       status: 'pending',
-      execution_details: t.execution_details || undefined
+      execution_details: {
+        ...(t.execution_details || {}),
+        enrolled_protocol_id: protocolId,
+        enrolled_protocol_name: protocolObj?.name || protocolId
+      }
     }))
 
     // Deduplicate against already existing scheduled tasks for this user & dates

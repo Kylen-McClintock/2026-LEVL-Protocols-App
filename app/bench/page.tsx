@@ -107,12 +107,18 @@ function BenchPageContent() {
 
       item.modality.nba_result = calculateNextBestAction(item.modality, profileData)
 
-      // Compute protocol tags for modalities that belong to a protocol active on Today's view (or enrolled)
-      const associatedProtos = modalityToProtocolsMap.get(item.modality_id) || new Set<string>()
-      const matchingTodayProtos = Array.from(associatedProtos).filter(pName => todayProtocolNames.has(pName))
-
-      // If no today protocol match, fall back to any associated master protocol
-      const finalProtos = matchingTodayProtos.length > 0 ? matchingTodayProtos : Array.from(associatedProtos)
+      // Compute protocol tags:
+      // A bench item ONLY displays protocol tags if the user explicitly enrolled in or benched that protocol!
+      // Standalone modalities picked one at a time MUST NEVER be tagged with un-enrolled master protocols!
+      let finalProtos: string[] = []
+      if (item.protocol_id) {
+        const matchedProto = masterProtocols.find(p => p.id === item.protocol_id || p.name === item.protocol_id)
+        if (matchedProto?.name) finalProtos.push(matchedProto.name)
+      } else {
+        const associatedProtos = modalityToProtocolsMap.get(item.modality_id) || new Set<string>()
+        const matchingTodayProtos = Array.from(associatedProtos).filter(pName => todayProtocolNames.has(pName))
+        finalProtos = matchingTodayProtos
+      }
 
       item.protocolTags = finalProtos.map(pName => ({
         protocol_name: pName,
@@ -142,7 +148,13 @@ function BenchPageContent() {
       if (cached) {
         const parsed = JSON.parse(cached)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setItems(parsed)
+          const cleansed = parsed.map((item: any) => {
+            if (!item.protocol_id) {
+              item.protocolTags = []
+            }
+            return item
+          })
+          setItems(cleansed)
           setLoading(false)
         }
       }

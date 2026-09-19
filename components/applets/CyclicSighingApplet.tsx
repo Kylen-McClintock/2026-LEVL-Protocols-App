@@ -5,6 +5,7 @@ import { Play, Pause, X, Volume2, VolumeX, Check, RotateCcw, Sparkles, Heart, Ac
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { saveBatchOutcomeObservations } from '@/lib/data'
 import { format } from 'date-fns'
+import BreathingPrompt from './BreathingPrompt'
 
 interface CyclicSighingAppletProps {
   isOpen: boolean
@@ -402,21 +403,12 @@ export default function CyclicSighingApplet({
           {/* Hardware Accelerated Canvas Engine Background */}
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0 cursor-pointer" onClick={() => setIsPaused(!isPaused)} />
 
-          {/* Dynamic Floating Breath Guidance Text Overlay (Positioned BELOW graphic, auto-disappears after 30 seconds) */}
-          <div className={`z-10 flex flex-col items-center text-center space-y-2 pointer-events-none mt-auto mb-4 transition-all duration-1000 ${
-            elapsedSeconds >= 30 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-          }`}>
-            <div className="text-xs uppercase font-extrabold tracking-[0.2em] text-indigo-300/80 bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 rounded-full backdrop-blur-md">
-              {phase === 'INHALE' ? '1. Deep Inhale (NOSE) + 2. Top-Up (NOSE)' : '3. Long Slow Exhale (MOUTH)'}
-            </div>
-
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-[0_0_25px_rgba(99,102,241,0.6)]">
-              {phase === 'INHALE' ? 'DOUBLE NOSE INHALE' : 'SLOW MOUTH EXHALE'}
-            </h2>
-
-            <p className="text-xs font-mono text-gray-300">
-              Double Inhale through NOSE ➔ Long Exhale through MOUTH
-            </p>
+          {/* Continuous Floating Breath Guidance Overlay with Smooth Fade-in/out */}
+          <div className="z-10 flex flex-col items-center text-center pointer-events-none mt-auto mb-6">
+            <BreathingPrompt
+              word={phase === 'INHALE' ? 'Inhale' : 'Exhale'}
+              glowColor={phase === 'INHALE' ? 'cyan' : 'purple'}
+            />
           </div>
 
           {/* Bottom Live Session Metrics Bar */}

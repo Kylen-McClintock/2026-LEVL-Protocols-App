@@ -503,15 +503,13 @@ function ExplorePageContent() {
   const getProtocolActiveStatus = (protocol: Protocol | any): 'today' | 'bench' | null => {
     if (
       todayProtocolIds.has(protocol.id) || 
-      todayProtocolIds.has(protocol.name?.toLowerCase()) ||
-      (protocol.steps && protocol.steps.length > 0 && protocol.steps.some((s: any) => todayModalityIds.has(s.modality_id || s.modality?.id)))
+      todayProtocolIds.has(protocol.name?.toLowerCase())
     ) {
       return 'today'
     }
     if (
       benchProtocolIds.has(protocol.id) || 
-      benchProtocolIds.has(protocol.name?.toLowerCase()) ||
-      (protocol.steps && protocol.steps.length > 0 && protocol.steps.some((s: any) => benchModalityIds.has(s.modality_id || s.modality?.id)))
+      benchProtocolIds.has(protocol.name?.toLowerCase())
     ) {
       return 'bench'
     }

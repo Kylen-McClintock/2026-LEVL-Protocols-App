@@ -21,6 +21,8 @@ import NegativeLongevityFactorsCard from '@/components/profile/NegativeLongevity
 import MedicalHistoryPrescriptionsCard from '@/components/profile/MedicalHistoryPrescriptionsCard'
 import ThemeAppearanceSettingsCard from '@/components/profile/ThemeAppearanceSettingsCard'
 import TemperatureUnitSettingsCard from '@/components/profile/TemperatureUnitSettingsCard'
+import WeatherTrackingSettingsCard from '@/components/profile/WeatherTrackingSettingsCard'
+import WeatherTrackingProfileCard from '@/components/profile/WeatherTrackingProfileCard'
 import FontSizeSettingsCard from '@/components/profile/FontSizeSettingsCard'
 import DataSovereigntyCard from '@/components/profile/DataSovereigntyCard'
 import SupplementScannerModal from '@/components/modals/SupplementScannerModal'
@@ -388,6 +390,14 @@ export default function SettingsPage() {
           />
         )}
 
+        {profile && (
+          <WeatherTrackingProfileCard 
+            profile={profile} 
+            localUserId={authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()}
+            onUpdated={(updated) => setProfile(updated)} 
+          />
+        )}
+
         {profile && <BloodworkProfileCard profile={profile} />}
 
         {profile && (
@@ -408,6 +418,12 @@ export default function SettingsPage() {
         />
 
         <TemperatureUnitSettingsCard />
+
+        <WeatherTrackingSettingsCard 
+          profile={profile} 
+          localUserId={authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()}
+          onUpdated={(updated) => setProfile(updated)} 
+        />
 
         <DataSovereigntyCard 
           localUserId={authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()} 
