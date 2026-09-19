@@ -633,7 +633,7 @@ export default function ProtocolFocusPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-levl-bg text-levl-text-primary flex items-center justify-center p-6">
         <div className="flex items-center gap-3 text-purple-400 animate-pulse font-mono text-sm">
           <Activity size={20} className="animate-spin" />
           <span>Loading Protocol Focus Details...</span>
@@ -644,7 +644,7 @@ export default function ProtocolFocusPage() {
 
   if (!protocol) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col items-center justify-center space-y-4">
+      <div className="min-h-screen bg-levl-bg text-levl-text-primary p-6 flex flex-col items-center justify-center space-y-4">
         <AlertCircle size={40} className="text-amber-400" />
         <h1 className="text-xl font-bold text-white">Protocol Not Found</h1>
         <p className="text-sm text-slate-400 text-center max-w-md">
@@ -739,7 +739,7 @@ export default function ProtocolFocusPage() {
   const visualTheme = getProtocolVisualTheme(protocol, steps)
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-24 selection:bg-purple-500/30">
+    <div className="min-h-screen bg-levl-bg text-levl-text-primary pb-24 selection:bg-purple-500/30">
       
       {/* Top Header Toolbar */}
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 sm:px-6">

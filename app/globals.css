@@ -4,6 +4,8 @@
   --color-levl-bg: var(--levl-bg);
   --color-levl-card: var(--levl-card);
   --color-levl-card-hover: var(--levl-card-hover);
+  --color-levl-surface: var(--levl-surface);
+  --color-levl-surface-highlight: var(--levl-surface-highlight);
   --color-levl-accent: var(--levl-accent);
   --color-levl-accent-dark: var(--levl-accent-dark);
   --color-levl-purple: var(--levl-purple);
@@ -16,6 +18,8 @@
   --levl-bg: #030712;
   --levl-card: rgba(20, 20, 28, 0.6);
   --levl-card-hover: rgba(30, 30, 42, 0.8);
+  --levl-surface: rgba(20, 20, 28, 0.7);
+  --levl-surface-highlight: rgba(30, 32, 45, 0.8);
   --levl-accent: #10b981;
   --levl-accent-dark: #059669;
   --levl-purple: #8b5cf6;
@@ -28,6 +32,8 @@ html.light {
   --levl-bg: #f8fafc;
   --levl-card: rgba(255, 255, 255, 0.82);
   --levl-card-hover: rgba(255, 255, 255, 0.96);
+  --levl-surface: rgba(255, 255, 255, 0.94);
+  --levl-surface-highlight: rgba(241, 245, 249, 0.95);
   --levl-accent: #059669;
   --levl-accent-dark: #047857;
   --levl-purple: #7c3aed;
@@ -99,13 +105,21 @@ html.light {
   /* ------------------------------------------------------------------------- */
 
   /* 1. Global Headings & Typography */
-  html.light h1:not([class*="text-emerald"]):not([class*="text-purple"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-sky"]):not([class*="text-red"]),
-  html.light h2:not([class*="text-emerald"]):not([class*="text-purple"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-sky"]):not([class*="text-red"]),
-  html.light h3:not([class*="text-emerald"]):not([class*="text-purple"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-sky"]):not([class*="text-red"]),
-  html.light h4:not([class*="text-emerald"]):not([class*="text-purple"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-sky"]):not([class*="text-red"]),
-  html.light h5,
-  html.light h6 {
+  html.light h1:not([class*="text-emerald"]):not([class*="text-purple"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-sky"]):not([class*="text-cyan"]):not([class*="text-teal"]):not([class*="text-red"]):not(.keep-white),
+  html.light h2:not([class*="text-emerald"]):not([class*="text-purple"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-sky"]):not([class*="text-cyan"]):not([class*="text-teal"]):not([class*="text-red"]):not(.keep-white),
+  html.light h3:not([class*="text-emerald"]):not([class*="text-purple"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-sky"]):not([class*="text-cyan"]):not([class*="text-teal"]):not([class*="text-red"]):not(.keep-white),
+  html.light h4:not([class*="text-emerald"]):not([class*="text-purple"]):not([class*="text-amber"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-sky"]):not([class*="text-cyan"]):not([class*="text-teal"]):not([class*="text-red"]):not(.keep-white),
+  html.light h5:not(.keep-white),
+  html.light h6:not(.keep-white) {
     color: #0f172a !important; /* Slate 900 - rich deep contrast */
+  }
+
+  html.light .keep-white,
+  html.light .keep-white * {
+    color: inherit;
+  }
+  html.light .keep-white .text-white {
+    color: #ffffff !important;
   }
 
   /* 2. Text-White Elimination on Light Surfaces (Preserving Dark Saturated Pill Buttons) */
@@ -118,20 +132,43 @@ html.light {
     button[class*="bg-red"], 
     button[class*="bg-amber-6"], 
     button[class*="bg-indigo"], 
+    button[class*="bg-teal"],
+    button[class*="bg-cyan"],
     button[class*="bg-gradient"],
+    button[class*="bg-levl-accent"],
+    button[class*="bg-levl-purple"],
     a[class*="bg-purple"], 
     a[class*="bg-emerald"], 
     a[class*="bg-blue"], 
     a[class*="bg-sky"],
+    a[class*="bg-teal"],
+    a[class*="bg-cyan"],
     a[class*="bg-gradient"],
+    a[class*="bg-levl-accent"],
+    a[class*="bg-levl-purple"],
+    [class*="bg-purple-500"],
     [class*="bg-purple-600"],
     [class*="bg-purple-700"],
+    [class*="bg-emerald-500"],
     [class*="bg-emerald-600"],
     [class*="bg-emerald-700"],
+    [class*="bg-blue-500"],
     [class*="bg-blue-600"],
+    [class*="bg-sky-500"],
+    [class*="bg-sky-600"],
+    [class*="bg-teal-500"],
+    [class*="bg-teal-600"],
+    [class*="bg-cyan-500"],
+    [class*="bg-cyan-600"],
+    [class*="bg-rose-500"],
     [class*="bg-rose-600"],
+    [class*="bg-red-500"],
     [class*="bg-red-600"],
+    [class*="bg-indigo-500"],
     [class*="bg-indigo-600"],
+    [class*="bg-amber-600"],
+    [class*="bg-levl-accent"],
+    [class*="bg-levl-purple"],
     .keep-white,
     .keep-white *
   ) {
@@ -152,9 +189,9 @@ html.light {
   }
 
   /* 4. Muted Text: Slate 400 / Gray 400 -> Slate 600 (Accessible 5.2:1 contrast) */
-  html.light .text-slate-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]),
-  html.light .text-gray-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]),
-  html.light .text-zinc-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]) {
+  html.light .text-slate-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not(.keep-white),
+  html.light .text-gray-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not(.keep-white),
+  html.light .text-zinc-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not(.keep-white) {
     color: #475569 !important; /* Slate 600 */
   }
 
@@ -191,26 +228,41 @@ html.light {
   }
 
   /* 7. Card Backgrounds: Hardcoded Dark Slate & Black Containers -> Crisp Light Glass */
-  html.light .bg-slate-900\/90,
-  html.light .bg-slate-900\/80,
-  html.light .bg-slate-900\/70,
-  html.light .bg-slate-900\/60,
-  html.light .bg-slate-900\/40,
-  html.light .bg-slate-950\/90,
-  html.light .bg-slate-950\/80,
-  html.light .bg-slate-950\/70,
-  html.light .bg-slate-950\/60 {
-    background-color: rgba(255, 255, 255, 0.92) !important;
+  html.light .bg-slate-900:not([class*="fixed inset-0"]):not([class*="fixed z-"]):not([class*="fixed bg-black"]):not([class*="fixed bg-slate-950"]),
+  html.light .bg-slate-900\/95:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-900\/90:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-900\/80:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-900\/70:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-900\/60:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-900\/50:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-900\/40:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-950:not([class*="fixed inset-0"]):not([class*="fixed z-"]):not([class*="fixed bg-black"]):not([class*="fixed bg-slate-950"]),
+  html.light .bg-slate-950\/95:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-950\/90:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-950\/80:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-950\/70:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-950\/60:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-950\/50:not([class*="fixed inset-0"]):not([class*="fixed z-"]),
+  html.light .bg-slate-950\/40:not([class*="fixed inset-0"]):not([class*="fixed z-"]) {
+    background-color: rgba(255, 255, 255, 0.96) !important;
     border-color: rgba(226, 232, 240, 0.9) !important;
     box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
   }
 
-  /* 8. Inner Segmented Controls & Trays (bg-black/40, bg-black/60, bg-white/5) -> Soft Slate 100 */
-  html.light .bg-black\/40,
-  html.light .bg-black\/60,
+  /* 8. Inner Segmented Controls, Trays & Progress Tracks -> Soft Slate 100/200 */
+  html.light .bg-black\/20:not([class*="fixed inset-0"]),
+  html.light .bg-black\/30:not([class*="fixed inset-0"]),
+  html.light .bg-black\/40:not([class*="fixed inset-0"]),
+  html.light .bg-black\/50:not([class*="fixed inset-0"]),
+  html.light .bg-black\/60:not([class*="fixed inset-0"]),
   html.light .bg-white\/5,
-  html.light .bg-white\/10 {
-    background-color: rgba(241, 245, 249, 0.85) !important;
+  html.light .bg-white\/10,
+  html.light .bg-slate-800:not(button):not([class*="text-white"]):not([class*="ring-2"]),
+  html.light .bg-slate-800\/80,
+  html.light .bg-slate-800\/90,
+  html.light .bg-slate-800\/60,
+  html.light .bg-slate-800\/40 {
+    background-color: rgba(241, 245, 249, 0.9) !important;
     border-color: rgba(226, 232, 240, 0.95) !important;
   }
 
@@ -298,14 +350,52 @@ html.light {
   }
 
   /* 13. Dark Gradient Card Containers -> Frosted Light Quartz */
-  html.light div[class*="rounded-2xl"][class*="from-slate-950"],
-  html.light div[class*="rounded-3xl"][class*="from-slate-950"],
-  html.light a[class*="rounded-2xl"][class*="from-slate-950"],
-  html.light a[class*="rounded-2xl"][class*="from-emerald-950"],
-  html.light a[class*="rounded-2xl"][class*="from-purple-950"] {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.90) 100%) !important;
+  html.light [class*="from-slate-950"],
+  html.light [class*="from-slate-900"],
+  html.light [class*="from-slate-850"],
+  html.light [class*="from-slate-800"],
+  html.light [class*="from-emerald-950"],
+  html.light [class*="from-purple-950"],
+  html.light [class*="from-indigo-950"],
+  html.light [class*="from-blue-950"],
+  html.light [class*="from-cyan-950"],
+  html.light [class*="from-teal-950"],
+  html.light [class*="from-sky-950"],
+  html.light [class*="from-gray-950"],
+  html.light [class*="from-gray-900"] {
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.90) 100%) !important;
     border-color: rgba(226, 232, 240, 0.9) !important;
-    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
+  }
+
+  /* 14. Soft Hover Effects on Light Mode Buttons & Trays */
+  html.light .hover\:bg-white\/5:hover,
+  html.light .hover\:bg-white\/10:hover,
+  html.light .hover\:bg-white\/15:hover,
+  html.light .hover\:bg-white\/20:hover,
+  html.light .hover\:bg-slate-800:hover:not(button[class*="bg-purple"]):not(button[class*="bg-emerald"]):not(button[class*="bg-blue"]):not(button[class*="bg-rose"]):not(button[class*="bg-red"]):not(button[class*="bg-indigo"]):not(button[class*="bg-teal"]),
+  html.light .hover\:bg-slate-700:hover:not(button[class*="bg-purple"]):not(button[class*="bg-emerald"]):not(button[class*="bg-blue"]):not(button[class*="bg-rose"]):not(button[class*="bg-red"]):not(button[class*="bg-indigo"]):not(button[class*="bg-teal"]) {
+    background-color: rgba(241, 245, 249, 0.95) !important;
+  }
+
+  /* 15. Prose Invert Adaptation for Coach & Markdown Text in Light Mode */
+  html.light .prose-invert {
+    --tw-prose-body: #334155;
+    --tw-prose-headings: #0f172a;
+    --tw-prose-lead: #475569;
+    --tw-prose-links: #7c3aed;
+    --tw-prose-bold: #0f172a;
+    --tw-prose-counters: #64748b;
+    --tw-prose-bullets: #94a3b8;
+    --tw-prose-hr: #e2e8f0;
+    --tw-prose-quotes: #0f172a;
+    --tw-prose-quote-borders: #cbd5e1;
+    --tw-prose-captions: #64748b;
+    --tw-prose-code: #0f172a;
+    --tw-prose-pre-code: #e2e8f0;
+    --tw-prose-pre-bg: #1e293b;
+    --tw-prose-th-borders: #cbd5e1;
+    --tw-prose-td-borders: #e2e8f0;
+    color: #334155 !important;
   }
 
   .pb-safe {

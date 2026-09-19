@@ -33,7 +33,7 @@ export default function HubermanPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400">
+        <div className="min-h-screen flex items-center justify-center bg-levl-bg text-levl-text-secondary">
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
             <div className="text-xs font-semibold tracking-wider uppercase text-slate-300">

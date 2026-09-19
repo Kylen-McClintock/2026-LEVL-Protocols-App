@@ -238,7 +238,7 @@ export default function RedLightMaskApplet({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#090202] text-white flex flex-col items-center justify-between font-sans overflow-hidden select-none animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[100] bg-[#090202] text-white flex flex-col items-center justify-between font-sans overflow-hidden select-none animate-in fade-in duration-300 keep-white">
       {/* Ambient Red Glow Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-rose-600/10 blur-[130px]" />

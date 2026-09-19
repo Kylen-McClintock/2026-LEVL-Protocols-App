@@ -98,7 +98,7 @@ export default function AgingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white p-4 sm:p-8 max-w-7xl mx-auto space-y-8 pb-24">
+    <main className="min-h-screen bg-transparent text-levl-text-primary p-4 sm:p-8 max-w-7xl mx-auto space-y-8 pb-24">
       {/* Insights Section Switcher */}
       <div className="flex p-1 bg-black/50 rounded-2xl border border-white/10 max-w-md shadow-lg">
         <Link

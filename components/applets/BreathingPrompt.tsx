@@ -88,7 +88,7 @@ export default function BreathingPrompt({
 
   return (
     <div
-      className={`min-h-[72px] flex flex-col items-center justify-center text-center select-none ${className}`}
+      className={`min-h-[72px] flex flex-col items-center justify-center text-center select-none keep-white ${className}`}
       aria-live="polite"
     >
       <div

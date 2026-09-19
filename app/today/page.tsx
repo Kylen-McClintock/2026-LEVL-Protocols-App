@@ -4079,7 +4079,7 @@ function TodayPageContent() {
   }
 
   if (!isMounted) {
-    return <div className="min-h-screen bg-slate-950" />
+    return <div className="min-h-screen bg-levl-bg" />
   }
 
   return (
@@ -4087,7 +4087,7 @@ function TodayPageContent() {
       onTouchStart={handlePullTouchStart}
       onTouchMove={handlePullTouchMove}
       onTouchEnd={handlePullTouchEnd}
-      className="min-h-screen bg-slate-950 text-slate-100 pb-24 relative"
+      className="min-h-screen bg-levl-bg text-levl-text-primary pb-24 relative"
     >
       {/* Pull to Refresh Visual Indicator */}
       {(pullDistance > 0 || isRefreshing) && (

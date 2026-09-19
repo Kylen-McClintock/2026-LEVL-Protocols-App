@@ -170,7 +170,7 @@ export default function GuidePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-28 selection:bg-purple-500/30">
+    <div className="min-h-screen bg-levl-bg text-levl-text-primary pb-28 selection:bg-purple-500/30">
       {/* Sticky Header */}
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-white/10 px-4 py-3 sm:py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">

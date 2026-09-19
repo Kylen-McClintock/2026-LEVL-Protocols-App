@@ -642,7 +642,7 @@ export default function YogaNidraApplet({
   const restorationDelta = postRestoration - (10 - preFatigue)
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-950 text-white flex flex-col items-center justify-between font-sans overflow-hidden select-none animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[100] bg-slate-950 text-white flex flex-col items-center justify-between font-sans overflow-hidden select-none animate-in fade-in duration-300 keep-white">
       {/* Visualizer Canvas (Background in Session) */}
       {step === 'SESSION' && (
         <canvas

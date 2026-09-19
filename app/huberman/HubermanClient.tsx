@@ -818,7 +818,7 @@ export default function HubermanClient() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-28 selection:bg-purple-500/30">
+    <div className="min-h-screen bg-levl-bg text-levl-text-primary pb-28 selection:bg-purple-500/30">
       
       {/* Hero Header */}
       <div className="relative border-b border-slate-800/80 bg-gradient-to-b from-slate-900/90 via-slate-950 to-slate-950 px-4 pt-7 pb-8 sm:px-6 lg:px-8">

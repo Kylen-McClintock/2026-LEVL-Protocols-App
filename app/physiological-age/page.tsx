@@ -90,9 +90,9 @@ export default function PhysiologicalAgePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white p-6 flex flex-col items-center justify-center space-y-4">
+      <div className="min-h-screen bg-transparent text-levl-text-primary p-6 flex flex-col items-center justify-center space-y-4">
         <div className="w-10 h-10 border-4 border-levl-accent border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-gray-400 font-medium">Computing Calico Physiological Age Model...</p>
+        <p className="text-sm text-levl-text-secondary font-medium">Computing Calico Physiological Age Model...</p>
       </div>
     )
   }
@@ -103,7 +103,7 @@ export default function PhysiologicalAgePage() {
   const coveragePct = ageResult ? Math.round(ageResult.measurement_coverage_pct * 100) : 0
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 sm:p-8 max-w-5xl mx-auto space-y-8 pb-24">
+    <div className="min-h-screen bg-transparent text-levl-text-primary p-4 sm:p-8 max-w-5xl mx-auto space-y-8 pb-24">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
         <div>

@@ -355,7 +355,7 @@ export default function HyperventilationApplet({
   const energyDelta = postEnergy - preEnergy
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black text-white flex flex-col items-center justify-between font-sans overflow-hidden select-none animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[100] bg-black text-white flex flex-col items-center justify-between font-sans overflow-hidden select-none animate-in fade-in duration-300 keep-white">
       {/* Header */}
       <div className="w-full max-w-4xl p-6 flex items-center justify-between z-20">
         <div className="flex items-center gap-2">
