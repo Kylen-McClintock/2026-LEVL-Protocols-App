@@ -76,20 +76,20 @@ export default function ThemeAppearanceSettingsCard({ profile, onUpdated }: Them
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-extrabold text-sm sm:text-base text-white tracking-tight">
+            <h3 className="font-extrabold text-sm sm:text-base text-levl-text-primary tracking-tight">
               {isLight ? 'Light Mode' : 'Dark Mode'}
             </h3>
             <span
               className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
                 isLight
-                  ? 'bg-amber-950/80 text-amber-300 border-amber-800/60'
+                  ? 'bg-amber-100 text-amber-800 border-amber-300'
                   : 'bg-indigo-950/80 text-indigo-300 border-indigo-800/60'
               }`}
             >
               {isLight ? 'Light' : 'Dark'}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5 truncate">
+          <p className="text-xs text-levl-text-secondary mt-0.5 truncate">
             {isLight ? 'Crystalline quartz frosted glass' : 'Midnight bio-space'}
           </p>
         </div>

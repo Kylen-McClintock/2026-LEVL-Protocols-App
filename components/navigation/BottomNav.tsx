@@ -65,7 +65,7 @@ export default function BottomNav() {
               key={item.href} 
               href={item.href}
               className={`bottom-nav-item flex flex-col items-center justify-center h-full py-0.5 landscape-compact-nav-item space-y-0.5 transition-all ${
-                isActive ? 'text-levl-accent font-bold scale-105' : 'text-levl-text-secondary hover:text-white'
+                isActive ? 'text-levl-accent font-bold scale-105' : 'text-levl-text-secondary hover:text-levl-text-primary'
               }`}
             >
               <Icon size={20} strokeWidth={isActive ? 2.5 : 2} className="bottom-nav-icon landscape-compact-icon" />

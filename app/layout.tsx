@@ -98,14 +98,14 @@ export default function RootLayout({
               <AuthStatusBadge />
             </div>
             <nav className="space-y-4 text-levl-text-secondary flex-1">
-              <Link href="/today" className="block hover:text-white transition-colors">Today</Link>
-              <Link href="/schedule" className="block hover:text-white transition-colors">Schedule</Link>
-              <Link href="/bench" className="block hover:text-white transition-colors">Bench</Link>
-              <Link href="/aging" className="block hover:text-white transition-colors flex items-center gap-1.5"><span className="text-levl-accent">⚡</span> Biological Aging</Link>
-              <Link href="/tracking" className="block hover:text-white transition-colors">Insights</Link>
-              <Link href="/coach" className="block hover:text-white transition-colors text-levl-accent font-medium flex items-center"><span className="mr-2">✦</span> Coach</Link>
-              <Link href="/explore" className="block hover:text-white transition-colors">Explore</Link>
-              <Link href="/settings" className="block hover:text-white transition-colors">Profile</Link>
+              <Link href="/today" className="block hover:text-levl-text-primary transition-colors">Today</Link>
+              <Link href="/schedule" className="block hover:text-levl-text-primary transition-colors">Schedule</Link>
+              <Link href="/bench" className="block hover:text-levl-text-primary transition-colors">Bench</Link>
+              <Link href="/aging" className="block hover:text-levl-text-primary transition-colors flex items-center gap-1.5"><span className="text-levl-accent">⚡</span> Biological Aging</Link>
+              <Link href="/tracking" className="block hover:text-levl-text-primary transition-colors">Insights</Link>
+              <Link href="/coach" className="block hover:text-levl-text-primary transition-colors text-levl-accent font-medium flex items-center"><span className="mr-2">✦</span> Coach</Link>
+              <Link href="/explore" className="block hover:text-levl-text-primary transition-colors">Explore</Link>
+              <Link href="/settings" className="block hover:text-levl-text-primary transition-colors">Profile</Link>
             </nav>
           </aside>
 
