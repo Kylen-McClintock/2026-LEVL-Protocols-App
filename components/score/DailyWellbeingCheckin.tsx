@@ -15,6 +15,8 @@ import { getStoredCustomOutcomes } from '@/lib/data'
 import { fetchCurrentWeather, getCachedWeather, isWeatherTrackingEnabled, LocalWeatherData } from '@/lib/services/weatherService'
 import { ExternalConfounderData } from '@/lib/types'
 import CircadianTimePickerInput, { resolveCircadianLastMealTime } from '@/components/ui/CircadianTimePickerInput'
+import FeelingsMoodGridModal from '@/components/checkin/FeelingsMoodGridModal'
+import { EmotionQuadrant, mapEmotionToOutcomes, QUADRANT_CONFIGS } from '@/lib/emotions/emotionDictionary'
 
 function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: any = '22:30'): number {
   if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0
@@ -480,6 +482,18 @@ export default function DailyWellbeingCheckin({
   // Additional Functional Outcomes
   const [skinClarity, setSkinClarity] = useState(5)
   const [focusScore, setFocusScore] = useState(5)
+
+  // Emotion / Feelings Cloud State (2x2 Energy × Mood Matrix)
+  const [selectedFeelingWord, setSelectedFeelingWord] = useState<string | null>(() => {
+    return (initialData as any)?.custom_outcomes_jsonb?.feeling_word || null
+  })
+  const [selectedFeelingQuadrant, setSelectedFeelingQuadrant] = useState<EmotionQuadrant | null>(() => {
+    return (initialData as any)?.custom_outcomes_jsonb?.feeling_quadrant || null
+  })
+  const [selectedFeelingDef, setSelectedFeelingDef] = useState<string | null>(() => {
+    return (initialData as any)?.custom_outcomes_jsonb?.feeling_definition || null
+  })
+  const [isFeelingsModalOpen, setIsFeelingsModalOpen] = useState(false)
 
   // Current State Collapse Tier: 'minimal' (1-line), 'numbers' (semi-open default), 'trends' (fully open)
   const [outcomeCollapseTier, setOutcomeCollapseTier] = useState<'minimal' | 'numbers' | 'trends'>(() => {
@@ -1247,6 +1261,10 @@ export default function DailyWellbeingCheckin({
       setNotes(parsedNotesStr)
       setEveningNotes(parsedEveNotesStr)
       
+      if (customJSON.feeling_word) setSelectedFeelingWord(customJSON.feeling_word)
+      if (customJSON.feeling_quadrant) setSelectedFeelingQuadrant(customJSON.feeling_quadrant)
+      if (customJSON.feeling_definition) setSelectedFeelingDef(customJSON.feeling_definition)
+      
       // Restore all dynamic outcome slider values from customJSON
       const restoredCustom: Record<string, number> = {}
       Object.entries(customJSON).forEach(([key, val]) => {
@@ -1351,6 +1369,12 @@ export default function DailyWellbeingCheckin({
     if (blueLight !== 'skip') combinedCustomOutcomes.blue_light = blueLight
     if (processedSugar !== 'skip') combinedCustomOutcomes.processed_sugar = processedSugar
 
+    if (selectedFeelingWord) {
+      combinedCustomOutcomes.feeling_word = selectedFeelingWord
+      combinedCustomOutcomes.feeling_quadrant = selectedFeelingQuadrant
+      combinedCustomOutcomes.feeling_definition = selectedFeelingDef
+    }
+
     combinedCustomOutcomes._actual_bedtime = actualBedtime
     combinedCustomOutcomes._actual_wake_time = actualWakeTime
     combinedCustomOutcomes._actual_sleep_minutes = actualSleepMinutes
@@ -1448,6 +1472,12 @@ export default function DailyWellbeingCheckin({
     if (lateMeal !== 'skip') combinedCustomOutcomes.late_meal = lateMeal
     if (blueLight !== 'skip') combinedCustomOutcomes.blue_light = blueLight
     if (processedSugar !== 'skip') combinedCustomOutcomes.processed_sugar = processedSugar
+
+    if (selectedFeelingWord) {
+      combinedCustomOutcomes.feeling_word = selectedFeelingWord
+      combinedCustomOutcomes.feeling_quadrant = selectedFeelingQuadrant
+      combinedCustomOutcomes.feeling_definition = selectedFeelingDef
+    }
 
     if (wearableReadinessScore !== null && wearableReadinessScore !== undefined) {
       combinedCustomOutcomes.wearable_readiness_score = wearableReadinessScore
@@ -1843,8 +1873,7 @@ export default function DailyWellbeingCheckin({
                   onClick={(e) => {
                     if (!isSaved) {
                       e.stopPropagation()
-                      setIsCollapsedAll(false)
-                      setIsEditing(true)
+                      setIsFeelingsModalOpen(true)
                     }
                   }}
                   className={`flex items-center gap-1.5 shrink-0 ${!isSaved ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
@@ -1900,21 +1929,29 @@ export default function DailyWellbeingCheckin({
                 <button
                   type="button"
                   onClick={() => {
-                    setIsCollapsedAll(false)
-                    setIsEditing(true)
+                    if (!isSaved) {
+                      setIsFeelingsModalOpen(true)
+                    } else {
+                      setIsCollapsedAll(false)
+                      setIsEditing(true)
+                    }
                   }}
-                  className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2 sm:px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
-                  title="Edit morning check-in"
+                  className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 sm:px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                  title={isSaved ? "Edit check-in" : "Check-in via Feelings Grid"}
                 >
-                  <span>{isSaved ? '✏ Edit' : 'Log'}</span>
+                  <span>{isSaved ? '✏ Edit' : 'Check-in'}</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => updateOutcomeCollapseTier('numbers')}
+                  onClick={() => {
+                    updateOutcomeCollapseTier('numbers')
+                    setIsCollapsedAll(false)
+                    setIsEditing(true)
+                  }}
                   className="p-1 sm:p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer shadow-sm active:scale-95 shrink-0 flex items-center gap-1 text-xs"
-                  title="Expand to numbers grid"
-                  aria-label="Expand to numbers grid"
+                  title="Skip to manual sliders / expand form"
+                  aria-label="Skip to manual sliders / expand form"
                 >
                   <ChevronDown size={14} className="text-slate-300 group-hover:text-white transition-colors" />
                 </button>
@@ -1927,8 +1964,7 @@ export default function DailyWellbeingCheckin({
               <div 
                 onClick={() => {
                   if (!isSaved) {
-                    setIsCollapsedAll(false)
-                    setIsEditing(true)
+                    setIsFeelingsModalOpen(true)
                   }
                 }}
                 className={`flex items-center gap-2 ${!isSaved ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
@@ -1948,8 +1984,12 @@ export default function DailyWellbeingCheckin({
                 <button
                   type="button"
                   onClick={() => {
-                    setIsCollapsedAll(false)
-                    setIsEditing(true)
+                    if (!isSaved) {
+                      setIsFeelingsModalOpen(true)
+                    } else {
+                      setIsCollapsedAll(false)
+                      setIsEditing(true)
+                    }
                   }}
                   className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                 >
@@ -3168,6 +3208,39 @@ export default function DailyWellbeingCheckin({
 
             {showCoreMetricsSection ? (
               <div className="space-y-4">
+                {/* 2x2 Emotion Grid / Feelings Word Cloud Trigger Banner */}
+                <div
+                  onClick={() => setIsFeelingsModalOpen(true)}
+                  className="p-3.5 rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-950/60 cursor-pointer hover:border-purple-400/50 transition-all flex items-center justify-between shadow-md group active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-inner group-hover:scale-105 transition-transform">
+                      <Sparkles size={15} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-white block">
+                          {selectedFeelingWord ? `Feeling: ${selectedFeelingWord}` : 'Check-in via 2x2 Feelings Grid'}
+                        </span>
+                        {selectedFeelingQuadrant && (
+                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full border border-purple-500/40 text-purple-300 bg-purple-950/60 font-semibold">
+                            {QUADRANT_CONFIGS[selectedFeelingQuadrant]?.filterLabel || selectedFeelingQuadrant}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-purple-300/80 line-clamp-1">
+                        {selectedFeelingWord
+                          ? selectedFeelingDef || 'Tap to change your emotion from the 2x2 grid'
+                          : 'Tap to pick your emotion from the Yale Mood / Energy cloud'}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-purple-400 flex items-center gap-1 group-hover:text-purple-300 transition-colors shrink-0">
+                    <span>{selectedFeelingWord ? 'Change' : 'Explore'}</span>
+                    <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </div>
+
                 {/* Mood Slider */}
                 {isMoodTracked && (() => {
                   const isTouched = touchedOutcomes['mood']
@@ -4553,6 +4626,46 @@ export default function DailyWellbeingCheckin({
         onClose={() => setIsQuickModalOpen(false)}
         outcomeState={quickModalOutcome}
         onSave={handleQuickOutcomeSave}
+      />
+
+      {/* 2x2 Energy × Mood Grid & Feelings Word Cloud Modal */}
+      <FeelingsMoodGridModal
+        isOpen={isFeelingsModalOpen}
+        onClose={() => setIsFeelingsModalOpen(false)}
+        initialFeelingId={selectedFeelingWord?.toLowerCase()}
+        onConfirmFeeling={(emotion) => {
+          setSelectedFeelingWord(emotion.name)
+          setSelectedFeelingQuadrant(emotion.quadrant)
+          setSelectedFeelingDef(emotion.definition)
+
+          const mapped = mapEmotionToOutcomes(emotion)
+          setMood(mapped.mood)
+          setEnergy(mapped.energy)
+          setStress(mapped.stress)
+          setTouchedOutcomes((prev) => ({ ...prev, mood: true, energy: true, stress: true }))
+
+          setIsCollapsedAll(false)
+          setIsEditing(true)
+
+          // Prescription Hook: If high stress or deep exhaustion, trigger adaptive routine modal
+          if (mapped.suggestedBandwidthMode === 'survival_80_20' && typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('levl_open_adaptive_modal', {
+                detail: { targetMode: 'survival_80_20' }
+              })
+            )
+          } else if (mapped.suggestedBandwidthMode === 'peak_surge' && typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('levl_open_adaptive_modal', {
+                detail: { targetMode: 'peak_surge' }
+              })
+            )
+          }
+        }}
+        onSkipToSliders={() => {
+          setIsCollapsedAll(false)
+          setIsEditing(true)
+        }}
       />
     </>
   )
