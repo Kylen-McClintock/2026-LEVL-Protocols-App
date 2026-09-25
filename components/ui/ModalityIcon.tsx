@@ -1041,18 +1041,18 @@ export default function ModalityIcon({
   const effectiveColorHex = customColor || modality?.color_hex || modality?.media_assets?.color_hex
   const grad = resolveGradient(nameLower, catLower, effectiveColorHex)
   
-  // Unique gradient ID per color pairing for authentic multi-stop gradient stroke
-  const gradId = `mod_grad_${(grad.from || '').replace('#', '')}_${(grad.to || '').replace('#', '')}`
-  
-  // High-contrast stroke determination:
-  // If customColor is provided and is white (such as on full-gradient cards), use solid white.
-  // Otherwise, ALWAYS use the authentic SVG linear gradient!
+  // Solid high-luminance stroke color ensures 100% vector expression across all browsers.
+  // SVG linearGradient with default objectBoundingBox fails to paint zero-width or zero-height
+  // lines (e.g. Utensils fork handle M7 2v20, knife handle v7, BedDouble mattress line, Sun cardinal rays),
+  // causing parts of icons to disappear. Solid hex stroke guarantees 100% of every line, tine, and handle is drawn!
   const isHighContrastWhite = customColor === '#FFFFFF' || customColor === 'white'
   const effectiveStroke = !activeIgnited
     ? '#64748B'
     : isHighContrastWhite
     ? '#FFFFFF'
-    : `url(#${gradId})`
+    : customColor
+    ? customColor
+    : grad.from
 
   // Micro-precise edge definition for crisp lines and high-contrast pop:
   const foregroundFilter = isHighContrastWhite
@@ -1063,7 +1063,7 @@ export default function ModalityIcon({
       : 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45))'
     : undefined
 
-  // Helper renderer for Lucide icons using the gradient stroke & subtle ambient glow
+  // Helper renderer for Lucide icons using solid stroke & subtle ambient glow
   const renderLucide = (IconComponent: React.ComponentType<any>) => (
     <div 
       ref={containerRef}
@@ -1071,16 +1071,6 @@ export default function ModalityIcon({
         activeIgnited ? 'opacity-100 scale-100' : 'opacity-50 scale-95'
       } ${className}`}
     >
-      {/* SVG Defs for 100% reliable multi-stop gradient stroke across all browsers */}
-      <svg width="0" height="0" className="absolute pointer-events-none opacity-0" aria-hidden="true">
-        <defs>
-          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={grad.from} />
-            <stop offset="100%" stopColor={grad.to} />
-          </linearGradient>
-        </defs>
-      </svg>
-
       {/* Layer 1: Ambient Glow (Restrained & delicate in both light and dark modes) */}
       {glow && activeIgnited && !isHighContrastWhite && (
         <div 
@@ -1109,7 +1099,7 @@ export default function ModalityIcon({
     </div>
   )
 
-  // Helper renderer for custom SVG glyphs using the gradient stroke & subtle ambient glow
+  // Helper renderer for custom SVG glyphs using solid stroke & subtle ambient glow
   const renderCustom = (GlyphComponent: React.ComponentType<{ stroke: string; size: number }>) => (
     <div 
       ref={containerRef}
@@ -1117,16 +1107,6 @@ export default function ModalityIcon({
         activeIgnited ? 'opacity-100 scale-100' : 'opacity-50 scale-95'
       } ${className}`}
     >
-      {/* SVG Defs for 100% reliable multi-stop gradient stroke across all browsers */}
-      <svg width="0" height="0" className="absolute pointer-events-none opacity-0" aria-hidden="true">
-        <defs>
-          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={grad.from} />
-            <stop offset="100%" stopColor={grad.to} />
-          </linearGradient>
-        </defs>
-      </svg>
-
       {/* Layer 1: Ambient Glow (Restrained & delicate in both light and dark modes) */}
       {glow && activeIgnited && !isHighContrastWhite && (
         <div 
