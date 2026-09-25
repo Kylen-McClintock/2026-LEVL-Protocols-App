@@ -78,7 +78,7 @@ export default function ModalityBlockTile({
   const isSkipped = task.status === 'skipped'
 
   const { theme } = useTheme()
-  const isDaylight = theme === 'light'
+  const isDaylight = theme === 'light' || visualStyle === 'light-glass'
   const daylightCategory = useMemo(() => getDaylightCategoryStyle(modality || task), [modality, task])
   const { badges } = useCardBadges()
   const effectiveShowDosing = showDosing !== undefined ? showDosing : badges.showDosing
@@ -567,8 +567,12 @@ export default function ModalityBlockTile({
                 <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                   {effectiveShowDosing && doseDisplay && (
                     <span
-                      className={`text-[10px] sm:text-[11px] font-mono font-medium truncate max-w-[200px] ${
-                        isDaylight ? 'text-[#526661]' : 'text-slate-400'
+                      className={`text-[10px] sm:text-[11px] font-mono font-bold truncate max-w-[200px] px-2 py-0.5 rounded border ${
+                        isDaylight
+                          ? 'bg-slate-100 text-slate-800 border-slate-300'
+                          : visualStyle === 'full-gradient'
+                          ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
+                          : 'bg-white/10 text-slate-200 border-white/20'
                       }`}
                       title={doseDisplay}
                     >
@@ -577,20 +581,46 @@ export default function ModalityBlockTile({
                   )}
 
                   {badges.showProtocol && protocolName && (
-                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-400/30 truncate max-w-[140px]">
+                    <span
+                      className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border truncate max-w-[140px] shadow-sm ${
+                        isDaylight
+                          ? 'bg-purple-100 text-purple-800 border-purple-300'
+                          : visualStyle === 'full-gradient'
+                          ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
+                          : 'bg-purple-500/25 text-purple-200 border-purple-400/40'
+                      }`}
+                      title={protocolName}
+                    >
                       {protocolName}
                     </span>
                   )}
 
                   {badges.showCategory && categoryName && (
-                    <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-300 border border-slate-700/50 truncate max-w-[120px]">
+                    <span
+                      className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border truncate max-w-[120px] shadow-sm ${
+                        isDaylight
+                          ? 'bg-slate-100 text-slate-700 border-slate-300'
+                          : visualStyle === 'full-gradient'
+                          ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
+                          : 'bg-slate-800/80 text-slate-200 border-slate-700/60'
+                      }`}
+                      title={categoryName}
+                    >
                       {categoryName}
                     </span>
                   )}
 
                   {badges.showSynergies && hasSynergy && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center gap-0.5">
-                      <Sparkles size={9} className="text-amber-300" />
+                    <span
+                      className={`text-[9px] font-extrabold px-2 py-0.5 rounded border flex items-center gap-1 shadow-sm ${
+                        isDaylight
+                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          : visualStyle === 'full-gradient'
+                          ? 'bg-black/30 text-amber-300 border-amber-400/40 backdrop-blur-sm'
+                          : 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                      }`}
+                    >
+                      <Sparkles size={9} className={isDaylight ? 'text-amber-800' : 'text-amber-300'} />
                       <span>Synergy</span>
                     </span>
                   )}
@@ -702,24 +732,14 @@ export default function ModalityBlockTile({
               <div className="flex flex-col items-center gap-1 mt-1 max-w-[95%]">
                 {effectiveShowDosing && doseDisplay && (
                   <div
-                    className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold tracking-tight truncate max-w-full shadow-sm backdrop-blur-sm"
-                    style={{
-                      backgroundColor:
-                        isDaylight
-                          ? 'rgba(0,0,0,0.04)'
-                          : visualStyle === 'full-gradient'
-                          ? 'rgba(0,0,0,0.18)'
-                          : (visualStyle as string) === 'light-glass'
-                          ? 'rgba(255,255,255,0.08)'
-                          : 'rgba(255,255,255,0.14)',
-                      border:
-                        isDaylight
-                          ? `1px solid ${styles.borderColor}`
-                          : visualStyle === 'full-gradient'
-                          ? '1px solid rgba(255,255,255,0.3)'
-                          : `1px solid ${styles.borderColor}`,
-                      color: styles.textColor
-                    }}
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold tracking-tight truncate max-w-full shadow-sm backdrop-blur-sm border ${
+                      isDaylight
+                        ? 'bg-slate-100 text-slate-800 border-slate-300'
+                        : visualStyle === 'full-gradient'
+                        ? 'bg-black/30 text-white border-white/35'
+                        : 'bg-white/10 text-slate-200 border-white/20'
+                    }`}
+                    title={doseDisplay}
                   >
                     {doseDisplay}
                   </div>
@@ -733,18 +753,44 @@ export default function ModalityBlockTile({
                 ) && (
                   <div className="flex items-center justify-center gap-1 flex-wrap">
                     {badges.showProtocol && protocolName && (
-                      <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30 truncate max-w-[120px]">
+                      <span
+                        className={`text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border truncate max-w-[125px] shadow-sm ${
+                          isDaylight
+                            ? 'bg-purple-100 text-purple-800 border-purple-300'
+                            : visualStyle === 'full-gradient'
+                            ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
+                            : 'bg-purple-500/25 text-purple-200 border-purple-400/40'
+                        }`}
+                        title={protocolName}
+                      >
                         {protocolName}
                       </span>
                     )}
                     {badges.showCategory && categoryName && (
-                      <span className="text-[8px] sm:text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700/50 truncate max-w-[100px]">
+                      <span
+                        className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border truncate max-w-[110px] shadow-sm ${
+                          isDaylight
+                            ? 'bg-slate-100 text-slate-700 border-slate-300'
+                            : visualStyle === 'full-gradient'
+                            ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
+                            : 'bg-slate-800/80 text-slate-200 border-slate-700/60'
+                        }`}
+                        title={categoryName}
+                      >
                         {categoryName}
                       </span>
                     )}
                     {badges.showSynergies && hasSynergy && (
-                      <span className="text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30 flex items-center gap-0.5">
-                        <Sparkles size={8} className="text-amber-300" />
+                      <span
+                        className={`text-[8px] sm:text-[9px] font-extrabold px-2 py-0.5 rounded-full border flex items-center gap-1 shadow-sm ${
+                          isDaylight
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : visualStyle === 'full-gradient'
+                            ? 'bg-black/30 text-amber-300 border-amber-400/40 backdrop-blur-sm'
+                            : 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                        }`}
+                      >
+                        <Sparkles size={8} className={isDaylight ? 'text-amber-800' : 'text-amber-300'} />
                         <span>Synergy</span>
                       </span>
                     )}

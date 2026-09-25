@@ -77,7 +77,7 @@ import { triggerHaptic } from '@/lib/utils/haptics'
 import { saveOutcomeObservation, getCachedModalitiesSync } from '@/lib/data'
 import { getUserCircadianTimeWindows } from '@/lib/utils/circadianConfig'
 
-import { useHomeWidgets, useFocusRules } from '@/lib/utils/layoutSettings'
+import { useHomeWidgets, useFocusRules, useCardBadges } from '@/lib/utils/layoutSettings'
 
 interface BlocksViewContainerProps {
   tasks: DedupedTask[]
@@ -135,9 +135,10 @@ export default function BlocksViewContainer({
   onAddActivity,
   onMoveTaskToSlot
 }: BlocksViewContainerProps) {
-  // Home widgets & focus rules
+  // Home widgets & focus rules & card badges
   const { widgets: homeWidgets } = useHomeWidgets(userProfile || undefined)
   const { rules: focusRules } = useFocusRules(userProfile || undefined)
+  const { badges: cardBadges } = useCardBadges(userProfile || undefined)
   const showHotkeys = isFocusMode ? focusRules.keepHotkeys : homeWidgets.quickHotkeys
 
   // Sub-view toggle: 'time' vs 'protocol'
@@ -152,11 +153,13 @@ export default function BlocksViewContainer({
 
   // Clinical Dosing toggle
   const [showDosing, setShowDosing] = useState<boolean>(() => getStoredBlocksShowDosing())
+  const effectiveShowDosing = cardBadges.showDosing !== undefined ? cardBadges.showDosing : showDosing
 
   // Completed modalities display: 'inline' (default) vs 'section'
   const [completedPlacement, setCompletedPlacement] = useState<BlocksCompletedPlacement>(() =>
     getStoredBlocksCompletedPlacement()
   )
+  const effectiveCompletedPlacement: BlocksCompletedPlacement = cardBadges.showCompletedInline ? 'inline' : completedPlacement
 
   // Edit / Rearrange mode
   const [isEditMode, setIsEditMode] = useState(false)
@@ -608,7 +611,7 @@ export default function BlocksViewContainer({
 
     tasks.forEach((t) => {
       // If completed tasks are moved to the dedicated Completed section, skip inline placement
-      if (completedPlacement === 'section' && t.status === 'completed') {
+      if (effectiveCompletedPlacement === 'section' && t.status === 'completed') {
         return
       }
 
@@ -654,7 +657,7 @@ export default function BlocksViewContainer({
     }
 
     return resultEntries
-  }, [tasks, date, completedPlacement, circadianWindows])
+  }, [tasks, date, effectiveCompletedPlacement, circadianWindows])
 
   // 2. Group tasks by Protocol for By Protocol view
   const protocolGroups = useMemo(() => {
@@ -662,7 +665,7 @@ export default function BlocksViewContainer({
 
     tasks.forEach((t) => {
       // If completed tasks are moved to the dedicated Completed section, skip inline placement
-      if (completedPlacement === 'section' && t.status === 'completed') {
+      if (effectiveCompletedPlacement === 'section' && t.status === 'completed') {
         return
       }
 
@@ -677,14 +680,14 @@ export default function BlocksViewContainer({
     })
 
     return Array.from(groups.entries())
-  }, [tasks, completedPlacement])
+  }, [tasks, effectiveCompletedPlacement])
 
 
   return (
     <div className="w-full max-w-4xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1500px] mx-auto px-2.5 sm:px-4 lg:px-6 pb-24 pt-1 transition-all">
 
       {/* Dynamic Action Bar: Done Resizing & Jump to Completed Section */}
-      {((completedTasks.length > 0 && completedPlacement === 'section') || isEditMode) && (
+      {((completedTasks.length > 0 && effectiveCompletedPlacement === 'section') || isEditMode) && (
         <div className="flex items-center justify-end gap-2 mb-3">
           {isEditMode && (
             <button
@@ -700,7 +703,7 @@ export default function BlocksViewContainer({
             </button>
           )}
 
-          {completedTasks.length > 0 && completedPlacement === 'section' && (
+          {completedTasks.length > 0 && effectiveCompletedPlacement === 'section' && (
             <button
               type="button"
               onClick={() => {
@@ -802,7 +805,7 @@ export default function BlocksViewContainer({
                   logs={quickLogs}
                   visualStyle={visualStyle}
                   layoutMode={layoutMode}
-                  showDosing={showDosing}
+                  showDosing={effectiveShowDosing}
                   isEditMode={isEditMode}
                   date={date}
                   localUserId={localUserId}
@@ -830,7 +833,7 @@ export default function BlocksViewContainer({
                 allOutcomes={allOutcomes}
                 visualStyle={visualStyle}
                 layoutMode={layoutMode}
-                showDosing={showDosing}
+                showDosing={effectiveShowDosing}
                 isEditMode={isEditMode}
                 subView={subView}
                 date={date}
@@ -853,7 +856,7 @@ export default function BlocksViewContainer({
                 allModalities={allModalities}
                 visualStyle={visualStyle}
                 layoutMode={layoutMode}
-                showDosing={showDosing}
+                showDosing={effectiveShowDosing}
                 isEditMode={isEditMode}
                 onOpenDetails={(t) => setSelectedTaskForModal(t)}
                 onSwipeRight={(t) => setActiveSwipe({ task: t, type: 'complete' })}
@@ -874,7 +877,7 @@ export default function BlocksViewContainer({
                 allOutcomes={allOutcomes}
                 visualStyle={visualStyle}
                 layoutMode={layoutMode}
-                showDosing={showDosing}
+                showDosing={effectiveShowDosing}
                 isEditMode={isEditMode}
                 subView={subView}
                 date={date}

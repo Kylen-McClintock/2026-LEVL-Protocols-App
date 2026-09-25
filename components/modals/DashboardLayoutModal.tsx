@@ -157,6 +157,11 @@ export default function DashboardLayoutModal({
     triggerHaptic('selection')
     setVisualStyleState(style)
     setStoredVisualStyle(style)
+    if (style === 'light-glass') {
+      if (theme !== 'light') toggleTheme()
+    } else if (style === 'dark-outline' || style === 'full-gradient') {
+      if (theme !== 'dark') toggleTheme()
+    }
   }
 
   const handleSelectScale = (newScale: TextScale) => {

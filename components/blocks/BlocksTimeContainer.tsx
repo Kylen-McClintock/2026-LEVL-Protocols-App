@@ -85,7 +85,7 @@ export default function BlocksTimeContainer({
   logs = [],
   visualStyle,
   layoutMode = 'dynamic',
-  showDosing = false,
+  showDosing,
   isEditMode,
   date,
   localUserId,
