@@ -6,6 +6,7 @@ import { DedupedTask } from '@/components/cards/ProtocolTaskCard'
 import { Modality, OutcomeDimension, UserProfile, UserBenchItem } from '@/lib/types'
 import { getCachedModalitiesSync } from '@/lib/data'
 import ModalityBlockTile from './ModalityBlockTile'
+import SwipeActionInFeedCard from './SwipeActionInFeedCard'
 import { useTheme } from '@/lib/utils/useTheme'
 import { useBlocksDrag } from './BlocksDragContext'
 import {
@@ -29,6 +30,11 @@ interface BlocksProtocolContainerProps {
   layoutMode?: BlocksLayoutMode
   showDosing?: boolean
   isEditMode: boolean
+  activeSwipe?: { task: DedupedTask; type: 'complete' | 'skip_snooze' } | null
+  onCloseSwipe?: () => void
+  onInFeedComplete?: (taskId: string, outcomes?: Record<string, number>, customDose?: string) => void
+  onInFeedSkip?: (taskId: string, reason?: string) => void
+  onInFeedSnooze?: (taskId: string, snoozeSlotOrMinutes: string | number) => void
   onOpenDetails: (task: DedupedTask) => void
   onSwipeRight: (task: DedupedTask) => void
   onSwipeLeft: (task: DedupedTask) => void
@@ -48,6 +54,11 @@ export default function BlocksProtocolContainer({
   layoutMode = 'dynamic',
   showDosing = false,
   isEditMode,
+  activeSwipe,
+  onCloseSwipe,
+  onInFeedComplete,
+  onInFeedSkip,
+  onInFeedSnooze,
   onOpenDetails,
   onSwipeRight,
   onSwipeLeft,
@@ -250,6 +261,29 @@ export default function BlocksProtocolContainer({
       {!isCollapsed && (
         <div className="grid grid-cols-12 gap-2.5 sm:gap-3.5 pt-1">
           {layout.orderedDisplayTasks.map((task) => {
+            const isThisTaskSwiped = activeSwipe && activeSwipe.task.id === task.id
+            if (isThisTaskSwiped) {
+              const mod = resolveModality(task)
+              const mId = mod?.id || task.modality_id || task.protocol_step?.modality_id || ''
+              const bench = benchItems.find((b) => b.modality_id === mId)
+              return (
+                <div key={`swipe_active_${task.id}`} className="col-span-12 animate-in fade-in zoom-in-95 duration-200">
+                  <SwipeActionInFeedCard
+                    actionType={activeSwipe.type}
+                    task={activeSwipe.task}
+                    modality={mod}
+                    benchItem={bench}
+                    allOutcomes={allOutcomes}
+                    userProfile={userProfile}
+                    onClose={onCloseSwipe || (() => {})}
+                    onComplete={onInFeedComplete || (() => {})}
+                    onSkip={onInFeedSkip || (() => {})}
+                    onSnooze={onInFeedSnooze || (() => {})}
+                  />
+                </div>
+              )
+            }
+
             const mod = resolveModality(task)
             const mId = mod?.id || task.modality_id || task.protocol_step?.modality_id || ''
             const bench = benchItems.find((b) => b.modality_id === mId)

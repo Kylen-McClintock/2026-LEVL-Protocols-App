@@ -267,6 +267,28 @@ export default function CustomizeCheckinOutcomesModal({
     })
   }, [recommendedOutcomes, searchQuery])
 
+  // Filtered Exposures when searching
+  const filteredExposures = useMemo(() => {
+    if (activeTab !== 'morning' && activeTab !== 'nightly') return []
+    return CHECKIN_EXPOSURES_METADATA.filter(exp => {
+      if (!searchQuery) return true
+      const q = searchQuery.toLowerCase().trim()
+      return exp.name.toLowerCase().includes(q) || exp.description.toLowerCase().includes(q)
+    })
+  }, [searchQuery, activeTab])
+
+  const isSearching = searchQuery.trim().length > 0
+
+  const totalSearchMatches = useMemo(() => {
+    if (!isSearching) return 0
+    return (
+      filteredCustomOutcomes.length +
+      filteredRecommendedOutcomes.length +
+      filteredAdditionalOutcomes.length +
+      filteredExposures.length
+    )
+  }, [isSearching, filteredCustomOutcomes, filteredRecommendedOutcomes, filteredAdditionalOutcomes, filteredExposures])
+
   const categories = useMemo(() => {
     const cats = new Set<string>()
     allCombinedOutcomes.forEach(o => {
@@ -274,6 +296,137 @@ export default function CustomizeCheckinOutcomesModal({
     })
     return Array.from(cats).sort()
   }, [allCombinedOutcomes])
+
+  // Reusable outcome item renderer
+  const renderOutcomeRow = (outcome: OutcomeDimension, isCustomItem = false) => {
+    const active = isTracked(outcome.id, activeTab)
+
+    return (
+      <div 
+        key={outcome.id}
+        onClick={() => toggleOutcomeTracked(outcome.id)}
+        className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+          active 
+            ? activeTab === 'morning'
+              ? 'bg-amber-950/40 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' 
+              : activeTab === 'anytime'
+                ? 'bg-indigo-950/40 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
+                : 'bg-rose-950/40 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+            : 'bg-black/40 border-white/10 hover:border-white/20'
+        }`}
+      >
+        <div className="flex items-center space-x-3 min-w-0">
+          <div className={`p-2 rounded-xl border shrink-0 ${
+            active 
+              ? activeTab === 'morning'
+                ? 'bg-amber-500 text-white border-amber-400' 
+                : activeTab === 'anytime'
+                  ? 'bg-indigo-500 text-white border-indigo-400'
+                  : 'bg-rose-500 text-white border-rose-400'
+              : 'bg-black/50 text-gray-500 border-white/10'
+          }`}>
+            {active ? <Check size={14} strokeWidth={3} /> : <div className="w-3.5 h-3.5" />}
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-white text-xs truncate">{outcome.name}</span>
+              {isCustomItem && (
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
+                  ✨ Custom
+                </span>
+              )}
+              {outcome.category && (
+                <span className="text-[8px] font-semibold px-1.5 py-0.2 rounded bg-white/5 text-gray-400 border border-white/10 uppercase shrink-0">
+                  {outcome.category}
+                </span>
+              )}
+              {outcome.directionality && (
+                <span className="text-[8px] font-semibold px-1.5 py-0.2 rounded bg-white/5 text-gray-400 border border-white/10 shrink-0">
+                  {outcome.directionality === 'lower_is_better' ? '📉 Lower is better' : '📈 Higher is better'}
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+              {outcome.description || (isCustomItem ? 'Custom bio-signal' : '')}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+            active 
+              ? activeTab === 'morning'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' 
+                : activeTab === 'anytime'
+                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                  : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+              : 'bg-white/5 text-gray-500 border-white/10'
+          }`}>
+            {active ? 'Tracked' : 'Hidden'}
+          </span>
+          {isCustomItem && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDeleteCustomOutcome(outcome.id)
+              }}
+              title="Delete custom outcome"
+              className="text-gray-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Reusable exposure item renderer
+  const renderExposureRow = (exp: typeof CHECKIN_EXPOSURES_METADATA[0]) => {
+    const active = isExposureTracked(exp.id)
+
+    return (
+      <div
+        key={exp.id}
+        onClick={() => toggleExposureTracked(exp.id)}
+        className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+          active
+            ? activeTab === 'morning'
+              ? 'bg-amber-950/30 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.15)]'
+              : 'bg-rose-950/30 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]'
+            : 'bg-black/40 border-white/10 hover:border-white/20'
+        }`}
+      >
+        <div className="flex items-center space-x-2.5 min-w-0">
+          <div className={`p-1.5 rounded-xl border shrink-0 ${
+            active
+              ? activeTab === 'morning'
+                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                : 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+              : 'bg-black/50 border-white/10 text-gray-400'
+          }`}>
+            <span className="text-sm">{exp.icon}</span>
+          </div>
+          <div className="min-w-0">
+            <span className="font-bold text-white text-xs block truncate">{exp.name}</span>
+            <span className="text-[9px] text-gray-400 block truncate">{exp.description}</span>
+          </div>
+        </div>
+
+        <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ml-2 ${
+          active
+            ? activeTab === 'morning'
+              ? 'bg-amber-500 border-amber-400 text-black'
+              : 'bg-rose-500 border-rose-400 text-white'
+            : 'border-white/20 bg-black/40'
+        }`}>
+          {active && <Check size={10} strokeWidth={3} />}
+        </div>
+      </div>
+    )
+  }
 
   if (!isOpen) return null
 
@@ -392,8 +545,18 @@ export default function CustomizeCheckinOutcomesModal({
               placeholder={`Search ${activeTab === 'morning' ? 'Morning' : activeTab === 'anytime' ? 'Anytime' : 'Nightly'} bio-signals...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+              className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-400"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white p-0.5 rounded cursor-pointer transition-colors"
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
           <button
             type="button"
@@ -594,729 +757,580 @@ export default function CustomizeCheckinOutcomesModal({
         )}
 
         {/* Scrollable Outcome List */}
+        {/* Scrollable Outcome List */}
         <div className="overflow-y-auto space-y-4 flex-1 pr-1 custom-scrollbar">
 
-          {/* ✨ USER-CREATED CUSTOM BIO-SIGNALS & OUTCOMES */}
-          {filteredCustomOutcomes.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-purple-300 border-b border-purple-500/20 pb-1">
+          {isSearching ? (
+            /* 🔍 INSTANT ZERO-SCROLL SEARCH RESULTS VIEW (NO SCROLLING PAST PREFERENCES/EXPOSURES) */
+            <div className="space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between text-xs font-bold text-indigo-300 border-b border-indigo-500/30 pb-2">
                 <div className="flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-purple-400 fill-purple-400/30" />
-                  <span>Your Custom Bio-Signals &amp; Outcomes</span>
+                  <Search size={14} className="text-indigo-400" />
+                  <span>Search Results for &ldquo;{searchQuery}&rdquo;</span>
                 </div>
-                <span className="text-[10px] text-purple-300/70 font-normal">
-                  ({filteredCustomOutcomes.length} Created)
+                <span className="text-[11px] font-semibold text-slate-400">
+                  ({totalSearchMatches} {totalSearchMatches === 1 ? 'match' : 'matches'})
                 </span>
               </div>
 
-              <div className="space-y-2">
-                {filteredCustomOutcomes.map(outcome => {
-                  const active = isTracked(outcome.id, activeTab)
-
-                  return (
-                    <div 
-                      key={outcome.id}
-                      onClick={() => toggleOutcomeTracked(outcome.id)}
-                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                        active 
-                          ? activeTab === 'morning'
-                            ? 'bg-amber-950/40 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' 
-                            : activeTab === 'anytime'
-                              ? 'bg-indigo-950/40 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
-                              : 'bg-rose-950/40 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
-                          : 'bg-black/40 border-white/10 hover:border-white/20'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3 min-w-0">
-                        <div className={`p-2 rounded-xl border shrink-0 ${
-                          active 
-                            ? activeTab === 'morning'
-                              ? 'bg-amber-500 text-white border-amber-400' 
-                              : activeTab === 'anytime'
-                                ? 'bg-indigo-500 text-white border-indigo-400'
-                                : 'bg-rose-500 text-white border-rose-400'
-                            : 'bg-black/50 text-gray-500 border-white/10'
-                        }`}>
-                          {active ? <Check size={14} strokeWidth={3} /> : <div className="w-3.5 h-3.5" />}
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-white text-xs truncate">{outcome.name}</span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
-                              ✨ Custom
-                            </span>
-                            <span className="text-[8px] font-semibold px-1.5 py-0.2 rounded bg-white/5 text-gray-400 border border-white/10 uppercase shrink-0">
-                              {outcome.category}
-                            </span>
-                            <span className="text-[8px] font-semibold px-1.5 py-0.2 rounded bg-white/5 text-gray-400 border border-white/10 shrink-0">
-                              {outcome.directionality === 'lower_is_better' ? '📉 Lower is better' : '📈 Higher is better'}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                            {outcome.description || 'Custom bio-signal'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                          active 
-                            ? activeTab === 'morning'
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' 
-                              : activeTab === 'anytime'
-                                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                                : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                            : 'bg-white/5 text-gray-500 border-white/10'
-                        }`}>
-                          {active ? 'Tracked' : 'Hidden'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteCustomOutcome(outcome.id)
-                          }}
-                          title="Delete custom outcome"
-                          className="text-gray-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ⭐ RECOMMENDED BASELINE BIO-SIGNALS SECTION */}
-          {filteredRecommendedOutcomes.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-amber-300 border-b border-amber-500/20 pb-1">
-                <Star size={13} className="text-amber-400 fill-amber-400" />
-                <span>Recommended Baseline Bio-Signals</span>
-              </div>
-
-              <div className="space-y-2">
-                {filteredRecommendedOutcomes.map(outcome => {
-                  const active = isTracked(outcome.id, activeTab)
-
-                  return (
-                    <div 
-                      key={outcome.id}
-                      onClick={() => toggleOutcomeTracked(outcome.id)}
-                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                        active 
-                          ? activeTab === 'morning'
-                            ? 'bg-amber-950/40 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' 
-                            : activeTab === 'anytime'
-                              ? 'bg-indigo-950/40 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
-                              : 'bg-rose-950/40 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
-                          : 'bg-black/40 border-white/10 hover:border-white/20'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3 min-w-0">
-                        <div className={`p-2 rounded-xl border shrink-0 ${
-                          active 
-                            ? activeTab === 'morning'
-                              ? 'bg-amber-500 text-white border-amber-400' 
-                              : activeTab === 'anytime'
-                                ? 'bg-indigo-500 text-white border-indigo-400'
-                                : 'bg-rose-500 text-white border-rose-400'
-                            : 'bg-black/50 text-gray-500 border-white/10'
-                        }`}>
-                          {active ? <Check size={14} strokeWidth={3} /> : <div className="w-3.5 h-3.5" />}
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-white text-xs truncate">{outcome.name}</span>
-                            <span className="text-[8px] font-semibold px-1.5 py-0.2 rounded bg-white/5 text-gray-400 border border-white/10 uppercase shrink-0">
-                              {outcome.category}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                            {outcome.description}
-                          </p>
-                        </div>
-                      </div>
-
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                        active 
-                          ? activeTab === 'morning'
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' 
-                            : activeTab === 'anytime'
-                              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                              : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                          : 'bg-white/5 text-gray-500 border-white/10'
-                      }`}>
-                        {active ? 'Tracked' : 'Hidden'}
+              {totalSearchMatches === 0 ? (
+                <div className="text-center py-8 space-y-2 bg-black/20 rounded-2xl border border-white/5 p-4">
+                  <p className="text-xs text-slate-300">
+                    No bio-signals or outcomes found matching &ldquo;<span className="text-white font-bold">{searchQuery}</span>&rdquo;.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Tap &ldquo;Create Custom Outcome&rdquo; above to create and track it!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Matching Custom Outcomes */}
+                  {filteredCustomOutcomes.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">
+                        ✨ Custom Bio-Signals ({filteredCustomOutcomes.length})
                       </span>
+                      <div className="space-y-2">
+                        {filteredCustomOutcomes.map(outcome => renderOutcomeRow(outcome, true))}
+                      </div>
                     </div>
-                  )
-                })}
-              </div>
+                  )}
+
+                  {/* Matching Recommended Baseline Bio-Signals */}
+                  {filteredRecommendedOutcomes.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block">
+                        ⭐ Recommended Baseline ({filteredRecommendedOutcomes.length})
+                      </span>
+                      <div className="space-y-2">
+                        {filteredRecommendedOutcomes.map(outcome => renderOutcomeRow(outcome, false))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Matching Additional Bio-Signals & Clinical Outcomes */}
+                  {filteredAdditionalOutcomes.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider block">
+                        📋 Bio-Signals &amp; Clinical Outcomes ({filteredAdditionalOutcomes.length})
+                      </span>
+                      <div className="space-y-2">
+                        {filteredAdditionalOutcomes.map(outcome => renderOutcomeRow(outcome, false))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Matching Exposures */}
+                  {filteredExposures.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wider block">
+                        🚫 Lifestyle &amp; Environmental Factors ({filteredExposures.length})
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {filteredExposures.map(exp => renderExposureRow(exp))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-
-          {/* ☀️ MORNING EXPERIENCE & DISPLAY PREFERENCES (ONLY FOR MORNING TAB) */}
-          {activeTab === 'morning' && (
-            <div className="bg-gradient-to-r from-amber-950/40 via-orange-950/30 to-slate-900/60 p-3.5 rounded-2xl border border-amber-500/30 space-y-3 shadow-inner">
-              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider border-b border-amber-500/20 pb-2">
-                <Sun size={14} className="text-amber-400" /> Morning Experience &amp; Display Preferences
-              </div>
-
-              {/* Morning Mindfulness Display Mode */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <span>🧘‍♂️</span> Morning Mindfulness &amp; Presence
-                </label>
-                <p className="text-[10px] text-gray-400">
-                  Choose how the morning presence prompt appears upon opening your check-in:
-                </p>
-                <div className="grid grid-cols-3 gap-2 pt-1">
-                  {[
-                    { id: 'open', label: 'Open by Default', desc: 'Full reflection card visible' },
-                    { id: 'collapsed', label: 'Collapsed by Default', desc: 'Expandable banner' },
-                    { id: 'hidden', label: 'Don\'t Show', desc: 'Hidden from morning check-in' }
-                  ].map(opt => {
-                    const isSelected = (preferences['setting:morning_mindfulness_display'] || 'open') === opt.id
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setPreferences(prev => ({ ...prev, 'setting:morning_mindfulness_display': opt.id }))}
-                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-sm'
-                            : 'bg-black/40 border-white/10 hover:border-white/20 text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        <div className="font-bold text-[11px] text-white flex items-center justify-between">
-                          <span>{opt.label}</span>
-                          {isSelected && <Check size={12} className="text-amber-400" />}
-                        </div>
-                        <p className="text-[9px] text-gray-400 mt-0.5 leading-tight">{opt.desc}</p>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Keep Last Night's Exposures Expanded Toggle */}
-              <div className="flex items-center justify-between pt-2 border-t border-amber-500/10">
-                <div className="space-y-0.5 pr-2">
-                  <span className="text-xs font-bold text-white block">Always Keep Exposures Expanded</span>
-                  <span className="text-[10px] text-gray-400 block">
-                    Automatically expand the "Last Night's Exposures" section under sleep tracking instead of starting collapsed.
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPreferences(prev => ({
-                    ...prev,
-                    'setting:morning_always_expand_exposures': prev['setting:morning_always_expand_exposures'] === 1 ? 0 : 1
-                  }))}
-                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                    preferences['setting:morning_always_expand_exposures'] === 1 ? 'bg-amber-500' : 'bg-white/20'
-                  }`}
-                >
-                  <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
-                    preferences['setting:morning_always_expand_exposures'] === 1 ? 'left-6' : 'left-1'
-                  }`} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 🌙 EVENING EXPERIENCE & DISPLAY PREFERENCES (ONLY FOR NIGHTLY TAB) */}
-          {activeTab === 'nightly' && (
-            <div className="bg-gradient-to-r from-rose-950/40 via-purple-950/30 to-slate-900/60 p-3.5 rounded-2xl border border-rose-500/30 space-y-3 shadow-inner">
-              <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider border-b border-rose-500/20 pb-2">
-                <Moon size={14} className="text-rose-400" /> Evening Experience &amp; Display Preferences
-              </div>
-
-              {/* Evening Mindfulness Display Mode */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <span>🌙</span> Evening Mindfulness &amp; Decompression
-                </label>
-                <p className="text-[10px] text-gray-400">
-                  Choose how the evening somatic decompression &amp; wind-down prompt appears:
-                </p>
-                <div className="grid grid-cols-3 gap-2 pt-1">
-                  {[
-                    { id: 'open', label: 'Open by Default', desc: 'Full reflection card visible' },
-                    { id: 'collapsed', label: 'Collapsed by Default', desc: 'Expandable dusk bar' },
-                    { id: 'hidden', label: 'Don\'t Show', desc: 'Hidden from evening check-in' }
-                  ].map(opt => {
-                    const isSelected = (preferences['setting:evening_mindfulness_display'] || 'open') === opt.id
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setPreferences(prev => ({ ...prev, 'setting:evening_mindfulness_display': opt.id }))}
-                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-rose-500/20 border-rose-400 text-rose-200 shadow-sm'
-                            : 'bg-black/40 border-white/10 hover:border-white/20 text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        <div className="font-bold text-[11px] text-white flex items-center justify-between">
-                          <span>{opt.label}</span>
-                          {isSelected && <Check size={12} className="text-rose-400" />}
-                        </div>
-                        <p className="text-[9px] text-gray-400 mt-0.5 leading-tight">{opt.desc}</p>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 🌍 EXTERNAL CONFOUNDERS & CAUSATION SUITE (NIGHTLY TAB) */}
-          {activeTab === 'nightly' && (
-            <div className="bg-gradient-to-r from-sky-950/40 via-indigo-950/30 to-slate-900/70 p-4 rounded-2xl border border-sky-500/30 space-y-3.5 shadow-inner">
-              <div className="flex items-center justify-between border-b border-sky-500/20 pb-2">
-                <div className="flex items-center gap-2 text-sky-300 font-bold text-xs uppercase tracking-wider">
-                  <CloudSun size={15} className="text-sky-400" />
-                  <span>External Confounders &amp; Day Dynamics</span>
-                </div>
-                <span className="text-[10px] text-sky-400/80 font-semibold">Causation Control</span>
-              </div>
-
-              <p className="text-[11px] text-gray-300 leading-relaxed">
-                Track external environmental and cognitive factors outside your protocol to filter false signals, calculate true causation, and discover what shields your biology best.
-              </p>
-
-              {/* 1-Tap Experience Level Presets */}
-              <div className="space-y-1.5 pt-1">
-                <label className="text-xs font-bold text-white block">1-Tap Experience Preset</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'minimal', label: '🧘 Protocol Only', desc: 'Confounders hidden; purely log protocols' },
-                    { id: 'balanced', label: '⚡ Balanced', desc: 'Auto-Weather + Stressors & Busyness' },
-                    { id: 'clinical', label: '🔬 Clinical Suite', desc: 'All 5 factors active for max causation' }
-                  ].map(preset => {
-                    const isSelected = (preferences['setting:confounder_preset'] || 'balanced') === preset.id
-                    return (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => {
-                          if (preset.id === 'minimal') {
-                            setPreferences(prev => ({
-                              ...prev,
-                              'setting:confounder_preset': 'minimal',
-                              'setting:confounder_auto_weather': 0,
-                              'setting:confounder_busyness_display': 'hidden',
-                              'setting:confounder_stressors_display': 'hidden',
-                              'setting:confounder_social_display': 'hidden',
-                              'setting:confounder_productivity_display': 'hidden'
-                            }))
-                          } else if (preset.id === 'balanced') {
-                            setPreferences(prev => ({
-                              ...prev,
-                              'setting:confounder_preset': 'balanced',
-                              'setting:confounder_auto_weather': 1,
-                              'setting:confounder_busyness_display': 'collapsed',
-                              'setting:confounder_stressors_display': 'collapsed',
-                              'setting:confounder_social_display': 'hidden',
-                              'setting:confounder_productivity_display': 'hidden'
-                            }))
-                          } else if (preset.id === 'clinical') {
-                            setPreferences(prev => ({
-                              ...prev,
-                              'setting:confounder_preset': 'clinical',
-                              'setting:confounder_auto_weather': 1,
-                              'setting:confounder_busyness_display': 'open',
-                              'setting:confounder_stressors_display': 'open',
-                              'setting:confounder_social_display': 'open',
-                              'setting:confounder_productivity_display': 'open'
-                            }))
-                          }
-                        }}
-                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-sm'
-                            : 'bg-black/40 border-white/10 hover:border-white/20 text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        <div className="font-bold text-[11px] text-white flex items-center justify-between">
-                          <span>{preset.label}</span>
-                          {isSelected && <Check size={12} className="text-sky-400" />}
-                        </div>
-                        <p className="text-[9px] text-gray-400 mt-0.5 leading-tight">{preset.desc}</p>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Granular Factor Tuning Accordion */}
-              <div className="pt-2 border-t border-sky-500/15 space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setShowConfounderDetails(!showConfounderDetails)}
-                  className="w-full flex items-center justify-between text-xs font-bold text-sky-300 hover:text-sky-200 transition cursor-pointer py-1"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Sliders size={13} /> Customize Individual Confounder Factors
-                  </span>
-                  <span className="text-[11px] flex items-center gap-0.5">
-                    {showConfounderDetails ? 'Hide Details' : 'Tune Display Settings'}
-                    {showConfounderDetails ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                  </span>
-                </button>
-
-                {showConfounderDetails && (
-                  <div className="space-y-2.5 pt-2 animate-in fade-in">
-                    {/* 1. Weather Auto-Ingestion */}
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 flex items-center justify-between">
-                      <div className="space-y-0.5 pr-2">
-                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <span>⛅</span> Auto-Ingest Local Weather &amp; Pressure
-                        </span>
-                        <span className="text-[10px] text-gray-400 block">
-                          Automatically logs temperature, humidity, and barometric pressure drops with zero manual effort.
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setPreferences(prev => ({
-                          ...prev,
-                          'setting:confounder_preset': 'custom',
-                          'setting:confounder_auto_weather': prev['setting:confounder_auto_weather'] === 0 ? 1 : 0
-                        }))}
-                        className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-                          preferences['setting:confounder_auto_weather'] !== 0 ? 'bg-sky-500' : 'bg-white/20'
-                        }`}
-                      >
-                        <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
-                          preferences['setting:confounder_auto_weather'] !== 0 ? 'left-6' : 'left-1'
-                        }`} />
-                      </button>
+          ) : (
+            /* NORMAL BROWSE VIEW (Custom -> Recommended -> Preferences -> Confounders -> Exposures -> Additional) */
+            <>
+              {/* ✨ USER-CREATED CUSTOM BIO-SIGNALS & OUTCOMES */}
+              {filteredCustomOutcomes.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-purple-300 border-b border-purple-500/20 pb-1">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-purple-400 fill-purple-400/30" />
+                      <span>Your Custom Bio-Signals &amp; Outcomes</span>
                     </div>
+                    <span className="text-[10px] text-purple-300/70 font-normal">
+                      ({filteredCustomOutcomes.length} Created)
+                    </span>
+                  </div>
 
-                    {/* 2. Day Busyness & Pace */}
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <span>⚡</span> Day Busyness &amp; Tempo
-                        </span>
-                        <span className="text-[10px] text-gray-400">0–10 scale: Spacious to Redline</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {[
-                          { id: 'open', label: 'Open by Default' },
-                          { id: 'collapsed', label: 'Collapsed by Default' },
-                          { id: 'hidden', label: 'Don\'t Show' }
-                        ].map(opt => {
-                          const isSel = (preferences['setting:confounder_busyness_display'] || 'collapsed') === opt.id
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() => setPreferences(prev => ({
-                                ...prev,
-                                'setting:confounder_preset': 'custom',
-                                'setting:confounder_busyness_display': opt.id
-                              }))}
-                              className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
-                                isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
-                              }`}
-                            >
-                              {opt.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    {filteredCustomOutcomes.map(outcome => renderOutcomeRow(outcome, true))}
+                  </div>
+                </div>
+              )}
 
-                    {/* 3. External Stressors */}
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <span>💼</span> External Stressors &amp; Root Cause
-                        </span>
-                        <span className="text-[10px] text-gray-400">Work, relational, financial triggers</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {[
-                          { id: 'open', label: 'Open by Default' },
-                          { id: 'collapsed', label: 'Collapsed by Default' },
-                          { id: 'hidden', label: 'Don\'t Show' }
-                        ].map(opt => {
-                          const isSel = (preferences['setting:confounder_stressors_display'] || 'collapsed') === opt.id
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() => setPreferences(prev => ({
-                                ...prev,
-                                'setting:confounder_preset': 'custom',
-                                'setting:confounder_stressors_display': opt.id
-                              }))}
-                              className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
-                                isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
-                              }`}
-                            >
-                              {opt.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
+              {/* ⭐ RECOMMENDED BASELINE BIO-SIGNALS SECTION */}
+              {filteredRecommendedOutcomes.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-amber-300 border-b border-amber-500/20 pb-1">
+                    <Star size={13} className="text-amber-400 fill-amber-400" />
+                    <span>Recommended Baseline Bio-Signals</span>
+                  </div>
 
-                    {/* 4. Social Connection */}
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <span>👥</span> Social Connection &amp; Dynamics
-                        </span>
-                        <span className="text-[10px] text-gray-400">Loved ones vs draining obligations</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {[
-                          { id: 'open', label: 'Open by Default' },
-                          { id: 'collapsed', label: 'Collapsed by Default' },
-                          { id: 'hidden', label: 'Don\'t Show' }
-                        ].map(opt => {
-                          const isSel = (preferences['setting:confounder_social_display'] || 'hidden') === opt.id
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() => setPreferences(prev => ({
-                                ...prev,
-                                'setting:confounder_preset': 'custom',
-                                'setting:confounder_social_display': opt.id
-                              }))}
-                              className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
-                                isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
-                              }`}
-                            >
-                              {opt.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    {filteredRecommendedOutcomes.map(outcome => renderOutcomeRow(outcome, false))}
+                  </div>
+                </div>
+              )}
 
-                    {/* 5. Productivity & Goals */}
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <span>🎯</span> Productivity &amp; Goal Execution
-                        </span>
-                        <span className="text-[10px] text-gray-400">Deep flow vs busywork</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {[
-                          { id: 'open', label: 'Open by Default' },
-                          { id: 'collapsed', label: 'Collapsed by Default' },
-                          { id: 'hidden', label: 'Don\'t Show' }
-                        ].map(opt => {
-                          const isSel = (preferences['setting:confounder_productivity_display'] || 'hidden') === opt.id
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() => setPreferences(prev => ({
-                                ...prev,
-                                'setting:confounder_preset': 'custom',
-                                'setting:confounder_productivity_display': opt.id
-                              }))}
-                              className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
-                                isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
-                              }`}
-                            >
-                              {opt.label}
-                            </button>
-                          )
-                        })}
-                      </div>
+              {/* ☀️ MORNING EXPERIENCE & DISPLAY PREFERENCES (ONLY FOR MORNING TAB) */}
+              {activeTab === 'morning' && (
+                <div className="bg-gradient-to-r from-amber-950/40 via-orange-950/30 to-slate-900/60 p-3.5 rounded-2xl border border-amber-500/30 space-y-3 shadow-inner">
+                  <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider border-b border-amber-500/20 pb-2">
+                    <Sun size={14} className="text-amber-400" /> Morning Experience &amp; Display Preferences
+                  </div>
+
+                  {/* Morning Mindfulness Display Mode */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>🧘‍♂️</span> Morning Mindfulness &amp; Presence
+                    </label>
+                    <p className="text-[10px] text-gray-400">
+                      Choose how the morning presence prompt appears upon opening your check-in:
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      {[
+                        { id: 'open', label: 'Open by Default', desc: 'Full reflection card visible' },
+                        { id: 'collapsed', label: 'Collapsed by Default', desc: 'Expandable banner' },
+                        { id: 'hidden', label: 'Don\'t Show', desc: 'Hidden from morning check-in' }
+                      ].map(opt => {
+                        const isSelected = (preferences['setting:morning_mindfulness_display'] || 'open') === opt.id
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setPreferences(prev => ({ ...prev, 'setting:morning_mindfulness_display': opt.id }))}
+                            className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-sm'
+                                : 'bg-black/40 border-white/10 hover:border-white/20 text-gray-400 hover:text-white'
+                            }`}
+                          >
+                            <div className="font-bold text-[11px] text-white flex items-center justify-between">
+                              <span>{opt.label}</span>
+                              {isSelected && <Check size={12} className="text-amber-400" />}
+                            </div>
+                            <p className="text-[9px] text-gray-400 mt-0.5 leading-tight">{opt.desc}</p>
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-          )}
 
-          {/* 🚫 LIFESTYLE & NEGATIVE EXPOSURES TO TRACK (NIGHTLY & MORNING CHECK-INS) */}
-          {(activeTab === 'nightly' || activeTab === 'morning') && (
-            <div className="space-y-2">
-              <div className={`flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider border-b pb-1 ${
-                activeTab === 'morning' ? 'text-amber-300 border-amber-500/20' : 'text-rose-300 border-rose-500/20'
-              }`}>
-                <span className="flex items-center gap-1.5">
-                  <span>🚫</span>
-                  <span>{activeTab === 'morning' ? "Last Night's Exposures to Track" : "Check-in Exposures & Lifestyle Factors"}</span>
-                </span>
-                <span className="text-[10px] text-slate-400 font-normal">
-                  ({CHECKIN_EXPOSURES_METADATA.filter(e => isExposureTracked(e.id)).length} Active)
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {CHECKIN_EXPOSURES_METADATA.map(exp => {
-                  const active = isExposureTracked(exp.id)
-
-                  return (
-                    <div
-                      key={exp.id}
-                      onClick={() => toggleExposureTracked(exp.id)}
-                      className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                        active
-                          ? activeTab === 'morning'
-                            ? 'bg-amber-950/30 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.15)]'
-                            : 'bg-rose-950/30 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]'
-                          : 'bg-black/40 border-white/10 hover:border-white/20'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2.5 min-w-0">
-                        <div className={`p-1.5 rounded-xl border shrink-0 ${
-                          active
-                            ? activeTab === 'morning'
-                              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                              : 'bg-rose-500/20 border-rose-500/40 text-rose-300'
-                            : 'bg-black/50 border-white/10 text-gray-400'
-                        }`}>
-                          <span className="text-sm">{exp.icon}</span>
-                        </div>
-                        <div className="min-w-0">
-                          <span className="font-bold text-white text-xs block truncate">{exp.name}</span>
-                          <span className="text-[9px] text-gray-400 block truncate">{exp.description}</span>
-                        </div>
-                      </div>
-
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ml-2 ${
-                        active
-                          ? activeTab === 'morning'
-                            ? 'bg-amber-500 border-amber-400 text-black'
-                            : 'bg-rose-500 border-rose-400 text-white'
-                          : 'border-white/20 bg-black/40'
-                      }`}>
-                        {active && <Check size={10} strokeWidth={3} />}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* 📋 ADDITIONAL BIO-SIGNALS SECTION */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-white/10 pb-1">
-              <span>Additional Bio-Signals &amp; Clinical Outcomes</span>
-              <span className="text-[10px] text-slate-500 font-normal">
-                ({filteredAdditionalOutcomes.length} Available)
-              </span>
-            </div>
-
-            {/* Category Filter Pills */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-[10px]">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`px-2.5 py-1 rounded-lg font-bold shrink-0 transition cursor-pointer ${
-                  selectedCategory === 'all'
-                    ? 'bg-white text-black'
-                    : 'bg-white/5 text-gray-400 hover:text-white border border-white/5'
-                }`}
-              >
-                All
-              </button>
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-2.5 py-1 rounded-lg font-bold uppercase shrink-0 transition cursor-pointer ${
-                    selectedCategory === cat
-                      ? 'bg-white text-black'
-                      : 'bg-white/5 text-gray-400 hover:text-white border border-white/5'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            {filteredAdditionalOutcomes.length > 0 ? (
-              <div className="space-y-2">
-                {filteredAdditionalOutcomes.map(outcome => {
-                  const active = isTracked(outcome.id, activeTab)
-
-                  return (
-                    <div 
-                      key={outcome.id}
-                      onClick={() => toggleOutcomeTracked(outcome.id)}
-                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                        active 
-                          ? activeTab === 'morning'
-                            ? 'bg-amber-950/40 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' 
-                            : activeTab === 'anytime'
-                              ? 'bg-indigo-950/40 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
-                              : 'bg-rose-950/40 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
-                          : 'bg-black/40 border-white/10 hover:border-white/20'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3 min-w-0">
-                        <div className={`p-2 rounded-xl border shrink-0 ${
-                          active 
-                            ? activeTab === 'morning'
-                              ? 'bg-amber-500 text-white border-amber-400' 
-                              : activeTab === 'anytime'
-                                ? 'bg-indigo-500 text-white border-indigo-400'
-                                : 'bg-rose-500 text-white border-rose-400'
-                            : 'bg-black/50 text-gray-500 border-white/10'
-                        }`}>
-                          {active ? <Check size={14} strokeWidth={3} /> : <div className="w-3.5 h-3.5" />}
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-white text-xs truncate">{outcome.name}</span>
-                            <span className="text-[8px] font-semibold px-1.5 py-0.2 rounded bg-white/5 text-gray-400 border border-white/10 uppercase shrink-0">
-                              {outcome.category}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                            {outcome.description}
-                          </p>
-                        </div>
-                      </div>
-
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                        active 
-                          ? activeTab === 'morning'
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' 
-                            : activeTab === 'anytime'
-                              ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                              : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                          : 'bg-white/5 text-gray-500 border-white/10'
-                      }`}>
-                        {active ? 'Tracked' : 'Hidden'}
+                  {/* Keep Last Night's Exposures Expanded Toggle */}
+                  <div className="flex items-center justify-between pt-2 border-t border-amber-500/10">
+                    <div className="space-y-0.5 pr-2">
+                      <span className="text-xs font-bold text-white block">Always Keep Exposures Expanded</span>
+                      <span className="text-[10px] text-gray-400 block">
+                        Automatically expand the "Last Night's Exposures" section under sleep tracking instead of starting collapsed.
                       </span>
                     </div>
-                  )
-                })}
+                    <button
+                      type="button"
+                      onClick={() => setPreferences(prev => ({
+                        ...prev,
+                        'setting:morning_always_expand_exposures': prev['setting:morning_always_expand_exposures'] === 1 ? 0 : 1
+                      }))}
+                      className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                        preferences['setting:morning_always_expand_exposures'] === 1 ? 'bg-amber-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                        preferences['setting:morning_always_expand_exposures'] === 1 ? 'left-6' : 'left-1'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 🌙 EVENING EXPERIENCE & DISPLAY PREFERENCES (ONLY FOR NIGHTLY TAB) */}
+              {activeTab === 'nightly' && (
+                <div className="bg-gradient-to-r from-rose-950/40 via-purple-950/30 to-slate-900/60 p-3.5 rounded-2xl border border-rose-500/30 space-y-3 shadow-inner">
+                  <div className="flex items-center gap-2 text-rose-300 font-bold text-xs uppercase tracking-wider border-b border-rose-500/20 pb-2">
+                    <Moon size={14} className="text-rose-400" /> Evening Experience &amp; Display Preferences
+                  </div>
+
+                  {/* Evening Mindfulness Display Mode */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>🌙</span> Evening Mindfulness &amp; Decompression
+                    </label>
+                    <p className="text-[10px] text-gray-400">
+                      Choose how the evening somatic decompression &amp; wind-down prompt appears:
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      {[
+                        { id: 'open', label: 'Open by Default', desc: 'Full reflection card visible' },
+                        { id: 'collapsed', label: 'Collapsed by Default', desc: 'Expandable dusk bar' },
+                        { id: 'hidden', label: 'Don\'t Show', desc: 'Hidden from evening check-in' }
+                      ].map(opt => {
+                        const isSelected = (preferences['setting:evening_mindfulness_display'] || 'open') === opt.id
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setPreferences(prev => ({ ...prev, 'setting:evening_mindfulness_display': opt.id }))}
+                            className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-rose-500/20 border-rose-400 text-rose-200 shadow-sm'
+                                : 'bg-black/40 border-white/10 hover:border-white/20 text-gray-400 hover:text-white'
+                            }`}
+                          >
+                            <div className="font-bold text-[11px] text-white flex items-center justify-between">
+                              <span>{opt.label}</span>
+                              {isSelected && <Check size={12} className="text-rose-400" />}
+                            </div>
+                            <p className="text-[9px] text-gray-400 mt-0.5 leading-tight">{opt.desc}</p>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 🌍 EXTERNAL CONFOUNDERS & CAUSATION SUITE (NIGHTLY TAB) */}
+              {activeTab === 'nightly' && (
+                <div className="bg-gradient-to-r from-sky-950/40 via-indigo-950/30 to-slate-900/70 p-4 rounded-2xl border border-sky-500/30 space-y-3.5 shadow-inner">
+                  <div className="flex items-center justify-between border-b border-sky-500/20 pb-2">
+                    <div className="flex items-center gap-2 text-sky-300 font-bold text-xs uppercase tracking-wider">
+                      <CloudSun size={15} className="text-sky-400" />
+                      <span>External Confounders &amp; Day Dynamics</span>
+                    </div>
+                    <span className="text-[10px] text-sky-400/80 font-semibold">Causation Control</span>
+                  </div>
+
+                  <p className="text-[11px] text-gray-300 leading-relaxed">
+                    Track external environmental and cognitive factors outside your protocol to filter false signals, calculate true causation, and discover what shields your biology best.
+                  </p>
+
+                  {/* 1-Tap Experience Level Presets */}
+                  <div className="space-y-1.5 pt-1">
+                    <label className="text-xs font-bold text-white block">1-Tap Experience Preset</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'minimal', label: '🧘 Protocol Only', desc: 'Confounders hidden; purely log protocols' },
+                        { id: 'balanced', label: '⚡ Balanced', desc: 'Auto-Weather + Stressors & Busyness' },
+                        { id: 'clinical', label: '🔬 Clinical Suite', desc: 'All 5 factors active for max causation' }
+                      ].map(preset => {
+                        const isSelected = (preferences['setting:confounder_preset'] || 'balanced') === preset.id
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => {
+                              if (preset.id === 'minimal') {
+                                setPreferences(prev => ({
+                                  ...prev,
+                                  'setting:confounder_preset': 'minimal',
+                                  'setting:confounder_auto_weather': 0,
+                                  'setting:confounder_busyness_display': 'hidden',
+                                  'setting:confounder_stressors_display': 'hidden',
+                                  'setting:confounder_social_display': 'hidden',
+                                  'setting:confounder_productivity_display': 'hidden'
+                                }))
+                              } else if (preset.id === 'balanced') {
+                                setPreferences(prev => ({
+                                  ...prev,
+                                  'setting:confounder_preset': 'balanced',
+                                  'setting:confounder_auto_weather': 1,
+                                  'setting:confounder_busyness_display': 'collapsed',
+                                  'setting:confounder_stressors_display': 'collapsed',
+                                  'setting:confounder_social_display': 'hidden',
+                                  'setting:confounder_productivity_display': 'hidden'
+                                }))
+                              } else if (preset.id === 'clinical') {
+                                setPreferences(prev => ({
+                                  ...prev,
+                                  'setting:confounder_preset': 'clinical',
+                                  'setting:confounder_auto_weather': 1,
+                                  'setting:confounder_busyness_display': 'open',
+                                  'setting:confounder_stressors_display': 'open',
+                                  'setting:confounder_social_display': 'open',
+                                  'setting:confounder_productivity_display': 'open'
+                                }))
+                              }
+                            }}
+                            className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-sky-500/20 border-sky-400 text-sky-200 shadow-sm'
+                                : 'bg-black/40 border-white/10 hover:border-white/20 text-gray-400 hover:text-white'
+                            }`}
+                          >
+                            <div className="font-bold text-[11px] text-white flex items-center justify-between">
+                              <span>{preset.label}</span>
+                              {isSelected && <Check size={12} className="text-sky-400" />}
+                            </div>
+                            <p className="text-[9px] text-gray-400 mt-0.5 leading-tight">{preset.desc}</p>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Granular Factor Tuning Accordion */}
+                  <div className="pt-2 border-t border-sky-500/15 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowConfounderDetails(!showConfounderDetails)}
+                      className="w-full flex items-center justify-between text-xs font-bold text-sky-300 hover:text-sky-200 transition cursor-pointer py-1"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Sliders size={13} /> Customize Individual Confounder Factors
+                      </span>
+                      <span className="text-[11px] flex items-center gap-0.5">
+                        {showConfounderDetails ? 'Hide Details' : 'Tune Display Settings'}
+                        {showConfounderDetails ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                      </span>
+                    </button>
+
+                    {showConfounderDetails && (
+                      <div className="space-y-2.5 pt-2 animate-in fade-in">
+                        {/* 1. Weather Auto-Ingestion */}
+                        <div className="p-3 rounded-xl bg-black/50 border border-white/10 flex items-center justify-between">
+                          <div className="space-y-0.5 pr-2">
+                            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <span>⛅</span> Auto-Ingest Local Weather &amp; Pressure
+                            </span>
+                            <span className="text-[10px] text-gray-400 block">
+                              Automatically logs temperature, humidity, and barometric pressure drops with zero manual effort.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPreferences(prev => ({
+                              ...prev,
+                              'setting:confounder_preset': 'custom',
+                              'setting:confounder_auto_weather': prev['setting:confounder_auto_weather'] === 0 ? 1 : 0
+                            }))}
+                            className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                              preferences['setting:confounder_auto_weather'] !== 0 ? 'bg-sky-500' : 'bg-white/20'
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                              preferences['setting:confounder_auto_weather'] !== 0 ? 'left-6' : 'left-1'
+                            }`} />
+                          </button>
+                        </div>
+
+                        {/* 2. Day Busyness & Pace */}
+                        <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <span>⚡</span> Day Busyness &amp; Tempo
+                            </span>
+                            <span className="text-[10px] text-gray-400">0–10 scale: Spacious to Redline</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              { id: 'open', label: 'Open by Default' },
+                              { id: 'collapsed', label: 'Collapsed by Default' },
+                              { id: 'hidden', label: 'Don\'t Show' }
+                            ].map(opt => {
+                              const isSel = (preferences['setting:confounder_busyness_display'] || 'collapsed') === opt.id
+                              return (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  onClick={() => setPreferences(prev => ({
+                                    ...prev,
+                                    'setting:confounder_preset': 'custom',
+                                    'setting:confounder_busyness_display': opt.id
+                                  }))}
+                                  className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
+                                    isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 3. External Stressors */}
+                        <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <span>💼</span> External Stressors &amp; Root Cause
+                            </span>
+                            <span className="text-[10px] text-gray-400">Work, relational, financial triggers</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              { id: 'open', label: 'Open by Default' },
+                              { id: 'collapsed', label: 'Collapsed by Default' },
+                              { id: 'hidden', label: 'Don\'t Show' }
+                            ].map(opt => {
+                              const isSel = (preferences['setting:confounder_stressors_display'] || 'collapsed') === opt.id
+                              return (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  onClick={() => setPreferences(prev => ({
+                                    ...prev,
+                                    'setting:confounder_preset': 'custom',
+                                    'setting:confounder_stressors_display': opt.id
+                                  }))}
+                                  className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
+                                    isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 4. Social Connection */}
+                        <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <span>👥</span> Social Connection &amp; Dynamics
+                            </span>
+                            <span className="text-[10px] text-gray-400">Loved ones vs draining obligations</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              { id: 'open', label: 'Open by Default' },
+                              { id: 'collapsed', label: 'Collapsed by Default' },
+                              { id: 'hidden', label: 'Don\'t Show' }
+                            ].map(opt => {
+                              const isSel = (preferences['setting:confounder_social_display'] || 'hidden') === opt.id
+                              return (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  onClick={() => setPreferences(prev => ({
+                                    ...prev,
+                                    'setting:confounder_preset': 'custom',
+                                    'setting:confounder_social_display': opt.id
+                                  }))}
+                                  className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
+                                    isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 5. Productivity & Goals */}
+                        <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <span>🎯</span> Productivity &amp; Goal Execution
+                            </span>
+                            <span className="text-[10px] text-gray-400">Deep flow vs busywork</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[
+                              { id: 'open', label: 'Open by Default' },
+                              { id: 'collapsed', label: 'Collapsed by Default' },
+                              { id: 'hidden', label: 'Don\'t Show' }
+                            ].map(opt => {
+                              const isSel = (preferences['setting:confounder_productivity_display'] || 'hidden') === opt.id
+                              return (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  onClick={() => setPreferences(prev => ({
+                                    ...prev,
+                                    'setting:confounder_preset': 'custom',
+                                    'setting:confounder_productivity_display': opt.id
+                                  }))}
+                                  className={`py-1.5 px-2 rounded-lg text-center text-[10px] font-bold border transition cursor-pointer ${
+                                    isSel ? 'bg-sky-500/20 border-sky-400 text-sky-200' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 🚫 LIFESTYLE & NEGATIVE EXPOSURES TO TRACK (NIGHTLY & MORNING CHECK-INS) */}
+              {(activeTab === 'nightly' || activeTab === 'morning') && (
+                <div className="space-y-2">
+                  <div className={`flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider border-b pb-1 ${
+                    activeTab === 'morning' ? 'text-amber-300 border-amber-500/20' : 'text-rose-300 border-rose-500/20'
+                  }`}>
+                    <span className="flex items-center gap-1.5">
+                      <span>🚫</span>
+                      <span>{activeTab === 'morning' ? "Last Night's Exposures to Track" : "Check-in Exposures & Lifestyle Factors"}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      ({CHECKIN_EXPOSURES_METADATA.filter(e => isExposureTracked(e.id)).length} Active)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {CHECKIN_EXPOSURES_METADATA.map(exp => renderExposureRow(exp))}
+                  </div>
+                </div>
+              )}
+
+              {/* 📋 ADDITIONAL BIO-SIGNALS SECTION */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-white/10 pb-1">
+                  <span>Additional Bio-Signals &amp; Clinical Outcomes</span>
+                  <span className="text-[10px] text-slate-500 font-normal">
+                    ({filteredAdditionalOutcomes.length} Available)
+                  </span>
+                </div>
+
+                {/* Category Filter Pills */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-[10px]">
+                  <button
+                    onClick={() => setSelectedCategory('all')}
+                    className={`px-2.5 py-1 rounded-lg font-bold shrink-0 transition cursor-pointer ${
+                      selectedCategory === 'all'
+                        ? 'bg-white text-black'
+                        : 'bg-white/5 text-gray-400 hover:text-white border border-white/5'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {categories.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-2.5 py-1 rounded-lg font-bold uppercase shrink-0 transition cursor-pointer ${
+                        selectedCategory === cat
+                          ? 'bg-white text-black'
+                          : 'bg-white/5 text-gray-400 hover:text-white border border-white/5'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                {filteredAdditionalOutcomes.length > 0 ? (
+                  <div className="space-y-2">
+                    {filteredAdditionalOutcomes.map(outcome => renderOutcomeRow(outcome, false))}
+                  </div>
+                ) : (
+                  <p className="text-center text-xs text-slate-500 py-4 italic">
+                    No matching additional bio-signals found in this category.
+                  </p>
+                )}
               </div>
-            ) : (
-              <p className="text-center text-xs text-slate-500 py-4 italic">
-                No matching additional bio-signals found for "{searchQuery}".
-              </p>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
         {/* Modal Action Buttons */}
         <div className="flex items-center gap-3 pt-3 border-t border-white/10 shrink-0 sticky bottom-0 bg-slate-900/95 backdrop-blur-md pb-1 z-10">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition cursor-pointer"
+            className="flex-1 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 !text-white keep-white font-bold text-xs transition cursor-pointer shadow-sm"
           >
             Cancel
           </button>

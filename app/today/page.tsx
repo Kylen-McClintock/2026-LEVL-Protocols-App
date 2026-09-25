@@ -2716,7 +2716,7 @@ function TodayPageContent() {
 
       if (isCompleted) {
         completedTop.push(task)
-        if ((!isFocusMode || !focusRules.hideCompleted) && (showCompletedInline || cardBadges.showCompletedInline || isRecentlyCompleted)) {
+        if ((!isFocusMode || focusRules.keepCompleted) && (showCompletedInline || cardBadges.showCompletedInline || isRecentlyCompleted)) {
           routine.push(task)
         }
       } else if (isSnoozed) {
@@ -3737,8 +3737,8 @@ function TodayPageContent() {
         const isCardCollapsed = isAllCompleted && isProtocolCardCollapsed(groupName, groupTasks)
 
         if (groupName !== 'Standalone & Individual Modalities') {
-          // In Focus Mode, hide completely finished protocols if hideCompleted rule is active
-          if (isFocusMode && focusRules.hideCompleted && isAllCompleted) {
+          // In Focus Mode, hide completely finished protocols if keepCompleted rule is not active
+          if (isFocusMode && !focusRules.keepCompleted && isAllCompleted) {
             return null
           }
 
@@ -3760,11 +3760,11 @@ function TodayPageContent() {
           })
 
           // In Focus Mode, hide completed, snoozed, and skipped tasks within the protocol
-          const tasksToRender = isFocusMode && focusRules.hideCompleted
+          const tasksToRender = isFocusMode && !focusRules.keepCompleted
             ? sortedGroupTasks.filter(t => t.status !== 'completed' && t.status !== 'skipped' && t.status !== 'not_today')
             : sortedGroupTasks
 
-          if (isFocusMode && focusRules.hideCompleted && tasksToRender.length === 0) {
+          if (isFocusMode && !focusRules.keepCompleted && tasksToRender.length === 0) {
             return null
           }
 
@@ -4528,7 +4528,7 @@ function TodayPageContent() {
         )}
 
         {/* Unified Category & Outcomes Filter at Top (Today, 3-Day, Week, and Month Views) */}
-        {calendarViewMode !== 'pulse' && !isFocusMode && (
+        {calendarViewMode !== 'pulse' && (isFocusMode ? focusRules.keepCategoryFilters : (homeWidgets.categoryFilters !== false)) && (
           <CategoryFiltersBar
             selectedMainCategories={selectedMainCategories}
             selectedSubCategories={selectedSubCategories}

@@ -60,6 +60,7 @@ import { resolvePubMedCitation } from '@/lib/tracking/scientificCitations'
 import { UserProfile } from '@/lib/types'
 import { canonicalizeTimingSlot } from '@/lib/utils/timingSlots'
 import { isPeptideModality } from '@/lib/peptides/peptideCycleEngine'
+import { isInjectableSubQPeptide } from '@/lib/peptides/reconstitutionEngine'
 import PeptideTitrationPlanner from '@/components/peptides/PeptideTitrationPlanner'
 import { ModalityAICoachBar } from '@/components/ai/ModalityAICoachBar'
 import { detectContraindications, parseMedicalProfile } from '@/lib/safety/contraindicationEngine'
@@ -1537,17 +1538,8 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
                   </div>
                 </div>
 
-                {/* OPTIONAL PEPTIDE TITRATION STEP-UP PLANNER */}
-                {(isPeptideModality(task as any) ||
-                  modality?.category === 'Peptide' ||
-                  modalityKey.toLowerCase().includes('subq') ||
-                  modalityKey.toLowerCase().includes('peptide') ||
-                  modalityKey.toLowerCase().includes('bpc') ||
-                  modalityKey.toLowerCase().includes('tirzepatide') ||
-                  modalityKey.toLowerCase().includes('semaglutide') ||
-                  modalityKey.toLowerCase().includes('ghk') ||
-                  modalityKey.toLowerCase().includes('cjc') ||
-                  modalityKey.toLowerCase().includes('ipamorelin')) && (
+                {/* OPTIONAL PEPTIDE TITRATION STEP-UP PLANNER (SubQ Injectables Only) */}
+                {isInjectableSubQPeptide(modality, task as any) && (
                   <div className="pt-2">
                     <PeptideTitrationPlanner
                       modalityKey={modalityKey}

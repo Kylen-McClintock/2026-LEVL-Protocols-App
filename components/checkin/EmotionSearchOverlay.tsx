@@ -6,7 +6,8 @@ import {
   EmotionEntry,
   EmotionQuadrant,
   QUADRANT_CONFIGS,
-  searchEmotions
+  searchEmotions,
+  getEmotionColor
 } from '@/lib/emotions/emotionDictionary'
 import { useTheme } from '@/lib/utils/useTheme'
 import { triggerHaptic } from '@/lib/utils/haptics'
@@ -30,8 +31,10 @@ export default function EmotionSearchOverlay({
   const [query, setQuery] = useState('')
   const [selectedQuadrant, setSelectedQuadrant] = useState<EmotionQuadrant | null>(initialQuadrant)
 
+  // Alphabetically ordered search results
   const filteredEmotions = useMemo(() => {
-    return searchEmotions(query, selectedQuadrant)
+    const results = searchEmotions(query, selectedQuadrant)
+    return [...results].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
   }, [query, selectedQuadrant])
 
   if (!isOpen) return null
@@ -112,71 +115,78 @@ export default function EmotionSearchOverlay({
         </div>
       </div>
 
-      {/* Quadrant Vector Filter Pills (Colored Directly With Quadrant Color) */}
+      {/* Quadrant Vector Filter Pills (2 wide on mobile so all 4 fit on screen) */}
       <div
-        className={`px-4 py-2.5 border-b overflow-x-auto scrollbar-none flex items-center gap-2 ${
+        className={`px-4 py-3 border-b ${
           isDaylight ? 'bg-slate-50/80 border-slate-200' : 'bg-slate-900/50 border-white/5'
         }`}
       >
-        {quadrantOrder.map((qKey) => {
-          const cfg = QUADRANT_CONFIGS[qKey]
-          const isSelected = selectedQuadrant === qKey
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {quadrantOrder.map((qKey) => {
+            const cfg = QUADRANT_CONFIGS[qKey]
+            const isSelected = selectedQuadrant === qKey
 
-          // Dynamic quadrant styling based on theme and selection state
-          let pillStyle = ''
-          if (qKey === 'high_energy_pleasant') {
-            pillStyle = isSelected
-              ? 'bg-amber-400 text-slate-950 font-black border-amber-300 shadow-md shadow-amber-500/30 ring-2 ring-amber-300/40'
-              : isDaylight
-              ? 'bg-amber-100 text-amber-950 border-amber-400 hover:bg-amber-200'
-              : 'bg-amber-500/25 text-amber-200 border-amber-400/70 hover:bg-amber-500/35'
-          } else if (qKey === 'low_energy_pleasant') {
-            pillStyle = isSelected
-              ? 'bg-emerald-400 text-slate-950 font-black border-emerald-300 shadow-md shadow-emerald-500/30 ring-2 ring-emerald-300/40'
-              : isDaylight
-              ? 'bg-emerald-100 text-emerald-950 border-emerald-400 hover:bg-emerald-200'
-              : 'bg-emerald-500/25 text-emerald-200 border-emerald-400/70 hover:bg-emerald-500/35'
-          } else if (qKey === 'low_energy_unpleasant') {
-            pillStyle = isSelected
-              ? 'bg-blue-400 text-slate-950 font-black border-blue-300 shadow-md shadow-blue-500/30 ring-2 ring-blue-300/40'
-              : isDaylight
-              ? 'bg-blue-100 text-blue-950 border-blue-400 hover:bg-blue-200'
-              : 'bg-blue-500/25 text-blue-200 border-blue-400/70 hover:bg-blue-500/35'
-          } else {
-            pillStyle = isSelected
-              ? 'bg-rose-400 text-slate-950 font-black border-rose-300 shadow-md shadow-rose-500/30 ring-2 ring-rose-300/40'
-              : isDaylight
-              ? 'bg-rose-100 text-rose-950 border-rose-400 hover:bg-rose-200'
-              : 'bg-rose-500/25 text-rose-200 border-rose-400/70 hover:bg-rose-500/35'
-          }
+            // Dynamic quadrant styling based on theme and selection state
+            let pillStyle = ''
+            if (qKey === 'high_energy_pleasant') {
+              pillStyle = isSelected
+                ? 'bg-amber-400 text-slate-950 font-black border-amber-300 shadow-md shadow-amber-500/30 ring-2 ring-amber-300/40'
+                : isDaylight
+                ? 'bg-amber-100 text-amber-950 border-amber-400 hover:bg-amber-200'
+                : 'bg-amber-500/25 text-amber-200 border-amber-400/70 hover:bg-amber-500/35'
+            } else if (qKey === 'low_energy_pleasant') {
+              pillStyle = isSelected
+                ? 'bg-emerald-400 text-slate-950 font-black border-emerald-300 shadow-md shadow-emerald-500/30 ring-2 ring-emerald-300/40'
+                : isDaylight
+                ? 'bg-emerald-100 text-emerald-950 border-emerald-400 hover:bg-emerald-200'
+                : 'bg-emerald-500/25 text-emerald-200 border-emerald-400/70 hover:bg-emerald-500/35'
+            } else if (qKey === 'low_energy_unpleasant') {
+              pillStyle = isSelected
+                ? 'bg-blue-400 text-slate-950 font-black border-blue-300 shadow-md shadow-blue-500/30 ring-2 ring-blue-300/40'
+                : isDaylight
+                ? 'bg-blue-100 text-blue-950 border-blue-400 hover:bg-blue-200'
+                : 'bg-blue-500/25 text-blue-200 border-blue-400/70 hover:bg-blue-500/35'
+            } else {
+              pillStyle = isSelected
+                ? 'bg-rose-400 text-slate-950 font-black border-rose-300 shadow-md shadow-rose-500/30 ring-2 ring-rose-300/40'
+                : isDaylight
+                ? 'bg-rose-100 text-rose-950 border-rose-400 hover:bg-rose-200'
+                : 'bg-rose-500/25 text-rose-200 border-rose-400/70 hover:bg-rose-500/35'
+            }
 
-          return (
-            <button
-              key={qKey}
-              type="button"
-              onClick={() => handleToggleQuadrant(qKey)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap cursor-pointer shrink-0 active:scale-95 text-center ${pillStyle}`}
-            >
-              <span>{cfg.filterLabel}</span>
-            </button>
-          )
-        })}
+            return (
+              <button
+                key={qKey}
+                type="button"
+                onClick={() => handleToggleQuadrant(qKey)}
+                className={`w-full py-2 px-2.5 rounded-xl text-xs font-bold border transition-all whitespace-nowrap cursor-pointer active:scale-95 text-center flex items-center justify-center gap-1 ${pillStyle}`}
+              >
+                <span>{cfg.filterLabel}</span>
+              </button>
+            )
+          })}
+        </div>
 
         {selectedQuadrant && (
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('light')
-              setSelectedQuadrant(null)
-            }}
-            className={`px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-              isDaylight
-                ? 'text-slate-500 hover:text-slate-800'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Clear filter
-          </button>
+          <div className="mt-2.5 flex items-center justify-between px-1">
+            <span className={`text-[11px] font-mono ${isDaylight ? 'text-slate-500' : 'text-slate-400'}`}>
+              Zone: <span className="font-bold">{QUADRANT_CONFIGS[selectedQuadrant].label}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light')
+                setSelectedQuadrant(null)
+              }}
+              className={`text-xs font-semibold underline underline-offset-2 transition-all cursor-pointer ${
+                isDaylight
+                  ? 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              Clear filter
+            </button>
+          </div>
         )}
       </div>
 
@@ -206,7 +216,7 @@ export default function EmotionSearchOverlay({
                   {/* Quadrant-colored circle badge */}
                   <div
                     className="w-7 h-7 rounded-full shrink-0 shadow-sm transition-transform group-hover:scale-110"
-                    style={{ backgroundColor: cfg.baseColorHex }}
+                    style={{ backgroundColor: getEmotionColor(emotion) }}
                   />
 
                   <div className="min-w-0">
@@ -217,6 +227,37 @@ export default function EmotionSearchOverlay({
                     >
                       {emotion.name}
                     </span>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className={`text-[9.5px] font-mono font-semibold px-1.5 py-0.5 rounded border ${
+                        isDaylight ? 'border-amber-300 text-amber-900 bg-amber-50' : 'border-amber-500/30 text-amber-300 bg-amber-500/10'
+                      }`}>
+                        ⚡ {emotion.energyRating.toFixed(1)}
+                      </span>
+                      <span className={`text-[9.5px] font-mono font-semibold px-1.5 py-0.5 rounded border ${
+                        isDaylight ? 'border-emerald-300 text-emerald-900 bg-emerald-50' : 'border-emerald-500/30 text-emerald-300 bg-emerald-500/10'
+                      }`}>
+                        😊 {emotion.moodRating.toFixed(1)}
+                      </span>
+                      <span className={`text-[9.5px] font-mono font-semibold px-1.5 py-0.5 rounded border ${
+                        isDaylight ? 'border-rose-300 text-rose-900 bg-rose-50' : 'border-rose-500/30 text-rose-300 bg-rose-500/10'
+                      }`}>
+                        🔥 {emotion.stressRating.toFixed(1)}
+                      </span>
+                      {emotion.suggestedBandwidthMode === 'survival_80_20' && (
+                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+                          isDaylight ? 'border-red-300 text-red-800 bg-red-100' : 'border-red-500/30 text-red-300 bg-red-500/15'
+                        }`}>
+                          🛡️ Cuts
+                        </span>
+                      )}
+                      {emotion.suggestedBandwidthMode === 'peak_surge' && (
+                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+                          isDaylight ? 'border-emerald-300 text-emerald-800 bg-emerald-100' : 'border-emerald-500/30 text-emerald-300 bg-emerald-500/15'
+                        }`}>
+                          ⚡ Surge
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

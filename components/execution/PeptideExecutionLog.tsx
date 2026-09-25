@@ -16,7 +16,8 @@ import {
   savePeptideVialConfig,
   getSavedInjectionSiteHistory,
   saveInjectionSiteLog,
-  InjectionSiteMetadata
+  InjectionSiteMetadata,
+  resolvePeptideTargetDoseMcg
 } from '@/lib/peptides/reconstitutionEngine'
 
 import VisualSyringeDrawingGuide from '@/components/peptides/VisualSyringeDrawingGuide'
@@ -58,7 +59,15 @@ export default function PeptideExecutionLog({
   defaultDoseMcg = 250
 }: Props) {
   const meta = modality?.peptide_metadata
-  const targetDose = value.dose_amount_mcg || defaultDoseMcg || meta?.default_vial_config?.recommended_dose_mcg || 250
+  const targetDose = useMemo(() => {
+    if (value.dose_amount_mcg && typeof value.dose_amount_mcg === 'number') {
+      return value.dose_amount_mcg
+    }
+    if (defaultDoseMcg && defaultDoseMcg !== 250) {
+      return defaultDoseMcg
+    }
+    return resolvePeptideTargetDoseMcg(null, modality) || defaultDoseMcg || 250
+  }, [value.dose_amount_mcg, defaultDoseMcg, modality])
 
   // Local state for vial configuration
   const [vialConfig, setVialConfig] = useState<PeptideVialConfig>(() => {
@@ -169,8 +178,8 @@ export default function PeptideExecutionLog({
           <div>
             <div className="text-[11px] font-black text-white uppercase tracking-wider flex items-center gap-1.5">
               <span>Peptide SubQ Administration &amp; Reconstitution</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono">
-                {reconCalc.syringe_type.toUpperCase().replace('_', '-')}
+              <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono font-bold">
+                {reconCalc.syringe_type === 'u40' ? 'U-40 SYRINGE' : `U-100 (${reconCalc.units_to_draw}U DOSE)`}
               </span>
             </div>
             <div className="text-[10px] text-slate-400 font-medium">

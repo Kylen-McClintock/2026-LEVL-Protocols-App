@@ -47,7 +47,6 @@ import BlocksTimeContainer from './BlocksTimeContainer'
 import BlocksProtocolContainer from './BlocksProtocolContainer'
 import QuickHotkeyGrid from '@/components/quicklog/QuickHotkeyGrid'
 import BlocksFloatingWaterDock from './BlocksFloatingWaterDock'
-import SwipeActionInFeedCard from './SwipeActionInFeedCard'
 import FullScreenModalityModal from './FullScreenModalityModal'
 import CompletedBlocksSection from './CompletedBlocksSection'
 import BlocksNextBestActionSection from './BlocksNextBestActionSection'
@@ -336,23 +335,40 @@ export default function BlocksViewContainer({
   }
 
   // Drag & drop or placement move handler
-  const handleMoveHotkey = useCallback(async (hotkeyId: string, targetSlotKey: string) => {
+  const handleMoveHotkey = useCallback(async (hotkeyId: string, targetSlotKey: string, targetHotkeyId?: string) => {
     triggerHaptic('selection')
+
+    // If reordering within floating dock:
+    if (targetSlotKey === 'floating_dock' && targetHotkeyId && targetHotkeyId !== hotkeyId) {
+      const current = [...hotkeys]
+      const fromIdx = current.findIndex(h => h.id === hotkeyId)
+      const toIdx = current.findIndex(h => h.id === targetHotkeyId)
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const [item] = current.splice(fromIdx, 1)
+        item.assigned_time_slots = []
+        current.splice(toIdx, 0, item)
+        setHotkeys(current)
+        await saveUserHotkeys(localUserId, current)
+        window.dispatchEvent(new CustomEvent('levl_hotkeys_config_updated', { detail: current }))
+        return
+      }
+    }
+
     const updatedHotkeys = hotkeys.map((h) => {
       if (h.id === hotkeyId) {
         return {
           ...h,
-          assigned_time_slots: [targetSlotKey]
+          assigned_time_slots: targetSlotKey === 'floating_dock' ? [] : [targetSlotKey]
         }
       }
       return h
     })
     setHotkeys(updatedHotkeys)
     await saveUserHotkeys(localUserId, updatedHotkeys)
-    window.dispatchEvent(new CustomEvent('levl_hotkeys_config_updated', { detail: { hotkeys: updatedHotkeys } }))
+    window.dispatchEvent(new CustomEvent('levl_hotkeys_config_updated', { detail: updatedHotkeys }))
 
     const moved = hotkeys.find(h => h.id === hotkeyId)
-    const slotLabel = targetSlotKey.replace('_', ' ').toUpperCase()
+    const slotLabel = targetSlotKey === 'floating_dock' ? 'Top Dock' : targetSlotKey.replace('_', ' ').toUpperCase()
     setUndoEntry({
       taskId: hotkeyId,
       previousStatus: 'hotkey_move',
@@ -740,44 +756,19 @@ export default function BlocksViewContainer({
         </div>
       )}
 
-      {/* Daily Quick-Log Hotkeys */}
-      {showHotkeys && (
-        <QuickHotkeyGrid
-          date={date}
-          localUserId={localUserId}
-          userProfile={userProfile}
-          defaultCollapsed={false}
-          showInfradian={isFocusMode ? focusRules.keepInfradian : homeWidgets.infradian}
-        />
-      )}
-
-      {/* Active Swipe In-Feed Section (Single Active Rule) */}
-      {activeSwipe && (
-        <SwipeActionInFeedCard
-          actionType={activeSwipe.type}
-          task={activeSwipe.task}
-          modality={
-            activeSwipe.task.protocol_step?.modality ||
-            activeSwipe.task.loose_modality ||
-            allModalities.find((m) => m.id === (activeSwipe.task.modality_id || activeSwipe.task.protocol_step?.modality_id)) ||
-            getCachedModalitiesSync().find((m) => m.id === (activeSwipe.task.modality_id || activeSwipe.task.protocol_step?.modality_id))
-          }
-          benchItem={benchItems.find(
-            (b) =>
-              b.modality_id ===
-              (activeSwipe.task.modality_id || activeSwipe.task.protocol_step?.modality_id)
-          )}
-          allOutcomes={allOutcomes}
-          userProfile={userProfile}
-          onClose={() => setActiveSwipe(null)}
-          onComplete={handleInFeedComplete}
-          onSkip={handleInFeedSkip}
-          onSnooze={handleInFeedSnooze}
-        />
-      )}
-
       {/* MAIN CONTENT: BY TIME OR BY PROTOCOL */}
       <BlocksDragProvider onMoveTask={handleMoveTask} onMoveHotkey={handleMoveHotkey}>
+        {/* Daily Quick-Log Hotkeys */}
+        {showHotkeys && (
+          <QuickHotkeyGrid
+            date={date}
+            localUserId={localUserId}
+            userProfile={userProfile}
+            defaultCollapsed={false}
+            showInfradian={isFocusMode ? focusRules.keepInfradian : homeWidgets.infradian}
+          />
+        )}
+
         {subView === 'time' ? (
           <div className="space-y-4">
             {orderedTimeBlocks.map(([slotKey, block]) => {
@@ -814,6 +805,11 @@ export default function BlocksViewContainer({
                   isEditMode={isEditMode}
                   date={date}
                   localUserId={localUserId}
+                  activeSwipe={activeSwipe}
+                  onCloseSwipe={() => setActiveSwipe(null)}
+                  onInFeedComplete={handleInFeedComplete}
+                  onInFeedSkip={handleInFeedSkip}
+                  onInFeedSnooze={handleInFeedSnooze}
                   onOpenDetails={(t) => setSelectedTaskForModal(t)}
                   onSwipeRight={(t) => setActiveSwipe({ task: t, type: 'complete' })}
                   onSwipeLeft={(t) => setActiveSwipe({ task: t, type: 'skip_snooze' })}
@@ -878,6 +874,11 @@ export default function BlocksViewContainer({
                 layoutMode={layoutMode}
                 showDosing={effectiveShowDosing}
                 isEditMode={isEditMode}
+                activeSwipe={activeSwipe}
+                onCloseSwipe={() => setActiveSwipe(null)}
+                onInFeedComplete={handleInFeedComplete}
+                onInFeedSkip={handleInFeedSkip}
+                onInFeedSnooze={handleInFeedSnooze}
                 onOpenDetails={(t) => setSelectedTaskForModal(t)}
                 onSwipeRight={(t) => setActiveSwipe({ task: t, type: 'complete' })}
                 onSwipeLeft={(t) => setActiveSwipe({ task: t, type: 'skip_snooze' })}

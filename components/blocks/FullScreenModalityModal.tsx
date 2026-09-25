@@ -78,6 +78,7 @@ import HydrationElectrolyteExecutionLog from '../execution/HydrationElectrolyteE
 import BiometricPhlebotomyExecutionLog from '../execution/BiometricPhlebotomyExecutionLog'
 import PeptideExecutionLog from '../execution/PeptideExecutionLog'
 import CompletedExecutionSummary from '../execution/CompletedExecutionSummary'
+import { isInjectableSubQPeptide, resolvePeptideTargetDoseMcg } from '@/lib/peptides/reconstitutionEngine'
 
 // Dynamically load interactive applets
 const CyclicSighingApplet = dynamic(() => import('../applets/CyclicSighingApplet'), { ssr: false })
@@ -312,24 +313,7 @@ export default function FullScreenModalityModal({
   const isSleepHygiene = archetype === 'sleep' && !isCaffeineCutoff
   const isHydration = archetype === 'hydration'
   const isPhlebotomy = archetype === 'phlebotomy'
-  const isPeptide =
-    archetype === 'peptide' ||
-    modality?.category?.toLowerCase().includes('peptide') ||
-    modality?.modality_type?.toLowerCase().includes('peptide') ||
-    modality?.logging_type?.toLowerCase() === 'peptide' ||
-    (modality?.slug || '').toLowerCase().includes('bpc') ||
-    (modality?.name || '').toLowerCase().includes('bpc') ||
-    (modality?.name || '').toLowerCase().includes('tb-500') ||
-    (modality?.name || '').toLowerCase().includes('tb500') ||
-    (modality?.name || '').toLowerCase().includes('cjc') ||
-    (modality?.name || '').toLowerCase().includes('ipamorelin') ||
-    (modality?.name || '').toLowerCase().includes('ghk') ||
-    (modality?.name || '').toLowerCase().includes('semaglutide') ||
-    (modality?.name || '').toLowerCase().includes('tirzepatide') ||
-    (modality?.name || '').toLowerCase().includes('retatrutide') ||
-    (modality?.name || '').toLowerCase().includes('epithalon') ||
-    (modality?.name || '').toLowerCase().includes('mots-c') ||
-    !!modality?.peptide_metadata?.is_peptide
+  const isPeptide = isInjectableSubQPeptide(modality, task)
   const isSupplement = archetype === 'supplement'
   const isSport = archetype === 'sport'
 
@@ -917,7 +901,7 @@ export default function FullScreenModalityModal({
 
         {/* Main Content Area (Swipeable Carousel) */}
         <div
-          className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 max-w-4xl mx-auto w-full pb-28"
+          className="flex-1 overflow-y-auto px-4 sm:px-8 py-5 max-w-4xl mx-auto w-full pb-12"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -965,30 +949,33 @@ export default function FullScreenModalityModal({
                   {/* Divider */}
                   <div className="border-t border-[#E1E8E3] my-4" />
 
-                  {/* Prescription Row: 2 Clean Columns */}
-                  <div className="grid grid-cols-2 gap-4 py-1">
+                  {/* Prescription Stack: Dosage & Schedule Vertically Stacked */}
+                  <div className="flex flex-col gap-3 py-1">
                     <div>
-                      <div className="text-xs font-semibold text-[#526661] mb-1">
+                      <div className="text-xs font-semibold text-[#526661] dark:text-slate-400 mb-1">
                         {isPeptide || isSupplement || dose ? 'Dose / Amount' : 'Duration'}
                       </div>
-                      <div className="text-xl sm:text-2xl font-bold text-[#475569] flex items-center gap-2">
+                      <div className="text-lg sm:text-xl font-bold text-[#475569] dark:text-white flex items-center gap-2 flex-wrap">
                         <span>{dose || modality?.duration || modality?.dose_or_exposure || '45–60 min'}</span>
                         <button
+                          type="button"
                           onClick={() => setIsDosageModalOpen(true)}
-                          className="text-xs font-semibold text-[#6954C8] hover:text-[#5944B6] underline ml-1 cursor-pointer"
+                          className="text-xs font-semibold text-[#6954C8] hover:text-[#5944B6] dark:text-purple-400 dark:hover:text-purple-300 underline ml-1 cursor-pointer shrink-0"
                         >
                           Edit
                         </button>
                       </div>
                     </div>
 
-                    <div className="border-l border-[#E1E8E3] pl-4 sm:pl-6">
-                      <div className="text-xs font-semibold text-[#526661] mb-1">Schedule</div>
-                      <div className="text-base sm:text-lg font-bold text-[#475569]">
-                        {modality?.frequency || 'Every day'}
-                      </div>
-                      <div className="text-xs text-[#526661] mt-0.5">
-                        {task.timing_slot ? `Window: ${task.timing_slot.replace('_', ' ')}` : 'Before first meal'}
+                    <div className="pt-2.5 border-t border-[#E1E8E3] dark:border-white/10">
+                      <div className="text-xs font-semibold text-[#526661] dark:text-slate-400 mb-1">Schedule</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-base sm:text-lg font-bold text-[#475569] dark:text-white">
+                          {modality?.frequency || 'Every day'}
+                        </span>
+                        <span className="text-xs font-medium text-[#526661] dark:text-slate-300 bg-[#EFF3F0] dark:bg-white/10 px-2 py-0.5 rounded-md">
+                          {task.timing_slot ? `Window: ${task.timing_slot.replace('_', ' ')}` : 'Before first meal'}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1317,7 +1304,7 @@ export default function FullScreenModalityModal({
                         <h3 className={`text-sm font-black ${isDaylight ? 'text-[#475569]' : 'text-white'} uppercase tracking-wider flex items-center gap-2`}>
                           <span>Active SubQ Administration Guide</span>
                           <span className={`text-[10px] px-2 py-0.5 rounded-md ${isDaylight ? 'bg-[#EAF5FA] text-[#236F92] border border-[#236F92]/30' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'} font-mono font-bold`}>
-                            U-100 Syringe
+                            U-100 Standard • SubQ
                           </span>
                         </h3>
                         <p className={`text-[11px] ${isDaylight ? 'text-[#526661]' : 'text-cyan-200/80'}`}>
@@ -1328,7 +1315,7 @@ export default function FullScreenModalityModal({
 
                     <div className="flex items-center gap-2">
                       <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full ${isDaylight ? 'bg-[#EFF3F0] text-[#475569] border border-[#E1E8E3]' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'} shadow-sm`}>
-                        {dose || modality?.dose_or_exposure || `${task.protocol_step?.dose_amount || 250} mcg`}
+                        {dose || modality?.dose_or_exposure || `${resolvePeptideTargetDoseMcg(task, modality)} mcg`}
                       </span>
                     </div>
                   </div>
@@ -1349,7 +1336,7 @@ export default function FullScreenModalityModal({
                         onChange={setExecutionDetails}
                         modality={modality}
                         modalityKey={(modality?.slug || modality?.id || '').toLowerCase()}
-                        defaultDoseMcg={task.protocol_step?.dose_amount || 250}
+                        defaultDoseMcg={resolvePeptideTargetDoseMcg(task, modality)}
                       />
                     </div>
                   )}
@@ -3023,121 +3010,6 @@ export default function FullScreenModalityModal({
                 </div>
               )}
             </div>
-          )}
-        </div>
-
-        {/* Fixed Bottom Navigation Bar (Mobile & Desktop) */}
-        <div
-          className={`w-full shrink-0 border-t ${
-            isDaylight
-              ? 'border-[#E1E8E3] bg-[#F7F9F7]/95 text-[#475569]'
-              : 'border-white/10 bg-slate-950/95 text-white'
-          } backdrop-blur-xl px-4 sm:px-8 py-3 flex items-center justify-between gap-3 shadow-2xl z-40`}
-          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}
-        >
-          {/* Left Button */}
-          {activeTab === 0 ? (
-            <button
-              onClick={onClose}
-              className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl active:scale-95 font-bold text-xs sm:text-sm transition-all cursor-pointer shadow-sm ${
-                isDaylight
-                  ? 'bg-white hover:bg-[#EFF3F0] text-[#475569] border border-[#E1E8E3]'
-                  : 'bg-white/10 hover:bg-white/20 text-white'
-              }`}
-            >
-              <ArrowLeft size={16} />
-              <span>Today</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setActiveTab((prev) => (prev - 1) as 0 | 1 | 2 | 3)}
-              className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl active:scale-95 font-bold text-xs sm:text-sm transition-all cursor-pointer shadow-sm ${
-                isDaylight
-                  ? 'bg-white hover:bg-[#EFF3F0] text-[#475569] border border-[#E1E8E3]'
-                  : 'bg-white/10 hover:bg-white/20 text-white'
-              }`}
-            >
-              <ArrowLeft size={16} />
-              <span>{activeTab === 3 ? 'Protocol' : activeTab === 2 ? 'Outcomes' : 'Session'}</span>
-            </button>
-          )}
-
-          {/* Center Carousel Step Pills */}
-          <div
-            className={`flex items-center gap-1 sm:gap-1.5 border px-2 sm:px-2.5 py-1 rounded-full ${
-              isDaylight
-                ? 'bg-white/60 border-white/80 shadow-[0_2px_10px_rgba(0,0,0,0.03)] backdrop-blur-md'
-                : 'bg-black/50 border-white/10 backdrop-blur-md'
-            }`}
-          >
-            {(['Session', 'Outcomes', 'Protocol', 'Science'] as const).map((tabName, idx) => (
-              <button
-                key={tabName}
-                onClick={() => setActiveTab(idx as 0 | 1 | 2 | 3)}
-                className={`px-2 sm:px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                  activeTab === idx
-                    ? isDaylight
-                      ? 'bg-gradient-to-r from-purple-500/20 via-purple-600/25 to-indigo-500/20 text-purple-950 font-black border border-purple-400/50 shadow-[0_2px_8px_rgba(105,84,200,0.18)] backdrop-blur-md'
-                      : 'bg-purple-500/30 text-purple-100 font-bold border border-purple-400/40 shadow-[0_0_10px_rgba(168,85,247,0.3)] backdrop-blur-md'
-                    : isDaylight
-                    ? 'text-[#526661] hover:text-[#1e293b]'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {tabName}
-              </button>
-            ))}
-          </div>
-
-          {/* Right Button */}
-          {activeTab === 0 ? (
-            <button
-              onClick={() => setActiveTab(1)}
-              className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl active:scale-95 font-bold text-xs sm:text-sm transition-all cursor-pointer ${
-                isDaylight
-                  ? 'bg-gradient-to-r from-purple-500/20 via-indigo-500/25 to-purple-500/20 hover:from-purple-500/30 hover:to-indigo-500/35 border border-purple-400/50 text-purple-950 shadow-[0_2px_12px_rgba(105,84,200,0.16),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-md'
-                  : 'bg-[#6954C8] hover:bg-[#5944B6] text-white shadow-md'
-              }`}
-            >
-              <span>Outcomes</span>
-              <ArrowRight size={16} />
-            </button>
-          ) : activeTab === 1 ? (
-            <button
-              onClick={() => setActiveTab(2)}
-              className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl active:scale-95 font-bold text-xs sm:text-sm transition-all cursor-pointer ${
-                isDaylight
-                  ? 'bg-gradient-to-r from-purple-500/20 via-indigo-500/25 to-purple-500/20 hover:from-purple-500/30 hover:to-indigo-500/35 border border-purple-400/50 text-purple-950 shadow-[0_2px_12px_rgba(105,84,200,0.16),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-md'
-                  : 'bg-[#6954C8] hover:bg-[#5944B6] text-white shadow-md'
-              }`}
-            >
-              <span>Protocol</span>
-              <ArrowRight size={16} />
-            </button>
-          ) : activeTab === 2 ? (
-            <button
-              onClick={() => setActiveTab(3)}
-              className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl active:scale-95 font-bold text-xs sm:text-sm transition-all cursor-pointer ${
-                isDaylight
-                  ? 'bg-gradient-to-r from-purple-500/20 via-indigo-500/25 to-purple-500/20 hover:from-purple-500/30 hover:to-indigo-500/35 border border-purple-400/50 text-purple-950 shadow-[0_2px_12px_rgba(105,84,200,0.16),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-md'
-                  : 'bg-[#6954C8] hover:bg-[#5944B6] text-white shadow-md'
-              }`}
-            >
-              <span>Science</span>
-              <ArrowRight size={16} />
-            </button>
-          ) : (
-            <button
-              onClick={onClose}
-              className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl active:scale-95 font-bold text-xs sm:text-sm transition-all cursor-pointer ${
-                isDaylight
-                  ? 'bg-gradient-to-r from-emerald-500/25 via-teal-500/30 to-emerald-500/25 hover:from-emerald-500/35 hover:to-teal-500/35 border border-emerald-400/50 text-emerald-950 shadow-[0_2px_12px_rgba(16,185,129,0.18),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-md'
-                  : 'bg-[#2B725C] hover:bg-[#23604d] text-white shadow-md'
-              }`}
-            >
-              <span>Back to Today</span>
-              <Check size={16} />
-            </button>
           )}
         </div>
       </div>

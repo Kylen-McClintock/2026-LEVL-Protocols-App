@@ -41,6 +41,8 @@ import PeriodFlowLoggerModal from '@/components/modals/PeriodFlowLoggerModal'
 import { calculateInfradianStatus } from '@/lib/tracking/infradianEngine'
 import { useHomeWidgets } from '@/lib/utils/layoutSettings'
 import { useTheme } from '@/lib/utils/useTheme'
+import { useBlocksDrag } from '@/components/blocks/BlocksDragContext'
+import { BlocksVisualStyle, getStoredVisualStyle } from '@/components/blocks/blocksUtils'
 
 interface QuickHotkeyGridProps {
   date: string
@@ -349,6 +351,25 @@ export default function QuickHotkeyGrid({
   const { theme } = useTheme()
   const isDaylight = theme === 'light'
 
+  const [visualStyle, setVisualStyle] = useState<BlocksVisualStyle>(() => getStoredVisualStyle())
+
+  useEffect(() => {
+    const handleStyleChange = (e: any) => {
+      if (e.detail?.style) {
+        setVisualStyle(e.detail.style)
+      }
+    }
+    window.addEventListener('levl_blocks_visual_style_change', handleStyleChange)
+    return () => window.removeEventListener('levl_blocks_visual_style_change', handleStyleChange)
+  }, [])
+
+  let dragCtx: any = null
+  try {
+    dragCtx = useBlocksDrag()
+  } catch {
+    dragCtx = null
+  }
+
   const { widgets: homeWidgets } = useHomeWidgets(userProfile)
   const isPeriodLayoutActive = showInfradian !== undefined ? showInfradian : homeWidgets.infradian
 
@@ -401,6 +422,10 @@ export default function QuickHotkeyGrid({
   const visibleHotkeys = useMemo(() => {
     if (!hotkeys || hotkeys.length === 0) return []
     return hotkeys.filter(h => {
+      // If hotkey is pinned to a specific timeline slot (and not floating dock), it lives in that container
+      if (h.assigned_time_slots && h.assigned_time_slots.length > 0 && !h.assigned_time_slots.includes('floating_dock')) {
+        return false
+      }
       if (!h.days_of_week || h.days_of_week.length === 0) return true
       const normalizedDays = h.days_of_week.map(d => d.slice(0, 3).toLowerCase())
       const curShort = currentDayOfWeek.slice(0, 3).toLowerCase()
@@ -579,9 +604,10 @@ export default function QuickHotkeyGrid({
       {/* Responsive Grid Layout: 3-wide on mobile, 4 on tablet/small desktop, 5-6 on wide desktop */}
       {!isCollapsed && (
         visibleHotkeys.length > 0 ? (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-2.5 md:gap-3 animate-in fade-in duration-200">
+          <div data-slot-key="floating_dock" className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-2.5 md:gap-3 animate-in fade-in duration-200">
             {visibleHotkeys.map(hotkey => {
               const palette = getHotkeyPalette(hotkey, isDaylight)
+              const vTheme = getHotkeyVisualTheme(hotkey)
               const IconComp = ICON_MAP[hotkey.icon] || Activity
               const hotkeyLogs = logs.filter(l => l.hotkey_id === hotkey.id)
               const mealCalories = meals.reduce((acc, m) => acc + (m.calories || 0), 0)
@@ -595,43 +621,122 @@ export default function QuickHotkeyGrid({
               const isNegative = hotkey.is_negative || hotkey.polarity === 'negative'
               const isTapped = justTappedId === hotkey.id
 
+              const isCurrentDragged = dragCtx?.activeDrag?.id === hotkey.id
+              const isReorderTarget = Boolean(
+                dragCtx?.activeDrag &&
+                dragCtx.hoveredSlotKey === 'floating_dock' &&
+                dragCtx.hoveredTaskId === hotkey.id &&
+                dragCtx.activeDrag.id !== hotkey.id
+              )
+
+              const dragItem = {
+                id: hotkey.id,
+                type: 'hotkey' as const,
+                title: hotkey.name,
+                sourceSlotKey: 'floating_dock'
+              }
+
+              const dragHandlers = dragCtx ? dragCtx.bindDraggable(dragItem, {
+                onClick: () => {
+                  handleQuickTapIncrement(null as any, hotkey)
+                }
+              }) : null
+
+              const isFullGradient = !isDaylight && visualStyle === 'full-gradient'
+              const isDarkNeon = !isDaylight && visualStyle === 'dark-outline'
+              const isGlass = !isDaylight && visualStyle === 'light-glass'
+
               return (
                 <div
                   key={hotkey.id}
-                  onClick={(e) => handleQuickTapIncrement(e, hotkey)}
-                  className={`h-[110px] sm:h-[116px] rounded-2xl border transition-all flex flex-col justify-between p-2.5 sm:p-3 overflow-hidden relative select-none shadow-sm cursor-pointer active:scale-[0.97] group/card ${
-                    isTapped
+                  data-task-id={hotkey.id}
+                  draggable={false}
+                  onMouseDown={dragHandlers?.onMouseDown}
+                  onTouchStart={dragHandlers?.onTouchStart}
+                  onTouchMove={dragHandlers?.onTouchMove}
+                  onTouchEnd={dragHandlers?.onTouchEnd}
+                  onTouchCancel={dragHandlers?.onTouchCancel}
+                  onClick={(e) => {
+                    if (!dragHandlers) handleQuickTapIncrement(e, hotkey)
+                  }}
+                  className={`h-[110px] sm:h-[116px] rounded-2xl border transition-all flex flex-col justify-between p-2.5 sm:p-3 overflow-hidden relative select-none cursor-pointer active:scale-[0.97] group/card ${
+                    isCurrentDragged
+                      ? 'opacity-30 scale-95 pointer-events-none'
+                      : isReorderTarget
+                      ? 'ring-2 ring-purple-400 border-purple-400 shadow-xl shadow-purple-500/30 scale-[1.02]'
+                      : isTapped
                       ? isDaylight
                         ? 'ring-2 ring-emerald-400 scale-[0.96] bg-slate-50 border-slate-300'
-                        : 'ring-2 ring-white/60 scale-[0.96] bg-slate-800 border-slate-700'
+                        : 'ring-2 ring-white/60 scale-[0.96] shadow-xl'
                       : isDaylight
                       ? 'bg-white border-[#E1E8E3] hover:border-[#8B5CF6]/40 hover:shadow-md'
-                      : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 hover:bg-white/[0.03]'
+                      : isGlass
+                      ? 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+                      : ''
                   }`}
+                  style={{
+                    touchAction: isCurrentDragged ? 'none' : 'pan-y',
+                    background: isTapped
+                      ? undefined
+                      : isDaylight
+                      ? '#FFFFFF'
+                      : isFullGradient
+                      ? vTheme.fullGradientCss
+                      : isDarkNeon
+                      ? `linear-gradient(rgba(10, 14, 23, 0.95), rgba(10, 14, 23, 0.95)) padding-box, ${vTheme.borderGradientCss || vTheme.fullGradientCss} border-box`
+                      : isGlass
+                      ? 'rgba(255, 255, 255, 0.04)'
+                      : undefined,
+                    border: isDaylight
+                      ? '1px solid #E1E8E3'
+                      : isDarkNeon
+                      ? '2.5px solid transparent'
+                      : isFullGradient
+                      ? '1px solid rgba(255, 255, 255, 0.25)'
+                      : undefined,
+                    boxShadow: isTapped
+                      ? '0 8px 24px rgba(16, 185, 129, 0.35)'
+                      : isDaylight
+                      ? '0 2px 6px rgb(23 42 40 / 4%)'
+                      : isDarkNeon
+                      ? `0 0 16px ${vTheme.colorHex}B3, 0 4px 30px ${vTheme.colorHex}73`
+                      : isFullGradient
+                      ? `0 6px 20px ${vTheme.colorHex}40`
+                      : undefined
+                  }}
                   title={`1-Click: Log +${hotkey.default_increment} ${hotkey.unit}`}
                 >
+                  {/* Subtle Glassmorphic Sheen Overlay for dark gradient */}
+                  {isFullGradient && (
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-2xl" />
+                  )}
+
                   {/* Thin Vertical Gradient Bar filling up proportionately along left side */}
                   <div className={`absolute left-0 top-0 bottom-0 w-1 sm:w-1.5 ${
-                    isDaylight ? 'bg-slate-200/80' : 'bg-slate-800/60'
+                    isFullGradient ? 'bg-black/25 backdrop-blur-sm' : isDaylight ? 'bg-slate-200/80' : 'bg-slate-800/60'
                   } z-10 pointer-events-none rounded-l-2xl overflow-hidden`}>
                     <div
                       className={`absolute bottom-0 left-0 right-0 transition-all duration-300 rounded-bl-2xl ${
                         progressPct >= 100 ? 'rounded-tl-2xl' : ''
-                      } ${palette.progress}`}
+                      } ${isFullGradient ? 'bg-white/95' : palette.progress}`}
                       style={{ height: `${progressPct}%` }}
                     />
                   </div>
 
                   {/* TOP ROW: Icon + Increment Badge */}
-                  <div className="flex items-center justify-between gap-1 w-full pl-0.5">
+                  <div className="flex items-center justify-between gap-1 w-full pl-0.5 relative z-10">
                     <div
-                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center border text-xs shrink-0 transition-colors ${palette.iconBg}`}
+                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center border text-xs shrink-0 transition-colors ${
+                        isFullGradient ? 'bg-white/20 border-white/30 text-white' : palette.iconBg
+                      }`}
                     >
                       <IconComp size={13} className="sm:size-3.5" />
                     </div>
 
                     <span
-                      className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[11px] sm:text-xs font-mono font-black border transition-all flex items-baseline gap-0.5 sm:gap-1 shadow-sm shrink-0 ${palette.badge}`}
+                      className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[11px] sm:text-xs font-mono font-black border transition-all flex items-baseline gap-0.5 sm:gap-1 shadow-sm shrink-0 ${
+                        isFullGradient ? 'bg-white/25 text-white border-white/40 hover:bg-white hover:text-black' : palette.badge
+                      }`}
                     >
                       <Plus size={10} strokeWidth={3} className="shrink-0 self-center" />
                       <span className="font-black">{hotkey.default_increment}</span>
@@ -641,8 +746,8 @@ export default function QuickHotkeyGrid({
 
                   {/* FULL-WIDTH NAME ROW: Single line, crisp, high legibility, truncate without vertical collision */}
                   <div
-                    className={`w-full pl-0.5 text-xs sm:text-[12.5px] font-bold tracking-tight transition-colors truncate leading-tight ${
-                      isDaylight ? 'text-[#334155]' : 'text-slate-100'
+                    className={`w-full pl-0.5 text-xs sm:text-[12.5px] font-bold tracking-tight transition-colors truncate leading-tight relative z-10 ${
+                      isFullGradient ? 'text-white' : isDaylight ? 'text-[#334155]' : 'text-slate-100'
                     }`}
                     title={hotkey.name}
                   >
@@ -650,11 +755,13 @@ export default function QuickHotkeyGrid({
                   </div>
 
                   {/* BOTTOM ROW: Numerator & Denominator Value Metric + Expand/Detail Chevron */}
-                  <div className="flex items-center justify-between gap-1 w-full pl-0.5">
+                  <div className="flex items-center justify-between gap-1 w-full pl-0.5 relative z-10">
                     <div className="flex items-baseline gap-1 min-w-0">
                       <span className={`text-lg sm:text-xl font-black font-mono tracking-tight leading-none transition-colors ${
-                        isGoalReached && !isNegative
-                          ? 'text-emerald-500 font-bold'
+                        isFullGradient
+                          ? 'text-white'
+                          : isGoalReached && !isNegative
+                          ? isDaylight ? 'text-emerald-600 font-bold' : 'text-emerald-400 font-bold'
                           : isDaylight
                           ? 'text-[#1E293B]'
                           : 'text-white'
@@ -663,16 +770,18 @@ export default function QuickHotkeyGrid({
                       </span>
                       {hotkey.daily_goal && !isNegative ? (
                         <span className={`text-[11px] sm:text-xs font-bold font-mono transition-colors truncate ${
-                          isGoalReached
-                            ? 'text-emerald-500 font-bold'
+                          isFullGradient
+                            ? 'text-white/80'
+                            : isGoalReached
+                            ? isDaylight ? 'text-emerald-600 font-bold' : 'text-emerald-400 font-bold'
                             : isDaylight
                             ? 'text-[#64748B]'
                             : 'text-slate-300'
                         }`}>
-                          /{hotkey.daily_goal} <span className={`text-[9.5px] sm:text-[10.5px] font-medium ${isDaylight ? 'text-[#94A3B8]' : 'text-slate-400'}`}>{hotkey.unit}</span>
+                          /{hotkey.daily_goal} <span className={`text-[9.5px] sm:text-[10.5px] font-medium ${isFullGradient ? 'text-white/70' : isDaylight ? 'text-[#94A3B8]' : 'text-slate-400'}`}>{hotkey.unit}</span>
                         </span>
                       ) : (
-                        <span className={`text-[10.5px] sm:text-xs font-bold font-mono truncate ${isDaylight ? 'text-[#94A3B8]' : 'text-slate-400'}`}>
+                        <span className={`text-[10.5px] sm:text-xs font-bold font-mono truncate ${isFullGradient ? 'text-white/70' : isDaylight ? 'text-[#94A3B8]' : 'text-slate-400'}`}>
                           {hotkey.unit}
                         </span>
                       )}
@@ -685,7 +794,9 @@ export default function QuickHotkeyGrid({
                         handleCardClick(hotkey)
                       }}
                       className={`shrink-0 p-0.5 sm:p-1 transition-colors cursor-pointer rounded-lg ml-auto ${
-                        isDaylight
+                        isFullGradient
+                          ? 'text-white/70 hover:text-white hover:bg-white/20'
+                          : isDaylight
                           ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
                           : 'text-slate-400 hover:text-white hover:bg-white/10'
                       }`}

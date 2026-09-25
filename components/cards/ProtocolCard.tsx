@@ -351,9 +351,9 @@ export default function ProtocolCard({ protocol, activeStatus, isFocusMode = fal
             const synergyText = protocol.synergy_text || PROTOCOL_SYNERGY_MAP[protocol.id] || PROTOCOL_SYNERGY_MAP[protocol.name] || protocol.summary || protocol.description
             if (!synergyText) return null
             return (
-              <div className="bg-levl-purple/10 border border-levl-purple/30 rounded-xl p-3.5 text-xs text-purple-200 flex items-start gap-2.5 shadow-[0_0_15px_rgba(168,85,247,0.15)]">
-                <Zap size={16} className="text-levl-purple shrink-0 mt-0.5" />
-                <p className="leading-relaxed font-medium">
+              <div className="bg-purple-50/90 dark:bg-levl-purple/10 border border-purple-300/80 dark:border-levl-purple/30 rounded-xl p-3.5 text-xs flex items-start gap-2.5 shadow-2xs dark:shadow-[0_0_15px_rgba(168,85,247,0.15)] transition-colors">
+                <Zap size={16} className="text-purple-600 dark:text-levl-purple shrink-0 mt-0.5" />
+                <p className="leading-relaxed font-bold dark:font-medium text-purple-950 dark:text-purple-200">
                   {synergyText}
                 </p>
               </div>

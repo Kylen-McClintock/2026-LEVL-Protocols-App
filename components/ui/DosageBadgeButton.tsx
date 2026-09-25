@@ -10,6 +10,7 @@ import { Sliders, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react'
 import { upsertBenchItemOverride, reconcileModalityScheduleAndFutureTasks } from '../../lib/data'
 import { getLocalUserId } from '../../lib/local-user/getLocalUserId'
 import { useTemperatureUnit } from '../../lib/utils/useTemperatureUnit'
+import { useTheme } from '@/lib/utils/useTheme'
 import { format } from 'date-fns'
 
 interface DosageBadgeButtonProps {
@@ -67,6 +68,8 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
   onOpenCustomizeOutcomes,
   onSavePersonalization
 }) => {
+  const { theme } = useTheme()
+  const isDaylight = theme === 'light'
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const resolved = resolveRecommendedDose(modality, userProfile, protocolContext)
@@ -114,16 +117,26 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
     }
   }
 
-  // Color classes for badge
-  const colorStyles = {
-    emerald: 'bg-emerald-950/70 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/80',
-    purple: 'bg-purple-950/70 border-purple-700/60 text-purple-300 hover:bg-purple-900/80',
-    blue: 'bg-blue-950/70 border-blue-700/60 text-blue-300 hover:bg-blue-900/80',
-    amber: 'bg-amber-950/70 border-amber-600/60 text-amber-300 hover:bg-amber-900/80',
-    cyan: 'bg-cyan-950/70 border-cyan-700/60 text-cyan-300 hover:bg-cyan-900/80',
-    pink: 'bg-pink-950/70 border-pink-700/60 text-pink-300 hover:bg-pink-900/80',
-    indigo: 'bg-indigo-950/70 border-indigo-700/60 text-indigo-300 hover:bg-indigo-900/80'
-  }[resolved.badgeColor || 'blue']
+  // Color classes for badge with explicit light/dark high contrast modes
+  const colorStyles = isDaylight
+    ? {
+        emerald: 'bg-emerald-50/95 border-emerald-300 text-emerald-900 hover:bg-emerald-100 shadow-sm',
+        purple: 'bg-purple-50/95 border-purple-300 text-purple-900 hover:bg-purple-100 shadow-sm',
+        blue: 'bg-sky-50/95 border-sky-300 text-sky-900 hover:bg-sky-100 shadow-sm',
+        amber: 'bg-amber-50/95 border-amber-300 text-amber-900 hover:bg-amber-100 shadow-sm',
+        cyan: 'bg-cyan-50/95 border-cyan-300 text-cyan-900 hover:bg-cyan-100 shadow-sm',
+        pink: 'bg-pink-50/95 border-pink-300 text-pink-900 hover:bg-pink-100 shadow-sm',
+        indigo: 'bg-indigo-50/95 border-indigo-300 text-indigo-900 hover:bg-indigo-100 shadow-sm'
+      }[resolved.badgeColor || 'blue']
+    : {
+        emerald: 'bg-emerald-950/70 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/80',
+        purple: 'bg-purple-950/70 border-purple-700/60 text-purple-300 hover:bg-purple-900/80',
+        blue: 'bg-blue-950/70 border-blue-700/60 text-blue-300 hover:bg-blue-900/80',
+        amber: 'bg-amber-950/70 border-amber-600/60 text-amber-300 hover:bg-amber-900/80',
+        cyan: 'bg-cyan-950/70 border-cyan-700/60 text-cyan-300 hover:bg-cyan-900/80',
+        pink: 'bg-pink-950/70 border-pink-700/60 text-pink-300 hover:bg-pink-900/80',
+        indigo: 'bg-indigo-950/70 border-indigo-700/60 text-indigo-300 hover:bg-indigo-900/80'
+      }[resolved.badgeColor || 'blue']
 
   const modalElement = isModalOpen && (
     <ManageTaskModal
@@ -158,14 +171,14 @@ export const DosageBadgeButton: React.FC<DosageBadgeButtonProps> = ({
         title={`${formatTemp(displayDoseText)} (${resolved.sourceLabel}) - Click to customize`}
       >
         <span className="shrink-0">
-          {resolved.source === 'sensitivity_starter' && <ShieldCheck className="w-3 h-3 text-emerald-400" />}
-          {resolved.source === 'protocol_preset' && <Sparkles className="w-3 h-3 text-amber-400" />}
-          {resolved.source === 'personalized_target' && <CheckCircle2 className="w-3 h-3 text-blue-400" />}
+          {resolved.source === 'sensitivity_starter' && <ShieldCheck className={`w-3 h-3 ${isDaylight ? 'text-emerald-600' : 'text-emerald-400'}`} />}
+          {resolved.source === 'protocol_preset' && <Sparkles className={`w-3 h-3 ${isDaylight ? 'text-amber-600' : 'text-amber-400'}`} />}
+          {resolved.source === 'personalized_target' && <CheckCircle2 className={`w-3 h-3 ${isDaylight ? 'text-sky-600' : 'text-blue-400'}`} />}
         </span>
 
-        <span className="font-mono text-white text-[11px] font-bold truncate min-w-0 shrink">{formatTemp(displayDoseText)}</span>
+        <span className={`font-mono text-[11px] font-bold truncate min-w-0 shrink ${isDaylight ? 'text-slate-900' : 'text-white'}`}>{formatTemp(displayDoseText)}</span>
 
-        <Sliders className="w-3 h-3 ml-0.5 opacity-80 group-hover:opacity-100 transition-opacity shrink-0" />
+        <Sliders className={`w-3 h-3 ml-0.5 opacity-80 group-hover:opacity-100 transition-opacity shrink-0 ${isDaylight ? 'text-slate-600' : 'text-slate-300'}`} />
       </button>
 
       {isMounted && typeof window !== 'undefined' && modalElement

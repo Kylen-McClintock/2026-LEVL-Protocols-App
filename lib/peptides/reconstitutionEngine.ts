@@ -1,4 +1,4 @@
-import { PeptideVialConfig, InjectionSite, PeptideDoseLog } from '@/lib/types'
+import { PeptideVialConfig, InjectionSite, PeptideDoseLog, Modality, DailyProtocolTask } from '@/lib/types'
 
 export interface ReconstitutionCalculation {
   vial_size_mg: number
@@ -358,3 +358,156 @@ export function saveInjectionSiteLog(modalityKey: string, site: InjectionSite): 
     window.dispatchEvent(new CustomEvent('levl_injection_site_logged', { detail: { modalityKey, site } }))
   } catch (e) {}
 }
+
+/**
+ * Determines whether a modality is a Subcutaneous / Injectable peptide requiring
+ * vial reconstitution math, insulin syringe drawing guides, and anatomical injection site rotation.
+ * 
+ * STRICT CLINICAL EXCLUSIONS:
+ * - Collagen peptides (oral dietary powder / functional food)
+ * - Topical peptides (GHK-Cu copper peptide serum, creams, lotions, transdermal gels)
+ * - Oral peptides (BPC-157 arginate capsules, KPV tablets, oral pills)
+ * - Intranasal peptides (nasal sprays, drops)
+ */
+export function isInjectableSubQPeptide(
+  modality?: Modality | null,
+  task?: DailyProtocolTask | null
+): boolean {
+  const m = modality || task?.loose_modality || task?.protocol_step?.modality
+  if (!m) return false
+
+  const id = (m.id || task?.modality_id || '').toLowerCase()
+  const slug = (m.slug || '').toLowerCase()
+  const name = (m.name || m.display_name || '').toLowerCase()
+  const customName = (task?.execution_details?.custom_name || '').toLowerCase()
+  const category = (m.category || '').toLowerCase()
+  const modalityType = (m.modality_type || '').toLowerCase()
+  const loggingType = (m.logging_type || '').toLowerCase()
+  const archetype = ((m as any).archetype || '').toLowerCase()
+  const fullText = `${id} ${slug} ${name} ${customName} ${category} ${modalityType} ${loggingType} ${archetype}`
+
+  // 1. Biological peptide check: Is it a peptide at all?
+  const isAnyPeptide =
+    archetype === 'peptide' ||
+    category.includes('peptide') ||
+    modalityType.includes('peptide') ||
+    loggingType === 'peptide' ||
+    id.includes('bpc') || name.includes('bpc') || slug.includes('bpc') ||
+    id.includes('tb-500') || id.includes('tb500') || name.includes('tb-500') || name.includes('tb500') ||
+    id.includes('cjc') || name.includes('cjc') ||
+    id.includes('ipamorelin') || name.includes('ipamorelin') ||
+    id.includes('ghk') || name.includes('ghk') ||
+    id.includes('semaglutide') || name.includes('semaglutide') ||
+    id.includes('tirzepatide') || name.includes('tirzepatide') ||
+    id.includes('retatrutide') || name.includes('retatrutide') ||
+    id.includes('epithalon') || id.includes('epitalon') || name.includes('epithalon') || name.includes('epitalon') ||
+    id.includes('mots-c') || id.includes('motsc') || name.includes('mots-c') || name.includes('motsc') ||
+    id.includes('tesamorelin') || name.includes('tesamorelin') ||
+    id.includes('sermorelin') || name.includes('sermorelin') ||
+    id.includes('aod9604') || name.includes('aod9604') || name.includes('aod-9604') ||
+    id.includes('pt141') || name.includes('pt141') || name.includes('pt-141') ||
+    id.includes('kisspeptin') || name.includes('kisspeptin') ||
+    id.includes('kpv') || name.includes('kpv') ||
+    id.includes('semax') || name.includes('semax') ||
+    id.includes('selank') || name.includes('selank') ||
+    id.includes('ta1') || name.includes('thymosin') ||
+    Boolean(m.peptide_metadata?.is_peptide)
+
+  if (!isAnyPeptide) return false
+
+  // 2. Strict Exclusion: Collagen Peptides
+  // Collagen is an oral dietary powder/collagen peptide hydrolysate, NEVER a SubQ vial injection
+  if (fullText.includes('collagen')) {
+    return false
+  }
+
+  // 3. Strict Exclusion: Topical Peptides & Skincare
+  // Dermal serums, copper peptide creams, lotions, etc.
+  const deliveryRoute = ((m.peptide_metadata?.delivery_route as string) || '').toLowerCase()
+  if (deliveryRoute === 'topical' || deliveryRoute === 'transdermal') {
+    return false
+  }
+  if (
+    modalityType.includes('topical') ||
+    category.includes('skin') ||
+    /\b(topical|serum|cream|lotion|gel|dermal|transdermal|face mask|skincare)\b/i.test(fullText)
+  ) {
+    return false
+  }
+
+  // 4. Strict Exclusion: Oral Peptides & Supplements
+  // Capsules, tablets, pills, arginate oral powders
+  if (deliveryRoute === 'oral') {
+    return false
+  }
+  if (
+    modalityType.includes('oral') ||
+    /\b(oral|capsule|capsules|tablet|tablets|powder|pill|pills|swallow|ingest|dietary)\b/i.test(fullText)
+  ) {
+    return false
+  }
+
+  // 5. Strict Exclusion: Intranasal Peptides
+  if (deliveryRoute === 'nasal') {
+    return false
+  }
+  if (
+    modalityType.includes('nasal') ||
+    /\b(nasal|spray|intranasal|drops)\b/i.test(fullText)
+  ) {
+    return false
+  }
+
+  // 6. Confirmed Subcutaneous or Intramuscular Injectable
+  return true
+}
+
+/**
+ * Resolves the precise clinical microgram (mcg) dosage for a peptide task or modality.
+ * Prevents 10-unit vs 100-unit visual mismatches by honoring:
+ * 1. User's logged custom execution microgram dose
+ * 2. Protocol step prescribed dose (with mg -> mcg conversion)
+ * 3. Modality peptide_metadata default vial configuration (e.g. 2,500 mcg for TB-500, 250 mcg for BPC-157)
+ * 4. Regex parsing of dose_or_exposure / dose_text strings (e.g. "2.5 mg" -> 2,500 mcg)
+ */
+export function resolvePeptideTargetDoseMcg(
+  task?: DailyProtocolTask | null,
+  modality?: Modality | null
+): number {
+  // 1. Explicit task execution details custom dose if set as a number
+  if (task?.execution_details?.dose_amount_mcg && typeof task.execution_details.dose_amount_mcg === 'number') {
+    return task.execution_details.dose_amount_mcg
+  }
+
+  // 2. Protocol step dose_amount if mcg
+  if (task?.protocol_step?.dose_amount) {
+    if (task.protocol_step.dose_unit === 'mg') {
+      return task.protocol_step.dose_amount * 1000
+    }
+    return task.protocol_step.dose_amount
+  }
+
+  const m = modality || task?.loose_modality || task?.protocol_step?.modality
+
+  // 3. Modality peptide_metadata recommended_dose_mcg
+  if (m?.peptide_metadata?.default_vial_config?.recommended_dose_mcg) {
+    return m.peptide_metadata.default_vial_config.recommended_dose_mcg
+  }
+
+  // 4. Parse from dose_text or dose_or_exposure
+  const doseStr = task?.protocol_step?.dose_text || m?.dose_or_exposure || ''
+  if (doseStr) {
+    // Check for mg patterns like "2.5 mg" or "2.5mg" or "2 mg"
+    const mgMatch = doseStr.match(/(\d+(?:\.\d+)?)\s*mg\b/i)
+    if (mgMatch) {
+      return parseFloat(mgMatch[1]) * 1000
+    }
+    const mcgMatch = doseStr.match(/(\d+(?:\.\d+)?)\s*mcg\b/i)
+    if (mcgMatch) {
+      return parseFloat(mcgMatch[1])
+    }
+  }
+
+  return 250 // Safe clinical fallback
+}
+

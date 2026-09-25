@@ -188,23 +188,20 @@ function ExploreCard({
               e.stopPropagation()
               if (isCurrentlyActiveInToday) {
                 router.push(`/today?modality=${encodeURIComponent(modality.id)}&name=${encodeURIComponent(modality.display_name || modality.name)}`)
-              } else if (!isCurrentlyOnBench) {
+              } else {
                 setIsScheduling(true)
               }
             }}
-            disabled={isCurrentlyOnBench && !isCurrentlyActiveInToday}
             className={`h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
               isCurrentlyActiveInToday
                 ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 cursor-pointer'
-                : isCurrentlyOnBench
-                ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 cursor-default'
                 : 'bg-levl-accent hover:bg-levl-accent/90 text-white cursor-pointer shadow-sm active:scale-95'
             }`}
           >
             {isCurrentlyActiveInToday ? (
               <><CheckCircle2 size={13} className="text-emerald-400" /> <span className="hidden sm:inline">In Today</span></>
             ) : isCurrentlyOnBench ? (
-              <><Bookmark size={13} className="text-cyan-400" /> <span className="hidden sm:inline">Saved</span></>
+              <><CalendarPlus size={13} /> <span className="hidden sm:inline">Move</span></>
             ) : (
               <><Plus size={13} /> <span>Add</span></>
             )}
@@ -616,23 +613,23 @@ function ExploreCard({
       )}
 
       <div className="p-4 pt-0 space-y-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        {/* Primary Action Buttons: 50% Add/Move to Today | 50% Add to Bench / Saved on Bench */}
+        <div className="grid grid-cols-2 gap-2 w-full">
+          {/* Today Button (Half-width) */}
           <button 
+            type="button"
             onClick={(e) => {
               e.stopPropagation()
               if (isCurrentlyActiveInToday) {
                 router.push(`/today?modality=${encodeURIComponent(modality.id)}&name=${encodeURIComponent(modality.display_name || modality.name)}`)
-              } else if (!isCurrentlyOnBench) {
+              } else {
                 setIsScheduling(true)
               }
             }}
-            disabled={isCurrentlyOnBench && !isCurrentlyActiveInToday}
-            className={`w-full sm:w-auto sm:flex-1 h-9 min-h-[36px] shrink-0 flex items-center justify-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
+            className={`w-full h-9 min-h-[36px] flex items-center justify-center gap-1.5 px-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
               isCurrentlyActiveInToday
                 ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.15)]'
-                : isCurrentlyOnBench 
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-default'
-                : 'bg-levl-accent hover:bg-levl-accent/90 text-white shadow-levl-accent/20 cursor-pointer'
+                : 'bg-levl-accent hover:bg-levl-accent/90 text-white shadow-levl-accent/20 cursor-pointer active:scale-95'
             }`}
           >
             {isCurrentlyActiveInToday ? (
@@ -642,8 +639,8 @@ function ExploreCard({
               </span>
             ) : isCurrentlyOnBench ? (
               <span className="flex items-center justify-center gap-1.5 truncate">
-                <Bookmark size={15} className="text-cyan-400 shrink-0" />
-                <span className="truncate">Saved on Bench</span>
+                <CalendarPlus size={15} className="shrink-0" />
+                <span className="truncate">Move to Today</span>
               </span>
             ) : (
               <span className="flex items-center justify-center gap-1.5 truncate">
@@ -653,46 +650,80 @@ function ExploreCard({
             )}
           </button>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 w-full sm:w-auto">
-            {onPinForCompare && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); onPinForCompare(modality); }}
-                className={`flex-1 sm:flex-none h-9 min-h-[36px] shrink-0 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  isPinnedForCompare 
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm' 
-                    : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
-                }`}
-                title="Pin modality to compare side-by-side"
-              >
-                <Scale size={14} />
-                <span>{isPinnedForCompare ? 'Selected' : 'Compare'}</span>
-              </button>
+          {/* Bench Button (Half-width) */}
+          <button 
+            type="button"
+            onClick={async (e) => {
+              e.stopPropagation()
+              if (!isCurrentlyOnBench) {
+                setAddedToBench(true)
+                await onAddToBench(modality.id)
+              }
+            }}
+            disabled={isCurrentlyOnBench}
+            className={`w-full h-9 min-h-[36px] flex items-center justify-center gap-1.5 px-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
+              isCurrentlyOnBench 
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-default opacity-85'
+                : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 cursor-pointer active:scale-95'
+            }`}
+          >
+            {isCurrentlyOnBench ? (
+              <span className="flex items-center justify-center gap-1.5 truncate">
+                <Bookmark size={15} className="text-cyan-400 shrink-0" />
+                <span className="truncate">Saved on Bench</span>
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-1.5 truncate">
+                <BookmarkPlus size={15} className="shrink-0" />
+                <span className="truncate">Add to Bench</span>
+              </span>
             )}
+          </button>
+        </div>
 
+        {/* Secondary Utility Actions (Compare, Longevity, Geek Mode) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 w-full">
+          {onPinForCompare && (
             <button 
-              onClick={(e) => { e.stopPropagation(); setShowLongevityDrawer(!showLongevityDrawer); }}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onPinForCompare(modality); }}
               className={`flex-1 sm:flex-none h-9 min-h-[36px] shrink-0 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                showLongevityDrawer 
-                  ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
-                  : 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white'
+                isPinnedForCompare 
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm' 
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
               }`}
+              title="Pin modality to compare side-by-side"
             >
-              <Dna size={14} />
-              <span>Longevity</span>
+              <Scale size={14} />
+              <span>{isPinnedForCompare ? 'Selected' : 'Compare'}</span>
             </button>
+          )}
 
-            <button 
-              onClick={(e) => { e.stopPropagation(); setShowGeekMode(!showGeekMode); }}
-              className={`flex-1 sm:flex-none h-9 min-h-[36px] shrink-0 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                showGeekMode 
-                  ? 'bg-levl-purple text-white border-levl-purple shadow-md' 
-                  : 'bg-levl-purple/10 border-levl-purple/30 text-purple-300 hover:bg-levl-purple hover:text-white'
-              }`}
-            >
-              <Info size={14} />
-              <span>Geek Mode</span>
-            </button>
-          </div>
+          <button 
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowLongevityDrawer(!showLongevityDrawer); }}
+            className={`flex-1 sm:flex-none h-9 min-h-[36px] shrink-0 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              showLongevityDrawer 
+                ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
+                : 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white'
+            }`}
+          >
+            <Dna size={14} />
+            <span>Longevity</span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowGeekMode(!showGeekMode); }}
+            className={`flex-1 sm:flex-none h-9 min-h-[36px] shrink-0 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              showGeekMode 
+                ? 'bg-levl-purple text-white border-levl-purple shadow-md' 
+                : 'bg-levl-purple/10 border-levl-purple/30 text-purple-300 hover:bg-levl-purple hover:text-white'
+            }`}
+          >
+            <Info size={14} />
+            <span>Geek Mode</span>
+          </button>
         </div>
 
         {showLongevityDrawer && !showGeekMode && (

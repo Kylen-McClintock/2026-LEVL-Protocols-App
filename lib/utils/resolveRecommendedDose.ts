@@ -259,6 +259,9 @@ export function resolveRecommendedDose(
     else if (modality.id === 'blueprint_super_veggie') modality.dose_or_exposure = '1 bowl'
     else if (modality.id === 'blueprint_60m_exercise_routine') modality.dose_or_exposure = '60 mins'
     else if (modality.id === 'blueprint_sleep_architecture') modality.dose_or_exposure = '8:30 PM (65°F)'
+    else if (modality.id === 'magnesium') modality.dose_or_exposure = '300–400mg elemental magnesium'
+    else if (modality.id === 'dark-cool-sleep-environment') modality.dose_or_exposure = '65°F–68°F / 18°C–20°C dark bedroom'
+    else if (modality.id === 'walker_metabolic_alcohol_cutoff') modality.dose_or_exposure = 'Zero Food / Alcohol 3+ hrs before bed'
   }
 
   const catLower = (modality.category || '').toLowerCase()
@@ -293,7 +296,7 @@ export function resolveRecommendedDose(
     : []
 
   // Safety unit override for physical, calisthenics, breathwork, thermal, sleep & diagnostic modalities
-  const isExerciseOrPhysical = catLower.includes('fitness') || catLower.includes('physical') || catLower.includes('cardio') || catLower.includes('strength') || typeLower.includes('exercise') || typeLower.includes('physical') || nameLower.includes('handstand') || nameLower.includes('walk') || nameLower.includes('push-up') || nameLower.includes('sprint') || nameLower.includes('squat')
+  const isExerciseOrPhysical = catLower.includes('fitness') || catLower.includes('physical') || catLower.includes('cardio') || catLower.includes('strength') || typeLower.includes('exercise') || typeLower.includes('physical') || nameLower.includes('handstand') || (/\bwalk(?:ing)?\b/i.test(nameLower) && !nameLower.includes('walker')) || nameLower.includes('push-up') || nameLower.includes('sprint') || nameLower.includes('squat')
   const isBreathOrMind = catLower.includes('breath') || catLower.includes('mind') || typeLower.includes('breathwork') || typeLower.includes('meditation') || nameLower.includes('breathing') || nameLower.includes('sigh') || nameLower.includes('optic flow')
   const isThermal = catLower.includes('sauna') || catLower.includes('cold') || catLower.includes('thermal') || nameLower.includes('sauna') || nameLower.includes('plunge') || nameLower.includes('cold')
   const isSleepOrFasting = catLower.includes('sleep') || catLower.includes('fasting') || typeLower.includes('fasting') || nameLower.includes('fasting') || nameLower.includes('sleep') || nameLower.includes('mouth tap') || nameLower.includes('caffeine')
@@ -309,7 +312,9 @@ export function resolveRecommendedDose(
     nameLower.includes('digital sunset') ||
     nameLower.includes('evening darkness') ||
     nameLower.includes('food cutoff') ||
-    nameLower.includes('caffeine cutoff')
+    nameLower.includes('caffeine cutoff') ||
+    nameLower.includes('alcohol sleep-protection cutoff') ||
+    nameLower.includes('metabolic & alcohol')
 
   let unit = profile?.unit || parsedFallback?.unit
   if (isHoursBeforeBed) {
@@ -347,7 +352,7 @@ export function resolveRecommendedDose(
     if (isHoursBeforeBed && (text.toLowerCase().includes('exposure') || !proto.doseAmount)) {
       val = 2
       u = 'hours before bed'
-      text = '2 Hours Prior to Bedtime'
+      text = proto.doseText || (modality.dose_or_exposure && !modality.dose_or_exposure.toLowerCase().includes('exposure') ? modality.dose_or_exposure : '2 Hours Prior to Bedtime')
     }
 
     const color = proto.colorBadge || getProtocolColorBadge(proto.protocolName, proto.colorHex)
@@ -463,8 +468,14 @@ export function resolveRecommendedDose(
       }
     }
 
+    const effectivePresetDoseText = (primaryProto.doseText && primaryProto.doseText.trim().length > 0)
+      ? primaryProto.doseText
+      : (modality.dose_or_exposure && modality.dose_or_exposure.trim().length > 0)
+        ? modality.dose_or_exposure
+        : defaultText
+
     return {
-      recommendedDoseText: modality.dose_or_exposure || primaryProto.doseText || defaultText,
+      recommendedDoseText: effectivePresetDoseText,
       recommendedValue: primaryProto.doseAmount,
       unit: primaryProto.doseUnit || unit,
       source: 'protocol_preset',

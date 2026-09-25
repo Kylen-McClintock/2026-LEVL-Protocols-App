@@ -602,7 +602,7 @@ export interface PeptideDoseLog {
 export interface PeptideModalityMetadata {
   is_peptide: boolean
   peptide_sequence_or_type?: string // e.g. '15-amino acid pentadecapeptide'
-  delivery_route: 'subcutaneous' | 'intramuscular' | 'nasal' | 'oral' | 'transdermal'
+  delivery_route: 'subcutaneous' | 'intramuscular' | 'nasal' | 'oral' | 'transdermal' | 'topical'
   default_vial_config?: PeptideVialConfig
   default_cycle_config?: PeptideCycleConfig
   target_receptors?: string[] // e.g. ['GHS-R1a', 'CD34', 'Actin', 'NO System']

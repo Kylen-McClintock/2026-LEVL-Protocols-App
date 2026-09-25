@@ -6,7 +6,8 @@ import { format, parseISO } from 'date-fns'
 import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
 import { groupTasksByTimeBlock, groupTasksByProtocol } from '@/lib/data/resolveOptimalTiming'
-import { getModalityTheme } from '@/lib/utils/modalityColors'
+import { getModalityTheme, getModalityLabelColor } from '@/lib/utils/modalityColors'
+import { useTheme } from '@/lib/utils/useTheme'
 import ProtocolAvatar from '../ui/ProtocolAvatar'
 
 interface SevenDayWeekViewProps {
@@ -66,6 +67,8 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
   onMoveToBench,
   onEliminateEntirely
 }) => {
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
   const [expandedTask, setExpandedTask] = useState<DailyProtocolTask | null>(null)
 
   const isStacked = layoutOrientation === 'stack'
@@ -111,29 +114,37 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
             return (
               <div
                 key={dateStr}
-                className={`rounded-lg border p-1 flex flex-col ${
+                className={`rounded-xl border p-1 flex flex-col ${
                   isStacked ? 'space-y-2' : 'space-y-1 min-h-[380px]'
                 } ${
                   isSelected
-                    ? 'bg-slate-950/95 border-teal-500/90 ring-1 ring-teal-500/50 shadow-md'
-                    : 'bg-slate-950/60 border-slate-800/80'
+                    ? (isLight ? 'bg-teal-50/70 border-teal-500/80 ring-1 ring-teal-500/50 shadow-md' : 'bg-slate-950/95 border-teal-500/90 ring-1 ring-teal-500/50 shadow-md')
+                    : (isLight ? 'bg-white/95 border-slate-200 shadow-2xs' : 'bg-slate-950/60 border-slate-800/80')
                 }`}
               >
                 {/* Day Header Badge (Clickable to open Today view for this day) */}
                 <div 
                   onClick={() => onSelectDate && onSelectDate(dateStr)}
                   title={`Click to open Today view for ${dayName}, ${format(dateObj, 'MMM d')}`}
-                  className={`p-1.5 rounded-lg border cursor-pointer group transition-all active:scale-98 shadow-sm ${
+                  className={`p-2 rounded-lg border cursor-pointer group transition-all active:scale-98 shadow-sm ${
                     isSelected 
-                      ? 'bg-teal-950/80 border-teal-500/80 ring-1 ring-teal-500/40 shadow-md' 
-                      : 'bg-white/5 hover:bg-teal-500/15 border-white/10 hover:border-teal-400/60'
+                      ? (isLight ? 'bg-teal-100/80 border-teal-500 ring-1 ring-teal-500/40 shadow-md' : 'bg-teal-950/80 border-teal-500/80 ring-1 ring-teal-500/40 shadow-md') 
+                      : (isLight ? 'bg-slate-50 hover:bg-teal-50/80 border-slate-200/90 hover:border-teal-400/80 shadow-2xs' : 'bg-white/5 hover:bg-teal-500/15 border-white/10 hover:border-teal-400/60')
                   } ${isStacked ? 'flex items-center justify-between px-2.5' : 'text-center flex flex-col items-center justify-center gap-0.5'}`}
                 >
                   <div className={isStacked ? 'flex items-center gap-2' : 'w-full flex items-center justify-center gap-1.5'}>
-                    <span className={`text-[10px] font-extrabold uppercase tracking-wider transition-colors ${isSelected ? 'text-teal-300' : 'text-slate-400 group-hover:text-teal-200'}`}>
+                    <span className={`text-[10px] font-extrabold uppercase tracking-wider transition-colors ${
+                      isSelected 
+                        ? (isLight ? 'text-teal-800' : 'text-teal-300') 
+                        : (isLight ? 'text-slate-600 group-hover:text-teal-700' : 'text-slate-400 group-hover:text-teal-200')
+                    }`}>
                       {isStacked ? dayName : dayShortName}
                     </span>
-                    <span className={`text-xs sm:text-sm font-black leading-none transition-colors ${isSelected ? 'text-white' : 'text-slate-200 group-hover:text-white'}`}>
+                    <span className={`text-xs sm:text-sm font-black leading-none transition-colors ${
+                      isSelected 
+                        ? (isLight ? 'text-teal-950' : 'text-white') 
+                        : (isLight ? 'text-slate-900 group-hover:text-teal-900' : 'text-slate-200 group-hover:text-white')
+                    }`}>
                       {dayNum}
                     </span>
                     
@@ -141,21 +152,16 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
                     {isPastDay && dedupedTasks.length > 0 && (
                       <span className={`ml-1 text-[8px] font-mono font-bold px-1 rounded ${
                         adherencePct >= 80 
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60' 
-                          : 'bg-slate-900 text-slate-400 border border-slate-700'
+                          ? (isLight ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-emerald-950 text-emerald-300 border border-emerald-700/60') 
+                          : (isLight ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-slate-900 text-slate-400 border border-slate-700')
                       }`}>
                         {adherencePct}%
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1 text-[9px] font-bold text-teal-400/80 group-hover:text-teal-200">
-                    <span>Open Day</span>
-                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
-                  </div>
-
                   {isStacked && (
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className={`text-[10px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                       {dedupedTasks.length} modalities
                     </span>
                   )}
@@ -172,7 +178,7 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
                     protocolBlocks.map((pBlock) => (
                       <div key={pBlock.protocolName} className="space-y-0.5">
                         {/* Protocol Section Header Break */}
-                        <div className="flex items-center gap-1.5 px-1 py-0.5 border-b border-white/5">
+                        <div className={`flex items-center gap-1.5 px-1 py-0.5 border-b ${isLight ? 'border-slate-200' : 'border-white/5'}`}>
                           <ProtocolAvatar
                             protocolName={pBlock.protocolName}
                             groupTasksOrSteps={pBlock.tasks}
@@ -180,7 +186,7 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
                             showHalo={false}
                             roundedClass="rounded-[4px]"
                           />
-                          <span className="text-[8px] sm:text-[8.5px] font-black uppercase tracking-wider text-slate-200 truncate">
+                          <span className={`text-[8px] sm:text-[8.5px] font-black uppercase tracking-wider line-clamp-3 leading-snug break-words flex-1 min-w-0 ${isLight ? 'text-slate-900' : 'text-slate-200'}`}>
                             {pBlock.protocolName}
                           </span>
                         </div>
@@ -196,9 +202,9 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
                     timeBlocks.map((tBlock) => (
                       <div key={tBlock.block.id} className="space-y-0.5">
                         {/* Time Block Section Header Break */}
-                        <div className="flex items-center gap-1 px-1 py-0.5 border-b border-slate-800/80">
+                        <div className={`flex items-center gap-1 px-1 py-0.5 border-b ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
                           <span className="text-[9px] shrink-0">{tBlock.block.icon}</span>
-                          <span className="text-[8px] sm:text-[8.5px] font-black uppercase tracking-wider text-slate-300 truncate">
+                          <span className={`text-[8px] sm:text-[8.5px] font-black uppercase tracking-wider truncate ${isLight ? 'text-slate-800' : 'text-slate-300'}`}>
                             {isStacked ? tBlock.block.label : tBlock.block.id.toUpperCase()}
                           </span>
                         </div>
@@ -226,42 +232,46 @@ export const SevenDayWeekView: React.FC<SevenDayWeekViewProps> = ({
     const doseStr = t.execution_details?.custom_dose || mod?.dose_or_exposure || ''
     const isExpanded = expandedTask?.id === t.id
     const isCompleted = t.status === 'completed'
+    const labelColor = getModalityLabelColor(theme, isLight)
 
     return (
       <div
         key={t.id}
         onClick={() => setExpandedTask(isExpanded ? null : t)}
-        className={`pl-1.5 pr-1 py-1 rounded-r-[4px] border-l-[3px] text-left flex flex-col justify-center transition-all cursor-pointer group shadow-2xs w-full ${
+        className={`pl-2 pr-1.5 py-1.5 rounded-r-[6px] border-l-[3.5px] text-left flex flex-col justify-center transition-all cursor-pointer group shadow-2xs w-full ${
           isExpanded ? 'ring-2 ring-teal-400 shadow-teal-500/20' : ''
-        } ${isCompleted ? 'opacity-70' : 'opacity-100 hover:opacity-100'}`}
+        } ${isCompleted ? 'opacity-75' : 'opacity-100 hover:opacity-100'}`}
         style={{
           borderLeftColor: theme.borderHex,
-          backgroundColor: theme.bgTint
+          backgroundColor: isLight ? `${theme.borderHex}18` : theme.bgTint
         }}
       >
-        <div className="flex items-center justify-between gap-0.5">
+        <div className="flex items-center justify-between gap-0.5 mb-0.5">
           <span 
-            className="text-[7.5px] font-black uppercase tracking-wider truncate"
-            style={{ color: theme.colorHex }}
+            className="text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider truncate"
+            style={{ color: labelColor }}
           >
             {theme.label}
           </span>
           {isCompleted && (
-            <span className="text-[7.5px] font-mono font-bold text-emerald-400 shrink-0">
+            <span className={`text-[8px] font-mono font-bold shrink-0 ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
               ✓
             </span>
           )}
         </div>
 
         <div 
-          className="text-[9px] sm:text-[9.5px] font-black leading-tight truncate group-hover:brightness-125 transition-all"
-          style={{ color: theme.textHex }}
+          className={`text-[9.5px] sm:text-[10px] font-black leading-snug line-clamp-3 break-words group-hover:brightness-125 transition-all ${
+            isLight ? 'text-slate-950 font-bold' : 'text-white'
+          }`}
         >
           {modName}
         </div>
 
         {doseStr && (
-          <div className="text-[7.5px] sm:text-[8px] text-slate-300/80 font-mono truncate leading-tight">
+          <div className={`text-[8px] sm:text-[8.5px] font-mono leading-tight mt-0.5 line-clamp-2 break-words ${
+            isLight ? 'text-slate-800 font-semibold' : 'text-slate-200/90 font-medium'
+          }`}>
             {doseStr}
           </div>
         )}

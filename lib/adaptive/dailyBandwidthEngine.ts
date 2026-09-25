@@ -288,7 +288,7 @@ export function evaluateDailyBandwidth({
       description: 'Guided parasympathetic decompression that replenishes striatal dopamine reserves without disrupting tonight\'s sleep.',
       scientificRationale: 'Huberman Lab clinical protocols confirm 20 mins of NSDR accelerates physical recovery and restores dopamine signaling.',
       defaultChecked: true,
-      swapModalityId: 'yoga_nidra_nsdr',
+      swapModalityId: 'nsdr_yoga_nidra',
       swapModalityName: 'Non-Sleep Deep Rest (NSDR)',
       swapDoseText: '20 minutes guided audio at 1:00 PM – 2:30 PM'
     })
@@ -311,8 +311,8 @@ export function evaluateDailyBandwidth({
     }
   } else if (suggestedMode === 'peak_surge') {
     // Peak Surge Expansions
-    const hasVo2 = todayTasks.some(t => t.modality_id === 'norwegian_4x4_vo2_max' || t.loose_modality?.name?.toLowerCase().includes('4x4'))
-    const hasSauna = todayTasks.some(t => t.modality_id === 'finnish_sauna_extended' || t.loose_modality?.name?.toLowerCase().includes('sauna'))
+    const hasVo2 = todayTasks.some(t => t.modality_id === 'vo2_max_4x4_hiit' || t.modality_id === 'vo2_max_hiit_training' || t.loose_modality?.name?.toLowerCase().includes('4x4'))
+    const hasSauna = todayTasks.some(t => t.modality_id === 'sauna_exposure' || t.modality_id === 'sauna_hyperthermic_conditioning' || t.loose_modality?.name?.toLowerCase().includes('sauna'))
 
     adjustments.push({
       id: 'add_vo2max_surge',
@@ -327,7 +327,7 @@ export function evaluateDailyBandwidth({
       description: '4 sets of 4 minutes at 90%–95% max HR with 3-minute active recoveries. Best performed when readiness is >80%.',
       scientificRationale: 'Helgerud et al. (2007 / PMID: 17414804) proved 4x4 intervals produce double the VO2 max expansion of standard Zone 2.',
       defaultChecked: true,
-      swapModalityId: 'norwegian_4x4_vo2_max',
+      swapModalityId: 'vo2_max_4x4_hiit',
       swapModalityName: 'Norwegian 4x4 VO2 Max Intervals',
       swapDoseText: '4 x 4 mins at 90–95% HRmax (28 mins total)'
     })
@@ -345,7 +345,7 @@ export function evaluateDailyBandwidth({
       description: 'Capitalize on peak parasympathetic stability with a prolonged hyperthermic conditioning exposure.',
       scientificRationale: 'Laukkanen et al. (2015 / PMID: 25705824) showed 20+ minute sauna exposures produce a 50% risk reduction in fatal cardiovascular events.',
       defaultChecked: true,
-      swapModalityId: 'finnish_sauna_extended',
+      swapModalityId: 'sauna_exposure',
       swapModalityName: 'Extended Finnish Sauna (25 mins)',
       swapDoseText: '25 minutes continuous at 174°F+ (79°C+)'
     })

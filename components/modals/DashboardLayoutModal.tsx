@@ -25,7 +25,8 @@ import {
   Type,
   Eye,
   Check,
-  Bookmark
+  Bookmark,
+  Filter
 } from 'lucide-react'
 import { useTheme } from '@/lib/utils/useTheme'
 import {
@@ -964,6 +965,47 @@ export default function DashboardLayoutModal({
                   <p className="text-[10px] text-slate-400 truncate">Morning &amp; daytime readiness log</p>
                 </div>
               </button>
+
+              {/* Category & Outcome Filters */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  toggleWidget('categoryFilters')
+                }}
+                className={`p-2.5 rounded-2xl border text-left flex items-center gap-3 transition-all cursor-pointer active:scale-98 ${
+                  widgets.categoryFilters
+                    ? 'bg-cyan-950/70 border-cyan-500/70 text-cyan-100 shadow-[0_0_14px_rgba(6,182,212,0.35)]'
+                    : isLight
+                    ? 'bg-slate-100/90 border-slate-200 text-slate-500'
+                    : 'bg-slate-900/50 border-slate-800/80 text-slate-400 opacity-60 hover:opacity-80'
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                    widgets.categoryFilters
+                      ? 'bg-cyan-500/30 text-cyan-300 shadow-inner'
+                      : 'bg-slate-800/60 text-slate-500'
+                  }`}
+                >
+                  <Filter size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold flex items-center justify-between">
+                    <span>Category Filters</span>
+                    <span
+                      className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full font-bold ${
+                        widgets.categoryFilters
+                          ? 'bg-cyan-500/30 text-cyan-200 border border-cyan-400/40'
+                          : 'bg-slate-800 text-slate-500'
+                      }`}
+                    >
+                      {widgets.categoryFilters ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 truncate">Top category &amp; outcome filter bar</p>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -1009,31 +1051,35 @@ export default function DashboardLayoutModal({
 
             {/* Collapsible Content */}
             {isFocusSectionOpen && (
-              <div className="px-3.5 pb-3.5 pt-1 space-y-2 border-t border-slate-800/50 animate-in fade-in duration-150">
-                {/* Rule: Hide completed tasks */}
-                <label className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 cursor-pointer">
+              <div className={`px-3.5 pb-3.5 pt-1 space-y-2 border-t ${isLight ? 'border-slate-200' : 'border-slate-800/50'} animate-in fade-in duration-150`}>
+                {/* Rule: Keep Completed Tasks */}
+                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
+                }`}>
                   <div className="pr-2">
-                    <div className="text-xs font-bold text-slate-200">Hide Completed Tasks</div>
-                    <div className="text-[10px] text-slate-400">
-                      Keep only pending, actionable modalities in view
+                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Completed Tasks Visible</div>
+                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Show finished modalities alongside pending tasks
                     </div>
                   </div>
                   <input
                     type="checkbox"
-                    checked={rules.hideCompleted}
+                    checked={rules.keepCompleted}
                     onChange={() => {
                       triggerHaptic('selection')
-                      toggleRule('hideCompleted')
+                      toggleRule('keepCompleted')
                     }}
-                    className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500"
+                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
                   />
                 </label>
 
                 {/* Rule: Keep Quick-Log Hotkeys */}
-                <label className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 cursor-pointer">
+                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
+                }`}>
                   <div className="pr-2">
-                    <div className="text-xs font-bold text-slate-200">Keep Quick Hotkeys Visible</div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Quick Hotkeys Visible</div>
+                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                       Allow fast water &amp; supplement logging during focus
                     </div>
                   </div>
@@ -1044,15 +1090,17 @@ export default function DashboardLayoutModal({
                       triggerHaptic('selection')
                       toggleRule('keepHotkeys')
                     }}
-                    className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500"
+                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
                   />
                 </label>
 
                 {/* Rule: Keep AI Protocol Coach */}
-                <label className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 cursor-pointer">
+                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
+                }`}>
                   <div className="pr-2">
-                    <div className="text-xs font-bold text-slate-200">Keep AI Protocol Coach Visible</div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep AI Protocol Coach Visible</div>
+                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                       Keep coach prompt input accessible for quick questions
                     </div>
                   </div>
@@ -1063,15 +1111,17 @@ export default function DashboardLayoutModal({
                       triggerHaptic('selection')
                       toggleRule('keepAICoach')
                     }}
-                    className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500"
+                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
                   />
                 </label>
 
                 {/* Rule: Keep Sleep Triage */}
-                <label className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 cursor-pointer">
+                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
+                }`}>
                   <div className="pr-2">
-                    <div className="text-xs font-bold text-slate-200">Keep Sleep Recovery Visible</div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Sleep Recovery Visible</div>
+                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                       Display sleep triage guidance even in focus mode
                     </div>
                   </div>
@@ -1082,15 +1132,17 @@ export default function DashboardLayoutModal({
                       triggerHaptic('selection')
                       toggleRule('keepSleepTriage')
                     }}
-                    className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500"
+                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
                   />
                 </label>
 
                 {/* Rule: Keep Longevity Tip */}
-                <label className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 cursor-pointer">
+                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
+                }`}>
                   <div className="pr-2">
-                    <div className="text-xs font-bold text-slate-200">Keep Longevity Tip Visible</div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Longevity Tip Visible</div>
+                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                       Show daily spotlight advice during focus mode
                     </div>
                   </div>
@@ -1101,16 +1153,60 @@ export default function DashboardLayoutModal({
                       triggerHaptic('selection')
                       toggleRule('keepTip')
                     }}
-                    className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500"
+                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
+                  />
+                </label>
+
+                {/* Rule: Keep Category Filters */}
+                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
+                }`}>
+                  <div className="pr-2">
+                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Category Filters Visible</div>
+                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Maintain top category &amp; outcome filter bar in focus mode
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={rules.keepCategoryFilters}
+                    onChange={() => {
+                      triggerHaptic('selection')
+                      toggleRule('keepCategoryFilters')
+                    }}
+                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
+                  />
+                </label>
+
+                {/* Rule: Keep Wellbeing Check-in */}
+                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
+                }`}>
+                  <div className="pr-2">
+                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Wellbeing Check-in Visible</div>
+                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Maintain morning &amp; readiness check-in during focus mode
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={rules.keepWellbeing}
+                    onChange={() => {
+                      triggerHaptic('selection')
+                      toggleRule('keepWellbeing')
+                    }}
+                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
                   />
                 </label>
 
                 {/* Rule: Keep Infradian Phasing Visible (Only for Females < 52) */}
                 {isFemaleEligible && (
-                  <label className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 cursor-pointer">
+                  <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
+                    isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
+                  }`}>
                     <div className="pr-2">
-                      <div className="text-xs font-bold text-slate-200">Keep Infradian Phasing Visible</div>
-                      <div className="text-[10px] text-slate-400">
+                      <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Infradian Phasing Visible</div>
+                      <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                         Maintain hormonal cycle protocol phasing during focus
                       </div>
                     </div>
@@ -1121,7 +1217,7 @@ export default function DashboardLayoutModal({
                         triggerHaptic('selection')
                         toggleRule('keepInfradian')
                       }}
-                      className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500"
+                      className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
                     />
                   </label>
                 )}

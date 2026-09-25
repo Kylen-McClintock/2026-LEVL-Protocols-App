@@ -408,6 +408,10 @@ export default function ModalityBlockTile({
   }, [task, modality, benchItem])
 
   const [isDragging, setIsDragging] = useState(false)
+  const [swipeOffset, setSwipeOffset] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+  const swipeStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
+  const isHorizontalSwipeRef = useRef<boolean | null>(null)
 
   let dragCtx: any = null
   try {
@@ -440,16 +444,180 @@ export default function ModalityBlockTile({
 
   const isCurrentDragged = dragCtx?.activeDrag?.id === task.id
 
+  // Touch Handlers with horizontal swipe detection and underlayer translation
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isEditMode || isResizing) return
+    const touch = e.touches[0]
+    if (!touch) return
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
+    isHorizontalSwipeRef.current = null
+    dragHandlers?.onTouchStart(e)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isEditMode || isResizing || !swipeStartRef.current) {
+      dragHandlers?.onTouchMove(e)
+      return
+    }
+
+    if (dragCtx?.activeDrag) {
+      dragHandlers?.onTouchMove(e)
+      return
+    }
+
+    const touch = e.touches[0]
+    if (!touch) return
+
+    const diffX = touch.clientX - swipeStartRef.current.x
+    const diffY = touch.clientY - swipeStartRef.current.y
+    const absX = Math.abs(diffX)
+    const absY = Math.abs(diffY)
+
+    if (isHorizontalSwipeRef.current === null) {
+      if (absY > 8 && absY > absX) {
+        isHorizontalSwipeRef.current = false
+      } else if (absX > 10 && absX > absY * 1.2) {
+        isHorizontalSwipeRef.current = true
+        setIsSwiping(true)
+      }
+    }
+
+    if (isHorizontalSwipeRef.current === true) {
+      if (e.cancelable) {
+        e.preventDefault()
+      }
+      const maxOffset = 130
+      let offset = diffX
+      if (Math.abs(offset) > 80) {
+        const excess = Math.abs(offset) - 80
+        offset = Math.sign(offset) * (80 + excess * 0.35)
+      }
+      offset = Math.max(-maxOffset, Math.min(maxOffset, offset))
+      setSwipeOffset(offset)
+    }
+
+    dragHandlers?.onTouchMove(e)
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (isHorizontalSwipeRef.current === true) {
+      const SWIPE_THRESHOLD = 50
+      if (swipeOffset >= SWIPE_THRESHOLD) {
+        triggerHaptic('success')
+        onSwipeRight()
+      } else if (swipeOffset <= -SWIPE_THRESHOLD) {
+        triggerHaptic('selection')
+        onSwipeLeft()
+      }
+      setSwipeOffset(0)
+      setIsSwiping(false)
+      swipeStartRef.current = null
+      isHorizontalSwipeRef.current = null
+      return
+    }
+
+    setSwipeOffset(0)
+    setIsSwiping(false)
+    swipeStartRef.current = null
+    isHorizontalSwipeRef.current = null
+    dragHandlers?.onTouchEnd(e)
+  }
+
+  const handleTouchCancel = (e: React.TouchEvent) => {
+    setSwipeOffset(0)
+    setIsSwiping(false)
+    swipeStartRef.current = null
+    isHorizontalSwipeRef.current = null
+    dragHandlers?.onTouchCancel?.(e)
+  }
+
+  // Desktop Mouse Handlers (Click for details, horizontal drag to swipe, vertical/diagonal to drag-reorder)
+  const handleTileMouseDown = (e: React.MouseEvent) => {
+    if (isEditMode || isResizing || e.button !== 0) return
+    const target = e.target as HTMLElement
+    if (target.closest('[data-resize-handle]')) return
+
+    const startX = e.clientX
+    const startY = e.clientY
+    const startTime = Date.now()
+    let mode: 'idle' | 'swipe' | 'drag' = 'idle'
+    let currentOffset = 0
+
+    const onMouseMove = (moveEvt: MouseEvent) => {
+      const diffX = moveEvt.clientX - startX
+      const diffY = moveEvt.clientY - startY
+      const absX = Math.abs(diffX)
+      const absY = Math.abs(diffY)
+
+      if (mode === 'idle') {
+        if (absX > 14 && absX > absY * 1.3) {
+          mode = 'swipe'
+          setIsSwiping(true)
+        } else if (Math.hypot(diffX, diffY) > 16) {
+          mode = 'drag'
+          window.removeEventListener('mousemove', onMouseMove)
+          window.removeEventListener('mouseup', onMouseUp)
+          if (dragCtx) {
+            dragCtx.startDrag(dragItem, moveEvt.clientX, moveEvt.clientY)
+          }
+          return
+        }
+      }
+
+      if (mode === 'swipe') {
+        const maxOffset = 130
+        let offset = diffX
+        if (Math.abs(offset) > 80) {
+          const excess = Math.abs(offset) - 80
+          offset = Math.sign(offset) * (80 + excess * 0.35)
+        }
+        offset = Math.max(-maxOffset, Math.min(maxOffset, offset))
+        currentOffset = offset
+        setSwipeOffset(offset)
+      }
+    }
+
+    const onMouseUp = (upEvt: MouseEvent) => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+
+      if (mode === 'swipe') {
+        const SWIPE_THRESHOLD = 50
+        if (currentOffset >= SWIPE_THRESHOLD) {
+          triggerHaptic('success')
+          onSwipeRight()
+        } else if (currentOffset <= -SWIPE_THRESHOLD) {
+          triggerHaptic('selection')
+          onSwipeLeft()
+        }
+        setSwipeOffset(0)
+        setIsSwiping(false)
+        return
+      }
+
+      if (mode === 'idle') {
+        if (Date.now() - startTime < 400 && Math.hypot(upEvt.clientX - startX, upEvt.clientY - startY) < 14) {
+          if (!isEditMode && !isResizing) {
+            onOpenDetails()
+          }
+        }
+      }
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }
+
   return (
     <div
       ref={cardRef}
       data-task-id={task.id}
       draggable={false}
-      onMouseDown={dragHandlers?.onMouseDown}
-      onTouchStart={dragHandlers?.onTouchStart}
-      onTouchMove={dragHandlers?.onTouchMove}
-      onTouchEnd={dragHandlers?.onTouchEnd}
-      onTouchCancel={dragHandlers?.onTouchCancel}
+      onMouseDown={handleTileMouseDown}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
       style={{ touchAction: isCurrentDragged ? 'none' : 'pan-y' }}
       className={`relative select-none ${colSpanClass} ${heightClass} transition-all duration-300 ${
         isCurrentDragged ? 'opacity-30 scale-95 pointer-events-none' : ''
@@ -459,6 +627,33 @@ export default function ModalityBlockTile({
         isResizing ? 'ring-2 ring-purple-400 shadow-2xl shadow-purple-500/50 scale-[1.01]' : ''
       }`}
     >
+      {/* Background Underlayers revealed during swipe */}
+      <div className="absolute inset-0 flex items-center justify-between pointer-events-none rounded-2xl sm:rounded-3xl overflow-hidden z-0">
+        {/* Complete Underlayer (Right Swipe) */}
+        <div
+          className="h-full bg-emerald-600/90 flex items-center px-4 gap-2 text-white font-black text-xs sm:text-sm transition-opacity shadow-inner"
+          style={{
+            opacity: swipeOffset > 8 ? Math.min(1, swipeOffset / 35) : 0,
+            width: `${Math.max(0, swipeOffset)}px`
+          }}
+        >
+          <Check size={20} strokeWidth={3} className="shrink-0 text-white" />
+          <span className="truncate font-bold tracking-tight">Complete</span>
+        </div>
+
+        {/* Snooze / Skip Underlayer (Left Swipe) */}
+        <div
+          className="h-full bg-amber-600/90 flex items-center justify-end px-4 gap-2 text-white font-black text-xs sm:text-sm transition-opacity ml-auto shadow-inner"
+          style={{
+            opacity: swipeOffset < -8 ? Math.min(1, Math.abs(swipeOffset) / 35) : 0,
+            width: `${Math.max(0, -swipeOffset)}px`
+          }}
+        >
+          <span className="truncate font-bold tracking-tight">Snooze / Skip</span>
+          <Clock size={18} className="shrink-0 text-white" />
+        </div>
+      </div>
+
       {/* Floating HUD Preview while edge resizing */}
       {isResizing && (
         <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1 rounded-full bg-slate-950/95 border border-purple-400/90 shadow-2xl backdrop-blur-md flex items-center gap-1.5 pointer-events-none animate-in fade-in zoom-in-95 duration-150 whitespace-nowrap">
@@ -510,12 +705,17 @@ export default function ModalityBlockTile({
             onResize({ ...sizing, width: nextW })
             return
           }
+          if (Math.abs(swipeOffset) > 5) return
           onOpenDetails()
         }}
-        style={styles.cardStyle}
+        style={{
+          ...styles.cardStyle,
+          transform: `translateX(${swipeOffset}px)`,
+          transition: isSwiping ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
+        }}
         className={`w-full h-full rounded-2xl sm:rounded-3xl ${
           isOneWideSquare ? 'p-3 sm:p-4 flex flex-row items-center justify-between' : 'p-0 flex flex-col justify-between'
-        } cursor-pointer relative overflow-hidden group transition-all duration-500 ${
+        } cursor-pointer relative overflow-hidden group transition-colors duration-500 z-10 ${
           styles.cardClassName
         } ${isEditMode ? 'ring-2 ring-purple-500/70 animate-pulse' : ''} ${
           isPartnerHighlighted ? 'ring-2 ring-emerald-400 shadow-xl shadow-emerald-500/25 scale-[1.02]' : ''

@@ -13,6 +13,7 @@ export interface HomeWidgetsConfig {
   infradian: boolean
   asNeeded: boolean
   wellbeing: boolean
+  categoryFilters: boolean
 }
 
 export const DEFAULT_HOME_WIDGETS: HomeWidgetsConfig = {
@@ -22,27 +23,30 @@ export const DEFAULT_HOME_WIDGETS: HomeWidgetsConfig = {
   sleepTriage: true,
   infradian: false,
   asNeeded: true,
-  wellbeing: true
+  wellbeing: true,
+  categoryFilters: true
 }
 
 export interface FocusRulesConfig {
-  hideCompleted: boolean
+  keepCompleted: boolean
   keepHotkeys: boolean
   keepAICoach: boolean
   keepSleepTriage: boolean
   keepTip: boolean
   keepInfradian: boolean
   keepWellbeing: boolean
+  keepCategoryFilters: boolean
 }
 
 export const DEFAULT_FOCUS_RULES: FocusRulesConfig = {
-  hideCompleted: true,
+  keepCompleted: false,
   keepHotkeys: false,
   keepAICoach: false,
   keepSleepTriage: false,
   keepTip: false,
   keepInfradian: false,
-  keepWellbeing: false
+  keepWellbeing: false,
+  keepCategoryFilters: false
 }
 
 export interface CardBadgesConfig {
@@ -101,6 +105,10 @@ export function getStoredFocusRules(): FocusRulesConfig {
     const raw = localStorage.getItem(STORAGE_KEY_FOCUS_RULES)
     if (raw) {
       const parsed = JSON.parse(raw)
+      // Migration from legacy hideCompleted to keepCompleted
+      if (parsed.keepCompleted === undefined && parsed.hideCompleted !== undefined) {
+        parsed.keepCompleted = !parsed.hideCompleted
+      }
       return { ...DEFAULT_FOCUS_RULES, ...parsed }
     }
   } catch (e) {}
@@ -250,7 +258,11 @@ export function useFocusRules(profile?: UserProfile | null) {
       if (cloudLayout?.focus_rules) {
         const local = localStorage.getItem(STORAGE_KEY_FOCUS_RULES)
         if (!local) {
-          const merged = { ...DEFAULT_FOCUS_RULES, ...cloudLayout.focus_rules }
+          const cloudRules = { ...cloudLayout.focus_rules }
+          if (cloudRules.keepCompleted === undefined && cloudRules.hideCompleted !== undefined) {
+            cloudRules.keepCompleted = !cloudRules.hideCompleted
+          }
+          const merged = { ...DEFAULT_FOCUS_RULES, ...cloudRules }
           setRules(merged)
           localStorage.setItem(STORAGE_KEY_FOCUS_RULES, JSON.stringify(merged))
         }

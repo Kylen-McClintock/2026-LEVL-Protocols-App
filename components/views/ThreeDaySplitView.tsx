@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react'
 import { DailyProtocolTask, UserProfile } from '@/lib/types'
-import { Calendar, ChevronRight } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { LayoutOrientation } from '../ui/ViewSelectorHeader'
 import { ExpandedModalityDetailBanner } from './ExpandedModalityDetailBanner'
 import { groupTasksByTimeBlock, groupTasksByProtocol } from '@/lib/data/resolveOptimalTiming'
-import { getModalityTheme } from '@/lib/utils/modalityColors'
+import { getModalityTheme, getModalityLabelColor } from '@/lib/utils/modalityColors'
+import { useTheme } from '@/lib/utils/useTheme'
 import ProtocolAvatar from '../ui/ProtocolAvatar'
 
 interface ThreeDaySplitViewProps {
@@ -67,6 +68,8 @@ export const ThreeDaySplitView: React.FC<ThreeDaySplitViewProps> = ({
   onMoveToBench,
   onEliminateEntirely
 }) => {
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
   const [expandedTask, setExpandedTask] = useState<DailyProtocolTask | null>(null)
 
   const isStacked = layoutOrientation === 'stack'
@@ -115,51 +118,45 @@ export const ThreeDaySplitView: React.FC<ThreeDaySplitViewProps> = ({
                 key={dateStr}
                 className={`rounded-xl border p-2.5 transition-all flex flex-col space-y-2.5 ${
                   isSelectedDate
-                    ? 'bg-slate-950/95 border-teal-500/90 shadow-[0_0_15px_rgba(20,184,166,0.15)] ring-1 ring-teal-500/50'
-                    : 'bg-slate-950/60 border-slate-800/90'
+                    ? (isLight ? 'bg-teal-50/80 border-teal-500/80 shadow-md ring-1 ring-teal-500/50' : 'bg-slate-950/95 border-teal-500/90 shadow-[0_0_15px_rgba(20,184,166,0.15)] ring-1 ring-teal-500/50')
+                    : (isLight ? 'bg-white/95 border-slate-200 shadow-2xs' : 'bg-slate-950/60 border-slate-800/90')
                 }`}
               >
                 {/* Column / Row Date Header (Clickable to switch historical debrief) */}
                 <div 
                   onClick={() => onSelectDate && onSelectDate(dateStr)}
-                  title={`Click to inspect historical debrief for ${dayName}, ${dayDate}`}
-                  className="flex items-center justify-between border-b border-slate-800/80 pb-2 cursor-pointer group hover:border-slate-600 transition-colors"
+                  title={`Click to open Today view for ${dayName}, ${dayDate}`}
+                  className={`flex items-center justify-between border-b pb-2 cursor-pointer group transition-colors ${
+                    isLight ? 'border-slate-200 hover:border-teal-400' : 'border-slate-800/80 hover:border-slate-600'
+                  }`}
                 >
                   <div className="flex items-center gap-2">
-                    <Calendar className={`w-4 h-4 transition-transform group-hover:scale-110 ${isSelectedDate ? 'text-teal-400' : 'text-slate-400 group-hover:text-white'}`} />
+                    <Calendar className={`w-4 h-4 transition-transform group-hover:scale-110 ${isSelectedDate ? (isLight ? 'text-teal-600' : 'text-teal-400') : (isLight ? 'text-slate-500 group-hover:text-teal-700' : 'text-slate-400 group-hover:text-white')}`} />
                     <div>
-                      <h3 className={`text-sm font-extrabold tracking-tight leading-none transition-colors ${isSelectedDate ? 'text-white' : 'text-slate-200 group-hover:text-teal-300'}`}>
+                      <h3 className={`text-sm font-extrabold tracking-tight leading-none transition-colors ${
+                        isSelectedDate 
+                          ? (isLight ? 'text-teal-900' : 'text-white') 
+                          : (isLight ? 'text-slate-900 group-hover:text-teal-700' : 'text-slate-200 group-hover:text-teal-300')
+                      }`}>
                         {dayName}
                       </h3>
-                      <span className="text-[10px] text-slate-400 font-medium group-hover:text-slate-300">{dayDate}</span>
+                      <span className={`text-[10px] font-medium ${isLight ? 'text-slate-500 group-hover:text-slate-700' : 'text-slate-400 group-hover:text-slate-300'}`}>{dayDate}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {isPastDay && dedupedTasks.length > 0 && (
                       <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
                         adherencePct >= 80 
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60' 
-                          : 'bg-slate-900 text-slate-400 border border-slate-700'
+                          ? (isLight ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-emerald-950 text-emerald-300 border border-emerald-700/60') 
+                          : (isLight ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-slate-900 text-slate-400 border border-slate-700')
                       }`}>
                         {adherencePct}% ({completedCount}/{dedupedTasks.length})
                       </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onSelectDate && onSelectDate(dateStr)
-                      }}
-                      className="px-2 py-0.5 text-[10px] font-bold text-teal-300 hover:text-white bg-teal-500/15 hover:bg-teal-500/30 border border-teal-500/30 rounded-md transition-all flex items-center gap-1 cursor-pointer active:scale-95"
-                      title={`Open Today view for ${dayName}, ${dayDate}`}
-                    >
-                      <span>Open Day</span>
-                      <ChevronRight size={11} />
-                    </button>
                     <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
                       isSelectedDate 
-                        ? 'bg-teal-950/90 text-teal-300 border border-teal-800/80' 
-                        : 'bg-slate-900 text-slate-400 border border-slate-800'
+                        ? (isLight ? 'bg-teal-100 text-teal-800 border border-teal-300' : 'bg-teal-950/90 text-teal-300 border border-teal-800/80') 
+                        : (isLight ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-slate-900 text-slate-400 border border-slate-800')
                     }`}>
                       {idx === 0 ? 'Day 1' : idx === 1 ? 'Day 2' : 'Day 3'}
                     </span>
@@ -177,7 +174,7 @@ export const ThreeDaySplitView: React.FC<ThreeDaySplitViewProps> = ({
                     protocolBlocks.map((pBlock) => (
                       <div key={pBlock.protocolName} className="space-y-1.5">
                         {/* Protocol Header Break */}
-                        <div className="flex items-center gap-2 pt-1.5 pb-1 px-1 border-b border-white/10">
+                        <div className={`flex items-center gap-2 pt-1.5 pb-1 px-1 border-b ${isLight ? 'border-slate-200/90' : 'border-white/10'}`}>
                           <ProtocolAvatar
                             protocolName={pBlock.protocolName}
                             groupTasksOrSteps={pBlock.tasks}
@@ -185,10 +182,10 @@ export const ThreeDaySplitView: React.FC<ThreeDaySplitViewProps> = ({
                             showHalo={false}
                             roundedClass="rounded-md"
                           />
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-200 truncate">
+                          <span className={`text-[10px] font-black uppercase tracking-wider line-clamp-3 leading-snug break-words flex-1 min-w-0 ${isLight ? 'text-slate-900' : 'text-slate-200'}`}>
                             {pBlock.protocolName}
                           </span>
-                          <span className="text-[9px] font-mono text-slate-400 font-bold ml-auto shrink-0">
+                          <span className={`text-[9px] font-mono font-bold ml-auto shrink-0 ${isLight ? 'text-slate-700 bg-slate-100 border border-slate-200/80 px-1.5 py-0.5 rounded' : 'text-slate-400'}`}>
                             {pBlock.tasks.length}
                           </span>
                         </div>
@@ -238,38 +235,39 @@ export const ThreeDaySplitView: React.FC<ThreeDaySplitViewProps> = ({
     const doseStr = t.execution_details?.custom_dose || mod?.dose_or_exposure || t.timing_slot || ''
     const isExpanded = expandedTask?.id === t.id
     const isCompleted = t.status === 'completed'
+    const labelColor = getModalityLabelColor(theme, isLight)
 
     return (
       <div
         key={t.id}
         onClick={() => setExpandedTask(isExpanded ? null : t)}
-        className={`p-2 rounded-lg border-l-[3.5px] transition-all cursor-pointer group space-y-1 shadow-sm w-full ${
+        className={`p-2.5 rounded-lg border-l-[3.5px] transition-all cursor-pointer group space-y-1 shadow-sm w-full ${
           isExpanded ? 'ring-2 ring-teal-400 shadow-teal-500/20' : ''
-        } ${isCompleted ? 'opacity-70' : 'opacity-100 hover:opacity-100'}`}
+        } ${isCompleted ? 'opacity-75' : 'opacity-100 hover:opacity-100'}`}
         style={{
           borderLeftColor: theme.borderHex,
-          backgroundColor: theme.bgTint
+          backgroundColor: isLight ? `${theme.borderHex}18` : theme.bgTint
         }}
       >
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-1 min-w-0">
             <span 
-              className="text-[8.5px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded font-mono shrink-0"
+              className="text-[8.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded font-mono shrink-0"
               style={{
-                color: theme.colorHex,
-                backgroundColor: `${theme.borderHex}25`
+                color: labelColor,
+                backgroundColor: isLight ? `${labelColor}18` : `${theme.borderHex}25`
               }}
             >
               {theme.label}
             </span>
             {protoName && viewMode !== 'protocol' && (
-              <span className="text-[8.5px] font-extrabold text-slate-400 truncate opacity-85">
+              <span className={`text-[8.5px] font-extrabold truncate opacity-90 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                 • {protoName}
               </span>
             )}
           </div>
           {isCompleted && (
-            <span className="text-[8.5px] font-mono font-bold text-emerald-400 shrink-0">
+            <span className={`text-[8.5px] font-mono font-bold shrink-0 ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
               ✓ Done
             </span>
           )}
@@ -277,15 +275,18 @@ export const ThreeDaySplitView: React.FC<ThreeDaySplitViewProps> = ({
 
         {/* Modality Title */}
         <div 
-          className="text-xs font-black tracking-tight leading-snug group-hover:brightness-125 transition-all truncate"
-          style={{ color: theme.textHex }}
+          className={`text-xs font-black tracking-tight leading-snug group-hover:brightness-125 transition-all line-clamp-3 break-words ${
+            isLight ? 'text-slate-950 font-bold' : 'text-white'
+          }`}
         >
           {modName}
         </div>
 
         {/* Dosage / Subtext */}
         {doseStr && (
-          <div className="text-[9.5px] text-slate-300/80 font-mono truncate">
+          <div className={`text-[9.5px] font-mono leading-tight mt-0.5 line-clamp-2 break-words ${
+            isLight ? 'text-slate-800 font-semibold' : 'text-slate-200/90 font-medium'
+          }`}>
             {doseStr}
           </div>
         )}

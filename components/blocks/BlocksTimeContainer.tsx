@@ -24,6 +24,7 @@ import ModalityBlockTile from './ModalityBlockTile'
 import ModalityStackBlockTile from './ModalityStackBlockTile'
 import BlocksNutritionTile from './BlocksNutritionTile'
 import HotkeySquareTile from './HotkeySquareTile'
+import SwipeActionInFeedCard from './SwipeActionInFeedCard'
 import { QuickHotkeyConfig, DailyQuickLogEntry } from '@/lib/types'
 import {
   BlockSizing,
@@ -60,6 +61,11 @@ interface BlocksTimeContainerProps {
   isEditMode: boolean
   date: string
   localUserId: string
+  activeSwipe?: { task: DedupedTask; type: 'complete' | 'skip_snooze' } | null
+  onCloseSwipe?: () => void
+  onInFeedComplete?: (taskId: string, outcomes?: Record<string, number>, customDose?: string) => void
+  onInFeedSkip?: (taskId: string, reason?: string) => void
+  onInFeedSnooze?: (taskId: string, snoozeSlotOrMinutes: string | number) => void
   onOpenDetails: (task: DedupedTask) => void
   onSwipeRight: (task: DedupedTask) => void
   onSwipeLeft: (task: DedupedTask) => void
@@ -89,6 +95,11 @@ export default function BlocksTimeContainer({
   isEditMode,
   date,
   localUserId,
+  activeSwipe,
+  onCloseSwipe,
+  onInFeedComplete,
+  onInFeedSkip,
+  onInFeedSnooze,
   onOpenDetails,
   onSwipeRight,
   onSwipeLeft,
@@ -716,6 +727,26 @@ export default function BlocksTimeContainer({
           const mId = mod?.id || task.modality_id || task.protocol_step?.modality_id || ''
           const bench = benchItems.find((b) => b.modality_id === mId)
           const sizing = layout.taskSizings[mId] || layout.taskSizings[task.id] || getTaskSizing(task)
+
+          const isThisTaskSwiped = activeSwipe && activeSwipe.task.id === task.id
+          if (isThisTaskSwiped) {
+            return (
+              <div key={`swipe_active_${task.id}`} className="col-span-12 animate-in fade-in zoom-in-95 duration-200">
+                <SwipeActionInFeedCard
+                  actionType={activeSwipe.type}
+                  task={activeSwipe.task}
+                  modality={mod}
+                  benchItem={bench}
+                  allOutcomes={allOutcomes}
+                  userProfile={userProfile}
+                  onClose={onCloseSwipe || (() => {})}
+                  onComplete={onInFeedComplete || (() => {})}
+                  onSkip={onInFeedSkip || (() => {})}
+                  onSnooze={onInFeedSnooze || (() => {})}
+                />
+              </div>
+            )
+          }
 
           const isDropSlotHere =
             dragCtx?.activeDrag &&

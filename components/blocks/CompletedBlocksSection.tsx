@@ -499,8 +499,8 @@ export default function CompletedBlocksSection({
                       🧬
                     </div>
                     <h4
-                      className={`text-xs sm:text-sm font-black tracking-tight uppercase ${
-                        isDaylight ? 'text-[#475569]' : 'text-white'
+                      className={`text-xs sm:text-sm font-black tracking-tight uppercase line-clamp-3 leading-snug break-words flex-1 min-w-0 ${
+                        isDaylight ? 'text-slate-900' : 'text-white'
                       }`}
                     >
                       {protocolName}

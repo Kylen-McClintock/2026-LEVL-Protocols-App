@@ -468,9 +468,9 @@ export default function ProtocolOverviewHeaderCard({
             </p>
 
             {/* Biological Synergy Highlight Box */}
-            <div className="p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-start gap-2.5">
-              <Zap size={14} className="text-indigo-400 mt-0.5 shrink-0" />
-              <p className="text-xs text-indigo-200 leading-relaxed font-sans">
+            <div className="p-3 rounded-lg bg-indigo-50/90 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 flex items-start gap-2.5 shadow-2xs transition-colors">
+              <Zap size={14} className="text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-indigo-950 dark:text-indigo-200 leading-relaxed font-bold dark:font-normal font-sans">
                 {preset.synergyText}
               </p>
             </div>

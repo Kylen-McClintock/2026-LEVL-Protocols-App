@@ -110,7 +110,11 @@ export function getSimplifiedModalityName(modality?: Modality | null, taskOrFall
   }
 
   if (!raw && modality?.id) {
-    raw = modality.id.replace(/[_-]/g, ' ')
+    raw = modality.id
+      .replace(/^custom[_-]/i, '')
+      .replace(/[_-][a-z0-9]{5}$/i, '')
+      .replace(/[_-]/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
   }
 
   if (!raw) return 'Protocol Task'

@@ -357,6 +357,43 @@ export function getModalityTheme(modalityOrTask?: any): ModalityColorTheme {
   return MODALITY_COLOR_THEMES[type]
 }
 
+/**
+ * High-contrast category label color adapted for theme mode
+ */
+export function getModalityLabelColor(theme: ModalityColorTheme, isLight: boolean): string {
+  if (!isLight) return theme.colorHex
+  const darkCategoryColors: Record<ModalityMacroType, string> = {
+    supplements: '#B45309', // Amber 700
+    peptides: '#A21CAF',    // Fuchsia 700
+    fitness: '#B91C1C',     // Red 700
+    nutrition: '#047857',   // Emerald 700
+    sleep: '#7E22CE',       // Purple 700
+    mind: '#1D4ED8',        // Blue 700
+    thermal: '#0E7490',     // Cyan 700
+    diagnostics: '#4338CA', // Indigo 700
+    other: '#0F766E'        // Teal 700
+  }
+  return darkCategoryColors[theme.type] || theme.colorHex
+}
+
+/**
+ * High-contrast modality title text color
+ * In Light mode: #0F172A (slate-900 / dark charcoal)
+ * In Dark mode: #FFFFFF (pure crisp white)
+ */
+export function getModalityTitleColor(isLight: boolean): string {
+  return isLight ? '#0F172A' : '#FFFFFF'
+}
+
+/**
+ * High-contrast dosage text color
+ * In Light mode: #334155 (slate-700)
+ * In Dark mode: #CBD5E1 (slate-300)
+ */
+export function getModalityDoseColor(isLight: boolean): string {
+  return isLight ? '#334155' : '#CBD5E1'
+}
+
 export interface DaylightCategoryStyle {
   textHex: string
   bgHex: string

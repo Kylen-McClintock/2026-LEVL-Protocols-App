@@ -51,7 +51,9 @@ import {
   getSavedInjectionSiteHistory,
   getRecommendedNextInjectionSite,
   calculateReconstitution,
-  getSavedPeptideVialConfig
+  getSavedPeptideVialConfig,
+  isInjectableSubQPeptide,
+  resolvePeptideTargetDoseMcg
 } from '@/lib/peptides/reconstitutionEngine'
 import { useTemperatureUnit } from '@/lib/utils/useTemperatureUnit'
 import { isPreLoggableOutcome, hasAnyPreLoggableOutcome, getOutcomePhaseType } from '@/lib/utils/outcomePhaseRules'
@@ -774,7 +776,16 @@ export default function ProtocolTaskCard({
   }
 
   const rawModality = task.protocol_step?.modality || task.loose_modality || initialBenchItem?.modality
-  const fallbackTitle = task.execution_details?.custom_name || task.execution_details?.modality_name || (task.protocol_step as any)?.title || (task.modality_id ? task.modality_id.replace(/[_-]/g, ' ') : '')
+  const fallbackTitle = task.execution_details?.custom_name ||
+    task.execution_details?.modality_name ||
+    (task.protocol_step as any)?.title ||
+    (task.modality_id
+      ? task.modality_id
+          .replace(/^custom[_-]/i, '')
+          .replace(/[_-][a-z0-9]{5}$/i, '')
+          .replace(/[_-]/g, ' ')
+          .replace(/\b\w/g, (c: string) => c.toUpperCase())
+      : '')
   const modality = rawModality || (fallbackTitle ? {
     id: task.modality_id || task.protocol_step?.modality_id || 'unknown',
     name: fallbackTitle,
@@ -904,24 +915,7 @@ export default function ProtocolTaskCard({
   const isSleepHygiene = archetype === 'sleep' && !isCaffeineCutoff
   const isHydration = archetype === 'hydration'
   const isPhlebotomy = archetype === 'phlebotomy'
-  const isPeptide =
-    archetype === 'peptide' ||
-    modality?.category?.toLowerCase().includes('peptide') ||
-    modality?.modality_type?.toLowerCase().includes('peptide') ||
-    modality?.logging_type?.toLowerCase() === 'peptide' ||
-    (modality?.slug || '').toLowerCase().includes('bpc') ||
-    (modality?.name || '').toLowerCase().includes('bpc') ||
-    (modality?.name || '').toLowerCase().includes('tb-500') ||
-    (modality?.name || '').toLowerCase().includes('tb500') ||
-    (modality?.name || '').toLowerCase().includes('cjc') ||
-    (modality?.name || '').toLowerCase().includes('ipamorelin') ||
-    (modality?.name || '').toLowerCase().includes('ghk') ||
-    (modality?.name || '').toLowerCase().includes('semaglutide') ||
-    (modality?.name || '').toLowerCase().includes('tirzepatide') ||
-    (modality?.name || '').toLowerCase().includes('retatrutide') ||
-    (modality?.name || '').toLowerCase().includes('epithalon') ||
-    (modality?.name || '').toLowerCase().includes('mots-c') ||
-    !!modality?.peptide_metadata?.is_peptide
+  const isPeptide = isInjectableSubQPeptide(modality, task)
 
   const isSupplement = archetype === 'supplement'
   const isSport = archetype === 'sport'
@@ -941,7 +935,7 @@ export default function ProtocolTaskCard({
     const siteHistory = getSavedInjectionSiteHistory(modalityKey)
     const { recommendedSite, lastUsedSite } = getRecommendedNextInjectionSite(siteHistory)
     const vialConfig = getSavedPeptideVialConfig(modalityKey, modality?.peptide_metadata?.default_vial_config)
-    const targetDose = task.protocol_step?.dose_amount || 250
+    const targetDose = resolvePeptideTargetDoseMcg(task, modality)
     const recon = vialConfig
       ? calculateReconstitution(vialConfig.vial_size_mg, vialConfig.bac_water_ml, targetDose, vialConfig.syringe_type)
       : null
@@ -950,7 +944,7 @@ export default function ProtocolTaskCard({
       lastUsedSite,
       units: recon?.units_to_draw || (targetDose >= 2500 ? 100 : 10)
     }
-  }, [isPeptide, modalityKey, modality, task.protocol_step?.dose_amount])
+  }, [isPeptide, modalityKey, modality, task])
 
   const [isPrecisionLogExpanded, setIsPrecisionLogExpanded] = useState<boolean>(isPrecisionLogOpenByDefault)
 
@@ -1388,6 +1382,28 @@ export default function ProtocolTaskCard({
     })
   }
 
+  const protocolContextValue = useMemo(() => {
+    if (lineages.length > 0) {
+      return lineages.map((l) => ({
+        protocolName: l.protocol_name,
+        colorHex: l.color_hex,
+        doseAmount: task.protocol_step?.dose_amount,
+        doseUnit: task.protocol_step?.dose_unit,
+        doseText: task.protocol_step?.dose_text
+      }))
+    }
+    if (task.protocol_step?.protocol) {
+      return {
+        protocolName: task.protocol_step.protocol.name,
+        colorHex: (task.protocol_step.protocol as any).color_hex || getColorForProtocol(task.protocol_step.protocol.name),
+        doseAmount: task.protocol_step?.dose_amount,
+        doseUnit: task.protocol_step?.dose_unit,
+        doseText: task.protocol_step?.dose_text
+      }
+    }
+    return null
+  }, [lineages, task.protocol_step])
+
   // When viewed under a protocol umbrella in Today:
   // Instead of re-listing the same protocol umbrella name on every card,
   // display the correct time block in the same smaller less prominent font.
@@ -1806,7 +1822,7 @@ export default function ProtocolTaskCard({
                           window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
                         }
                       }}
-                      protocolContext={null}
+                      protocolContext={protocolContextValue}
                     />
                   </div>
                 )}
@@ -1998,8 +2014,8 @@ export default function ProtocolTaskCard({
                 {preFlightNudge && !isNudgeDismissed && (
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${
                     preFlightNudge.severity === 'critical'
-                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-                      : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/40 animate-pulse'
+                      : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40'
                   }`}>
                     <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
                     <span>{preFlightNudge.severity === 'critical' ? 'Biochemical Conflict' : 'Cooldown Spacing'}</span>
@@ -2067,23 +2083,7 @@ export default function ProtocolTaskCard({
                     window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
                   }
                 }}
-                protocolContext={
-                  lineages.length > 0
-                    ? lineages.map((l, i) => ({
-                        protocolName: l.protocol_name,
-                        colorHex: l.color_hex,
-                        doseAmount: task.protocol_step?.dose_amount,
-                        doseUnit: task.protocol_step?.dose_unit,
-                        doseText: task.protocol_step?.dose_text
-                      }))
-                    : (task.protocol_step?.protocol ? {
-                        protocolName: task.protocol_step.protocol.name,
-                        colorHex: (task.protocol_step.protocol as any).color_hex || getColorForProtocol(task.protocol_step.protocol.name),
-                        doseAmount: task.protocol_step?.dose_amount,
-                        doseUnit: task.protocol_step?.dose_unit,
-                        doseText: task.protocol_step?.dose_text
-                      } : null)
-                }
+                protocolContext={protocolContextValue}
               />
             )}
 
@@ -2440,7 +2440,7 @@ export default function ProtocolTaskCard({
                       onChange={setExecutionDetails} 
                       modality={modality} 
                       modalityKey={modalityKey} 
-                      defaultDoseMcg={task.protocol_step?.dose_amount || 250} 
+                      defaultDoseMcg={resolvePeptideTargetDoseMcg(task, modality)} 
                     />
                   )}
                   {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
@@ -2699,7 +2699,7 @@ export default function ProtocolTaskCard({
                       onChange={setExecutionDetails} 
                       modality={modality} 
                       modalityKey={modalityKey} 
-                      defaultDoseMcg={task.protocol_step?.dose_amount || 250} 
+                      defaultDoseMcg={resolvePeptideTargetDoseMcg(task, modality)} 
                     />
                   )}
                   {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
@@ -3006,7 +3006,7 @@ export default function ProtocolTaskCard({
                             onChange={setExecutionDetails} 
                             modality={modality} 
                             modalityKey={modalityKey} 
-                            defaultDoseMcg={task.protocol_step?.dose_amount || 250} 
+                            defaultDoseMcg={resolvePeptideTargetDoseMcg(task, modality)} 
                           />
                         )}
                         {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}

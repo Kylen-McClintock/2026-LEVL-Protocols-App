@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { Plus, Cloud, Sparkles, CheckCircle2, ShieldCheck, User, Clock, ListOrdered, CalendarDays, Activity, Columns, Calendar, LayoutGrid, ChevronDown, Check, Zap, Bookmark } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/lib/utils/useTheme'
 import QuickActionHubModal from '@/components/modals/QuickActionHubModal'
 
 interface TaskStats {
@@ -19,6 +20,7 @@ export default function TopStickyHeader() {
   const router = useRouter()
   const pathname = usePathname()
   const { user, isGuest, openAuthModal, loading: authLoading } = useAuth()
+  const { isLight } = useTheme()
 
   const [isVisible, setIsVisible] = useState(true)
   const [stats, setStats] = useState<TaskStats>({ completed: 0, total: 0 })
@@ -173,30 +175,34 @@ export default function TopStickyHeader() {
   // Determine current active view label and icon
   const currentViewDetails = React.useMemo(() => {
     if (pathname !== '/today') {
-      if (pathname.startsWith('/explore')) return { label: 'Explore', icon: <Sparkles size={12} className="text-purple-400" /> }
-      if (pathname.startsWith('/schedule')) return { label: 'Schedule', icon: <Calendar size={12} className="text-teal-400" /> }
-      if (pathname.startsWith('/tracking')) return { label: 'Insights', icon: <Activity size={12} className="text-cyan-400" /> }
-      if (pathname.startsWith('/profile') || pathname.startsWith('/settings')) return { label: 'Profile', icon: <User size={12} className="text-slate-400" /> }
+      if (pathname.startsWith('/explore')) return { label: 'Explore', icon: <Sparkles size={12} className={isLight ? "text-purple-600" : "text-purple-400"} /> }
+      if (pathname.startsWith('/schedule')) return { label: 'Schedule', icon: <Calendar size={12} className={isLight ? "text-teal-600" : "text-teal-400"} /> }
+      if (pathname.startsWith('/tracking')) return { label: 'Insights', icon: <Activity size={12} className={isLight ? "text-cyan-600" : "text-cyan-400"} /> }
+      if (pathname.startsWith('/profile') || pathname.startsWith('/settings')) return { label: 'Profile', icon: <User size={12} className={isLight ? "text-slate-600" : "text-slate-400"} /> }
     }
 
-    if (activeCalendarView === 'pulse') return { label: 'Daily Pulse', icon: <Activity size={12} className="text-indigo-400" /> }
-    if (activeCalendarView === '3day') return { label: '3-Day View', icon: <Columns size={12} className="text-teal-400" /> }
-    if (activeCalendarView === 'week') return { label: '7-Day Week', icon: <Calendar size={12} className="text-teal-400" /> }
-    if (activeCalendarView === 'month') return { label: 'Month Matrix', icon: <LayoutGrid size={12} className="text-cyan-400" /> }
+    if (activeCalendarView === 'pulse') return { label: 'Daily Pulse', icon: <Activity size={12} className={isLight ? "text-indigo-600" : "text-indigo-400"} /> }
+    if (activeCalendarView === '3day') return { label: '3-Day View', icon: <Columns size={12} className={isLight ? "text-teal-600" : "text-teal-400"} /> }
+    if (activeCalendarView === 'week') return { label: '7-Day Week', icon: <Calendar size={12} className={isLight ? "text-teal-600" : "text-teal-400"} /> }
+    if (activeCalendarView === 'month') return { label: 'Month Matrix', icon: <LayoutGrid size={12} className={isLight ? "text-cyan-600" : "text-cyan-400"} /> }
     
     // Today Timeline mode
     if (activeLayoutView === 'protocol') {
-      return { label: 'Protocols', icon: <ListOrdered size={12} className="text-purple-400" /> }
+      return { label: 'Protocols', icon: <ListOrdered size={12} className={isLight ? "text-purple-600" : "text-purple-400"} /> }
     }
-    return { label: 'Time Blocks', icon: <Clock size={12} className="text-purple-400" /> }
-  }, [pathname, activeCalendarView, activeLayoutView])
+    return { label: 'Time Blocks', icon: <Clock size={12} className={isLight ? "text-purple-600" : "text-purple-400"} /> }
+  }, [pathname, activeCalendarView, activeLayoutView, isLight])
 
   return (
     <>
       <header
         className={`top-sticky-header-container fixed top-0 left-0 desktop-header-offset right-0 z-40 transition-transform duration-300 ease-in-out ${
           isVisible ? 'translate-y-0' : '-translate-y-full'
-        } bg-slate-950/85 backdrop-blur-xl border-b border-levl-border/80 shadow-lg shadow-black/20`}
+        } ${
+          isLight
+            ? 'bg-[#f8f9f7]/95 border-b border-[#e1e8e3] shadow-sm'
+            : 'bg-slate-950/85 backdrop-blur-xl border-b border-levl-border/80 shadow-lg shadow-black/20'
+        }`}
         style={{
           paddingTop: 'max(env(safe-area-inset-top, 0px), 10px)',
           paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0px))',
@@ -204,7 +210,7 @@ export default function TopStickyHeader() {
         }}
       >
         {/* Top Edge Gradient Completion Progress Bar */}
-        <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-slate-800/40 overflow-hidden">
+        <div className={`absolute top-0 left-0 right-0 h-[2.5px] overflow-hidden ${isLight ? 'bg-slate-200/80' : 'bg-slate-800/40'}`}>
           <div
             className={`h-full transition-all duration-500 ease-out ${
               is100Percent
@@ -231,7 +237,11 @@ export default function TopStickyHeader() {
               <button
                 onClick={openAuthModal}
                 title="Checking Cloud Connection..."
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-800/60 border border-slate-700/60 text-slate-400 text-[10px] font-mono hover:bg-slate-800 transition-all cursor-pointer"
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono transition-all cursor-pointer ${
+                  isLight
+                    ? 'bg-slate-100 border border-slate-300 text-slate-600 hover:bg-slate-200'
+                    : 'bg-slate-800/60 border border-slate-700/60 text-slate-400 hover:bg-slate-800'
+                }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" />
                 <span className="hidden sm:inline">Connecting</span>
@@ -240,18 +250,26 @@ export default function TopStickyHeader() {
               <button
                 onClick={() => router.push('/settings#cloud-sync')}
                 title="Synced to Supabase Cloud - Tap for Profile & Settings"
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] font-mono hover:bg-emerald-500/20 transition-all cursor-pointer"
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono transition-all cursor-pointer ${
+                  isLight
+                    ? 'bg-emerald-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100'
+                    : 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20'
+                }`}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="hidden sm:inline">Synced</span>
               </button>
             ) : (
               <button
                 onClick={openAuthModal}
                 title="Guest Mode (Local Only) - Tap to Enable Cloud Sync"
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[10px] font-mono hover:bg-amber-500/20 transition-all cursor-pointer"
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono transition-all cursor-pointer ${
+                  isLight
+                    ? 'bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100'
+                    : 'bg-amber-500/10 border border-amber-500/25 text-amber-300 hover:bg-amber-500/20'
+                }`}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                 <span className="hidden sm:inline">Local</span>
               </button>
             )}
@@ -265,27 +283,44 @@ export default function TopStickyHeader() {
               <button
                 type="button"
                 onClick={() => setIsViewDropdownOpen(!isViewDropdownOpen)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 hover:border-slate-600 shadow-lg text-white transition-all cursor-pointer active:scale-95"
+                className={`header-view-selector-btn flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border transition-all cursor-pointer active:scale-95 ${
+                  isLight
+                    ? 'bg-white border-slate-200/90 hover:border-slate-300 text-slate-900 shadow-sm shadow-slate-900/5'
+                    : 'bg-slate-900/90 border-slate-700/80 hover:border-slate-600 text-white shadow-lg'
+                }`}
               >
                 <div className="flex items-center gap-1.5 min-w-0">
                   {currentViewDetails.icon}
-                  <span className="text-[11px] sm:text-xs font-bold tracking-tight">
+                  <span className={`text-[11px] sm:text-xs font-bold tracking-tight ${
+                    isLight ? 'text-slate-900' : 'text-white'
+                  }`}>
                     {currentViewDetails.label}
                   </span>
                 </div>
-                <ChevronDown size={11} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isViewDropdownOpen ? 'rotate-180 text-purple-400' : ''}`} />
+                <ChevronDown 
+                  size={11} 
+                  className={`shrink-0 transition-transform duration-200 ${
+                    isLight ? 'text-slate-500' : 'text-slate-400'
+                  } ${isViewDropdownOpen ? (isLight ? 'rotate-180 text-purple-600' : 'rotate-180 text-purple-400') : ''}`} 
+                />
               </button>
 
               {/* Floating Popover Dropdown Menu (Guaranteed in front of all page elements) */}
               {isViewDropdownOpen && (
                 <div 
-                  className="header-view-dropdown absolute top-full mt-2 w-64 p-2.5 rounded-2xl bg-slate-950 border border-slate-700 shadow-[0_25px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl z-[100000] animate-in fade-in zoom-in-95 duration-150 max-h-[calc(100vh-54px)] overflow-y-auto"
+                  className={`header-view-dropdown absolute top-full mt-2 w-64 p-2.5 rounded-2xl border backdrop-blur-2xl z-[100000] animate-in fade-in zoom-in-95 duration-150 max-h-[calc(100vh-54px)] overflow-y-auto ${
+                    isLight
+                      ? 'bg-white/98 border-slate-200 text-slate-900 shadow-[0_20px_50px_rgba(15,23,42,0.12)]'
+                      : 'bg-slate-950 border-slate-700 text-white shadow-[0_25px_60px_rgba(0,0,0,0.95)]'
+                  }`}
                   style={{ left: '50%', transform: 'translateX(-50%)' }}
                 >
                   <div className="header-view-dropdown-grid grid grid-cols-1 gap-2">
                     {/* Section 0: Interface Mode */}
-                    <div className="border-b border-slate-800 pb-2 mb-1">
-                      <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                    <div className={`border-b pb-2 mb-1 ${isLight ? 'border-slate-100' : 'border-slate-800'}`}>
+                      <div className={`px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider ${
+                        isLight ? 'text-slate-500' : 'text-slate-400'
+                      }`}>
                         Display Mode
                       </div>
                       <div className="grid grid-cols-2 gap-1 px-1">
@@ -298,7 +333,9 @@ export default function TopStickyHeader() {
                           className={`flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                             displayMode === 'classic'
                               ? 'bg-purple-600 text-white font-extrabold shadow-sm'
-                              : 'text-slate-300 hover:bg-white/5'
+                              : isLight
+                                ? 'text-slate-600 hover:bg-slate-100'
+                                : 'text-slate-300 hover:bg-white/5'
                           }`}
                         >
                           <span>Classic</span>
@@ -312,10 +349,12 @@ export default function TopStickyHeader() {
                           className={`flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                             displayMode === 'blocks'
                               ? 'bg-purple-600 text-white font-extrabold shadow-sm'
-                              : 'text-slate-300 hover:bg-white/5'
+                              : isLight
+                                ? 'text-slate-600 hover:bg-slate-100'
+                                : 'text-slate-300 hover:bg-white/5'
                           }`}
                         >
-                          <Sparkles size={11} className={displayMode === 'blocks' ? 'text-amber-300' : ''} />
+                          <Sparkles size={11} className={displayMode === 'blocks' ? 'text-amber-300' : (isLight ? 'text-amber-600' : 'text-amber-400')} />
                           <span>Blocks</span>
                         </button>
                       </div>
@@ -324,7 +363,9 @@ export default function TopStickyHeader() {
                   <div className="space-y-2">
                     {/* Section 1: Daily Layout Mode */}
                     <div>
-                      <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                      <div className={`px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider ${
+                        isLight ? 'text-slate-500' : 'text-slate-400'
+                      }`}>
                         Daily Timeline Layout
                       </div>
                       <div className="space-y-0.5">
@@ -334,11 +375,13 @@ export default function TopStickyHeader() {
                           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                             activeCalendarView === 'today' && activeLayoutView === 'chronological'
                               ? 'bg-purple-600 text-white shadow-sm font-extrabold'
-                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                              : isLight
+                                ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                                : 'text-slate-300 hover:bg-white/5 hover:text-white'
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <Clock size={13} className={activeCalendarView === 'today' && activeLayoutView === 'chronological' ? 'text-white' : 'text-purple-400'} />
+                            <Clock size={13} className={activeCalendarView === 'today' && activeLayoutView === 'chronological' ? 'text-white' : (isLight ? 'text-purple-600' : 'text-purple-400')} />
                             <span>Time Blocks</span>
                           </div>
                           {activeCalendarView === 'today' && activeLayoutView === 'chronological' && <Check size={13} />}
@@ -350,11 +393,13 @@ export default function TopStickyHeader() {
                           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                             activeCalendarView === 'today' && activeLayoutView === 'protocol'
                               ? 'bg-purple-600 text-white shadow-sm font-extrabold'
-                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                              : isLight
+                                ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                                : 'text-slate-300 hover:bg-white/5 hover:text-white'
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <ListOrdered size={13} className={activeCalendarView === 'today' && activeLayoutView === 'protocol' ? 'text-white' : 'text-purple-400'} />
+                            <ListOrdered size={13} className={activeCalendarView === 'today' && activeLayoutView === 'protocol' ? 'text-white' : (isLight ? 'text-purple-600' : 'text-purple-400')} />
                             <span>Protocols</span>
                           </div>
                           {activeCalendarView === 'today' && activeLayoutView === 'protocol' && <Check size={13} />}
@@ -363,21 +408,31 @@ export default function TopStickyHeader() {
                     </div>
 
                     {/* Section 3: Navigation Hubs */}
-                    <div className="pt-1.5 border-t border-slate-800/80">
-                      <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                    <div className={`pt-1.5 border-t ${isLight ? 'border-slate-100' : 'border-slate-800/80'}`}>
+                      <div className={`px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider ${
+                        isLight ? 'text-slate-500' : 'text-slate-400'
+                      }`}>
                         Quick Hubs
                       </div>
                       <div className="space-y-0.5">
                         <Link
                           href="/schedule"
                           onClick={() => setIsViewDropdownOpen(false)}
-                          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-300 hover:bg-amber-950/60 hover:text-white transition-colors cursor-pointer"
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                            isLight
+                              ? 'text-amber-800 hover:bg-amber-50 hover:text-amber-900'
+                              : 'text-amber-300 hover:bg-amber-950/60 hover:text-white'
+                          }`}
                         >
                           <div className="flex items-center gap-2">
-                            <Zap size={13} className="text-amber-400 shrink-0" />
+                            <Zap size={13} className={isLight ? 'text-amber-600 shrink-0' : 'text-amber-400 shrink-0'} />
                             <span>Master Schedule</span>
                           </div>
-                          <span className="text-[9px] uppercase font-bold text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30">
+                          <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+                            isLight
+                              ? 'text-amber-800 bg-amber-100/90 border-amber-300/80'
+                              : 'text-amber-300 bg-amber-500/20 border-amber-500/30'
+                          }`}>
                             Rhythms
                           </span>
                         </Link>
@@ -385,13 +440,21 @@ export default function TopStickyHeader() {
                         <Link
                           href="/bench"
                           onClick={() => setIsViewDropdownOpen(false)}
-                          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold text-purple-300 hover:bg-purple-950/60 hover:text-white transition-colors cursor-pointer"
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                            isLight
+                              ? 'text-purple-800 hover:bg-purple-50 hover:text-purple-900'
+                              : 'text-purple-300 hover:bg-purple-950/60 hover:text-white'
+                          }`}
                         >
                           <div className="flex items-center gap-2">
-                            <Bookmark size={13} className="text-purple-400 shrink-0" />
+                            <Bookmark size={13} className={isLight ? 'text-purple-600 shrink-0' : 'text-purple-400 shrink-0'} />
                             <span>Protocol Bench</span>
                           </div>
-                          <span className="text-[9px] uppercase font-bold text-purple-300 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30">
+                          <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+                            isLight
+                              ? 'text-purple-800 bg-purple-100/90 border-purple-300/80'
+                              : 'text-purple-300 bg-purple-500/20 border-purple-500/30'
+                          }`}>
                             Saved
                           </span>
                         </Link>
@@ -400,8 +463,10 @@ export default function TopStickyHeader() {
                   </div>
 
                   {/* Column 2 (Right in Landscape): Calendar & Cadence Views */}
-                  <div className="header-view-dropdown-calendar border-t border-slate-800/80 pt-1.5">
-                    <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                  <div className={`header-view-dropdown-calendar border-t pt-1.5 ${isLight ? 'border-slate-100' : 'border-slate-800/80'}`}>
+                    <div className={`px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider ${
+                      isLight ? 'text-slate-500' : 'text-slate-400'
+                    }`}>
                       Calendar &amp; Cadence Views
                     </div>
                     <div className="space-y-0.5">
@@ -411,11 +476,13 @@ export default function TopStickyHeader() {
                         className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                           activeCalendarView === 'pulse'
                             ? 'bg-indigo-600 text-white shadow-sm font-extrabold'
-                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                            : isLight
+                              ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <Activity size={13} className={activeCalendarView === 'pulse' ? 'text-white' : 'text-indigo-400'} />
+                          <Activity size={13} className={activeCalendarView === 'pulse' ? 'text-white' : (isLight ? 'text-indigo-600' : 'text-indigo-400')} />
                           <span>Daily Pulse</span>
                         </div>
                         {activeCalendarView === 'pulse' && <Check size={13} />}
@@ -427,11 +494,13 @@ export default function TopStickyHeader() {
                         className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                           activeCalendarView === '3day'
                             ? 'bg-teal-600 text-white shadow-sm font-extrabold'
-                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                            : isLight
+                              ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <Columns size={13} className={activeCalendarView === '3day' ? 'text-white' : 'text-teal-400'} />
+                          <Columns size={13} className={activeCalendarView === '3day' ? 'text-white' : (isLight ? 'text-teal-600' : 'text-teal-400')} />
                           <span>3-Day View</span>
                         </div>
                         {activeCalendarView === '3day' && <Check size={13} />}
@@ -443,11 +512,13 @@ export default function TopStickyHeader() {
                         className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                           activeCalendarView === 'week'
                             ? 'bg-teal-600 text-white shadow-sm font-extrabold'
-                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                            : isLight
+                              ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <Calendar size={13} className={activeCalendarView === 'week' ? 'text-white' : 'text-teal-400'} />
+                          <Calendar size={13} className={activeCalendarView === 'week' ? 'text-white' : (isLight ? 'text-teal-600' : 'text-teal-400')} />
                           <span>7-Day Week</span>
                         </div>
                         {activeCalendarView === 'week' && <Check size={13} />}
@@ -459,11 +530,13 @@ export default function TopStickyHeader() {
                         className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                           activeCalendarView === 'month'
                             ? 'bg-cyan-600 text-white shadow-sm font-extrabold'
-                            : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                            : isLight
+                              ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <LayoutGrid size={13} className={activeCalendarView === 'month' ? 'text-white' : 'text-cyan-400'} />
+                          <LayoutGrid size={13} className={activeCalendarView === 'month' ? 'text-white' : (isLight ? 'text-cyan-600' : 'text-cyan-400')} />
                           <span>Month Matrix</span>
                         </div>
                         {activeCalendarView === 'month' && <Check size={13} />}

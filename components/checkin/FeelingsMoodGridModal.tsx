@@ -29,15 +29,17 @@ const ROW_PITCH = 110 // vertical distance between rows
 const ROW_STAGGER = 60 // staggered offset for alternating rows
 const QUAD_WIDTH = 6 * COL_PITCH + ROW_STAGGER // ~816px
 const QUAD_HEIGHT = 6 * ROW_PITCH // ~660px
-const AXIS_GAP = 120 // gap between quadrants for smooth panning transition
+const AXIS_GAP = 32 // reduced gap between quadrants for tightly connected emotional landscape
 
 // Canvas center offsets
 const LEFT_QUAD_X = 140
-const RIGHT_QUAD_X = LEFT_QUAD_X + QUAD_WIDTH + AXIS_GAP // ~1076px
+const RIGHT_QUAD_X = LEFT_QUAD_X + QUAD_WIDTH + AXIS_GAP // ~988px
 const TOP_QUAD_Y = 120
-const BOTTOM_QUAD_Y = TOP_QUAD_Y + QUAD_HEIGHT + AXIS_GAP // ~900px
-const TOTAL_CANVAS_WIDTH = RIGHT_QUAD_X + QUAD_WIDTH + 140 // ~2032px
-const TOTAL_CANVAS_HEIGHT = BOTTOM_QUAD_Y + QUAD_HEIGHT + 180 // ~1740px
+const BOTTOM_QUAD_Y = TOP_QUAD_Y + QUAD_HEIGHT + AXIS_GAP // ~812px
+const TOTAL_CANVAS_WIDTH = RIGHT_QUAD_X + QUAD_WIDTH + 140 // ~1944px
+const TOTAL_CANVAS_HEIGHT = BOTTOM_QUAD_Y + QUAD_HEIGHT + 180 // ~1652px
+const AXIS_CENTER_X = LEFT_QUAD_X + QUAD_WIDTH + AXIS_GAP / 2 // central vertical axis line
+const AXIS_CENTER_Y = TOP_QUAD_Y + QUAD_HEIGHT + AXIS_GAP / 2 // central horizontal axis line
 
 interface PositionedEmotion {
   emotion: EmotionEntry
@@ -143,8 +145,8 @@ export default function FeelingsMoodGridModal({
     const viewportCenterY = container.scrollTop + container.clientHeight / 2
 
     // Update active quadrant title based on viewport center
-    const isRight = viewportCenterX > (LEFT_QUAD_X + QUAD_WIDTH + AXIS_GAP / 2)
-    const isBottom = viewportCenterY > (TOP_QUAD_Y + QUAD_HEIGHT + AXIS_GAP / 2)
+    const isRight = viewportCenterX > AXIS_CENTER_X
+    const isBottom = viewportCenterY > AXIS_CENTER_Y
 
     let currentQ: EmotionQuadrant = 'high_energy_pleasant'
     if (!isRight && !isBottom) currentQ = 'high_energy_unpleasant'
@@ -467,19 +469,139 @@ export default function FeelingsMoodGridModal({
                 height: TOTAL_CANVAS_HEIGHT
               }}
             >
-              {/* Subtle Central Axis Lines */}
+              {/* Central Axis Dividers & Explicit Axis Labels */}
+              {/* Vertical Axis (Energy Arousal) */}
               <div
                 className={`absolute top-0 bottom-0 pointer-events-none transition-colors ${
-                  isDaylight ? 'border-r border-slate-300/70' : 'border-r border-white/10'
+                  isDaylight ? 'border-r-2 border-slate-300' : 'border-r-2 border-white/20'
                 }`}
-                style={{ left: LEFT_QUAD_X + QUAD_WIDTH + AXIS_GAP / 2 }}
+                style={{ left: AXIS_CENTER_X }}
               />
+
+              {/* Horizontal Axis (Mood Valence) */}
               <div
                 className={`absolute left-0 right-0 pointer-events-none transition-colors ${
-                  isDaylight ? 'border-b border-slate-300/70' : 'border-b border-white/10'
+                  isDaylight ? 'border-b-2 border-slate-300' : 'border-b-2 border-white/20'
                 }`}
-                style={{ top: TOP_QUAD_Y + QUAD_HEIGHT + AXIS_GAP / 2 }}
+                style={{ top: AXIS_CENTER_Y }}
               />
+
+              {/* Axis Labels: Top Vertical Marker (High Energy) */}
+              <div
+                className={`absolute -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono font-bold tracking-wider uppercase border shadow-md pointer-events-none select-none z-10 transition-colors ${
+                  isDaylight
+                    ? 'bg-white/95 text-amber-900 border-amber-300/80 shadow-amber-950/10'
+                    : 'bg-slate-900/95 text-amber-300 border-amber-500/40 shadow-black'
+                }`}
+                style={{ left: AXIS_CENTER_X, top: Math.max(16, TOP_QUAD_Y - 56) }}
+              >
+                <span className="text-amber-500 font-black">▲</span>
+                <span>HIGH ENERGY</span>
+              </div>
+
+              {/* Axis Labels: Center-Top Vertical Marker */}
+              <div
+                className={`absolute -translate-x-1/2 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase border shadow-sm pointer-events-none select-none z-10 transition-colors ${
+                  isDaylight
+                    ? 'bg-white/90 text-amber-800 border-amber-200 shadow-sm'
+                    : 'bg-slate-900/90 text-amber-300 border-amber-500/30'
+                }`}
+                style={{ left: AXIS_CENTER_X, top: AXIS_CENTER_Y - 80 }}
+              >
+                <span>▲</span>
+                <span>HIGH ENERGY</span>
+              </div>
+
+              {/* Axis Labels: Center-Bottom Vertical Marker */}
+              <div
+                className={`absolute -translate-x-1/2 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase border shadow-sm pointer-events-none select-none z-10 transition-colors ${
+                  isDaylight
+                    ? 'bg-white/90 text-blue-800 border-blue-200 shadow-sm'
+                    : 'bg-slate-900/90 text-blue-300 border-blue-500/30'
+                }`}
+                style={{ left: AXIS_CENTER_X, top: AXIS_CENTER_Y + 56 }}
+              >
+                <span>▼</span>
+                <span>LOW ENERGY</span>
+              </div>
+
+              {/* Axis Labels: Bottom Vertical Marker (Low Energy) */}
+              <div
+                className={`absolute -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono font-bold tracking-wider uppercase border shadow-md pointer-events-none select-none z-10 transition-colors ${
+                  isDaylight
+                    ? 'bg-white/95 text-blue-900 border-blue-300/80 shadow-blue-950/10'
+                    : 'bg-slate-900/95 text-blue-300 border-blue-500/40 shadow-black'
+                }`}
+                style={{ left: AXIS_CENTER_X, top: BOTTOM_QUAD_Y + QUAD_HEIGHT + 32 }}
+              >
+                <span className="text-blue-500 font-black">▼</span>
+                <span>LOW ENERGY</span>
+              </div>
+
+              {/* Axis Labels: Left Horizontal Marker (Unpleasant Mood) */}
+              <div
+                className={`absolute -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono font-bold tracking-wider uppercase border shadow-md pointer-events-none select-none z-10 transition-colors ${
+                  isDaylight
+                    ? 'bg-white/95 text-rose-900 border-rose-300/80 shadow-rose-950/10'
+                    : 'bg-slate-900/95 text-rose-300 border-rose-500/40 shadow-black'
+                }`}
+                style={{ left: 24, top: AXIS_CENTER_Y }}
+              >
+                <span className="text-rose-500 font-black">◄</span>
+                <span>UNPLEASANT MOOD</span>
+              </div>
+
+              {/* Axis Labels: Center-Left Horizontal Marker */}
+              <div
+                className={`absolute -translate-y-1/2 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase border shadow-sm pointer-events-none select-none z-10 transition-colors ${
+                  isDaylight
+                    ? 'bg-white/90 text-rose-800 border-rose-200 shadow-sm'
+                    : 'bg-slate-900/90 text-rose-300 border-rose-500/30'
+                }`}
+                style={{ left: AXIS_CENTER_X - 180, top: AXIS_CENTER_Y }}
+              >
+                <span>◄</span>
+                <span>UNPLEASANT MOOD</span>
+              </div>
+
+              {/* Axis Labels: Center-Right Horizontal Marker */}
+              <div
+                className={`absolute -translate-y-1/2 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase border shadow-sm pointer-events-none select-none z-10 transition-colors ${
+                  isDaylight
+                    ? 'bg-white/90 text-emerald-800 border-emerald-200 shadow-sm'
+                    : 'bg-slate-900/90 text-emerald-300 border-emerald-500/30'
+                }`}
+                style={{ left: AXIS_CENTER_X + 52, top: AXIS_CENTER_Y }}
+              >
+                <span>PLEASANT MOOD</span>
+                <span>►</span>
+              </div>
+
+              {/* Axis Labels: Right Horizontal Marker (Pleasant Mood) */}
+              <div
+                className={`absolute -translate-y-1/2 -translate-x-full flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono font-bold tracking-wider uppercase border shadow-md pointer-events-none select-none z-10 transition-colors ${
+                  isDaylight
+                    ? 'bg-white/95 text-emerald-900 border-emerald-300/80 shadow-emerald-950/10'
+                    : 'bg-slate-900/95 text-emerald-300 border-emerald-500/40 shadow-black'
+                }`}
+                style={{ left: TOTAL_CANVAS_WIDTH - 24, top: AXIS_CENTER_Y }}
+              >
+                <span>PLEASANT MOOD</span>
+                <span className="text-emerald-500 font-black">►</span>
+              </div>
+
+              {/* Center Origin Crosshair Anchor */}
+              <div
+                className={`absolute -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono font-bold border shadow-md pointer-events-none select-none z-10 transition-colors ${
+                  isDaylight
+                    ? 'bg-white text-slate-700 border-slate-300 shadow-slate-200'
+                    : 'bg-slate-900 text-slate-300 border-white/20 shadow-black'
+                }`}
+                style={{ left: AXIS_CENTER_X, top: AXIS_CENTER_Y }}
+                title="Origin: Neutral Balance"
+              >
+                +
+              </div>
 
               {/* Render all 144 emotion bubbles across the 4 quadrants */}
               {positionedEmotions.map(({ emotion, x, y }) => {
@@ -544,6 +666,27 @@ export default function FeelingsMoodGridModal({
             </div>
           </div>
 
+          {/* Floating Axis Orientation HUD for Viewport */}
+          <div
+            className={`absolute top-14 left-4 z-20 px-3 py-1.5 rounded-full border backdrop-blur-md shadow-lg pointer-events-none select-none flex items-center gap-2.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-opacity duration-300 ${
+              isDaylight
+                ? 'bg-white/90 text-slate-700 border-slate-300/80 shadow-slate-200/60'
+                : 'bg-slate-950/90 text-slate-300 border-white/15 shadow-black/80'
+            }`}
+          >
+            <div className="flex items-center gap-1 text-amber-500 dark:text-amber-400">
+              <span className="text-[9px]">▲</span>
+              <span>Energy</span>
+              <span className="text-[9px]">▼</span>
+            </div>
+            <div className="h-3 w-px bg-current opacity-30" />
+            <div className="flex items-center gap-1 text-emerald-500 dark:text-emerald-400">
+              <span className="text-[9px]">◄</span>
+              <span>Mood</span>
+              <span className="text-[9px]">►</span>
+            </div>
+          </div>
+
           {/* ─────────────────────────────────────────────────────────────────────── */}
           {/* FLOATING BOTTOM DEFINITION CARD */}
           {/* ─────────────────────────────────────────────────────────────────────── */}
@@ -557,7 +700,7 @@ export default function FeelingsMoodGridModal({
                 }`}
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span
                       className="font-serif font-bold text-base sm:text-lg tracking-tight"
                       style={{ color: QUADRANT_CONFIGS[focusedEmotion.quadrant].baseColorHex }}
@@ -582,20 +725,76 @@ export default function FeelingsMoodGridModal({
                   >
                     {focusedEmotion.definition}
                   </p>
+
+                  {/* Comprehensive Calibrated Biometric Ratings */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 mt-2 flex-wrap">
+                    <span
+                      className={`text-[10.5px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                        isDaylight
+                          ? 'border-amber-300 text-amber-900 bg-amber-50'
+                          : 'border-amber-500/40 text-amber-300 bg-amber-500/15'
+                      }`}
+                    >
+                      ⚡ Energy {focusedEmotion.energyRating.toFixed(1)}
+                    </span>
+                    <span
+                      className={`text-[10.5px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                        isDaylight
+                          ? 'border-emerald-300 text-emerald-900 bg-emerald-50'
+                          : 'border-emerald-500/40 text-emerald-300 bg-emerald-500/15'
+                      }`}
+                    >
+                      😊 Mood {focusedEmotion.moodRating.toFixed(1)}
+                    </span>
+                    <span
+                      className={`text-[10.5px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                        isDaylight
+                          ? 'border-rose-300 text-rose-900 bg-rose-50'
+                          : 'border-rose-500/40 text-rose-300 bg-rose-500/15'
+                      }`}
+                    >
+                      🔥 Stress {focusedEmotion.stressRating.toFixed(1)}
+                    </span>
+
+                    {/* Bandwidth Mode Badge: Survival Cuts vs Peak Additions */}
+                    {focusedEmotion.suggestedBandwidthMode === 'survival_80_20' && (
+                      <span
+                        className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                          isDaylight
+                            ? 'border-red-300 text-red-800 bg-red-100/90'
+                            : 'border-red-500/40 text-red-300 bg-red-500/20'
+                        }`}
+                      >
+                        🛡️ Survival Cuts
+                      </span>
+                    )}
+                    {focusedEmotion.suggestedBandwidthMode === 'peak_surge' && (
+                      <span
+                        className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                          isDaylight
+                            ? 'border-emerald-300 text-emerald-800 bg-emerald-100/90'
+                            : 'border-emerald-500/40 text-emerald-300 bg-emerald-500/20'
+                        }`}
+                      >
+                        ⚡ Peak Additions
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* White Circular Action Button */}
+                {/* High-Contrast Circular Action Button */}
                 <button
                   type="button"
                   onClick={handleConfirm}
-                  className={`w-12 h-12 rounded-full transition-all flex items-center justify-center shrink-0 shadow-xl cursor-pointer active:scale-90 ${
+                  className="mood-confirm-btn w-12 h-12 rounded-full transition-all flex items-center justify-center shrink-0 shadow-xl cursor-pointer active:scale-90"
+                  style={
                     isDaylight
-                      ? 'bg-slate-950 text-white hover:bg-slate-800'
-                      : 'bg-white text-slate-950 hover:bg-slate-200'
-                  }`}
+                      ? { backgroundColor: '#0f172a', color: '#ffffff' }
+                      : { backgroundColor: '#ffffff', color: '#0f172a' }
+                  }
                   title="Confirm this feeling"
                 >
-                  <ArrowRight size={20} strokeWidth={2.5} />
+                  <ArrowRight size={20} strokeWidth={2.5} style={{ color: isDaylight ? '#ffffff' : '#0f172a' }} />
                 </button>
               </div>
 

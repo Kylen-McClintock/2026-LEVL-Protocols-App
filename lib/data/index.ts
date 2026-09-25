@@ -1636,9 +1636,27 @@ export async function createDailyTask(
   }
 
   if (!modality) {
+    // Intelligent alias mapping to canonical IDs before any fallback
+    const aliasMap: Record<string, string> = {
+      'finnish_sauna_extended': 'sauna_exposure',
+      'norwegian_4x4_vo2_max': 'vo2_max_4x4_hiit',
+      'yoga_nidra_nsdr': 'nsdr_yoga_nidra',
+      'nsdr': 'nsdr_yoga_nidra'
+    }
+    const resolvedAlias = aliasMap[modalityId.toLowerCase().trim()]
+    if (resolvedAlias) {
+      modality = await getModalityById(resolvedAlias)
+    }
+  }
+
+  if (!modality) {
     // If still not found, auto-create a custom modality so foreign key constraints pass
     try {
-      const cleanName = modalityId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      const cleanName = modalityId
+        .replace(/^custom[_-]/i, '')
+        .replace(/[_-][a-z0-9]{5}$/i, '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase())
       modality = await createCustomModality(localUserId, {
         name: cleanName,
         category: 'Fitness',

@@ -5,6 +5,7 @@ import { Check, X, Clock, SkipForward } from 'lucide-react'
 import { DedupedTask } from '@/components/cards/ProtocolTaskCard'
 import { Modality, OutcomeDimension, UserProfile, UserBenchItem } from '@/lib/types'
 import { getSimplifiedModalityName } from './blocksUtils'
+import { useTheme } from '@/lib/utils/useTheme'
 
 interface SwipeActionInFeedCardProps {
   actionType: 'complete' | 'skip_snooze'
@@ -35,6 +36,8 @@ export default function SwipeActionInFeedCard({
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null)
   const isOutOfViewRef = useRef(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const { theme } = useTheme()
+  const isDaylight = theme === 'light'
 
   // Outcome scores entered in-feed
   const [outcomeRatings, setOutcomeRatings] = useState<Record<string, number>>({})
@@ -67,7 +70,7 @@ export default function SwipeActionInFeedCard({
           }
         }
       },
-      { threshold: 0.05 }
+      { threshold: 0.1 }
     )
 
     observer.observe(el)
@@ -120,25 +123,41 @@ export default function SwipeActionInFeedCard({
   return (
     <div
       ref={containerRef}
-      className={`w-full rounded-2xl p-3.5 sm:p-4 my-2 transition-all duration-300 border shadow-2xl relative animate-in fade-in zoom-in-95 ${
-        actionType === 'complete'
-          ? 'bg-gradient-to-br from-emerald-950/90 via-slate-950/95 to-slate-900 border-emerald-500/40 shadow-emerald-950/30'
-          : 'bg-gradient-to-br from-amber-950/90 via-slate-950/95 to-slate-900 border-amber-500/40 shadow-amber-950/30'
+      className={`w-full rounded-2xl sm:rounded-3xl p-4 my-2 transition-all duration-300 border shadow-2xl relative animate-in fade-in zoom-in-95 ${
+        isDaylight
+          ? actionType === 'complete'
+            ? 'bg-emerald-50/95 border-emerald-300 text-slate-800 shadow-emerald-900/10'
+            : 'bg-amber-50/95 border-amber-300 text-slate-800 shadow-amber-900/10'
+          : actionType === 'complete'
+          ? 'bg-gradient-to-br from-emerald-950/95 via-slate-950/98 to-slate-900 border-emerald-500/40 shadow-emerald-950/40 text-white'
+          : 'bg-gradient-to-br from-amber-950/95 via-slate-950/98 to-slate-900 border-amber-500/40 shadow-amber-950/40 text-white'
       }`}
     >
+      {/* 5-Second Countdown Visual Progress Bar */}
+      {secondsRemaining !== null && (
+        <div className="w-full bg-black/20 dark:bg-white/10 rounded-full h-1.5 overflow-hidden mb-3">
+          <div
+            className={`h-full transition-all duration-1000 ease-linear ${
+              actionType === 'complete' ? 'bg-emerald-400' : 'bg-amber-400'
+            }`}
+            style={{ width: `${Math.max(0, Math.min(100, (secondsRemaining / 5) * 100))}%` }}
+          />
+        </div>
+      )}
+
       {/* Top Header */}
-      <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5 mb-3">
+      <div className={`flex items-center justify-between gap-2 border-b pb-2.5 mb-3 ${isDaylight ? 'border-slate-200' : 'border-white/10'}`}>
         <div className="flex items-center gap-2 min-w-0">
           <div
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
               actionType === 'complete'
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                ? isDaylight ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                : isDaylight ? 'bg-amber-100 text-amber-700 border border-amber-300' : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
             }`}
           >
-            {actionType === 'complete' ? <Check size={13} strokeWidth={3} /> : <Clock size={13} strokeWidth={2.5} />}
+            {actionType === 'complete' ? <Check size={14} strokeWidth={3} /> : <Clock size={14} strokeWidth={2.5} />}
           </div>
-          <span className="text-xs sm:text-sm font-bold text-white truncate">
+          <span className={`text-xs sm:text-sm font-bold truncate ${isDaylight ? 'text-slate-900' : 'text-white'}`}>
             {actionType === 'complete' ? `Complete ${simplifiedName}` : `Skip or Snooze ${simplifiedName}`}
           </span>
         </div>
@@ -146,7 +165,10 @@ export default function SwipeActionInFeedCard({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+          title="Cancel and close"
+          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+            isDaylight ? 'bg-slate-200/80 hover:bg-slate-300 text-slate-600 hover:text-slate-900' : 'bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white'
+          }`}
         >
           <X size={14} />
         </button>
@@ -205,10 +227,22 @@ export default function SwipeActionInFeedCard({
           )}
 
           {/* Bottom Confirmation Bar */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-2">
-            <span className="text-[10px] text-slate-400 italic">
-              {secondsRemaining !== null ? `Auto-completing in ${secondsRemaining}s...` : 'Scroll away to auto-complete in 5s'}
-            </span>
+          <div className={`flex items-center justify-between pt-3 border-t mt-2 ${isDaylight ? 'border-slate-200' : 'border-white/10'}`}>
+            <div className="flex items-center gap-1.5 text-[11px] font-medium">
+              {secondsRemaining !== null ? (
+                <div className="flex items-center gap-1 text-emerald-500 font-bold animate-pulse">
+                  <span>Auto-completing in {secondsRemaining}s...</span>
+                  <span className={`text-[10px] font-normal ${isDaylight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    (scroll back to pause)
+                  </span>
+                </div>
+              ) : (
+                <div className={`flex items-center gap-1.5 ${isDaylight ? 'text-slate-500' : 'text-slate-400'}`}>
+                  <span className="inline-block animate-bounce">↓</span>
+                  <span>Scroll away to auto-complete in 5s</span>
+                </div>
+              )}
+            </div>
 
             {/* Compact Confirmation Button at bottom right */}
             <button
@@ -217,7 +251,7 @@ export default function SwipeActionInFeedCard({
                 const finalOutcomes = Object.keys(outcomeRatings).length > 0 ? outcomeRatings : undefined
                 onComplete(task.id, finalOutcomes, finalDose)
               }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
             >
               <Check size={14} strokeWidth={3} />
               <span>Confirm</span>
@@ -231,33 +265,49 @@ export default function SwipeActionInFeedCard({
         <div className="space-y-3">
           {/* Quick Snooze Presets */}
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/80 block mb-1.5">
+            <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1.5 ${isDaylight ? 'text-amber-700' : 'text-amber-400/80'}`}>
               Snooze / Reschedule
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               <button
                 onClick={() => onSnooze(task.id, 30)}
-                className="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition-all flex items-center justify-center gap-1 active:scale-95"
+                className={`px-2 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1 active:scale-95 ${
+                  isDaylight
+                    ? 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200 shadow-sm'
+                    : 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                }`}
               >
-                <Clock size={12} className="text-amber-400" />
+                <Clock size={12} className={isDaylight ? 'text-amber-600' : 'text-amber-400'} />
                 <span>+30 min</span>
               </button>
               <button
                 onClick={() => onSnooze(task.id, 60)}
-                className="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition-all flex items-center justify-center gap-1 active:scale-95"
+                className={`px-2 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1 active:scale-95 ${
+                  isDaylight
+                    ? 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200 shadow-sm'
+                    : 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                }`}
               >
-                <Clock size={12} className="text-amber-400" />
+                <Clock size={12} className={isDaylight ? 'text-amber-600' : 'text-amber-400'} />
                 <span>+1 hour</span>
               </button>
               <button
                 onClick={() => onSnooze(task.id, 'evening')}
-                className="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition-all flex items-center justify-center gap-1 active:scale-95"
+                className={`px-2 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1 active:scale-95 ${
+                  isDaylight
+                    ? 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200 shadow-sm'
+                    : 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                }`}
               >
                 <span>Tonight</span>
               </button>
               <button
                 onClick={() => onSnooze(task.id, 'tomorrow')}
-                className="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition-all flex items-center justify-center gap-1 active:scale-95"
+                className={`px-2 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center gap-1 active:scale-95 ${
+                  isDaylight
+                    ? 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200 shadow-sm'
+                    : 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                }`}
               >
                 <span>Tomorrow</span>
               </button>
@@ -265,15 +315,19 @@ export default function SwipeActionInFeedCard({
           </div>
 
           {/* Skip Action with Reason */}
-          <div className="pt-2 border-t border-white/10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+          <div className={`pt-2.5 border-t ${isDaylight ? 'border-slate-200' : 'border-white/10'}`}>
+            <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1.5 ${isDaylight ? 'text-slate-600' : 'text-slate-400'}`}>
               Or Skip for Today
             </span>
             <div className="flex items-center gap-2">
               <select
                 value={skipReason}
                 onChange={(e) => setSkipReason(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-xs text-slate-300 outline-none flex-1"
+                className={`border rounded-lg px-2.5 py-1.5 text-xs outline-none flex-1 ${
+                  isDaylight
+                    ? 'bg-white border-slate-200 text-slate-800 shadow-sm'
+                    : 'bg-black/40 border-white/10 text-slate-200'
+                }`}
               >
                 <option value="Skipped for today">Skipped for today</option>
                 <option value="Not feeling well">Not feeling well</option>
@@ -283,7 +337,7 @@ export default function SwipeActionInFeedCard({
 
               <button
                 onClick={() => onSkip(task.id, skipReason)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 hover:text-white font-bold text-xs transition-all active:scale-95 shrink-0"
+                className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 hover:text-white font-bold text-xs transition-all active:scale-95 shrink-0 cursor-pointer"
               >
                 <SkipForward size={13} />
                 <span>Skip</span>
@@ -292,8 +346,20 @@ export default function SwipeActionInFeedCard({
           </div>
 
           {/* Bottom Countdown status */}
-          <div className="pt-1 text-[10px] text-slate-400 italic">
-            {secondsRemaining !== null ? `Auto-skipping in ${secondsRemaining}s...` : 'Scroll away to auto-skip in 5s'}
+          <div className={`pt-2 flex items-center justify-between text-[11px] font-medium ${isDaylight ? 'text-slate-500' : 'text-slate-400'}`}>
+            {secondsRemaining !== null ? (
+              <div className="flex items-center gap-1 text-amber-500 font-bold animate-pulse">
+                <span>Auto-skipping in {secondsRemaining}s...</span>
+                <span className={`text-[10px] font-normal ${isDaylight ? 'text-slate-500' : 'text-slate-400'}`}>
+                  (scroll back to pause)
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block animate-bounce">↓</span>
+                <span>Scroll away to auto-skip in 5s</span>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -42,7 +42,7 @@ export function useBlocksDrag() {
 interface BlocksDragProviderProps {
   children: React.ReactNode
   onMoveTask?: (taskId: string, targetSlotKey: string, targetTaskId?: string) => void
-  onMoveHotkey?: (hotkeyId: string, targetSlotKey: string) => void
+  onMoveHotkey?: (hotkeyId: string, targetSlotKey: string, targetHotkeyId?: string) => void
 }
 
 export function BlocksDragProvider({
@@ -182,7 +182,7 @@ export function BlocksDragProvider({
           if (item.type === 'task' && onMoveTask) {
             onMoveTask(item.id, targetSlot, targetTaskId || undefined)
           } else if (item.type === 'hotkey' && onMoveHotkey) {
-            onMoveHotkey(item.id, targetSlot)
+            onMoveHotkey(item.id, targetSlot, targetTaskId || undefined)
           }
         }
       }
@@ -201,39 +201,7 @@ export function BlocksDragProvider({
     }
   }, [onMoveTask, onMoveHotkey, stopAutoScrollLoop])
 
-  // Continuous global window capture listeners: guarantees finger release is never missed anywhere
-  useEffect(() => {
-    const handleGlobalRelease = (e: any) => {
-      if (activeDragRef.current) {
-        let relX: number | undefined
-        let relY: number | undefined
-        if (e.changedTouches && e.changedTouches[0]) {
-          relX = e.changedTouches[0].clientX
-          relY = e.changedTouches[0].clientY
-        } else if (typeof e.clientX === 'number') {
-          relX = e.clientX
-          relY = e.clientY
-        }
-        endDrag(relX, relY)
-      }
-    }
-
-    window.addEventListener('pointerup', handleGlobalRelease, { capture: true })
-    window.addEventListener('touchend', handleGlobalRelease, { capture: true })
-    window.addEventListener('touchcancel', handleGlobalRelease, { capture: true })
-    window.addEventListener('mouseup', handleGlobalRelease, { capture: true })
-    window.addEventListener('blur', handleGlobalRelease, { capture: true })
-
-    return () => {
-      window.removeEventListener('pointerup', handleGlobalRelease, { capture: true })
-      window.removeEventListener('touchend', handleGlobalRelease, { capture: true })
-      window.removeEventListener('touchcancel', handleGlobalRelease, { capture: true })
-      window.removeEventListener('mouseup', handleGlobalRelease, { capture: true })
-      window.removeEventListener('blur', handleGlobalRelease, { capture: true })
-    }
-  }, [endDrag])
-
-  // Active drag listeners for position tracking and auto-scroll
+  // Active drag listeners for position tracking and auto-scroll (active ONLY during a live drag)
   useEffect(() => {
     if (!activeDrag) return
 
@@ -283,7 +251,6 @@ export function BlocksDragProvider({
     window.addEventListener('touchend', handleRelease, { capture: true })
     window.addEventListener('touchcancel', handleRelease, { capture: true })
     window.addEventListener('dragend', handleRelease, { capture: true })
-    window.addEventListener('blur', handleRelease, { capture: true })
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
@@ -295,7 +262,6 @@ export function BlocksDragProvider({
       window.removeEventListener('touchend', handleRelease, { capture: true })
       window.removeEventListener('touchcancel', handleRelease, { capture: true })
       window.removeEventListener('dragend', handleRelease, { capture: true })
-      window.removeEventListener('blur', handleRelease, { capture: true })
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [activeDrag, endDrag, stopAutoScrollLoop])
@@ -319,15 +285,17 @@ export function BlocksDragProvider({
       let holdTimer: any = null
 
       return {
-        // Desktop mouse drag
+        // Desktop mouse drag: deliberate 16px threshold to prevent accidental grabs on click
         onMouseDown: (e: React.MouseEvent) => {
           if (e.button !== 0) return // Only primary click
           const startX = e.clientX
           const startY = e.clientY
+          let isDragging = false
 
           const onMouseMove = (moveEvt: MouseEvent) => {
             const dist = Math.hypot(moveEvt.clientX - startX, moveEvt.clientY - startY)
-            if (dist > 5) {
+            if (!isDragging && dist > 16) {
+              isDragging = true
               window.removeEventListener('mousemove', onMouseMove)
               window.removeEventListener('mouseup', onMouseUp)
               startDrag(item, moveEvt.clientX, moveEvt.clientY)
@@ -339,6 +307,10 @@ export function BlocksDragProvider({
             window.removeEventListener('mouseup', onMouseUp)
             if (activeDragRef.current) {
               endDrag(upEvt.clientX, upEvt.clientY)
+            } else if (!isDragging) {
+              if (options?.onClick) {
+                options.onClick()
+              }
             }
           }
 
@@ -346,7 +318,7 @@ export function BlocksDragProvider({
           window.addEventListener('mouseup', onMouseUp)
         },
 
-        // Mobile touch drag with intentional press-and-hold (260ms) and smart gesture separation
+        // Mobile touch drag with intentional press-and-hold (320ms) and smart gesture separation
         onTouchStart: (e: React.TouchEvent) => {
           if (!e.touches || !e.touches[0]) return
           const t = e.touches[0]
@@ -362,7 +334,7 @@ export function BlocksDragProvider({
             isHoldTriggered = true
             triggerHaptic('medium')
             startDrag(item, lastTouchX, lastTouchY)
-          }, 260)
+          }, 320)
         },
 
         onTouchMove: (e: React.TouchEvent) => {
@@ -393,9 +365,9 @@ export function BlocksDragProvider({
           }
 
           // 2. Detect horizontal swipe intent (to complete or skip):
-          // If horizontal movement exceeds 18px and is predominantly horizontal, user is swiping.
-          // Cancel hold timer so swipe action triggers cleanly on touch end.
-          if (absX > 18 && absX > absY * 1.4) {
+          // If horizontal movement exceeds 12px and is predominantly horizontal, user is swiping.
+          // Cancel hold timer so swipe action triggers cleanly.
+          if (absX > 12 && absX > absY * 1.2) {
             if (holdTimer) {
               clearTimeout(holdTimer)
               holdTimer = null
@@ -404,9 +376,7 @@ export function BlocksDragProvider({
           }
 
           // 3. Jitter threshold:
-          // If the finger drifts more than 22px in any direction before the hold timer elapses, cancel hold.
-          // (Allows natural fingertip contact wiggle room without accidentally canceling)
-          if (Math.hypot(diffX, diffY) > 22) {
+          if (Math.hypot(diffX, diffY) > 18) {
             if (holdTimer) {
               clearTimeout(holdTimer)
               holdTimer = null
@@ -426,14 +396,14 @@ export function BlocksDragProvider({
             return
           }
 
-          // Check for quick swipe or tap
+          // Check for swipe or clean tap
           const duration = Date.now() - touchStartTime
-          if (e.changedTouches && e.changedTouches[0] && duration < 350) {
+          if (e.changedTouches && e.changedTouches[0]) {
             const t = e.changedTouches[0]
             const diffX = t.clientX - touchStartX
             const diffY = t.clientY - touchStartY
 
-            if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.4) {
+            if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
               if (diffX > 0 && options?.onSwipeRight) {
                 options.onSwipeRight()
                 return
@@ -441,7 +411,7 @@ export function BlocksDragProvider({
                 options.onSwipeLeft()
                 return
               }
-            } else if (Math.hypot(diffX, diffY) < 12 && options?.onClick) {
+            } else if (Math.hypot(diffX, diffY) < 14 && duration < 350 && options?.onClick) {
               options.onClick()
               return
             }

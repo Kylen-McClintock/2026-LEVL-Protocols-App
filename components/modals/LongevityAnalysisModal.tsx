@@ -162,7 +162,7 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
 
   const modalContent = (
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl sm:max-w-3xl bg-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col justify-between space-y-4">
+      <div className="relative w-full max-w-2xl sm:max-w-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col justify-between space-y-4">
         
         {/* Ambient background glow */}
         <div 
@@ -171,7 +171,7 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
         />
 
         {/* Modal Header */}
-        <div className="relative flex items-start justify-between gap-3 border-b border-white/10 pb-4 shrink-0">
+        <div className="relative flex items-start justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div 
               className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg border"
@@ -189,16 +189,16 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
+                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">
                   {displayName}
                 </h2>
                 {currentDialedInScore !== undefined && (
-                  <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30">
                     {currentDialedInScore}% Dialed-In
                   </span>
                 )}
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate">
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                 Clinical Evidence &amp; 80/20 Scoring Calculus
               </p>
             </div>
@@ -207,7 +207,7 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-900 border border-slate-800 transition-colors cursor-pointer shrink-0"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-transparent dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer shrink-0"
             aria-label="Close Analysis"
           >
             <X size={18} />
@@ -215,17 +215,17 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
         </div>
 
         {/* Sub-Navigation Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-black/60 rounded-xl border border-white/5 shrink-0 overflow-x-auto">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-black/60 rounded-xl border border-slate-200 dark:border-white/5 shrink-0 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('methodology')}
             className={`flex-1 min-w-[120px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
               activeTab === 'methodology'
-                ? 'bg-slate-800 text-white shadow-sm border border-slate-700'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 dark:bg-slate-800 dark:text-white dark:border-slate-700'
+                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <Scale size={13} className="text-amber-400" />
+            <Scale size={13} className="text-amber-500 dark:text-amber-400" />
             <span>Scoring Calculus</span>
           </button>
 
@@ -234,11 +234,11 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
             onClick={() => setActiveTab('biomarkers')}
             className={`flex-1 min-w-[110px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
               activeTab === 'biomarkers'
-                ? 'bg-slate-800 text-white shadow-sm border border-slate-700'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 dark:bg-slate-800 dark:text-white dark:border-slate-700'
+                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <Activity size={13} className="text-cyan-400" />
+            <Activity size={13} className="text-cyan-600 dark:text-cyan-400" />
             <span>Biomarkers</span>
           </button>
 
@@ -247,11 +247,11 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
             onClick={() => setActiveTab('active_stack')}
             className={`flex-1 min-w-[110px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
               activeTab === 'active_stack'
-                ? 'bg-slate-800 text-white shadow-sm border border-slate-700'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 dark:bg-slate-800 dark:text-white dark:border-slate-700'
+                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <Layers size={13} className="text-emerald-400" />
+            <Layers size={13} className="text-emerald-600 dark:text-emerald-400" />
             <span>Active Stack ({activeContributingModalities.length})</span>
           </button>
 
@@ -260,84 +260,84 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
             onClick={() => setActiveTab('evidence')}
             className={`flex-1 min-w-[110px] py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
               activeTab === 'evidence'
-                ? 'bg-slate-800 text-white shadow-sm border border-slate-700'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 dark:bg-slate-800 dark:text-white dark:border-slate-700'
+                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <FileText size={13} className="text-purple-400" />
+            <FileText size={13} className="text-purple-600 dark:text-purple-400" />
             <span>Literature ({allStudies.length})</span>
           </button>
         </div>
 
         {/* Tab Body Content (Scrollable) */}
-        <div className="overflow-y-auto flex-1 pr-1 space-y-4 text-slate-300 text-xs sm:text-sm">
+        <div className="overflow-y-auto flex-1 pr-1 space-y-4 text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
 
           {/* TAB 1: METHODOLOGY & SCORING CALCULUS */}
           {activeTab === 'methodology' && (
             <div className="space-y-4 animate-in fade-in duration-200">
               {/* Formula Card */}
-              <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80 shadow-md space-y-2.5">
-                <div className="flex items-center gap-2 text-white font-extrabold text-xs sm:text-sm">
-                  <Sparkles size={16} className="text-amber-400" />
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800/80 shadow-sm space-y-2.5">
+                <div className="flex items-center gap-2 text-slate-900 dark:text-white font-extrabold text-xs sm:text-sm">
+                  <Sparkles size={16} className="text-amber-500 dark:text-amber-400" />
                   <span>The 80/20 Clinical Scoring Algorithm</span>
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                   Every modality score in LEVL is calculated from an objective biogerontological formula rather than subjective ratings:
                 </p>
-                <div className="p-3 bg-black/70 rounded-xl border border-white/10 font-mono text-center text-xs text-amber-300 font-bold tracking-tight overflow-x-auto">
+                <div className="p-3 bg-amber-50 dark:bg-black/70 rounded-xl border border-amber-200 dark:border-white/10 font-mono text-center text-xs text-amber-900 dark:text-amber-300 font-bold tracking-tight overflow-x-auto shadow-sm">
                   Score = Foundational Weight (Tier 1/2/3) × Clinical Evidence Multiplier × Dosing Factor
                 </div>
-                <p className="text-[11px] text-slate-400 leading-normal">
-                  Total outcome coverage applies a non-linear <strong className="text-white">sigmoidal saturation curve</strong>: the first 1–2 foundational modalities account for 80% of clinical benefit, while excessive stacking yields diminishing marginal returns.
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                  Total outcome coverage applies a non-linear <strong className="text-slate-800 dark:text-white">sigmoidal saturation curve</strong>: the first 1–2 foundational modalities account for 80% of clinical benefit, while excessive stacking yields diminishing marginal returns.
                 </p>
               </div>
 
               {/* 3-Tier Rubric Table */}
               <div className="space-y-2">
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                <h3 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">
                   The 3 Evidence Tiers
                 </h3>
                 <div className="grid grid-cols-1 gap-2">
-                  <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                  <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/30 flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
                       1
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-extrabold text-white text-xs">Tier 1: Foundational Anchor (65–100 pts)</span>
-                        <span className="text-[10px] font-mono text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full font-bold">Essential 80%</span>
+                        <span className="font-extrabold text-slate-900 dark:text-white text-xs">Tier 1: Foundational Anchor (65–100 pts)</span>
+                        <span className="text-[10px] font-mono text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-transparent px-2 py-0.5 rounded-full font-bold">Essential 80%</span>
                       </div>
-                      <p className="text-[11px] text-slate-300 mt-1 leading-normal">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-normal">
                         Primary physiological driver backed by human double-blind RCTs or meta-analyses showing direct ≥15% clinical shifts in primary hard endpoints. Reaching a Dialed-In state requires at least one Tier 1 anchor.
                       </p>
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/30 flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                  <div className="p-3 rounded-xl bg-cyan-50/70 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-500/30 flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-lg bg-cyan-100 dark:bg-cyan-500/20 border border-cyan-300 dark:border-cyan-500/40 text-cyan-800 dark:text-cyan-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
                       2
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-extrabold text-white text-xs">Tier 2: Targeted Synergist (30–64 pts)</span>
-                        <span className="text-[10px] font-mono text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-full font-bold">Boost Multiplier</span>
+                        <span className="font-extrabold text-slate-900 dark:text-white text-xs">Tier 2: Targeted Synergist (30–64 pts)</span>
+                        <span className="text-[10px] font-mono text-cyan-800 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-500/20 border border-cyan-300 dark:border-transparent px-2 py-0.5 rounded-full font-bold">Boost Multiplier</span>
                       </div>
-                      <p className="text-[11px] text-slate-300 mt-1 leading-normal">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-normal">
                         Replenishes rate-limiting co-factors, protects enzymatic substrates, or multiplies the efficacy of Tier 1 foundations (e.g. CoQ10 with cardio, Vitamin K2 with D3).
                       </p>
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
                       3
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-extrabold text-slate-300 text-xs">Tier 3: Marginal Modulator (5–29 pts)</span>
-                        <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">Diminishing Yield</span>
+                        <span className="font-extrabold text-slate-800 dark:text-slate-300 text-xs">Tier 3: Marginal Modulator (5–29 pts)</span>
+                        <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-200/70 dark:bg-slate-800 px-2 py-0.5 rounded-full">Diminishing Yield</span>
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-1 leading-normal">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-normal">
                         Subtle downstream or animal-model modulation. Good candidates for the Friction Buster to bench when daily effort exceeds budget.
                       </p>
                     </div>
@@ -346,12 +346,12 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
               </div>
 
               {/* Evidence Multiplier breakdown */}
-              <div className="p-3 bg-slate-900/40 rounded-xl border border-white/5 space-y-1.5 text-[11px] text-slate-400">
-                <span className="font-bold text-slate-300 block">Clinical Evidence Multipliers:</span>
+              <div className="p-3 bg-slate-100/70 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-white/5 space-y-1.5 text-[11px] text-slate-600 dark:text-slate-400">
+                <span className="font-bold text-slate-800 dark:text-slate-300 block">Clinical Evidence Multipliers:</span>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-emerald-400">Grade A (Human RCTs / Meta-Analyses): <strong>1.0x</strong></span>
-                  <span className="text-cyan-400">Grade B (Clinical Trials / In Vivo): <strong>0.8x</strong></span>
-                  <span className="text-amber-400">Grade C (Translational / In Vitro): <strong>0.5x</strong></span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-medium">Grade A (Human RCTs / Meta-Analyses): <strong>1.0x</strong></span>
+                  <span className="text-cyan-700 dark:text-cyan-400 font-medium">Grade B (Clinical Trials / In Vivo): <strong>0.8x</strong></span>
+                  <span className="text-amber-700 dark:text-amber-400 font-medium">Grade C (Translational / In Vitro): <strong>0.5x</strong></span>
                 </div>
               </div>
             </div>
@@ -360,13 +360,13 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
           {/* TAB 2: CLINICAL BIOMARKERS */}
           {activeTab === 'biomarkers' && (
             <div className="space-y-3.5 animate-in fade-in duration-200">
-              <div className="flex items-start justify-between gap-3 p-3 bg-cyan-950/25 border border-cyan-500/30 rounded-2xl flex-wrap">
+              <div className="flex items-start justify-between gap-3 p-3 bg-cyan-50 dark:bg-cyan-950/25 border border-cyan-200 dark:border-cyan-500/30 rounded-2xl flex-wrap">
                 <div className="min-w-0 flex-1">
-                  <span className="text-xs font-bold text-white block">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white block">
                     Real-World Biomarker Calibration
                   </span>
-                  <p className="text-[11px] text-slate-300 mt-0.5 leading-normal">
-                    Comparing your actual lab measurements against LEVL optimal longevity targets and your current <strong className="text-cyan-300">{currentDialedInScore ?? 85}% Dialed-In</strong> score.
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 leading-normal">
+                    Comparing your actual lab measurements against LEVL optimal longevity targets and your current <strong className="text-cyan-700 dark:text-cyan-300">{currentDialedInScore ?? 85}% Dialed-In</strong> score.
                   </p>
                 </div>
                 <button
@@ -397,14 +397,14 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
                     return (
                       <div 
                         key={idx} 
-                        className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between space-y-2.5 hover:border-slate-700 transition-colors"
+                        className="p-3.5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-2.5 hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm"
                       >
                         <div>
                           {/* Marker Header */}
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <span className="font-extrabold text-white text-xs block">{b.name}</span>
-                              <span className="text-[10px] font-mono text-cyan-300 font-bold">
+                              <span className="font-extrabold text-slate-900 dark:text-white text-xs block">{b.name}</span>
+                              <span className="text-[10px] font-mono text-cyan-700 dark:text-cyan-300 font-bold">
                                 Target: {b.clinicalTarget} {b.unit}
                               </span>
                             </div>
@@ -422,22 +422,22 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
                             </button>
                           </div>
 
-                          <p className="text-[11px] text-slate-400 mt-1.5 leading-normal">
+                          <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1.5 leading-normal">
                             {b.description}
                           </p>
                         </div>
 
                         {/* Actual Measurement & Calibration Shift */}
-                        <div className="p-2.5 rounded-xl bg-black/60 border border-white/5 space-y-1 text-[11px]">
-                          <div className="flex items-center justify-between text-slate-400 text-[10px] font-mono">
+                        <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-black/60 border border-slate-200/80 dark:border-white/5 space-y-1 text-[11px]">
+                          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[10px] font-mono">
                             <span>Logged Lab:</span>
-                            <span className="text-white font-bold">
+                            <span className="text-slate-900 dark:text-white font-bold">
                               {feedback.currentValue !== null ? `${feedback.currentValue} ${feedback.unit}` : 'None logged'}
                             </span>
                           </div>
 
                           {feedback.currentValue !== null ? (
-                            <p className="text-cyan-200 text-[10px] leading-snug pt-0.5">
+                            <p className="text-cyan-800 dark:text-cyan-200 text-[10px] leading-snug pt-0.5">
                               {feedback.calibrationText}
                             </p>
                           ) : (
@@ -447,7 +447,7 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
                                 setHighlightMarker(canonicalId)
                                 setIsBiomarkerDrawerOpen(true)
                               }}
-                              className="text-cyan-400 hover:text-cyan-300 text-[10px] font-bold flex items-center gap-1 pt-0.5 cursor-pointer"
+                              className="text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300 text-[10px] font-bold flex items-center gap-1 pt-0.5 cursor-pointer"
                             >
                               <span>+ Enter lab value to calibrate</span>
                             </button>
@@ -458,19 +458,19 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
                   })}
                 </div>
               ) : (
-                <div className="p-6 text-center text-xs text-slate-500 bg-slate-900/30 rounded-2xl border border-white/5">
+                <div className="p-6 text-center text-xs text-slate-500 bg-slate-100/70 dark:bg-slate-900/30 rounded-2xl border border-slate-200 dark:border-white/5">
                   Tracking clinical functional metrics and subjective recovery indices.
                 </div>
               )}
 
               {vectorMetadata?.biologicalProcesses && (
-                <div className="p-3.5 rounded-2xl bg-slate-900/40 border border-white/5 space-y-1.5 mt-2">
-                  <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 space-y-1.5 mt-2">
+                  <span className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider block">
                     Target Biological Signaling Pathways:
                   </span>
-                  <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-400">
+                  <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
                     {vectorMetadata.biologicalProcesses.map((proc, idx) => (
-                      <li key={idx}><span className="text-slate-300">{proc}</span></li>
+                      <li key={idx}><span className="text-slate-800 dark:text-slate-300">{proc}</span></li>
                     ))}
                   </ul>
                 </div>
@@ -481,8 +481,8 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
           {/* TAB 3: ACTIVE PROTOCOL STACK ANALYSIS */}
           {activeTab === 'active_stack' && (
             <div className="space-y-3 animate-in fade-in duration-200">
-              <div className="text-xs text-slate-300 leading-relaxed mb-2">
-                The breakdown of your active modalities contributing to <strong className="text-white">{displayName}</strong> today:
+              <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-2">
+                The breakdown of your active modalities contributing to <strong className="text-slate-900 dark:text-white">{displayName}</strong> today:
               </div>
 
               {activeContributingModalities.length > 0 ? (
@@ -498,37 +498,37 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
                     return (
                       <div 
                         key={modality.id}
-                        className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2 hover:border-slate-700 transition-colors"
+                        className="p-3.5 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-2 hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm"
                       >
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-white text-xs sm:text-sm">
+                            <span className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm">
                               {modality.display_name || modality.name}
                             </span>
                             <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
                               isFoundational || evidence?.tier === 'foundational'
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30'
                                 : evidence?.tier === 'synergistic'
-                                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                                  : 'bg-slate-800 text-slate-400 border border-slate-700'
+                                  ? 'bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
                             }`}>
                               {tierLabel}
                             </span>
                           </div>
 
-                          <span className="text-xs font-mono font-black text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                          <span className="text-xs font-mono font-black text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-500/20">
                             +{score} pts
                           </span>
                         </div>
 
                         {evidence?.mechanism && (
-                          <p className="text-[11px] text-slate-300 leading-relaxed">
-                            <strong className="text-slate-400">Mechanism:</strong> {evidence.mechanism}
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                            <strong className="text-slate-700 dark:text-slate-400">Mechanism:</strong> {evidence.mechanism}
                           </p>
                         )}
 
                         {evidence?.effectSize && (
-                          <div className="flex items-center gap-1.5 text-[11px] text-cyan-300 bg-cyan-950/40 px-2.5 py-1 rounded-lg border border-cyan-800/30">
+                          <div className="flex items-center gap-1.5 text-[11px] text-cyan-800 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/40 px-2.5 py-1 rounded-lg border border-cyan-200 dark:border-cyan-800/30">
                             <TrendingUp size={12} className="shrink-0" />
                             <span><strong>Clinical Effect:</strong> {evidence.effectSize}</span>
                           </div>
@@ -542,7 +542,7 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
                                 href={study.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-300 hover:text-purple-200 bg-purple-950/40 hover:bg-purple-900/60 border border-purple-800/40 px-2 py-0.5 rounded-md transition-colors"
+                                className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-800 dark:text-purple-300 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800/40 px-2 py-0.5 rounded-md transition-colors"
                               >
                                 <span>PMID {study.pmid} ({study.type})</span>
                                 <ExternalLink size={9} />
@@ -555,9 +555,9 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
                   })}
                 </div>
               ) : (
-                <div className="p-8 text-center space-y-2 bg-slate-900/40 rounded-2xl border border-white/5">
-                  <AlertCircle size={24} className="mx-auto text-amber-400" />
-                  <p className="text-xs text-slate-300 font-bold">No active modalities scheduled for this outcome today.</p>
+                <div className="p-8 text-center space-y-2 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-white/5">
+                  <AlertCircle size={24} className="mx-auto text-amber-500 dark:text-amber-400" />
+                  <p className="text-xs text-slate-800 dark:text-slate-300 font-bold">No active modalities scheduled for this outcome today.</p>
                   <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
                     Add a foundational anchor (e.g., {vectorMetadata?.goldStandardAnchors?.join(', ') || 'Zone 2 cardio or sauna'}) to build your 80/20 baseline.
                   </p>
@@ -569,8 +569,8 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
           {/* TAB 4: PEER-REVIEWED SCIENTIFIC LITERATURE */}
           {activeTab === 'evidence' && (
             <div className="space-y-3 animate-in fade-in duration-200">
-              <div className="text-xs text-slate-300 leading-relaxed mb-2">
-                Published randomized controlled trials and peer-reviewed human literature supporting <strong className="text-white">{displayName}</strong>:
+              <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-2">
+                Published randomized controlled trials and peer-reviewed human literature supporting <strong className="text-slate-900 dark:text-white">{displayName}</strong>:
               </div>
 
               {allStudies.length > 0 ? (
@@ -581,29 +581,29 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
                       href={study.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block p-3 rounded-xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-purple-500/40 transition-all group"
+                      className="block p-3 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-900/60 dark:hover:bg-slate-900 border border-slate-200 hover:border-purple-300 dark:border-slate-800 dark:hover:border-purple-500/40 transition-all group shadow-sm"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800/60">
+                            <span className="text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800/60">
                               PMID: {study.pmid}
                             </span>
-                            <span className="text-[10px] font-bold text-amber-400 bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/40">
+                            <span className="text-[10px] font-bold text-amber-800 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-800/40">
                               {study.type}
                             </span>
                           </div>
-                          <p className="text-xs font-bold text-white group-hover:text-purple-300 transition-colors line-clamp-2">
+                          <p className="text-xs font-bold text-slate-900 group-hover:text-purple-700 dark:text-white dark:group-hover:text-purple-300 transition-colors line-clamp-2">
                             {study.title}
                           </p>
                         </div>
-                        <ExternalLink size={14} className="text-slate-500 group-hover:text-purple-400 shrink-0 mt-1" />
+                        <ExternalLink size={14} className="text-slate-400 group-hover:text-purple-600 dark:text-slate-500 dark:group-hover:text-purple-400 shrink-0 mt-1" />
                       </div>
                     </a>
                   ))}
                 </div>
               ) : (
-                <div className="p-6 text-center text-xs text-slate-500 bg-slate-900/30 rounded-2xl border border-white/5">
+                <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 dark:bg-slate-900/30 rounded-2xl border border-slate-200 dark:border-white/5">
                   Scientific papers indexed directly within active modality profiles.
                 </div>
               )}
@@ -613,12 +613,12 @@ export const LongevityAnalysisModal: React.FC<LongevityAnalysisModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-400 shrink-0">
-          <span className="text-[11px] text-slate-500">LEVL Biogerontological Evidence Framework</span>
+        <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-xs text-slate-400 shrink-0">
+          <span className="text-[11px] text-slate-500 dark:text-slate-500">LEVL Biogerontological Evidence Framework</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs cursor-pointer transition-colors shadow-sm"
+            className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 font-bold text-xs cursor-pointer transition-colors shadow-sm"
           >
             Done
           </button>

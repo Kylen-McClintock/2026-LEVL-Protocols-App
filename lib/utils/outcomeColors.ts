@@ -115,12 +115,12 @@ export function getOutcomeColorConfig(val: number, directionality?: string) {
 
 export function getNeutralOutcomeColorConfig() {
   return {
-    textColor: 'text-gray-400',
-    bgColor: 'bg-gray-500',
-    borderColor: 'border-gray-500/40',
-    badgeBg: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-    accentHex: '#6B7280',
-    qualityLabel: 'Unset (5/10)'
+    textColor: 'text-slate-400',
+    bgColor: 'bg-slate-400',
+    borderColor: 'border-slate-300/70 dark:border-white/10',
+    badgeBg: 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/15',
+    accentHex: '#94A3B8',
+    qualityLabel: 'Unconfirmed (Tap)'
   }
 }
 

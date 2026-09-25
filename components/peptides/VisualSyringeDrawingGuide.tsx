@@ -28,6 +28,12 @@ export default function VisualSyringeDrawingGuide({
   const defaultCapacity = unitsToDraw <= 30 ? 30 : unitsToDraw <= 50 ? 50 : 100
   const [syringeCapacity, setSyringeCapacity] = useState<30 | 50 | 100>(defaultCapacity)
 
+  // Keep syringe capacity synchronized if unitsToDraw changes
+  React.useEffect(() => {
+    const ideal = unitsToDraw <= 30 ? 30 : unitsToDraw <= 50 ? 50 : 100
+    setSyringeCapacity(ideal)
+  }, [unitsToDraw])
+
   const safeUnits = Math.max(0, Math.min(syringeCapacity, unitsToDraw))
   const fillPct = (safeUnits / syringeCapacity) * 100
   const mlDose = Number((safeUnits * 0.01).toFixed(3))
@@ -223,8 +229,8 @@ export default function VisualSyringeDrawingGuide({
           <Sparkles size={10} />
           <span>No math required: Align black stopper with {unitsToDraw} mark</span>
         </span>
-        <span className="text-slate-500">
-          100 Units = 1.0 mL
+        <span className="text-slate-400 font-mono text-[9px]">
+          {unitsToDraw} {unitsToDraw === 1 ? 'Unit' : 'Units'} = {mlDose.toFixed(2)} mL (U-100 Standard)
         </span>
       </div>
     </div>

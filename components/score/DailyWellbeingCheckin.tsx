@@ -16,7 +16,15 @@ import { fetchCurrentWeather, getCachedWeather, isWeatherTrackingEnabled, LocalW
 import { ExternalConfounderData } from '@/lib/types'
 import CircadianTimePickerInput, { resolveCircadianLastMealTime } from '@/components/ui/CircadianTimePickerInput'
 import FeelingsMoodGridModal from '@/components/checkin/FeelingsMoodGridModal'
-import { EmotionQuadrant, mapEmotionToOutcomes, QUADRANT_CONFIGS } from '@/lib/emotions/emotionDictionary'
+import {
+  EmotionQuadrant,
+  mapEmotionToOutcomes,
+  QUADRANT_CONFIGS,
+  CANONICAL_EMOTIONS,
+  getEmotionColor,
+  getEmotionTextColor
+} from '@/lib/emotions/emotionDictionary'
+import { useTheme } from '@/lib/utils/useTheme'
 
 function calculateHoursBeforeBedFromTime(timeStr: string, idealBedtime: any = '22:30'): number {
   if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0
@@ -479,6 +487,9 @@ export default function DailyWellbeingCheckin({
   const [notes, setNotes] = useState<string>('')
   const [eveningNotes, setEveningNotes] = useState<string>('')
 
+  const { theme } = useTheme()
+  const isDaylight = theme === 'light'
+
   // Additional Functional Outcomes
   const [skinClarity, setSkinClarity] = useState(5)
   const [focusScore, setFocusScore] = useState(5)
@@ -494,6 +505,193 @@ export default function DailyWellbeingCheckin({
     return (initialData as any)?.custom_outcomes_jsonb?.feeling_definition || null
   })
   const [isFeelingsModalOpen, setIsFeelingsModalOpen] = useState(false)
+  // Context for which check-in triggered the 2x2 feelings modal ('morning' | 'anytime' | 'nightly')
+  const [feelingsContext, setFeelingsContext] = useState<'morning' | 'anytime' | 'nightly'>('morning')
+
+  // Dynamic color styles matching the selected emotion's quadrant and exact bubble color
+  const feelingColorStyle = useMemo(() => {
+    if (!selectedFeelingQuadrant) {
+      return {
+        container: isDaylight
+          ? 'border-purple-200 hover:border-purple-300 bg-gradient-to-r from-purple-50 via-indigo-50/50 to-slate-50 shadow-purple-500/5'
+          : 'border-purple-500/30 hover:border-purple-400/50 bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-950/60 shadow-purple-950/20',
+        iconBox: isDaylight
+          ? 'bg-purple-100 border-purple-200 text-purple-700'
+          : 'bg-purple-500/20 border-purple-500/40 text-purple-300',
+        badge: isDaylight
+          ? 'border-purple-200 text-purple-700 bg-purple-100/80'
+          : 'border-purple-500/40 text-purple-300 bg-purple-950/60',
+        title: isDaylight ? 'text-purple-950' : 'text-white',
+        subtext: isDaylight ? 'text-purple-900/80' : 'text-purple-300/80',
+        action: isDaylight ? 'text-purple-700 group-hover:text-purple-900' : 'text-purple-400 group-hover:text-purple-300',
+        solidColor: null as string | null,
+        textColor: null as string | null
+      }
+    }
+
+    const foundEmotion = selectedFeelingWord
+      ? CANONICAL_EMOTIONS.find(
+          (e) => e.name.toLowerCase() === selectedFeelingWord.toLowerCase() || e.id === selectedFeelingWord.toLowerCase()
+        )
+      : null
+    const solidColor = foundEmotion ? getEmotionColor(foundEmotion) : null
+    const emotionTextColor = foundEmotion ? getEmotionTextColor(foundEmotion) : null
+
+    if (selectedFeelingQuadrant === 'high_energy_pleasant') {
+      return {
+        container: isDaylight
+          ? 'border-amber-300 hover:border-amber-400 bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50/60 shadow-amber-500/10'
+          : 'border-amber-500/40 hover:border-amber-400/60 bg-gradient-to-r from-amber-950/60 via-yellow-950/40 to-slate-950/70 shadow-amber-950/30',
+        iconBox: isDaylight
+          ? 'bg-amber-100 border-amber-300 text-amber-800'
+          : 'bg-amber-500/20 border-amber-500/40 text-amber-300',
+        badge: isDaylight
+          ? 'border-amber-300 text-amber-800 bg-amber-100/90'
+          : 'border-amber-500/40 text-amber-300 bg-amber-950/60',
+        title: isDaylight ? 'text-amber-950' : 'text-amber-100',
+        subtext: isDaylight ? 'text-amber-900/80' : 'text-amber-300/80',
+        action: isDaylight ? 'text-amber-700 group-hover:text-amber-900' : 'text-amber-400 group-hover:text-amber-300',
+        solidColor,
+        textColor: emotionTextColor
+      }
+    }
+
+    if (selectedFeelingQuadrant === 'high_energy_unpleasant') {
+      return {
+        container: isDaylight
+          ? 'border-rose-300 hover:border-rose-400 bg-gradient-to-r from-rose-50 via-orange-50 to-red-50/60 shadow-rose-500/10'
+          : 'border-rose-500/40 hover:border-rose-400/60 bg-gradient-to-r from-rose-950/60 via-orange-950/40 to-slate-950/70 shadow-rose-950/30',
+        iconBox: isDaylight
+          ? 'bg-rose-100 border-rose-300 text-rose-800'
+          : 'bg-rose-500/20 border-rose-500/40 text-rose-300',
+        badge: isDaylight
+          ? 'border-rose-300 text-rose-800 bg-rose-100/90'
+          : 'border-rose-500/40 text-rose-300 bg-rose-950/60',
+        title: isDaylight ? 'text-rose-950' : 'text-rose-100',
+        subtext: isDaylight ? 'text-rose-900/80' : 'text-rose-300/80',
+        action: isDaylight ? 'text-rose-700 group-hover:text-rose-900' : 'text-rose-400 group-hover:text-rose-300',
+        solidColor,
+        textColor: emotionTextColor
+      }
+    }
+
+    if (selectedFeelingQuadrant === 'low_energy_unpleasant') {
+      return {
+        container: isDaylight
+          ? 'border-blue-300 hover:border-blue-400 bg-gradient-to-r from-blue-50 via-sky-50 to-indigo-50/60 shadow-blue-500/10'
+          : 'border-blue-500/40 hover:border-blue-400/60 bg-gradient-to-r from-blue-950/60 via-sky-950/40 to-slate-950/70 shadow-blue-950/30',
+        iconBox: isDaylight
+          ? 'bg-blue-100 border-blue-300 text-blue-800'
+          : 'bg-blue-500/20 border-blue-500/40 text-blue-300',
+        badge: isDaylight
+          ? 'border-blue-300 text-blue-800 bg-blue-100/90'
+          : 'border-blue-500/40 text-blue-300 bg-blue-950/60',
+        title: isDaylight ? 'text-blue-950' : 'text-blue-100',
+        subtext: isDaylight ? 'text-blue-900/80' : 'text-blue-300/80',
+        action: isDaylight ? 'text-blue-700 group-hover:text-blue-900' : 'text-blue-400 group-hover:text-blue-300',
+        solidColor,
+        textColor: emotionTextColor
+      }
+    }
+
+    // low_energy_pleasant
+    return {
+      container: isDaylight
+        ? 'border-teal-300 hover:border-teal-400 bg-gradient-to-r from-teal-50 via-emerald-50 to-cyan-50/60 shadow-teal-500/10'
+        : 'border-teal-500/40 hover:border-teal-400/60 bg-gradient-to-r from-teal-950/60 via-emerald-950/40 to-slate-950/70 shadow-teal-950/30',
+      iconBox: isDaylight
+        ? 'bg-teal-100 border-teal-300 text-teal-800'
+        : 'bg-teal-500/20 border-teal-500/40 text-teal-300',
+      badge: isDaylight
+        ? 'border-teal-300 text-teal-800 bg-teal-100/90'
+        : 'border-teal-500/40 text-teal-300 bg-teal-950/60',
+      title: isDaylight ? 'text-teal-950' : 'text-teal-100',
+      subtext: isDaylight ? 'text-teal-900/80' : 'text-teal-300/80',
+      action: isDaylight ? 'text-teal-700 group-hover:text-teal-900' : 'text-teal-400 group-hover:text-teal-300',
+      solidColor,
+      textColor: emotionTextColor
+    }
+  }, [selectedFeelingQuadrant, selectedFeelingWord, isDaylight])
+
+  // Reusable prominent 2x2 Feelings Grid Trigger Banner
+  const renderFeelingsGridTrigger = (ctx: 'morning' | 'anytime' | 'nightly') => {
+    let defaultQuestion = 'How are you feeling this morning?'
+    let defaultHelper = '2×2 check-in to auto-set mood & energy'
+    let icon = <Sparkles size={16} />
+
+    if (ctx === 'anytime') {
+      defaultQuestion = 'How are you feeling right now?'
+      defaultHelper = '2×2 check-in to capture current state'
+      icon = <Sun size={16} />
+    } else if (ctx === 'nightly') {
+      defaultQuestion = 'How did you feel today?'
+      defaultHelper = '2×2 check-in to reflect on your day'
+      icon = <Moon size={16} />
+    }
+
+    const titleText = selectedFeelingWord ? `Feeling: ${selectedFeelingWord}` : defaultQuestion
+    const helperText = selectedFeelingWord
+      ? (selectedFeelingDef || 'Tap to change or fine-tune')
+      : defaultHelper
+
+    return (
+      <div
+        onClick={() => {
+          setFeelingsContext(ctx)
+          setIsFeelingsModalOpen(true)
+        }}
+        className={`p-3.5 sm:p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between shadow-md hover:shadow-lg group active:scale-[0.99] ${feelingColorStyle.container}`}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center shadow-inner shrink-0 group-hover:scale-105 transition-transform ${feelingColorStyle.iconBox}`}
+            style={
+              feelingColorStyle.solidColor
+                ? {
+                    backgroundColor: feelingColorStyle.solidColor,
+                    color: feelingColorStyle.textColor || '#ffffff',
+                    borderColor: 'rgba(255, 255, 255, 0.4)'
+                  }
+                : undefined
+            }
+          >
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-sm font-bold truncate block ${feelingColorStyle.title}`}>
+                {titleText}
+              </span>
+              {selectedFeelingQuadrant ? (
+                <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border font-semibold shrink-0 ${feelingColorStyle.badge}`}>
+                  {QUADRANT_CONFIGS[selectedFeelingQuadrant]?.filterLabel || selectedFeelingQuadrant}
+                </span>
+              ) : (
+                <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border font-semibold shrink-0 ${
+                  isDaylight ? 'bg-purple-100/70 border-purple-200 text-purple-700' : 'bg-purple-500/15 border-purple-500/30 text-purple-300'
+                }`}>
+                  2×2 Grid
+                </span>
+              )}
+            </div>
+            <span className={`text-xs block line-clamp-1 mt-0.5 ${feelingColorStyle.subtext}`}>
+              {helperText}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0 pl-2">
+          <span className={`text-xs font-bold flex items-center gap-1 transition-colors px-2.5 py-1 rounded-lg ${
+            isDaylight 
+              ? 'bg-white/80 border border-slate-200/90 text-slate-800 group-hover:bg-white group-hover:text-slate-950 shadow-2xs' 
+              : 'bg-white/10 border border-white/15 text-white group-hover:bg-white/15'
+          }`}>
+            <span>{selectedFeelingWord ? 'Change' : 'Open Grid'}</span>
+            <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   // Current State Collapse Tier: 'minimal' (1-line), 'numbers' (semi-open default), 'trends' (fully open)
   const [outcomeCollapseTier, setOutcomeCollapseTier] = useState<'minimal' | 'numbers' | 'trends'>(() => {
@@ -1683,8 +1881,8 @@ export default function DailyWellbeingCheckin({
             <div className="grid grid-cols-4 gap-1.5 sm:gap-2 text-xs">
               {/* MOOD CARD */}
               <div 
-                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${moodCfg ? moodCfg.borderColor : 'border-white/10'}`}
-                style={{ backgroundColor: moodCfg ? `${moodCfg.accentHex}15` : 'rgba(0,0,0,0.3)' }}
+                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${moodCfg ? `${moodCfg.borderColor} ${isDaylight ? 'bg-white' : ''}` : (isDaylight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10')}`}
+                style={moodCfg ? { backgroundColor: `${moodCfg.accentHex}15` } : undefined}
               >
                 <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
                   <span>Mood</span>
@@ -1695,7 +1893,7 @@ export default function DailyWellbeingCheckin({
                   )}
                 </div>
                 <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                  <span className={`font-mono font-black text-sm sm:text-base ${moodCfg ? moodCfg.textColor : 'text-white'}`}>
+                  <span className={`font-mono font-black text-sm sm:text-base ${moodCfg ? moodCfg.textColor : (isDaylight ? 'text-slate-700' : 'text-white')}`}>
                     {moodVal != null ? moodVal : '—'}
                   </span>
                   <span className="text-gray-500 text-[10px] font-mono">/10</span>
@@ -1704,8 +1902,8 @@ export default function DailyWellbeingCheckin({
 
               {/* ENERGY CARD */}
               <div 
-                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${energyCfg ? energyCfg.borderColor : 'border-white/10'}`}
-                style={{ backgroundColor: energyCfg ? `${energyCfg.accentHex}15` : 'rgba(0,0,0,0.3)' }}
+                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${energyCfg ? `${energyCfg.borderColor} ${isDaylight ? 'bg-white' : ''}` : (isDaylight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10')}`}
+                style={energyCfg ? { backgroundColor: `${energyCfg.accentHex}15` } : undefined}
               >
                 <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
                   <span>Energy</span>
@@ -1716,7 +1914,7 @@ export default function DailyWellbeingCheckin({
                   )}
                 </div>
                 <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                  <span className={`font-mono font-black text-sm sm:text-base ${energyCfg ? energyCfg.textColor : 'text-white'}`}>
+                  <span className={`font-mono font-black text-sm sm:text-base ${energyCfg ? energyCfg.textColor : (isDaylight ? 'text-slate-700' : 'text-white')}`}>
                     {energyVal != null ? energyVal : '—'}
                   </span>
                   <span className="text-gray-500 text-[10px] font-mono">/10</span>
@@ -1725,8 +1923,8 @@ export default function DailyWellbeingCheckin({
 
               {/* STRESS CARD */}
               <div 
-                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${stressCfg ? stressCfg.borderColor : 'border-white/10'}`}
-                style={{ backgroundColor: stressCfg ? `${stressCfg.accentHex}15` : 'rgba(0,0,0,0.3)' }}
+                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${stressCfg ? `${stressCfg.borderColor} ${isDaylight ? 'bg-white' : ''}` : (isDaylight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10')}`}
+                style={stressCfg ? { backgroundColor: `${stressCfg.accentHex}15` } : undefined}
               >
                 <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
                   <span>Stress</span>
@@ -1737,7 +1935,7 @@ export default function DailyWellbeingCheckin({
                   )}
                 </div>
                 <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                  <span className={`font-mono font-black text-sm sm:text-base ${stressCfg ? stressCfg.textColor : 'text-white'}`}>
+                  <span className={`font-mono font-black text-sm sm:text-base ${stressCfg ? stressCfg.textColor : (isDaylight ? 'text-slate-700' : 'text-white')}`}>
                     {stressVal != null ? stressVal : '—'}
                   </span>
                   <span className="text-gray-500 text-[10px] font-mono">/10</span>
@@ -1746,8 +1944,8 @@ export default function DailyWellbeingCheckin({
 
               {/* SLEEP CARD */}
               <div 
-                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${sleepCfg ? sleepCfg.borderColor : 'border-white/10'}`}
-                style={{ backgroundColor: sleepCfg ? `${sleepCfg.accentHex}15` : 'rgba(0,0,0,0.3)' }}
+                className={`py-1.5 px-1 sm:p-2 rounded-lg border text-center transition-all ${sleepCfg ? `${sleepCfg.borderColor} ${isDaylight ? 'bg-white' : ''}` : (isDaylight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10')}`}
+                style={sleepCfg ? { backgroundColor: `${sleepCfg.accentHex}15` } : undefined}
               >
                 <div className="flex items-center justify-center gap-1 text-gray-400 text-[10px] uppercase font-bold tracking-wider">
                   <span>Sleep</span>
@@ -1873,6 +2071,7 @@ export default function DailyWellbeingCheckin({
                   onClick={(e) => {
                     if (!isSaved) {
                       e.stopPropagation()
+                      setFeelingsContext('morning')
                       setIsFeelingsModalOpen(true)
                     }
                   }}
@@ -1930,6 +2129,7 @@ export default function DailyWellbeingCheckin({
                   type="button"
                   onClick={() => {
                     if (!isSaved) {
+                      setFeelingsContext('morning')
                       setIsFeelingsModalOpen(true)
                     } else {
                       setIsCollapsedAll(false)
@@ -1964,6 +2164,7 @@ export default function DailyWellbeingCheckin({
               <div 
                 onClick={() => {
                   if (!isSaved) {
+                    setFeelingsContext('morning')
                     setIsFeelingsModalOpen(true)
                   }
                 }}
@@ -1985,6 +2186,7 @@ export default function DailyWellbeingCheckin({
                   type="button"
                   onClick={() => {
                     if (!isSaved) {
+                      setFeelingsContext('morning')
                       setIsFeelingsModalOpen(true)
                     } else {
                       setIsCollapsedAll(false)
@@ -2313,6 +2515,9 @@ export default function DailyWellbeingCheckin({
 
                 {showDaytimeCard && (
                   <div className="space-y-3 pt-3 mt-2 border-t border-amber-500/20 animate-in fade-in">
+                    {/* Prominent 2x2 Feelings Grid Check-in */}
+                    {renderFeelingsGridTrigger('anytime')}
+
                     <p className="text-[11px] text-slate-300 leading-relaxed">
                       Sliders start at your last recorded value if logged within the past 2 hours. Tap any value pill to confirm without sliding:
                     </p>
@@ -2354,12 +2559,18 @@ export default function DailyWellbeingCheckin({
                         return (
                           <div 
                             key={dim.id}
-                            className={`p-3 rounded-xl border space-y-2 transition-all ${isTouched ? colorCfg.borderColor : 'border-white/10'}`}
-                            style={{ backgroundColor: isTouched ? `${colorCfg.accentHex}12` : 'rgba(0,0,0,0.4)' }}
+                            className={`p-3 rounded-xl border space-y-2 transition-all ${
+                              isTouched 
+                                ? `${colorCfg.borderColor} ${isDaylight ? 'bg-white shadow-xs' : 'bg-slate-900/60'}` 
+                                : `${isDaylight ? 'bg-slate-50/90 border-slate-200/90 shadow-2xs' : 'bg-white/[0.04] border-white/10'}`
+                            }`}
+                            style={isTouched ? { backgroundColor: `${colorCfg.accentHex}14` } : undefined}
                           >
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-white font-bold">{dim.name}</span>
+                                <span className={`font-bold ${isTouched ? (isDaylight ? 'text-slate-900' : 'text-white') : (isDaylight ? 'text-slate-800' : 'text-slate-200')}`}>
+                                  {dim.name}
+                                </span>
                                 {snap.isRecent && !isTouched && (
                                   <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-mono">
                                     Recent ({snap.timeAgoMinutes}m ago)
@@ -2372,10 +2583,18 @@ export default function DailyWellbeingCheckin({
                                 className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
                                 title="Click to confirm this value without sliding"
                               >
-                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                                  isTouched 
+                                    ? colorCfg.badgeBg 
+                                    : (isDaylight ? 'bg-white border-slate-200 text-slate-600' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30')
+                                }`}>
                                   {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
                                 </span>
-                                <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                                <span className={`font-mono font-bold text-xs ${
+                                  isTouched 
+                                    ? colorCfg.textColor 
+                                    : (isDaylight ? 'text-slate-600' : 'text-slate-400')
+                                }`}>
                                   {currentValue}/10
                                 </span>
                               </button>
@@ -2413,9 +2632,9 @@ export default function DailyWellbeingCheckin({
                       <button
                         type="button"
                         onClick={() => setShowDaytimeCard(false)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 !text-white keep-white transition-colors cursor-pointer shadow-sm"
                       >
-                        Cancel
+                        <span className="!text-white keep-white font-bold">Cancel</span>
                       </button>
                       <button
                         type="button"
@@ -2566,6 +2785,352 @@ export default function DailyWellbeingCheckin({
 
 
       
+      {/* ⚡ Core Metrics (Feeling Banner + Mood, Energy, Stress, Skin, Focus Sliders) */}
+      {(() => {
+        const modeKey = isNightly ? 'nightly' : 'morning'
+        const isMoodTracked = isOutcomeTracked('mood', modeKey)
+        const isEnergyTracked = isOutcomeTracked('energy', modeKey)
+        const isStressTracked = isOutcomeTracked('stress', modeKey)
+        const isSkinTracked = isOutcomeTracked('skin_clarity', modeKey) || isOutcomeTracked('skin', modeKey)
+        const isFocusTracked = isOutcomeTracked('focus', modeKey) || isOutcomeTracked('focus_score', modeKey)
+        const hasCoreTracked = isMoodTracked || isEnergyTracked || isStressTracked || isSkinTracked || isFocusTracked
+
+        if (!hasCoreTracked) return null
+
+        return (
+          <div className="border-t border-white/10 pt-4 space-y-3">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-xs text-levl-text-secondary uppercase tracking-wider">⚡ Core Metrics</h4>
+              <button
+                type="button"
+                onClick={() => setShowCoreMetricsSection(!showCoreMetricsSection)}
+                className="text-[10px] font-bold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded cursor-pointer transition-all"
+              >
+                {showCoreMetricsSection ? 'Collapse / Skip Section' : 'Expand Section'}
+              </button>
+            </div>
+
+            {showCoreMetricsSection ? (
+              <div className="space-y-4">
+                {/* Prominent 2x2 Feelings Grid Check-in */}
+                {renderFeelingsGridTrigger('morning')}
+
+                {/* Mood Slider */}
+                {isMoodTracked && (() => {
+                  const isTouched = touchedOutcomes['mood']
+                  const snap = getRecentOutcomeSnapshot('mood', initialData)
+                  const colorCfg = isTouched ? getOutcomeColorConfig(mood, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                  return (
+                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white font-bold">{isNightly ? 'Overall Mood Today' : 'Morning Mood (Current)'}</span>
+                          {snap.isRecent && !isTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                              Recent ({snap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, mood: !prev.mood }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                          </span>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {mood}/10
+                          </span>
+                        </button>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="10" 
+                        value={mood} 
+                        onChange={(e) => {
+                          setMood(parseInt(e.target.value))
+                          setTouchedOutcomes(prev => ({ ...prev, mood: true }))
+                        }} 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, mood: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, mood: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
+                        style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `Mood: ${mood}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
+                      />
+                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
+                        <span className="text-red-400">0: Low / Down</span>
+                        <span className="text-emerald-400">10: High / Great</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Energy Slider */}
+                {isEnergyTracked && (() => {
+                  const isTouched = touchedOutcomes['energy']
+                  const snap = getRecentOutcomeSnapshot('energy', initialData)
+                  const colorCfg = isTouched ? getOutcomeColorConfig(energy, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                  return (
+                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white font-bold">{isNightly ? 'Overall Daily Energy' : 'Morning Readiness & Energy (Current)'}</span>
+                          {snap.isRecent && !isTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                              Recent ({snap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, energy: !prev.energy }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                          </span>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {energy}/10
+                          </span>
+                        </button>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="10" 
+                        value={energy} 
+                        onChange={(e) => {
+                          setEnergy(parseInt(e.target.value))
+                          setTouchedOutcomes(prev => ({ ...prev, energy: true }))
+                        }} 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, energy: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, energy: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
+                        style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `Energy: ${energy}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
+                      />
+                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
+                        <span className="text-red-400">0: Low / Lethargic</span>
+                        <span className="text-emerald-400">10: Peak / Energized</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Stress Slider (Lower is better!) */}
+                {isStressTracked && (() => {
+                  const isTouched = touchedOutcomes['stress']
+                  const snap = getRecentOutcomeSnapshot('stress', initialData)
+                  const colorCfg = isTouched ? getOutcomeColorConfig(stress, 'lower_is_better') : getNeutralOutcomeColorConfig()
+                  return (
+                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white font-bold">{isNightly ? 'Overall Stress Today' : 'Current Morning Stress'}</span>
+                          {snap.isRecent && !isTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                              Recent ({snap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, stress: !prev.stress }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                          </span>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {stress}/10
+                          </span>
+                        </button>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="10" 
+                        value={stress} 
+                        onChange={(e) => {
+                          setStress(parseInt(e.target.value))
+                          setTouchedOutcomes(prev => ({ ...prev, stress: true }))
+                        }} 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, stress: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, stress: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
+                        style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `Stress: ${stress}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
+                      />
+                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
+                        <span className="text-emerald-400">0: Best (Calm / None)</span>
+                        <span className="text-red-400">10: Worst (High / Severe)</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Skin Clarity & Radiance Slider */}
+                {isSkinTracked && (() => {
+                  const isTouched = touchedOutcomes['skin']
+                  const snap = getRecentOutcomeSnapshot('skin', initialData)
+                  const colorCfg = isTouched ? getOutcomeColorConfig(skinClarity, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                  return (
+                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white font-bold flex items-center gap-1">
+                            ✨ Skin Clarity &amp; Radiance
+                          </span>
+                          {snap.isRecent && !isTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                              Recent ({snap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, skin: !prev.skin }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                          </span>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {skinClarity}/10
+                          </span>
+                        </button>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="10" 
+                        value={skinClarity} 
+                        onChange={(e) => {
+                          setSkinClarity(parseInt(e.target.value))
+                          setTouchedOutcomes(prev => ({ ...prev, skin: true }))
+                        }} 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, skin: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, skin: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
+                        style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `Skin Clarity: ${skinClarity}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
+                      />
+                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
+                        <span className="text-red-400">0: Dull / Inflamed / Breakout</span>
+                        <span className="text-emerald-400">10: Clear / Glowing</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Mental Focus & Brain Fog Slider */}
+                {isFocusTracked && (() => {
+                  const isTouched = touchedOutcomes['focus']
+                  const snap = getRecentOutcomeSnapshot('focus', initialData)
+                  const colorCfg = isTouched ? getOutcomeColorConfig(focusScore, 'higher_is_better') : getNeutralOutcomeColorConfig()
+                  return (
+                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white font-bold flex items-center gap-1">
+                            🧠 {isNightly ? 'Overall Focus & Mental Clarity Today' : 'Current Mental Focus & Clarity'}
+                          </span>
+                          {snap.isRecent && !isTouched && (
+                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                              Recent ({snap.timeAgoMinutes}m ago)
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, focus: !prev.focus }))}
+                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
+                          title="Click to confirm this value without sliding"
+                        >
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
+                          </span>
+                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
+                            {focusScore}/10
+                          </span>
+                        </button>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="10" 
+                        value={focusScore} 
+                        onChange={(e) => {
+                          setFocusScore(parseInt(e.target.value))
+                          setTouchedOutcomes(prev => ({ ...prev, focus: true }))
+                        }} 
+                        onPointerDown={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, focus: true }))
+                          }
+                        }}
+                        onClick={() => {
+                          if (!isTouched) {
+                            setTouchedOutcomes(prev => ({ ...prev, focus: true }))
+                          }
+                        }}
+                        className="w-full cursor-pointer touch-manipulation" 
+                        style={{ accentColor: colorCfg.accentHex }}
+                        title={isTouched ? `Mental Focus: ${focusScore}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
+                      />
+                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
+                        <span className="text-red-400">0: Brain Fog / Distracted</span>
+                        <span className="text-emerald-400">10: Deep Focus / Sharp</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+            ) : (
+              <p className="text-[11px] text-gray-400 italic">Section collapsed / skipped.</p>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Sleep & Recovery Observations (ALWAYS VISIBLE IN BOTH NIGHTLY & MORNING MODES) */}
       <div className="bg-indigo-950/20 border border-indigo-500/30 rounded-xl p-4 space-y-4">
         <div className="flex items-center justify-between text-indigo-300 font-bold text-xs uppercase tracking-wider border-b border-indigo-500/20 pb-2">
@@ -2800,103 +3365,91 @@ export default function DailyWellbeingCheckin({
               )
             })}
 
-            {/* Objective Sleep Score (0-100) */}
-            <div className="space-y-1 bg-black/40 p-3.5 rounded-xl border border-white/10">
-              <div className="flex justify-between text-xs items-center mb-1">
-                <span className="text-white font-bold">Objective Sleep Score (0-100)</span> 
-              </div>
-              <input 
-                type="number" 
-                min="0" 
-                max="100" 
-                value={sleepScore} 
-                onChange={(e) => setSleepScore(e.target.value)} 
-                placeholder="e.g. 85 (from Oura, Apple Health, Whoop)" 
-                className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-levl-accent font-mono" 
-              />
-            </div>
-
-            {/* Wearable Recovery / Readiness Score (0-100) */}
-            <div className="space-y-2.5 bg-gradient-to-br from-black/60 to-slate-900/60 p-3.5 rounded-xl border border-cyan-500/20 shadow-sm relative overflow-hidden">
-              <div className="flex justify-between items-center text-xs">
+            {/* Consolidated Wearable Metrics (Objective Sleep Score & Readiness / Recovery) */}
+            <div className="bg-black/40 p-3.5 sm:p-4 rounded-xl border border-white/10 space-y-3.5">
+              <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="text-white font-bold flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-cyan-400" />
-                    Wearable Readiness & Recovery
-                  </span>
-                  {profile?.primary_wearable ? (
-                    <span className="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-full capitalize">
-                      ⌚ {profile.primary_wearable.replace(/_/g, ' ')}
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-mono font-semibold text-slate-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
-                      Manual Input
-                    </span>
-                  )}
+                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="text-white font-bold">Wearable &amp; Objective Scores</span>
                 </div>
-                {wearableReadinessScore != null && (
-                  <span className={`font-mono font-black text-xs px-2.5 py-0.5 rounded-md border ${
-                    wearableReadinessScore < 50
-                      ? 'text-rose-400 bg-rose-950/50 border-rose-500/30'
-                      : wearableReadinessScore < 80
-                      ? 'text-amber-300 bg-amber-950/50 border-amber-500/30'
-                      : 'text-emerald-400 bg-emerald-950/50 border-emerald-500/30'
-                  }`}>
-                    {wearableReadinessScore}%
+                {profile?.primary_wearable ? (
+                  <span className="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-full capitalize">
+                    ⌚ {profile.primary_wearable.replace(/_/g, ' ')}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono font-semibold text-slate-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                    Manual Entry
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <input 
-                  type="number" 
-                  min="0" 
-                  max="100" 
-                  value={wearableReadinessScore !== null ? wearableReadinessScore : ''} 
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? null : Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
-                    setWearableReadinessScore(val)
-                  }} 
-                  placeholder="e.g. 78 (from Oura, Whoop, Garmin, Galaxy, Pixel, etc.)" 
-                  className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-cyan-400 font-mono" 
-                />
-                {wearableReadinessScore !== null && (
-                  <button
-                    type="button"
-                    onClick={() => setWearableReadinessScore(null)}
-                    className="px-2.5 py-2 text-[11px] font-bold text-slate-400 hover:text-slate-200 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors cursor-pointer shrink-0"
-                    title="Clear readiness score"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
+              {/* Responsive Inputs: Sleep Score & Wearable Readiness */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 1. Objective Sleep Score */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white font-medium text-[11px]">Objective Sleep Score (0–100)</span>
+                    {sleepScore && (
+                      <span className="font-mono text-[10px] font-bold text-cyan-400">
+                        {sleepScore}/100
+                      </span>
+                    )}
+                  </div>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    max="100" 
+                    value={sleepScore} 
+                    onChange={(e) => setSleepScore(e.target.value)} 
+                    placeholder="e.g. 85 (Oura, Apple, Whoop)" 
+                    className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-cyan-400 font-mono transition-colors" 
+                  />
+                </div>
 
-              {/* Presets */}
-              <div className="flex items-center justify-between gap-1.5 pt-0.5">
-                <span className="text-[10px] text-slate-400 font-medium">Quick Set:</span>
-                <div className="flex items-center gap-1">
-                  {[
-                    { label: 'Low 40%', val: 40, cls: 'hover:border-rose-400 text-rose-300' },
-                    { label: 'Fair 65%', val: 65, cls: 'hover:border-amber-400 text-amber-300' },
-                    { label: 'Good 82%', val: 82, cls: 'hover:border-emerald-400 text-emerald-300' },
-                    { label: 'Peak 95%', val: 95, cls: 'hover:border-cyan-400 text-cyan-300' },
-                  ].map(preset => (
-                    <button
-                      key={preset.val}
-                      type="button"
-                      onClick={() => setWearableReadinessScore(preset.val)}
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white/5 border border-white/10 transition-all cursor-pointer ${preset.cls} ${
-                        wearableReadinessScore === preset.val ? 'bg-white/20 border-white/50 text-white' : ''
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+                {/* 2. Wearable Readiness & Recovery */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white font-medium text-[11px]">Wearable Readiness &amp; Recovery</span>
+                    {wearableReadinessScore != null && (
+                      <span className={`font-mono font-bold text-[10px] px-1.5 py-0.5 rounded border ${
+                        wearableReadinessScore < 50
+                          ? 'text-rose-400 bg-rose-950/50 border-rose-500/30'
+                          : wearableReadinessScore < 80
+                          ? 'text-amber-300 bg-amber-950/50 border-amber-500/30'
+                          : 'text-emerald-400 bg-emerald-950/50 border-emerald-500/30'
+                      }`}>
+                        {wearableReadinessScore}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max="100" 
+                      value={wearableReadinessScore !== null ? wearableReadinessScore : ''} 
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? null : Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
+                        setWearableReadinessScore(val)
+                      }} 
+                      placeholder="e.g. 78 (from Oura, Whoop, Garmin)" 
+                      className="w-full bg-white/5 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-cyan-400 font-mono transition-colors" 
+                    />
+                    {wearableReadinessScore !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setWearableReadinessScore(null)}
+                        className="px-2 py-2 text-[10px] font-bold text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors cursor-pointer shrink-0"
+                        title="Clear readiness score"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Dynamic Readiness Banner & 80/20 Routine CTA */}
+              {/* Dynamic Readiness Banner & 80/20 Routine CTA (if score entered) */}
               {wearableReadinessScore !== null && (
                 <div className={`p-2.5 rounded-lg border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
                   wearableReadinessScore < 50
@@ -2954,10 +3507,13 @@ export default function DailyWellbeingCheckin({
                 </div>
               )}
 
+              {/* Single Shared CTA for Connecting Wearables */}
               {!profile?.has_wearable && (
-                <div className="text-[10px] text-slate-400 flex items-center gap-1 pt-0.5">
-                  <span>💡 Track with Oura, Whoop, Apple, Garmin or Galaxy? Enable in</span>
-                  <a href="/settings" className="text-cyan-400 hover:underline font-semibold">Settings → Wearables</a>
+                <div className="text-[10px] text-slate-400 flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-white/5">
+                  <span>💡 Track with Oura, Whoop, Apple Health, Garmin or Galaxy?</span>
+                  <a href="/settings" className="text-cyan-400 hover:text-cyan-300 font-semibold hover:underline">
+                    Connect Wearables →
+                  </a>
                 </div>
               )}
             </div>
@@ -3181,381 +3737,6 @@ export default function DailyWellbeingCheckin({
           )}
         </div>
       )}
-
-      {(() => {
-        const modeKey = isNightly ? 'nightly' : 'morning'
-        const isMoodTracked = isOutcomeTracked('mood', modeKey)
-        const isEnergyTracked = isOutcomeTracked('energy', modeKey)
-        const isStressTracked = isOutcomeTracked('stress', modeKey)
-        const isSkinTracked = isOutcomeTracked('skin_clarity', modeKey) || isOutcomeTracked('skin', modeKey)
-        const isFocusTracked = isOutcomeTracked('focus', modeKey) || isOutcomeTracked('focus_score', modeKey)
-        const hasCoreTracked = isMoodTracked || isEnergyTracked || isStressTracked || isSkinTracked || isFocusTracked
-
-        if (!hasCoreTracked) return null
-
-        return (
-          <div className={!isNightly ? "border-t border-white/10 pt-4" : ""}>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold text-xs text-levl-text-secondary uppercase tracking-wider">⚡ Core Metrics</h4>
-              <button
-                type="button"
-                onClick={() => setShowCoreMetricsSection(!showCoreMetricsSection)}
-                className="text-[10px] font-bold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded cursor-pointer transition-all"
-              >
-                {showCoreMetricsSection ? 'Collapse / Skip Section' : 'Expand Section'}
-              </button>
-            </div>
-
-            {showCoreMetricsSection ? (
-              <div className="space-y-4">
-                {/* 2x2 Emotion Grid / Feelings Word Cloud Trigger Banner */}
-                <div
-                  onClick={() => setIsFeelingsModalOpen(true)}
-                  className="p-3.5 rounded-2xl border border-purple-500/30 bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-950/60 cursor-pointer hover:border-purple-400/50 transition-all flex items-center justify-between shadow-md group active:scale-[0.99]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-inner group-hover:scale-105 transition-transform">
-                      <Sparkles size={15} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-bold text-white block">
-                          {selectedFeelingWord ? `Feeling: ${selectedFeelingWord}` : 'Check-in via 2x2 Feelings Grid'}
-                        </span>
-                        {selectedFeelingQuadrant && (
-                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full border border-purple-500/40 text-purple-300 bg-purple-950/60 font-semibold">
-                            {QUADRANT_CONFIGS[selectedFeelingQuadrant]?.filterLabel || selectedFeelingQuadrant}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-purple-300/80 line-clamp-1">
-                        {selectedFeelingWord
-                          ? selectedFeelingDef || 'Tap to change your emotion from the 2x2 grid'
-                          : 'Tap to pick your emotion from the Yale Mood / Energy cloud'}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-bold text-purple-400 flex items-center gap-1 group-hover:text-purple-300 transition-colors shrink-0">
-                    <span>{selectedFeelingWord ? 'Change' : 'Explore'}</span>
-                    <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-                  </span>
-                </div>
-
-                {/* Mood Slider */}
-                {isMoodTracked && (() => {
-                  const isTouched = touchedOutcomes['mood']
-                  const snap = getRecentOutcomeSnapshot('mood', initialData)
-                  const colorCfg = isTouched ? getOutcomeColorConfig(mood, 'higher_is_better') : getNeutralOutcomeColorConfig()
-                  return (
-                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-white font-bold">{isNightly ? 'Overall Mood Today' : 'Morning Mood (Current)'}</span>
-                          {snap.isRecent && !isTouched && (
-                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
-                              Recent ({snap.timeAgoMinutes}m ago)
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, mood: !prev.mood }))}
-                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                          title="Click to confirm this value without sliding"
-                        >
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
-                          </span>
-                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                            {mood}/10
-                          </span>
-                        </button>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="10" 
-                        value={mood} 
-                        onChange={(e) => {
-                          setMood(parseInt(e.target.value))
-                          setTouchedOutcomes(prev => ({ ...prev, mood: true }))
-                        }} 
-                        onPointerDown={() => {
-                          if (!isTouched) {
-                            setTouchedOutcomes(prev => ({ ...prev, mood: true }))
-                          }
-                        }}
-                        onClick={() => {
-                          if (!isTouched) {
-                            setTouchedOutcomes(prev => ({ ...prev, mood: true }))
-                          }
-                        }}
-                        className="w-full cursor-pointer touch-manipulation" 
-                        style={{ accentColor: colorCfg.accentHex }}
-                        title={isTouched ? `Mood: ${mood}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
-                      />
-                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
-                        <span className="text-red-400">0: Low / Down</span>
-                        <span className="text-emerald-400">10: High / Great</span>
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Energy Slider */}
-                {isEnergyTracked && (() => {
-                  const isTouched = touchedOutcomes['energy']
-                  const snap = getRecentOutcomeSnapshot('energy', initialData)
-                  const colorCfg = isTouched ? getOutcomeColorConfig(energy, 'higher_is_better') : getNeutralOutcomeColorConfig()
-                  return (
-                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-white font-bold">{isNightly ? 'Overall Daily Energy' : 'Morning Readiness & Energy (Current)'}</span>
-                          {snap.isRecent && !isTouched && (
-                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
-                              Recent ({snap.timeAgoMinutes}m ago)
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, energy: !prev.energy }))}
-                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                          title="Click to confirm this value without sliding"
-                        >
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
-                          </span>
-                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                            {energy}/10
-                          </span>
-                        </button>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="10" 
-                        value={energy} 
-                        onChange={(e) => {
-                          setEnergy(parseInt(e.target.value))
-                          setTouchedOutcomes(prev => ({ ...prev, energy: true }))
-                        }} 
-                        onPointerDown={() => {
-                          if (!isTouched) {
-                            setTouchedOutcomes(prev => ({ ...prev, energy: true }))
-                          }
-                        }}
-                        onClick={() => {
-                          if (!isTouched) {
-                            setTouchedOutcomes(prev => ({ ...prev, energy: true }))
-                          }
-                        }}
-                        className="w-full cursor-pointer touch-manipulation" 
-                        style={{ accentColor: colorCfg.accentHex }}
-                        title={isTouched ? `Energy: ${energy}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
-                      />
-                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
-                        <span className="text-red-400">0: Low / Lethargic</span>
-                        <span className="text-emerald-400">10: Peak / Energized</span>
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Stress Slider (Lower is better!) */}
-                {isStressTracked && (() => {
-                  const isTouched = touchedOutcomes['stress']
-                  const snap = getRecentOutcomeSnapshot('stress', initialData)
-                  const colorCfg = isTouched ? getOutcomeColorConfig(stress, 'lower_is_better') : getNeutralOutcomeColorConfig()
-                  return (
-                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-white font-bold">{isNightly ? 'Overall Stress Today' : 'Current Morning Stress'}</span>
-                          {snap.isRecent && !isTouched && (
-                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
-                              Recent ({snap.timeAgoMinutes}m ago)
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, stress: !prev.stress }))}
-                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                          title="Click to confirm this value without sliding"
-                        >
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
-                          </span>
-                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                            {stress}/10
-                          </span>
-                        </button>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="10" 
-                        value={stress} 
-                        onChange={(e) => {
-                          setStress(parseInt(e.target.value))
-                          setTouchedOutcomes(prev => ({ ...prev, stress: true }))
-                        }} 
-                        onPointerDown={() => {
-                          if (!isTouched) {
-                            setTouchedOutcomes(prev => ({ ...prev, stress: true }))
-                          }
-                        }}
-                        onClick={() => {
-                          if (!isTouched) {
-                            setTouchedOutcomes(prev => ({ ...prev, stress: true }))
-                          }
-                        }}
-                        className="w-full cursor-pointer touch-manipulation" 
-                        style={{ accentColor: colorCfg.accentHex }}
-                        title={isTouched ? `Stress: ${stress}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
-                      />
-                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
-                        <span className="text-emerald-400">0: Best (Calm / None)</span>
-                        <span className="text-red-400">10: Worst (High / Severe)</span>
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Skin Clarity & Radiance Slider */}
-                {isSkinTracked && (() => {
-                  const isTouched = touchedOutcomes['skin']
-                  const snap = getRecentOutcomeSnapshot('skin', initialData)
-                  const colorCfg = isTouched ? getOutcomeColorConfig(skinClarity, 'higher_is_better') : getNeutralOutcomeColorConfig()
-                  return (
-                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-white font-bold flex items-center gap-1">
-                            ✨ Skin Clarity & Radiance
-                          </span>
-                          {snap.isRecent && !isTouched && (
-                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
-                              Recent ({snap.timeAgoMinutes}m ago)
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, skin: !prev.skin }))}
-                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                          title="Click to confirm this value without sliding"
-                        >
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
-                          </span>
-                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                            {skinClarity}/10
-                          </span>
-                        </button>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="10" 
-                        value={skinClarity} 
-                        onChange={(e) => {
-                          setSkinClarity(parseInt(e.target.value))
-                          setTouchedOutcomes(prev => ({ ...prev, skin: true }))
-                        }} 
-                        onPointerDown={() => {
-                          if (!isTouched) {
-                            setTouchedOutcomes(prev => ({ ...prev, skin: true }))
-                          }
-                        }}
-                        onClick={() => {
-                          if (!isTouched) {
-                            setTouchedOutcomes(prev => ({ ...prev, skin: true }))
-                          }
-                        }}
-                        className="w-full cursor-pointer touch-manipulation" 
-                        style={{ accentColor: colorCfg.accentHex }}
-                        title={isTouched ? `Skin Clarity: ${skinClarity}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
-                      />
-                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
-                        <span className="text-red-400">0: Dull / Inflamed / Breakout</span>
-                        <span className="text-emerald-400">10: Clear / Glowing</span>
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Mental Focus & Brain Fog Slider */}
-                {isFocusTracked && (() => {
-                  const isTouched = touchedOutcomes['focus']
-                  const snap = getRecentOutcomeSnapshot('focus', initialData)
-                  const colorCfg = isTouched ? getOutcomeColorConfig(focusScore, 'higher_is_better') : getNeutralOutcomeColorConfig()
-                  return (
-                    <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-white font-bold flex items-center gap-1">
-                            🧠 {isNightly ? 'Overall Focus & Mental Clarity Today' : 'Current Mental Focus & Clarity'}
-                          </span>
-                          {snap.isRecent && !isTouched && (
-                            <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
-                              Recent ({snap.timeAgoMinutes}m ago)
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setTouchedOutcomes(prev => ({ ...prev, focus: !prev.focus }))}
-                          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
-                          title="Click to confirm this value without sliding"
-                        >
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
-                            {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
-                          </span>
-                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>
-                            {focusScore}/10
-                          </span>
-                        </button>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="10" 
-                        value={focusScore} 
-                        onChange={(e) => {
-                          setFocusScore(parseInt(e.target.value))
-                          setTouchedOutcomes(prev => ({ ...prev, focus: true }))
-                        }} 
-                        onPointerDown={() => {
-                          if (!isTouched) {
-                            setTouchedOutcomes(prev => ({ ...prev, focus: true }))
-                          }
-                        }}
-                        onClick={() => {
-                          if (!isTouched) {
-                            setTouchedOutcomes(prev => ({ ...prev, focus: true }))
-                          }
-                        }}
-                        className="w-full cursor-pointer touch-manipulation" 
-                        style={{ accentColor: colorCfg.accentHex }}
-                        title={isTouched ? `Mental Focus: ${focusScore}/10 (Confirmed)` : 'Click dot to confirm 5/10, or drag to adjust'}
-                      />
-                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider">
-                        <span className="text-red-400">0: Brain Fog / Distracted</span>
-                        <span className="text-emerald-400">10: Deep Focus / Sharp</span>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </div>
-            ) : (
-              <p className="text-[11px] text-gray-400 italic">Section collapsed / skipped.</p>
-            )}
-          </div>
-        )
-      })()}
 
       {morningOutcomesToTrack.length > 0 && (
         <div className="border-t border-white/10 pt-4 space-y-3">
@@ -3781,20 +3962,35 @@ export default function DailyWellbeingCheckin({
               </div>
 
               <div className="space-y-3">
+                {/* Prominent 2x2 Feelings Grid Check-in */}
+                {renderFeelingsGridTrigger('nightly')}
+
                 {/* Mood Today */}
-                <div className="bg-black/40 p-3 rounded-xl border border-white/10 space-y-1.5 text-xs">
+                <div className={`p-3 rounded-xl border space-y-1.5 text-xs transition-all ${
+                  touchedOutcomes['mood']
+                    ? (isDaylight ? 'bg-indigo-50/70 border-indigo-200 shadow-2xs' : 'bg-indigo-950/20 border-indigo-500/30')
+                    : (isDaylight ? 'bg-slate-50/90 border-slate-200/90 shadow-2xs' : 'bg-black/40 border-white/10')
+                }`}>
                   <div className="flex justify-between items-center">
-                    <span className="text-white font-bold">Overall Mood Today</span>
+                    <span className={isDaylight ? 'text-slate-900 font-bold' : 'text-white font-bold'}>Overall Mood Today</span>
                     <button
                       type="button"
                       onClick={() => setTouchedOutcomes(prev => ({ ...prev, mood: !prev.mood }))}
                       className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
                       title="Click to confirm this value without sliding"
                     >
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${touchedOutcomes['mood'] ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                        touchedOutcomes['mood'] 
+                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' 
+                          : (isDaylight ? 'bg-white border-slate-200 text-slate-600' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30')
+                      }`}>
                         {touchedOutcomes['mood'] ? 'Confirmed' : 'Unconfirmed (Tap)'}
                       </span>
-                      <span className={`font-mono font-bold text-xs ${touchedOutcomes['mood'] ? 'text-indigo-300' : 'text-slate-400'}`}>{mood}/10</span>
+                      <span className={`font-mono font-bold text-xs ${
+                        touchedOutcomes['mood'] 
+                          ? (isDaylight ? 'text-indigo-600' : 'text-indigo-300') 
+                          : (isDaylight ? 'text-slate-600' : 'text-slate-400')
+                      }`}>{mood}/10</span>
                     </button>
                   </div>
                   <input
@@ -3823,19 +4019,31 @@ export default function DailyWellbeingCheckin({
                 </div>
 
                 {/* Energy Today */}
-                <div className="bg-black/40 p-3 rounded-xl border border-white/10 space-y-1.5 text-xs">
+                <div className={`p-3 rounded-xl border space-y-1.5 text-xs transition-all ${
+                  touchedOutcomes['energy']
+                    ? (isDaylight ? 'bg-indigo-50/70 border-indigo-200 shadow-2xs' : 'bg-indigo-950/20 border-indigo-500/30')
+                    : (isDaylight ? 'bg-slate-50/90 border-slate-200/90 shadow-2xs' : 'bg-black/40 border-white/10')
+                }`}>
                   <div className="flex justify-between items-center">
-                    <span className="text-white font-bold">Overall Energy Today</span>
+                    <span className={isDaylight ? 'text-slate-900 font-bold' : 'text-white font-bold'}>Overall Energy Today</span>
                     <button
                       type="button"
                       onClick={() => setTouchedOutcomes(prev => ({ ...prev, energy: !prev.energy }))}
                       className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
                       title="Click to confirm this value without sliding"
                     >
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${touchedOutcomes['energy'] ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                        touchedOutcomes['energy'] 
+                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' 
+                          : (isDaylight ? 'bg-white border-slate-200 text-slate-600' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30')
+                      }`}>
                         {touchedOutcomes['energy'] ? 'Confirmed' : 'Unconfirmed (Tap)'}
                       </span>
-                      <span className={`font-mono font-bold text-xs ${touchedOutcomes['energy'] ? 'text-indigo-300' : 'text-slate-400'}`}>{energy}/10</span>
+                      <span className={`font-mono font-bold text-xs ${
+                        touchedOutcomes['energy'] 
+                          ? (isDaylight ? 'text-indigo-600' : 'text-indigo-300') 
+                          : (isDaylight ? 'text-slate-600' : 'text-slate-400')
+                      }`}>{energy}/10</span>
                     </button>
                   </div>
                   <input
@@ -3864,19 +4072,31 @@ export default function DailyWellbeingCheckin({
                 </div>
 
                 {/* Stress Today */}
-                <div className="bg-black/40 p-3 rounded-xl border border-white/10 space-y-1.5 text-xs">
+                <div className={`p-3 rounded-xl border space-y-1.5 text-xs transition-all ${
+                  touchedOutcomes['stress']
+                    ? (isDaylight ? 'bg-indigo-50/70 border-indigo-200 shadow-2xs' : 'bg-indigo-950/20 border-indigo-500/30')
+                    : (isDaylight ? 'bg-slate-50/90 border-slate-200/90 shadow-2xs' : 'bg-black/40 border-white/10')
+                }`}>
                   <div className="flex justify-between items-center">
-                    <span className="text-white font-bold">Overall Stress Today</span>
+                    <span className={isDaylight ? 'text-slate-900 font-bold' : 'text-white font-bold'}>Overall Stress Today</span>
                     <button
                       type="button"
                       onClick={() => setTouchedOutcomes(prev => ({ ...prev, stress: !prev.stress }))}
                       className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
                       title="Click to confirm this value without sliding"
                     >
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${touchedOutcomes['stress'] ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                        touchedOutcomes['stress'] 
+                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' 
+                          : (isDaylight ? 'bg-white border-slate-200 text-slate-600' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30')
+                      }`}>
                         {touchedOutcomes['stress'] ? 'Confirmed' : 'Unconfirmed (Tap)'}
                       </span>
-                      <span className={`font-mono font-bold text-xs ${touchedOutcomes['stress'] ? 'text-indigo-300' : 'text-slate-400'}`}>{stress}/10</span>
+                      <span className={`font-mono font-bold text-xs ${
+                        touchedOutcomes['stress'] 
+                          ? (isDaylight ? 'text-indigo-600' : 'text-indigo-300') 
+                          : (isDaylight ? 'text-slate-600' : 'text-slate-400')
+                      }`}>{stress}/10</span>
                     </button>
                   </div>
                   <input
@@ -3912,19 +4132,37 @@ export default function DailyWellbeingCheckin({
                   const isLowerBetter = outcome.directionality === 'lower_is_better'
 
                   return (
-                    <div key={outcome.id} className="bg-black/40 p-3 rounded-xl border border-white/10 space-y-1.5 text-xs">
+                    <div 
+                      key={outcome.id} 
+                      className={`p-3 rounded-xl border space-y-1.5 text-xs transition-all ${
+                        isTouched 
+                          ? `${colorCfg.borderColor} ${isDaylight ? 'bg-white shadow-xs' : 'bg-slate-900/60'}` 
+                          : (isDaylight ? 'bg-slate-50/90 border-slate-200/90 shadow-2xs' : 'bg-white/[0.04] border-white/10')
+                      }`}
+                      style={isTouched ? { backgroundColor: `${colorCfg.accentHex}14` } : undefined}
+                    >
                       <div className="flex justify-between items-center">
-                        <span className="text-white font-bold">Overall {outcome.name} Today</span>
+                        <span className={isTouched ? (isDaylight ? 'text-slate-900 font-bold' : 'text-white font-bold') : (isDaylight ? 'text-slate-800 font-bold' : 'text-slate-200 font-bold')}>
+                          Overall {outcome.name} Today
+                        </span>
                         <button
                           type="button"
                           onClick={() => setTouchedOutcomes(prev => ({ ...prev, [outcome.id]: !prev[outcome.id] }))}
                           className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 active:scale-95 transition-all group"
                           title="Click to confirm this value without sliding"
                         >
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${isTouched ? colorCfg.badgeBg : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30'}`}>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                            isTouched 
+                              ? colorCfg.badgeBg 
+                              : (isDaylight ? 'bg-white border-slate-200 text-slate-600' : 'bg-white/5 border-white/15 text-slate-400 group-hover:border-white/30')
+                          }`}>
                             {isTouched ? colorCfg.qualityLabel : 'Unconfirmed (Tap)'}
                           </span>
-                          <span className={`font-mono font-bold text-xs ${isTouched ? colorCfg.textColor : 'text-slate-400'}`}>{val}/10</span>
+                          <span className={`font-mono font-bold text-xs ${
+                            isTouched 
+                              ? colorCfg.textColor 
+                              : (isDaylight ? 'text-slate-600' : 'text-slate-400')
+                          }`}>{val}/10</span>
                         </button>
                       </div>
                       <input 
@@ -4639,13 +4877,28 @@ export default function DailyWellbeingCheckin({
           setSelectedFeelingDef(emotion.definition)
 
           const mapped = mapEmotionToOutcomes(emotion)
-          setMood(mapped.mood)
-          setEnergy(mapped.energy)
-          setStress(mapped.stress)
-          setTouchedOutcomes((prev) => ({ ...prev, mood: true, energy: true, stress: true }))
 
-          setIsCollapsedAll(false)
-          setIsEditing(true)
+          if (feelingsContext === 'anytime') {
+            setDaytimeMood(mapped.mood)
+            setDaytimeEnergy(mapped.energy)
+            setDaytimeStress(mapped.stress)
+            setDaytimeTouchedOutcomes((prev) => ({ ...prev, mood: true, energy: true, stress: true }))
+            setShowDaytimeCard(true)
+          } else if (feelingsContext === 'nightly') {
+            setMood(mapped.mood)
+            setEnergy(mapped.energy)
+            setStress(mapped.stress)
+            setTouchedOutcomes((prev) => ({ ...prev, mood: true, energy: true, stress: true }))
+            setShowNightlyCard(true)
+          } else {
+            setMood(mapped.mood)
+            setEnergy(mapped.energy)
+            setStress(mapped.stress)
+            setTouchedOutcomes((prev) => ({ ...prev, mood: true, energy: true, stress: true }))
+            setIsCollapsedAll(false)
+            setIsEditing(true)
+            setShowCoreMetricsSection(true)
+          }
 
           // Prescription Hook: If high stress or deep exhaustion, trigger adaptive routine modal
           if (mapped.suggestedBandwidthMode === 'survival_80_20' && typeof window !== 'undefined') {
@@ -4663,8 +4916,15 @@ export default function DailyWellbeingCheckin({
           }
         }}
         onSkipToSliders={() => {
-          setIsCollapsedAll(false)
-          setIsEditing(true)
+          if (feelingsContext === 'anytime') {
+            setShowDaytimeCard(true)
+          } else if (feelingsContext === 'nightly') {
+            setShowNightlyCard(true)
+          } else {
+            setIsCollapsedAll(false)
+            setIsEditing(true)
+            setShowCoreMetricsSection(true)
+          }
         }}
       />
     </>

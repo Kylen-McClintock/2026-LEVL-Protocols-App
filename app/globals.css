@@ -186,6 +186,11 @@ html.light, [data-theme="light"] {
     button[class*="bg-indigo"], 
     button[class*="bg-teal"],
     button[class*="bg-cyan"],
+    button[class*="bg-slate-800"],
+    button[class*="bg-slate-900"],
+    button[class*="bg-slate-700"],
+    button[class*="bg-slate-950"],
+    button[class*="bg-black"],
     button[class*="bg-gradient"],
     button[class*="bg-levl-accent"],
     button[class*="bg-levl-purple"],
@@ -195,6 +200,9 @@ html.light, [data-theme="light"] {
     a[class*="bg-sky"],
     a[class*="bg-teal"],
     a[class*="bg-cyan"],
+    a[class*="bg-slate-800"],
+    a[class*="bg-slate-900"],
+    a[class*="bg-slate-700"],
     a[class*="bg-gradient"],
     a[class*="bg-levl-accent"],
     a[class*="bg-levl-purple"],
@@ -219,6 +227,9 @@ html.light, [data-theme="light"] {
     [class*="bg-indigo-500"],
     [class*="bg-indigo-600"],
     [class*="bg-amber-600"],
+    [class*="bg-slate-800"],
+    [class*="bg-slate-900"],
+    [class*="bg-slate-950"],
     [class*="bg-levl-accent"],
     [class*="bg-levl-purple"],
     .keep-white,
@@ -228,23 +239,34 @@ html.light, [data-theme="light"] {
   }
 
   /* 3. Light Grays -> Soft Slate #475569 / Secondary Text for high readability */
-  html.light .text-slate-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-slate-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-slate-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-gray-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-gray-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-gray-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-zinc-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-zinc-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-zinc-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white) {
+  html.light .text-slate-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white),
+  html.light .text-slate-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white),
+  html.light .text-slate-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white),
+  html.light .text-gray-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white),
+  html.light .text-gray-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white),
+  html.light .text-gray-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white),
+  html.light .text-zinc-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white),
+  html.light .text-zinc-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white),
+  html.light .text-zinc-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white) {
     color: #475569 !important; /* Soft slate text */
   }
 
   /* 4. Muted Text: Slate 400 / Gray 400 -> Secondary Text #64748B (Crisp neutral slate) */
-  html.light .text-slate-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-gray-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-zinc-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white) {
+  html.light .text-slate-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white),
+  html.light .text-gray-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white),
+  html.light .text-zinc-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-slate-7"]):not(.keep-white) {
     color: #64748b !important; /* Secondary neutral slate text */
+  }
+
+  /* 4b. Colored Pastels in Light Mode: Ensure deep readability on light tinted backgrounds */
+  html.light .text-purple-200:not([class*="bg-purple-600"]):not([class*="bg-purple-700"]):not([class*="bg-purple-800"]):not([class*="bg-purple-900"]):not([class*="bg-purple-950"]):not(.keep-white),
+  html.light .text-purple-300:not([class*="bg-purple-600"]):not([class*="bg-purple-700"]):not([class*="bg-purple-800"]):not([class*="bg-purple-900"]):not([class*="bg-purple-950"]):not(.keep-white) {
+    color: #4c1d95 !important; /* Deep rich purple for 10:1 contrast */
+  }
+
+  html.light .text-indigo-200:not([class*="bg-indigo-600"]):not([class*="bg-indigo-700"]):not([class*="bg-indigo-800"]):not([class*="bg-indigo-900"]):not([class*="bg-indigo-950"]):not(.keep-white),
+  html.light .text-indigo-300:not([class*="bg-indigo-600"]):not([class*="bg-indigo-700"]):not([class*="bg-indigo-800"]):not([class*="bg-indigo-900"]):not([class*="bg-indigo-950"]):not(.keep-white) {
+    color: #312e81 !important; /* Deep rich indigo for 10:1 contrast */
   }
 
   /* 5. Hover text-white shouldn't turn text invisible on light cards */
@@ -330,6 +352,8 @@ html.light, [data-theme="light"] {
   html.light .bg-black\/40:not([class*="fixed inset-0"]),
   html.light .bg-black\/50:not([class*="fixed inset-0"]),
   html.light .bg-black\/60:not([class*="fixed inset-0"]),
+  html.light .bg-black\/70:not([class*="fixed inset-0"]),
+  html.light .bg-black\/80:not([class*="fixed inset-0"]),
   html.light .bg-white\/5,
   html.light .bg-white\/10,
   html.light .bg-slate-800:not(button):not([class*="text-white"]):not([class*="ring-2"]),
@@ -359,6 +383,43 @@ html.light, [data-theme="light"] {
     border-color: rgba(203, 213, 225, 0.9) !important;
     box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(15, 23, 42, 0.05) !important;
   }
+  html.light .header-view-selector-btn {
+    background-color: #ffffff !important;
+    border-color: rgba(203, 213, 225, 0.9) !important;
+    color: #0f172a !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+  }
+  html.light .header-view-selector-btn span {
+    color: #0f172a !important;
+  }
+  html.light .header-view-selector-btn svg {
+    color: #64748b !important;
+  }
+  html.light .header-view-selector-btn svg.text-purple-600,
+  html.light .header-view-selector-btn svg.text-purple-400 {
+    color: #7c3aed !important;
+  }
+  html.light .header-view-selector-btn svg.text-teal-600,
+  html.light .header-view-selector-btn svg.text-teal-400 {
+    color: #0d9488 !important;
+  }
+  html.light .header-view-selector-btn svg.text-indigo-600,
+  html.light .header-view-selector-btn svg.text-indigo-400 {
+    color: #4f46e5 !important;
+  }
+  html.light .header-view-selector-btn svg.text-cyan-600,
+  html.light .header-view-selector-btn svg.text-cyan-400 {
+    color: #0891b2 !important;
+  }
+  html.light .mood-confirm-btn {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.25) !important;
+  }
+  html.light .mood-confirm-btn svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+  }
 
   /* 11. Dark Amber/Purple/Indigo Badges -> Vibrant Light Badges */
   html.light [class*="bg-amber-950"] {
@@ -386,6 +447,26 @@ html.light, [data-theme="light"] {
     background-color: rgba(224, 242, 254, 0.9) !important;
     color: #075985 !important;
     border-color: rgba(125, 211, 252, 0.6) !important;
+  }
+  html.light [class*="bg-cyan-950"] {
+    background-color: rgba(207, 250, 254, 0.95) !important;
+    color: #0e7490 !important;
+    border-color: rgba(103, 232, 249, 0.7) !important;
+  }
+  html.light [class*="bg-teal-950"] {
+    background-color: rgba(204, 251, 241, 0.95) !important;
+    color: #0f766e !important;
+    border-color: rgba(94, 234, 212, 0.7) !important;
+  }
+  html.light [class*="bg-pink-950"] {
+    background-color: rgba(252, 231, 243, 0.95) !important;
+    color: #be185d !important;
+    border-color: rgba(249, 168, 212, 0.7) !important;
+  }
+  html.light [class*="bg-rose-950"] {
+    background-color: rgba(255, 228, 230, 0.95) !important;
+    color: #be123c !important;
+    border-color: rgba(253, 164, 175, 0.7) !important;
   }
 
   /* 12. Jewel Tone Accessible Contrast for Badges, Accents & Status Text in Light Mode */

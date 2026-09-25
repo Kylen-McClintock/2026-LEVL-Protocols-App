@@ -2,6 +2,7 @@ import { DailyProtocolTask, Modality, UserProfile, DailyWellbeingCheckin } from 
 import { BiomarkerMeasurementRecord } from '@/lib/aging-models/bioAgeTypes'
 import { format, differenceInDays, addDays, isAfter, isBefore, isSameDay } from 'date-fns'
 import { resolvePubMedCitation } from '@/lib/tracking/scientificCitations'
+import { isInjectableSubQPeptide } from './reconstitutionEngine'
 
 export interface PeptideCycleSummary {
   protocolId: string
@@ -443,27 +444,7 @@ export function getCanonicalPeptideKey(rawId: string, rawName: string): string {
 }
 
 export function isPeptideModality(task: DailyProtocolTask): boolean {
-  const m = task.loose_modality || task.protocol_step?.modality
-  const mId = (task.modality_id || m?.id || '').toLowerCase()
-  const cat = (m?.category || '').toLowerCase()
-  const name = (m?.name || '').toLowerCase()
-
-  // 1. Blacklist check (strictly exclude oral supplements, cardio, fasting, thermal, etc.)
-  if (NON_PEPTIDE_BLACKLIST.some(bl => mId.includes(bl) || name.includes(bl))) {
-    return false
-  }
-
-  // 2. Direct Category check
-  if (cat === 'peptide' || cat === 'peptides' || cat.includes('peptide')) {
-    return true
-  }
-
-  // 3. Known Peptide Keys check
-  if (KNOWN_PEPTIDE_KEYS.some(k => mId.includes(k) || name.includes(k))) {
-    return true
-  }
-
-  return false
+  return isInjectableSubQPeptide(task.loose_modality || task.protocol_step?.modality, task)
 }
 
 /**
