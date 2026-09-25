@@ -237,7 +237,7 @@ export function BlocksDragProvider({
   useEffect(() => {
     if (!activeDrag) return
 
-    const handlePointerMove = (e: PointerEvent) => {
+    const handlePointerMove = (e: PointerEvent | MouseEvent) => {
       setDragPosition({ x: e.clientX, y: e.clientY })
       dragPosRef.current = { x: e.clientX, y: e.clientY }
       detectHoveredSlot(e.clientX, e.clientY)
@@ -275,7 +275,8 @@ export function BlocksDragProvider({
       }
     }
 
-    window.addEventListener('pointermove', handlePointerMove, { passive: true })
+    window.addEventListener('pointermove', handlePointerMove as any, { passive: true })
+    window.addEventListener('mousemove', handlePointerMove as any, { passive: true })
     window.addEventListener('pointerup', handleRelease, { capture: true })
     window.addEventListener('mouseup', handleRelease, { capture: true })
     window.addEventListener('touchmove', handleTouchMove, { passive: false })
@@ -286,7 +287,8 @@ export function BlocksDragProvider({
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointermove', handlePointerMove as any)
+      window.removeEventListener('mousemove', handlePointerMove as any)
       window.removeEventListener('pointerup', handleRelease, { capture: true })
       window.removeEventListener('mouseup', handleRelease, { capture: true })
       window.removeEventListener('touchmove', handleTouchMove)
@@ -311,6 +313,8 @@ export function BlocksDragProvider({
       let touchStartTime = 0
       let touchStartX = 0
       let touchStartY = 0
+      let lastTouchX = 0
+      let lastTouchY = 0
       let isHoldTriggered = false
       let holdTimer: any = null
 
@@ -323,7 +327,7 @@ export function BlocksDragProvider({
 
           const onMouseMove = (moveEvt: MouseEvent) => {
             const dist = Math.hypot(moveEvt.clientX - startX, moveEvt.clientY - startY)
-            if (dist > 7) {
+            if (dist > 5) {
               window.removeEventListener('mousemove', onMouseMove)
               window.removeEventListener('mouseup', onMouseUp)
               startDrag(item, moveEvt.clientX, moveEvt.clientY)
@@ -342,31 +346,67 @@ export function BlocksDragProvider({
           window.addEventListener('mouseup', onMouseUp)
         },
 
-        // Mobile touch drag with press-and-hold (180ms)
+        // Mobile touch drag with intentional press-and-hold (260ms) and smart gesture separation
         onTouchStart: (e: React.TouchEvent) => {
           if (!e.touches || !e.touches[0]) return
           const t = e.touches[0]
           touchStartTime = Date.now()
           touchStartX = t.clientX
           touchStartY = t.clientY
+          lastTouchX = t.clientX
+          lastTouchY = t.clientY
           isHoldTriggered = false
 
           if (holdTimer) clearTimeout(holdTimer)
           holdTimer = setTimeout(() => {
             isHoldTriggered = true
-            startDrag(item, touchStartX, touchStartY)
-          }, 180)
+            triggerHaptic('medium')
+            startDrag(item, lastTouchX, lastTouchY)
+          }, 260)
         },
 
         onTouchMove: (e: React.TouchEvent) => {
           if (!e.touches || !e.touches[0]) return
           const t = e.touches[0]
+          lastTouchX = t.clientX
+          lastTouchY = t.clientY
+
+          if (isHoldTriggered) {
+            // Already dragging - global window touch listener handles positioning
+            return
+          }
+
           const diffX = t.clientX - touchStartX
           const diffY = t.clientY - touchStartY
-          const dist = Math.hypot(diffX, diffY)
+          const absX = Math.abs(diffX)
+          const absY = Math.abs(diffY)
 
-          // If moving significantly before hold is reached, cancel hold timer and allow natural gestures (swipe/scroll)
-          if (!isHoldTriggered && dist > 10) {
+          // 1. Detect natural vertical scroll intent:
+          // If vertical movement exceeds 8px and is predominantly vertical, user is scrolling the page.
+          // Instantly cancel hold timer so browser native 120fps scrolling is unhindered.
+          if (absY > 8 && absY > absX * 0.7) {
+            if (holdTimer) {
+              clearTimeout(holdTimer)
+              holdTimer = null
+            }
+            return
+          }
+
+          // 2. Detect horizontal swipe intent (to complete or skip):
+          // If horizontal movement exceeds 18px and is predominantly horizontal, user is swiping.
+          // Cancel hold timer so swipe action triggers cleanly on touch end.
+          if (absX > 18 && absX > absY * 1.4) {
+            if (holdTimer) {
+              clearTimeout(holdTimer)
+              holdTimer = null
+            }
+            return
+          }
+
+          // 3. Jitter threshold:
+          // If the finger drifts more than 22px in any direction before the hold timer elapses, cancel hold.
+          // (Allows natural fingertip contact wiggle room without accidentally canceling)
+          if (Math.hypot(diffX, diffY) > 22) {
             if (holdTimer) {
               clearTimeout(holdTimer)
               holdTimer = null
@@ -393,7 +433,7 @@ export function BlocksDragProvider({
             const diffX = t.clientX - touchStartX
             const diffY = t.clientY - touchStartY
 
-            if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+            if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.4) {
               if (diffX > 0 && options?.onSwipeRight) {
                 options.onSwipeRight()
                 return
@@ -401,7 +441,7 @@ export function BlocksDragProvider({
                 options.onSwipeLeft()
                 return
               }
-            } else if (Math.hypot(diffX, diffY) < 10 && options?.onClick) {
+            } else if (Math.hypot(diffX, diffY) < 12 && options?.onClick) {
               options.onClick()
               return
             }
@@ -436,14 +476,15 @@ export function BlocksDragProvider({
     >
       {children}
 
-      {/* Floating Drag Overlay (Follows pointer / finger smoothly) */}
+      {/* Floating Drag Overlay (Follows pointer / finger smoothly with 0 latency GPU acceleration) */}
       {activeDrag && dragPosition && (
         <div
-          className="fixed pointer-events-none z-[99999] select-none transition-transform duration-75"
+          className="fixed pointer-events-none z-[99999] select-none will-change-transform"
           style={{
-            left: `${dragPosition.x}px`,
-            top: `${dragPosition.y}px`,
-            transform: 'translate(-50%, -50%) rotate(2.5deg) scale(1.04)'
+            left: 0,
+            top: 0,
+            transform: `translate3d(${dragPosition.x}px, ${dragPosition.y}px, 0) translate(-50%, -50%) rotate(2deg) scale(1.05)`,
+            transition: 'none'
           }}
         >
           <div className="w-48 sm:w-56 p-3.5 rounded-2xl sm:rounded-3xl border-2 border-purple-400 bg-slate-950/95 backdrop-blur-2xl shadow-2xl shadow-purple-900/60 flex flex-col items-center justify-center text-center">

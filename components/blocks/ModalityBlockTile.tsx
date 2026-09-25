@@ -429,6 +429,7 @@ export default function ModalityBlockTile({
       onTouchMove={dragHandlers?.onTouchMove}
       onTouchEnd={dragHandlers?.onTouchEnd}
       onTouchCancel={dragHandlers?.onTouchCancel}
+      style={{ touchAction: isCurrentDragged ? 'none' : 'pan-y' }}
       className={`relative select-none ${colSpanClass} ${heightClass} transition-all duration-300 ${
         isCurrentDragged ? 'opacity-30 scale-95 pointer-events-none' : ''
       } ${

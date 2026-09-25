@@ -128,14 +128,6 @@ export default function AdHocLoggerModal({
           }
         })
       }
-      // Instant auto-focus on open
-      const focusTimer = setTimeout(() => {
-        if (searchInputRef.current) {
-          searchInputRef.current.focus()
-          searchInputRef.current.select?.()
-        }
-      }, 50)
-      return () => clearTimeout(focusTimer)
     } else {
       // Reset state on modal close
       setQuery('')
@@ -148,16 +140,6 @@ export default function AdHocLoggerModal({
       setLoggedSuccessId(null)
     }
   }, [isOpen, benchItems, localUserId])
-
-  // Re-focus search input when returning from custom creation view
-  useEffect(() => {
-    if (isOpen && !isCreatingCustom) {
-      const timer = setTimeout(() => {
-        searchInputRef.current?.focus()
-      }, 50)
-      return () => clearTimeout(timer)
-    }
-  }, [isOpen, isCreatingCustom])
 
   // Pre-prime initial modality if passed (e.g. from single-row quick pill tap)
   useEffect(() => {

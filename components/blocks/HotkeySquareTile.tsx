@@ -177,6 +177,7 @@ export default function HotkeySquareTile({
           : hTheme.glowShadow
       }`}
       style={{
+        touchAction: isCurrentDragged ? 'none' : 'pan-y',
         background: isJustTapped
           ? undefined
           : isDaylight
