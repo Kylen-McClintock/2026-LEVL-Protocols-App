@@ -1567,7 +1567,9 @@ export function setStoredDisplayMode(mode: 'classic' | 'blocks'): void {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY_DISPLAY_MODE, mode)
-    window.dispatchEvent(new CustomEvent('levl_display_mode_change', { detail: { mode } }))
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('levl_display_mode_change', { detail: { mode } }))
+    }, 0)
   } catch (e) {}
 }
 
@@ -1584,7 +1586,9 @@ export function setStoredVisualStyle(style: BlocksVisualStyle): void {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY_STYLE, style)
-    window.dispatchEvent(new CustomEvent('levl_blocks_style_change', { detail: { style } }))
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('levl_blocks_style_change', { detail: { style } }))
+    }, 0)
   } catch (e) {}
 }
 
@@ -1601,7 +1605,9 @@ export function setStoredBlocksLayoutMode(mode: BlocksLayoutMode): void {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY_LAYOUT_MODE, mode)
-    window.dispatchEvent(new CustomEvent('levl_blocks_layout_mode_change', { detail: { mode } }))
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('levl_blocks_layout_mode_change', { detail: { mode } }))
+    }, 0)
   } catch (e) {}
 }
 
@@ -1618,7 +1624,9 @@ export function setStoredBlocksShowDosing(show: boolean): void {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY_SHOW_DOSING, String(show))
-    window.dispatchEvent(new CustomEvent('levl_blocks_show_dosing_change', { detail: { show } }))
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('levl_blocks_show_dosing_change', { detail: { show } }))
+    }, 0)
   } catch (e) {}
 }
 
@@ -1635,7 +1643,9 @@ export function saveStoredSlotTaskOrder(slotKey: string, order: string[]): void 
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(`levl_slot_task_order_${slotKey}`, JSON.stringify(order))
-    window.dispatchEvent(new CustomEvent('levl_slot_order_change', { detail: { slotKey, order } }))
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('levl_slot_order_change', { detail: { slotKey, order } }))
+    }, 0)
   } catch (e) {}
 }
 
@@ -1655,9 +1665,11 @@ export function setStoredBlocksCompletedPlacement(placement: BlocksCompletedPlac
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(STORAGE_KEY_COMPLETED_PLACEMENT, placement)
-    window.dispatchEvent(
-      new CustomEvent('levl_blocks_completed_placement_change', { detail: { placement } })
-    )
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent('levl_blocks_completed_placement_change', { detail: { placement } })
+      )
+    }, 0)
   } catch (e) {}
 }
 

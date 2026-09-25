@@ -86,7 +86,9 @@ export function setStoredHomeWidgets(config: Partial<HomeWidgetsConfig>, profile
     const current = getStoredHomeWidgets()
     const updated = { ...current, ...config }
     localStorage.setItem(STORAGE_KEY_HOME_WIDGETS, JSON.stringify(updated))
-    window.dispatchEvent(new CustomEvent(EVENT_HOME_WIDGETS, { detail: { config: updated } }))
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent(EVENT_HOME_WIDGETS, { detail: { config: updated } }))
+    }, 0)
 
     // Sync to user profile if available
     syncLayoutToProfile({ home_widgets: updated }, profile)
@@ -111,7 +113,9 @@ export function setStoredFocusRules(rules: Partial<FocusRulesConfig>, profile?: 
     const current = getStoredFocusRules()
     const updated = { ...current, ...rules }
     localStorage.setItem(STORAGE_KEY_FOCUS_RULES, JSON.stringify(updated))
-    window.dispatchEvent(new CustomEvent(EVENT_FOCUS_RULES, { detail: { rules: updated } }))
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent(EVENT_FOCUS_RULES, { detail: { rules: updated } }))
+    }, 0)
 
     // Sync to user profile if available
     syncLayoutToProfile({ focus_rules: updated }, profile)
@@ -145,20 +149,22 @@ export function setStoredCardBadges(config: Partial<CardBadgesConfig>, profile?:
     const current = getStoredCardBadges()
     const updated = { ...current, ...config }
     localStorage.setItem(STORAGE_KEY_CARD_BADGES, JSON.stringify(updated))
-    window.dispatchEvent(new CustomEvent(EVENT_CARD_BADGES, { detail: { config: updated } }))
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent(EVENT_CARD_BADGES, { detail: { config: updated } }))
 
-    // Keep legacy events in sync for existing listeners
-    if (config.showDosing !== undefined) {
-      localStorage.setItem('levl_blocks_show_dosing', String(config.showDosing))
-      window.dispatchEvent(new CustomEvent('levl_blocks_show_dosing_change', { detail: { show: config.showDosing } }))
-    }
-    if (config.showCompletedInline !== undefined) {
-      const placement = config.showCompletedInline ? 'inline' : 'section'
-      localStorage.setItem('levl_blocks_completed_placement', placement)
-      localStorage.setItem('levl_show_completed_inline', String(config.showCompletedInline))
-      window.dispatchEvent(new CustomEvent('levl_blocks_completed_placement_change', { detail: { placement } }))
-      window.dispatchEvent(new CustomEvent('levl_show_completed_inline_change', { detail: { show: config.showCompletedInline } }))
-    }
+      // Keep legacy events in sync for existing listeners
+      if (config.showDosing !== undefined) {
+        localStorage.setItem('levl_blocks_show_dosing', String(config.showDosing))
+        window.dispatchEvent(new CustomEvent('levl_blocks_show_dosing_change', { detail: { show: config.showDosing } }))
+      }
+      if (config.showCompletedInline !== undefined) {
+        const placement = config.showCompletedInline ? 'inline' : 'section'
+        localStorage.setItem('levl_blocks_completed_placement', placement)
+        localStorage.setItem('levl_show_completed_inline', String(config.showCompletedInline))
+        window.dispatchEvent(new CustomEvent('levl_blocks_completed_placement_change', { detail: { placement } }))
+        window.dispatchEvent(new CustomEvent('levl_show_completed_inline_change', { detail: { show: config.showCompletedInline } }))
+      }
+    }, 0)
 
     // Sync to user profile if available
     syncLayoutToProfile({ card_badges: updated }, profile)
@@ -209,7 +215,12 @@ export function useHomeWidgets(profile?: UserProfile | null) {
 
     const handler = (e: any) => {
       if (e.detail?.config) {
-        setWidgets(e.detail.config)
+        setWidgets(prev => {
+          const next = e.detail.config
+          const keys = Object.keys(next) as (keyof HomeWidgetsConfig)[]
+          const changed = keys.some(k => prev[k] !== next[k])
+          return changed ? next : prev
+        })
       }
     }
     window.addEventListener(EVENT_HOME_WIDGETS, handler)
@@ -217,11 +228,10 @@ export function useHomeWidgets(profile?: UserProfile | null) {
   }, [profile])
 
   const toggleWidget = useCallback((key: keyof HomeWidgetsConfig) => {
-    setWidgets(prev => {
-      const next = { ...prev, [key]: !prev[key] }
-      setStoredHomeWidgets(next, profile)
-      return next
-    })
+    const current = getStoredHomeWidgets()
+    const next = { ...current, [key]: !current[key] }
+    setWidgets(next)
+    setStoredHomeWidgets(next, profile)
   }, [profile])
 
   return { widgets, setWidgets, toggleWidget }
@@ -249,7 +259,12 @@ export function useFocusRules(profile?: UserProfile | null) {
 
     const handler = (e: any) => {
       if (e.detail?.rules) {
-        setRules(e.detail.rules)
+        setRules(prev => {
+          const next = e.detail.rules
+          const keys = Object.keys(next) as (keyof FocusRulesConfig)[]
+          const changed = keys.some(k => prev[k] !== next[k])
+          return changed ? next : prev
+        })
       }
     }
     window.addEventListener(EVENT_FOCUS_RULES, handler)
@@ -257,19 +272,17 @@ export function useFocusRules(profile?: UserProfile | null) {
   }, [profile])
 
   const updateRule = useCallback((key: keyof FocusRulesConfig, val: boolean) => {
-    setRules(prev => {
-      const next = { ...prev, [key]: val }
-      setStoredFocusRules(next, profile)
-      return next
-    })
+    const current = getStoredFocusRules()
+    const next = { ...current, [key]: val }
+    setRules(next)
+    setStoredFocusRules(next, profile)
   }, [profile])
 
   const toggleRule = useCallback((key: keyof FocusRulesConfig) => {
-    setRules(prev => {
-      const next = { ...prev, [key]: !prev[key] }
-      setStoredFocusRules(next, profile)
-      return next
-    })
+    const current = getStoredFocusRules()
+    const next = { ...current, [key]: !current[key] }
+    setRules(next)
+    setStoredFocusRules(next, profile)
   }, [profile])
 
   return { rules, setRules, updateRule, toggleRule }
@@ -297,7 +310,12 @@ export function useCardBadges(profile?: UserProfile | null) {
 
     const handler = (e: any) => {
       if (e.detail?.config) {
-        setBadges(e.detail.config)
+        setBadges(prev => {
+          const next = e.detail.config
+          const keys = Object.keys(next) as (keyof CardBadgesConfig)[]
+          const changed = keys.some(k => prev[k] !== next[k])
+          return changed ? next : prev
+        })
       }
     }
     window.addEventListener(EVENT_CARD_BADGES, handler)
@@ -305,19 +323,17 @@ export function useCardBadges(profile?: UserProfile | null) {
   }, [profile])
 
   const toggleBadge = useCallback((key: keyof CardBadgesConfig) => {
-    setBadges(prev => {
-      const next = { ...prev, [key]: !prev[key] }
-      setStoredCardBadges(next, profile)
-      return next
-    })
+    const current = getStoredCardBadges()
+    const next = { ...current, [key]: !current[key] }
+    setBadges(next)
+    setStoredCardBadges(next, profile)
   }, [profile])
 
   const updateBadge = useCallback((key: keyof CardBadgesConfig, val: boolean) => {
-    setBadges(prev => {
-      const next = { ...prev, [key]: val }
-      setStoredCardBadges(next, profile)
-      return next
-    })
+    const current = getStoredCardBadges()
+    const next = { ...current, [key]: val }
+    setBadges(next)
+    setStoredCardBadges(next, profile)
   }, [profile])
 
   return { badges, setBadges, toggleBadge, updateBadge }
