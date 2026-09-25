@@ -734,7 +734,13 @@ export default function BlocksViewContainer({
 
       {/* Daily Quick-Log Hotkeys */}
       {showHotkeys && (
-        <QuickHotkeyGrid date={date} localUserId={localUserId} userProfile={userProfile} defaultCollapsed={false} />
+        <QuickHotkeyGrid
+          date={date}
+          localUserId={localUserId}
+          userProfile={userProfile}
+          defaultCollapsed={false}
+          showInfradian={isFocusMode ? focusRules.keepInfradian : homeWidgets.infradian}
+        />
       )}
 
       {/* Active Swipe In-Feed Section (Single Active Rule) */}

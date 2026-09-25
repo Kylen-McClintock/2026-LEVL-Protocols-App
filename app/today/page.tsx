@@ -4794,6 +4794,7 @@ function TodayPageContent() {
             date={dateStr}
             localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
             userProfile={profile}
+            showInfradian={isFocusMode ? focusRules.keepInfradian : homeWidgets.infradian}
           />
         )}
 

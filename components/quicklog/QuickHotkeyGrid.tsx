@@ -39,6 +39,7 @@ import ProteinPulseTrackerModal from './ProteinPulseTrackerModal'
 import NutritionFastingModal from './NutritionFastingModal'
 import PeriodFlowLoggerModal from '@/components/modals/PeriodFlowLoggerModal'
 import { calculateInfradianStatus } from '@/lib/tracking/infradianEngine'
+import { useHomeWidgets } from '@/lib/utils/layoutSettings'
 
 interface QuickHotkeyGridProps {
   date: string
@@ -46,6 +47,7 @@ interface QuickHotkeyGridProps {
   userProfile?: UserProfile | null
   className?: string
   defaultCollapsed?: boolean
+  showInfradian?: boolean
 }
 
 export interface HotkeyThemeStyle {
@@ -240,8 +242,12 @@ export default function QuickHotkeyGrid({
   localUserId,
   userProfile,
   className = '',
-  defaultCollapsed
+  defaultCollapsed,
+  showInfradian
 }: QuickHotkeyGridProps) {
+  const { widgets: homeWidgets } = useHomeWidgets(userProfile)
+  const isPeriodLayoutActive = showInfradian !== undefined ? showInfradian : homeWidgets.infradian
+
   const [hotkeys, setHotkeys] = useState<QuickHotkeyConfig[]>([])
   const [logs, setLogs] = useState<DailyQuickLogEntry[]>([])
   const [meals, setMeals] = useState<DailyMealLogEntry[]>([])
@@ -277,6 +283,16 @@ export default function QuickHotkeyGrid({
   const infradianStatus = useMemo(() => {
     return calculateInfradianStatus(userProfile, date)
   }, [userProfile, date])
+
+  const isFemaleEligible =
+    userProfile?.biological_sex?.toLowerCase() === 'female' &&
+    Boolean(userProfile?.age && userProfile.age < 52) &&
+    Boolean(userProfile?.infradian_cycle_enabled)
+
+  const showPeriodHotkey =
+    Boolean(isPeriodLayoutActive) &&
+    isFemaleEligible &&
+    Boolean(infradianStatus && infradianStatus.enabled)
 
   const visibleHotkeys = useMemo(() => {
     if (!hotkeys || hotkeys.length === 0) return []
@@ -415,12 +431,8 @@ export default function QuickHotkeyGrid({
             )}
           </button>
 
-          {/* Contextual Infradian Period Hotkey (Strictly for Female Users < 52 who opted in) */}
-          {userProfile?.biological_sex?.toLowerCase() === 'female' &&
-            Boolean(userProfile?.age && userProfile.age < 52) &&
-            Boolean(userProfile?.infradian_cycle_enabled) &&
-            infradianStatus &&
-            infradianStatus.enabled && (
+          {/* Contextual Infradian Period Hotkey (Strictly for Female Users < 52 who opted in and enabled in layout) */}
+          {showPeriodHotkey && infradianStatus && (
             <button
               type="button"
               onClick={() => setIsPeriodModalOpen(true)}
