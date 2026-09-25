@@ -55,7 +55,11 @@ export default function EmotionSearchOverlay({
   ]
 
   return (
-    <div className="fixed inset-0 z-[120] flex flex-col bg-slate-950/95 dark:bg-slate-950/98 backdrop-blur-xl animate-in fade-in duration-200">
+    <div
+      className={`fixed inset-0 z-[120] flex flex-col backdrop-blur-xl animate-in fade-in duration-200 ${
+        isDaylight ? 'bg-slate-50/98 text-slate-900' : 'bg-slate-950/98 text-white'
+      }`}
+    >
       {/* Header Bar with Search Input */}
       <div
         className={`px-4 pt-4 pb-3 border-b flex items-center gap-3 ${
@@ -177,7 +181,11 @@ export default function EmotionSearchOverlay({
       </div>
 
       {/* Scrollable Emotion List */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 divide-y divide-white/5">
+      <div
+        className={`flex-1 overflow-y-auto px-4 py-2 divide-y ${
+          isDaylight ? 'divide-slate-200' : 'divide-white/5'
+        }`}
+      >
         {filteredEmotions.length === 0 ? (
           <div className="py-16 text-center text-slate-500">
             <p className="text-sm font-medium">No feelings found matching &ldquo;{query}&rdquo;</p>
@@ -191,7 +199,7 @@ export default function EmotionSearchOverlay({
                 key={emotion.id}
                 onClick={() => handleSelect(emotion)}
                 className={`py-3.5 px-3 rounded-2xl flex items-center justify-between gap-4 transition-all cursor-pointer group active:scale-[0.99] ${
-                  isDaylight ? 'hover:bg-slate-100' : 'hover:bg-white/5'
+                  isDaylight ? 'hover:bg-slate-200/60' : 'hover:bg-white/5'
                 }`}
               >
                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -214,7 +222,11 @@ export default function EmotionSearchOverlay({
 
                 {/* Definition on the right */}
                 <div className="text-right max-w-[50%] shrink-0">
-                  <span className="text-xs text-slate-400 leading-snug line-clamp-2">
+                  <span
+                    className={`text-xs leading-snug line-clamp-2 ${
+                      isDaylight ? 'text-slate-500' : 'text-slate-400'
+                    }`}
+                  >
                     {emotion.definition}
                   </span>
                 </div>
