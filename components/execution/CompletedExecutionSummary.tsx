@@ -1,5 +1,5 @@
 import React from 'react'
-import { Edit2 } from 'lucide-react'
+import { Edit2, Syringe, RotateCcw } from 'lucide-react'
 
 type Props = {
   modalityType: string
@@ -436,6 +436,67 @@ export default function CompletedExecutionSummary({ modalityType, loggingType, d
           {details.duration_min && <span className="font-bold text-yellow-300">{details.duration_min} min</span>}
           {details.sky_condition && <span className="capitalize">{details.sky_condition.replace('_', ' ')}</span>}
           {details.within_30m_waking && <span className="text-yellow-400 font-semibold">✓ Within 30m Waking</span>}
+        </div>
+      </div>
+    )
+  }
+
+  // --- PEPTIDE SUBQ ADMINISTRATION SUMMARY ---
+  if (
+    loggingType === 'peptide' ||
+    details.syringe_units_injected !== undefined ||
+    details.injection_site !== undefined ||
+    details.dose_amount_mcg !== undefined ||
+    (modalityType && modalityType.toLowerCase().includes('peptide'))
+  ) {
+    const formatSite = (site: string) => {
+      if (!site) return 'SubQ Tissue'
+      return site
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase())
+        .replace('Abd ', 'Abdomen ')
+        .replace('Delt ', 'Deltoid ')
+    }
+
+    return (
+      <div className="w-full mt-3 p-3 bg-cyan-950/20 rounded-xl border border-cyan-500/30 relative group">
+        <div className="text-[10px] text-cyan-300 uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Syringe size={12} className="text-cyan-400" />
+            <span>SubQ Administration Summary</span>
+          </div>
+          {onEdit && (
+            <button onClick={onEdit} className="text-cyan-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer text-[10px] font-bold">
+              <Edit2 size={10} /> Edit
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-gray-300 items-center">
+          {details.dose_amount_mcg && (
+            <span className="font-bold text-white font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">
+              {details.dose_amount_mcg.toLocaleString()} mcg
+            </span>
+          )}
+          {details.syringe_units_injected !== undefined && (
+            <span className="font-bold text-cyan-300 font-mono">
+              💉 {details.syringe_units_injected} Units (U-100)
+            </span>
+          )}
+          {details.injection_site && (
+            <span className="text-emerald-300 font-medium flex items-center gap-1">
+              <RotateCcw size={10} className="shrink-0" />
+              <span>Site: {formatSite(details.injection_site)}</span>
+            </span>
+          )}
+          {details.side_effects && details.side_effects.length > 0 ? (
+            <span className="text-amber-300 text-[11px]">
+              ⚠️ {details.side_effects.length} {details.side_effects.length === 1 ? 'symptom' : 'symptoms'} noted
+            </span>
+          ) : (
+            <span className="text-emerald-400/80 text-[11px]">
+              ✓ Smooth (no adverse effects)
+            </span>
+          )}
         </div>
       </div>
     )

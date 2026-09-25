@@ -45,6 +45,175 @@ interface QuickHotkeyGridProps {
   localUserId: string
   userProfile?: UserProfile | null
   className?: string
+  defaultCollapsed?: boolean
+}
+
+export interface HotkeyThemeStyle {
+  key: string
+  colorHex: string
+  borderClass: string
+  borderHoverClass: string
+  bgTintClass: string
+  activeRingClass: string
+  iconBgClass: string
+  iconTextClass: string
+  badgeBgClass: string
+  badgeTextClass: string
+  badgeBorderClass: string
+  badgeHoverClass: string
+  nameHoverClass: string
+  progressGradientClass: string
+  glowShadow: string
+  fullGradientCss: string
+  borderGradientCss?: string
+}
+
+export function getHotkeyVisualTheme(hotkey: QuickHotkeyConfig): HotkeyThemeStyle {
+  const isNegative = hotkey.is_negative || hotkey.polarity === 'negative'
+  if (isNegative) {
+    return {
+      key: 'vice',
+      colorHex: '#F43F5E',
+      borderClass: 'border-rose-500/40',
+      borderHoverClass: 'hover:border-rose-500/70',
+      bgTintClass: 'bg-rose-950/20',
+      activeRingClass: 'ring-rose-400',
+      iconBgClass: 'bg-rose-500/15 border-rose-500/30',
+      iconTextClass: 'text-rose-300',
+      badgeBgClass: 'bg-rose-500/20',
+      badgeTextClass: 'text-rose-300',
+      badgeBorderClass: 'border-rose-500/40',
+      badgeHoverClass: 'group-hover/card:bg-rose-500 group-hover/card:text-white',
+      nameHoverClass: 'group-hover/card:text-rose-300',
+      progressGradientClass: 'bg-gradient-to-t from-rose-600 via-rose-500 to-red-400',
+      glowShadow: 'shadow-[0_0_15px_rgba(244,63,94,0.35)]',
+      fullGradientCss: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
+      borderGradientCss: 'linear-gradient(135deg, #FB7185 0%, #E11D48 100%)'
+    }
+  }
+
+  const cat = (hotkey.category || '').toLowerCase()
+  const theme = (hotkey.color_theme || '').toLowerCase()
+  const id = (hotkey.id || '').toLowerCase()
+  const name = (hotkey.name || '').toLowerCase()
+
+  // 1. Sleep & Circadian -> Deep Purple (#A855F7)
+  if (
+    cat === 'circadian' ||
+    cat === 'sleep' ||
+    theme === 'purple' ||
+    id.includes('sleep') ||
+    id.includes('sun') ||
+    name.includes('sleep') ||
+    name.includes('sunlight')
+  ) {
+    return {
+      key: 'circadian',
+      colorHex: '#A855F7',
+      borderClass: 'border-purple-500/40',
+      borderHoverClass: 'hover:border-purple-500/70',
+      bgTintClass: 'bg-purple-950/20',
+      activeRingClass: 'ring-purple-400',
+      iconBgClass: 'bg-purple-500/15 border-purple-500/30',
+      iconTextClass: 'text-purple-300',
+      badgeBgClass: 'bg-purple-500/20',
+      badgeTextClass: 'text-purple-300',
+      badgeBorderClass: 'border-purple-500/40',
+      badgeHoverClass: 'group-hover/card:bg-purple-500 group-hover/card:text-white',
+      nameHoverClass: 'group-hover/card:text-purple-300',
+      progressGradientClass: 'bg-gradient-to-t from-purple-600 via-purple-500 to-indigo-400',
+      glowShadow: 'shadow-[0_0_15px_rgba(168,85,247,0.35)]',
+      fullGradientCss: 'linear-gradient(135deg, #9333EA 0%, #7E22CE 100%)',
+      borderGradientCss: 'linear-gradient(135deg, #C084FC 0%, #9333EA 100%)'
+    }
+  }
+
+  // 2. Hydration / Thermal / Water / Ice / Cold -> Cyan / Sky (#06B6D4)
+  if (
+    cat === 'hydration' ||
+    cat === 'thermal' ||
+    theme === 'cyan' ||
+    theme === 'sky' ||
+    id.includes('water') ||
+    id.includes('cold') ||
+    id.includes('sauna') ||
+    name.includes('water') ||
+    name.includes('cold') ||
+    name.includes('plunge') ||
+    name.includes('sauna')
+  ) {
+    return {
+      key: 'hydration',
+      colorHex: '#06B6D4',
+      borderClass: 'border-cyan-500/40',
+      borderHoverClass: 'hover:border-cyan-500/70',
+      bgTintClass: 'bg-cyan-950/20',
+      activeRingClass: 'ring-cyan-400',
+      iconBgClass: 'bg-cyan-500/15 border-cyan-500/30',
+      iconTextClass: 'text-cyan-300',
+      badgeBgClass: 'bg-cyan-500/20',
+      badgeTextClass: 'text-cyan-300',
+      badgeBorderClass: 'border-cyan-500/40',
+      badgeHoverClass: 'group-hover/card:bg-cyan-500 group-hover/card:text-black',
+      nameHoverClass: 'group-hover/card:text-cyan-300',
+      progressGradientClass: 'bg-gradient-to-t from-sky-600 via-sky-500 to-cyan-400',
+      glowShadow: 'shadow-[0_0_15px_rgba(6,182,212,0.35)]',
+      fullGradientCss: 'linear-gradient(135deg, #0891B2 0%, #0E7490 100%)',
+      borderGradientCss: 'linear-gradient(135deg, #22D3EE 0%, #0891B2 100%)'
+    }
+  }
+
+  // 3. Movement / Fitness -> Amber / Orange (#F97316)
+  if (
+    cat === 'fitness' ||
+    cat === 'movement' ||
+    theme === 'orange' ||
+    theme === 'amber' ||
+    id.includes('step') ||
+    name.includes('step') ||
+    id.includes('stretch')
+  ) {
+    return {
+      key: 'movement',
+      colorHex: '#F97316',
+      borderClass: 'border-orange-500/40',
+      borderHoverClass: 'hover:border-orange-500/70',
+      bgTintClass: 'bg-orange-950/20',
+      activeRingClass: 'ring-orange-400',
+      iconBgClass: 'bg-orange-500/15 border-orange-500/30',
+      iconTextClass: 'text-orange-300',
+      badgeBgClass: 'bg-orange-500/20',
+      badgeTextClass: 'text-orange-300',
+      badgeBorderClass: 'border-orange-500/40',
+      badgeHoverClass: 'group-hover/card:bg-orange-500 group-hover/card:text-black',
+      nameHoverClass: 'group-hover/card:text-orange-300',
+      progressGradientClass: 'bg-gradient-to-t from-orange-500 via-amber-400 to-emerald-400',
+      glowShadow: 'shadow-[0_0_15px_rgba(249,115,22,0.35)]',
+      fullGradientCss: 'linear-gradient(135deg, #EA580C 0%, #C2410C 100%)',
+      borderGradientCss: 'linear-gradient(135deg, #FB923C 0%, #EA580C 100%)'
+    }
+  }
+
+  // 4. Default / Nutrition / Supplements -> Vibrant Rich Emerald (#05DF72)
+  return {
+    key: 'nutrition',
+    colorHex: '#05DF72',
+    borderClass: 'border-emerald-500/40',
+    borderHoverClass: 'hover:border-emerald-400',
+    bgTintClass: 'bg-emerald-950/20',
+    activeRingClass: 'ring-emerald-400',
+    iconBgClass: 'bg-emerald-500/15 border-emerald-500/30',
+    iconTextClass: 'text-emerald-300',
+    badgeBgClass: 'bg-emerald-500/20',
+    badgeTextClass: 'text-emerald-300',
+    badgeBorderClass: 'border-emerald-500/40',
+    badgeHoverClass: 'group-hover/card:bg-emerald-500 group-hover/card:text-black',
+    nameHoverClass: 'group-hover/card:text-emerald-300',
+    progressGradientClass: 'bg-gradient-to-t from-emerald-600 via-emerald-500 to-teal-400',
+    glowShadow: 'shadow-[0_0_15px_rgba(5,223,114,0.35)]',
+    fullGradientCss: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+    borderGradientCss: 'linear-gradient(135deg, #34D399 0%, #059669 100%)'
+  }
 }
 
 const ICON_MAP: Record<string, any> = {
@@ -70,7 +239,8 @@ export default function QuickHotkeyGrid({
   date,
   localUserId,
   userProfile,
-  className = ''
+  className = '',
+  defaultCollapsed
 }: QuickHotkeyGridProps) {
   const [hotkeys, setHotkeys] = useState<QuickHotkeyConfig[]>([])
   const [logs, setLogs] = useState<DailyQuickLogEntry[]>([])
@@ -82,6 +252,7 @@ export default function QuickHotkeyGrid({
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false)
   const [justTappedId, setJustTappedId] = useState<string | null>(null)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    if (defaultCollapsed !== undefined) return defaultCollapsed
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('levl_hotkeys_tray_collapsed')
       if (stored !== null) return stored === 'true'
@@ -300,27 +471,13 @@ export default function QuickHotkeyGrid({
               onClick={(e) => handleQuickTapIncrement(e, hotkey)}
               className={`h-[110px] sm:h-[116px] rounded-2xl border transition-all flex flex-col justify-between p-2.5 sm:p-3 overflow-hidden relative select-none shadow-md cursor-pointer hover:bg-white/[0.03] active:scale-[0.97] group/card ${
                 isTapped
-                  ? isNegative
-                    ? 'ring-2 ring-rose-400 scale-[0.96] bg-slate-800'
-                    : isNeutral
-                    ? 'ring-2 ring-sky-400 scale-[0.96] bg-slate-800'
-                    : 'ring-2 ring-orange-400 scale-[0.96] bg-slate-800'
-                  : isNegative
-                  ? totalVal > 0
-                    ? 'bg-rose-950/20 border-rose-500/40 hover:border-rose-500/70'
-                    : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
-                  : isNeutral
-                  ? totalVal > 0
-                    ? 'bg-sky-950/20 border-sky-500/40 hover:border-sky-500/70'
-                    : 'bg-slate-900/90 border-slate-800 hover:border-sky-500/40'
-                  : isGoalReached
-                  ? 'bg-emerald-950/20 border-emerald-500/40 hover:border-emerald-500/70'
-                  : 'bg-slate-900/90 border-slate-800 hover:border-orange-500/40'
+                  ? 'ring-2 ring-white/60 scale-[0.96] bg-slate-800 border-slate-700'
+                  : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
               }`}
               title={`1-Click: Log +${hotkey.default_increment} ${hotkey.unit}`}
             >
               {/* Thin Vertical Gradient Bar filling up proportionately along left side */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-800/40 z-10 pointer-events-none rounded-l-2xl overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-1 sm:w-1.5 bg-slate-800/60 z-10 pointer-events-none rounded-l-2xl overflow-hidden">
                 <div
                   className={`absolute bottom-0 left-0 right-0 transition-all duration-300 rounded-bl-2xl ${
                     progressPct >= 100 ? 'rounded-tl-2xl' : ''

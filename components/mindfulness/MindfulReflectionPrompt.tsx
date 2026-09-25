@@ -140,7 +140,7 @@ export default function MindfulReflectionPrompt({
             title="Take a 12-second mindful breath before checking in"
           >
             <Wind size={11} />
-            <span>{isBreathing ? `${breathPhase.toUpperCase()} (${breathSeconds}s)` : 'Pause & Breathe'}</span>
+            <span>{isBreathing ? `${breathPhase} (${breathSeconds}s)` : 'Pause & Breathe'}</span>
           </button>
 
           {/* Cycle Next Prompt Button */}
@@ -168,8 +168,10 @@ export default function MindfulReflectionPrompt({
                   : 'scale-75 bg-indigo-400 opacity-60'
               }`}
             />
-            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider transition-opacity duration-300">
-              {breathPhase === 'inhale' ? 'Inhale' : breathPhase === 'hold' ? 'Hold' : 'Exhale'}
+            <span className={`text-xs font-mono font-medium text-white lowercase tracking-wider transition-all duration-700 ${
+              breathSeconds <= 2 ? 'opacity-0 -translate-y-0.5' : 'opacity-100 translate-y-0'
+            }`}>
+              {breathPhase === 'inhale' ? 'inhale' : breathPhase === 'hold' ? 'hold' : 'exhale'}
             </span>
           </div>
           <span className="text-xs font-mono font-black text-amber-300">

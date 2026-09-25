@@ -95,12 +95,12 @@ async function cleanAndSeed() {
         personalized_target_dose: 45,
         blueprint_dose: 60,
         starter_notes: '30 mins foundational joint stability & isometric load.',
-        recommended_notes: '45 mins Peter Attia Centenarian Decathlon strength routine.',
+        recommended_notes: '45 mins Peter Attia Centenarian Decathlon strength routine with pre-workout nutrition.',
         blueprint_notes: '60 mins heavy compound strength & grip stability.',
         literature_range: { min: 30, max: 60, unit: 'mins' },
-        timing_preference: 'morning'
+        timing_preference: 'afternoon'
       };
-      newTimingSum = 'Morning / Fasted (8:00 AM - 10:00 AM)';
+      newTimingSum = 'Afternoon (3:00 PM - 6:00 PM)';
     }
     else if (name.includes('isometric handgrip')) {
       newDoseText = '4x 2-min holds (10 mins total)';

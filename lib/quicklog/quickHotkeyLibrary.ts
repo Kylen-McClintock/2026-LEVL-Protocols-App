@@ -32,7 +32,7 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
     default_increment: 35,
     daily_goal: 160,
     is_negative: false,
-    color_theme: 'orange',
+    color_theme: 'emerald',
     presets: [
       { label: 'Whey / Plant Shake (+30g)', amount: 30, notes: 'Post-workout shake' },
       { label: 'Chicken Breast / Steak (+40g)', amount: 40, notes: 'Whole food lean protein' },
@@ -51,6 +51,7 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
     daily_goal: 5,
     is_negative: false,
     color_theme: 'amber',
+    assigned_time_slots: ['midday'],
     presets: [
       { label: 'Daily 5g Dose (+5g)', amount: 5, notes: 'Standard saturation dose' },
       { label: 'Loading Dose (+10g)', amount: 10, notes: 'Split loading phase' }
@@ -101,6 +102,8 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
     bottle_size_oz: 24,
     is_negative: false,
     color_theme: 'cyan',
+    placement_type: 'floating_dock',
+    assigned_time_slots: ['all_meals'],
     presets: [
       { label: 'Standard Glass (+16 oz)', amount: 16, notes: 'Kitchen glass' },
       { label: 'Hydro Flask (+24 oz)', amount: 24, notes: 'Standard insulated bottle' },
@@ -121,6 +124,7 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
     daily_goal: 2,
     is_negative: false,
     color_theme: 'amber',
+    assigned_time_slots: ['morning'],
     presets: [
       { label: '1 Cup Drip Coffee (100mg)', amount: 1, notes: 'Standard brew' },
       { label: 'Espresso / Double (140mg)', amount: 1, notes: 'Double shot espresso' },
@@ -137,7 +141,7 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
     default_increment: 15,
     daily_goal: 30,
     is_negative: false,
-    color_theme: 'amber',
+    color_theme: 'purple',
     presets: [
       { label: 'Morning Light Pulse (+10m)', amount: 10, notes: 'Circadian retinal reset' },
       { label: 'Midday Sunlight Walk (+20m)', amount: 20, notes: 'Vitamin D & alertness' },
@@ -155,7 +159,7 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
     default_increment: 5,
     daily_goal: 15,
     is_negative: false,
-    color_theme: 'indigo',
+    color_theme: 'blue',
     presets: [
       { label: 'Cyclic Sighing (+5m)', amount: 5, notes: 'Autonomic down-regulation' },
       { label: 'Box Breathing (+5m)', amount: 5, notes: 'Navy SEAL focus reset' },
@@ -172,7 +176,7 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
     default_increment: 1,
     daily_goal: 6,
     is_negative: false,
-    color_theme: 'purple',
+    color_theme: 'blue',
     presets: [
       { label: '20-20-20 Eye Rest (+1)', amount: 1, notes: 'Looked 20ft away for 20s' },
       { label: 'Post-Focus Stand & Stretch (+1)', amount: 1, notes: 'Full cognitive micro-break' }
@@ -187,7 +191,7 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
     default_increment: 30,
     daily_goal: 120,
     is_negative: false,
-    color_theme: 'emerald',
+    color_theme: 'rose',
     presets: [
       { label: '30-Minute Stand (+30m)', amount: 30, notes: 'Standing work block' },
       { label: '60-Minute Deep Stand (+60m)', amount: 60, notes: 'Active standing focus' }
@@ -235,6 +239,7 @@ export const POPULAR_HOTKEY_LIBRARY: QuickHotkeyConfig[] = [
     daily_goal: 0,
     is_negative: true,
     color_theme: 'rose',
+    assigned_time_slots: ['evening'],
     presets: [
       { label: '1 Glass Wine / Beer (+1)', amount: 1, notes: 'Single standard drink' },
       { label: '1 Cocktail / Spirit (+1)', amount: 1, notes: 'Hard spirit' },

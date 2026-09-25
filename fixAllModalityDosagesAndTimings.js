@@ -62,8 +62,8 @@ const MODALITY_UPDATES = [
     default_dosage: 45,
     literature_min: 30,
     literature_max: 60,
-    timing_preference: 'morning',
-    preferred_time: 'Morning (8:00 AM - 11:00 AM)'
+    timing_preference: 'afternoon',
+    preferred_time: 'Afternoon (3:00 PM - 6:00 PM)'
   },
   {
     id: 'dayspring_isometric_handgrip_protocol',

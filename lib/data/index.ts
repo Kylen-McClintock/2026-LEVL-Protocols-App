@@ -177,11 +177,19 @@ function mergeBuiltInModalities(fetched: Modality[]): Modality[] {
   safeFetched.forEach(m => {
     const key = (m.id || '').toLowerCase()
     const slugKey = (m.slug || '').toLowerCase()
+    const isCaffeineCutoff = 
+      key === 'walker_caffeine_cutoff' || 
+      key === 'caffeine_cutoff' || 
+      slugKey.includes('caffeine_cutoff') || 
+      slugKey.includes('caffeine-cutoff') || 
+      (m.name || '').toLowerCase().includes('caffeine cutoff')
+
     if (key && !seen.has(key)) {
       seen.add(key)
       if (slugKey) seen.add(slugKey)
       result.push({
         ...m,
+        functional_outcomes_to_track: isCaffeineCutoff ? [] : m.functional_outcomes_to_track,
         efficacy_stats: getSafeEfficacyStats(m.efficacy_stats)
       })
     }
@@ -191,11 +199,19 @@ function mergeBuiltInModalities(fetched: Modality[]): Modality[] {
   getBuiltInModalities().forEach(m => {
     const key = (m.id || '').toLowerCase()
     const slugKey = (m.slug || '').toLowerCase()
+    const isCaffeineCutoff = 
+      key === 'walker_caffeine_cutoff' || 
+      key === 'caffeine_cutoff' || 
+      slugKey.includes('caffeine_cutoff') || 
+      slugKey.includes('caffeine-cutoff') || 
+      (m.name || '').toLowerCase().includes('caffeine cutoff')
+
     if (key && !seen.has(key) && (!slugKey || !seen.has(slugKey))) {
       seen.add(key)
       if (slugKey) seen.add(slugKey)
       result.push({
         ...m,
+        functional_outcomes_to_track: isCaffeineCutoff ? [] : m.functional_outcomes_to_track,
         efficacy_stats: getSafeEfficacyStats(m.efficacy_stats)
       })
     }
@@ -4438,42 +4454,72 @@ export async function updateBenchItemOverride(id: string, customDose?: string, c
 
 export async function upsertBenchItemOverride(localUserId: string, modalityId: string, customDose?: string, customTiming?: string, notes?: string) {
   if (!supabase) return null
-  // Check if exists using maybeSingle
-  const { data: existing } = await supabase
-    .from('user_bench_items')
-    .select('id, custom_dose, custom_timing, notes')
-    .eq('local_user_id', localUserId)
-    .eq('modality_id', modalityId)
-    .maybeSingle()
-
-  if (existing) {
-    return updateBenchItemOverride(
-      existing.id, 
-      customDose !== undefined && customDose !== '' ? customDose : existing.custom_dose, 
-      customTiming !== undefined && customTiming !== '' ? customTiming : existing.custom_timing, 
-      notes !== undefined ? notes : existing.notes
-    )
-  } else {
-    // Create new
-    const { data, error } = await supabase
+  try {
+    // Check if exists using maybeSingle
+    const { data: existing } = await supabase
       .from('user_bench_items')
-      .insert([{
-        local_user_id: localUserId,
-        modality_id: modalityId,
-        custom_dose: customDose || '',
-        custom_timing: customTiming || '',
-        notes: notes || '',
-        pinned: false,
-        created_at: new Date().toISOString()
-      }])
-      .select()
+      .select('id, custom_dose, custom_timing, notes')
+      .eq('local_user_id', localUserId)
+      .eq('modality_id', modalityId)
       .maybeSingle()
-    
-    if (error) {
-      console.error('Error inserting bench item override:', error)
-      return null
+
+    if (existing) {
+      return updateBenchItemOverride(
+        existing.id, 
+        customDose !== undefined && customDose !== '' ? customDose : existing.custom_dose, 
+        customTiming !== undefined && customTiming !== '' ? customTiming : existing.custom_timing, 
+        notes !== undefined ? notes : existing.notes
+      )
+    } else {
+      // Ensure modality exists in remote modalities table to satisfy foreign key constraint
+      try {
+        const { data: modInDb } = await supabase
+          .from('modalities')
+          .select('id')
+          .eq('id', modalityId)
+          .maybeSingle()
+
+        if (!modInDb) {
+          const cleanName = modalityId.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+          await supabase
+            .from('modalities')
+            .upsert({
+              id: modalityId,
+              name: cleanName,
+              display_name: cleanName,
+              category: 'lifestyle',
+              modality_type: 'lifestyle',
+              status: 'active'
+            }, { onConflict: 'id', ignoreDuplicates: true })
+        }
+      } catch {
+        // Continue even if check fails
+      }
+
+      // Create new bench item
+      const { data, error } = await supabase
+        .from('user_bench_items')
+        .insert([{
+          local_user_id: localUserId,
+          modality_id: modalityId,
+          custom_dose: customDose || '',
+          custom_timing: customTiming || '',
+          notes: notes || '',
+          pinned: false,
+          created_at: new Date().toISOString()
+        }])
+        .select()
+        .maybeSingle()
+      
+      if (error) {
+        console.warn('Warning inserting bench item override:', error?.message || error)
+        return null
+      }
+      return data
     }
-    return data
+  } catch (err) {
+    console.warn('Caught error in upsertBenchItemOverride:', err)
+    return null
   }
 }
 
@@ -6132,6 +6178,31 @@ export function calculateHabitTargetDays(modalityName?: string): number {
   return 66 // Lally et al., 2010 baseline
 }
 
+function serializeHabitsForStorage(habits: UserModalityHabit[]): string {
+  // Strip large nested modality object to avoid QuotaExceededError in localStorage (each mod is 20-50KB+)
+  const stripped = habits.map(h => ({
+    id: h.id,
+    local_user_id: h.local_user_id,
+    modality_id: h.modality_id,
+    streak_days: h.streak_days,
+    target_streak_days: h.target_streak_days,
+    automaticity_score: h.automaticity_score,
+    is_automated: h.is_automated,
+    graduation_type: h.graduation_type,
+    graduated_at: h.graduated_at
+  }))
+  return JSON.stringify(stripped)
+}
+
+function safeSetLocalStorage(key: string, value: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(key, value)
+  } catch (err) {
+    console.warn(`LocalStorage quota exceeded or unavailable while writing "${key}":`, err)
+  }
+}
+
 export async function getUserModalityHabits(localUserId: string): Promise<UserModalityHabit[]> {
   try {
     const storageKey = `levl_user_habits_${localUserId}`
@@ -6186,7 +6257,7 @@ export async function getUserModalityHabits(localUserId: string): Promise<UserMo
           graduated_at: isAutomated ? new Date().toISOString() : undefined
         }
       })
-      localStorage.setItem(storageKey, JSON.stringify(habits))
+      safeSetLocalStorage(storageKey, serializeHabitsForStorage(habits))
     } else {
       let needsSave = false
       const existingModIds = new Set<string>()
@@ -6257,8 +6328,8 @@ export async function getUserModalityHabits(localUserId: string): Promise<UserMo
         }
       }
 
-      if (needsSave && typeof window !== 'undefined') {
-        localStorage.setItem(storageKey, JSON.stringify(habits))
+      if (needsSave) {
+        safeSetLocalStorage(storageKey, serializeHabitsForStorage(habits))
       }
     }
 
@@ -6320,7 +6391,7 @@ export async function toggleHabitGraduation(localUserId: string, modalityId: str
     }
 
     if (typeof window !== 'undefined') {
-      localStorage.setItem(storageKey, JSON.stringify(updated))
+      safeSetLocalStorage(storageKey, serializeHabitsForStorage(updated))
       window.dispatchEvent(new CustomEvent('levl_habits_updated', { detail: updated }))
     }
     return updated

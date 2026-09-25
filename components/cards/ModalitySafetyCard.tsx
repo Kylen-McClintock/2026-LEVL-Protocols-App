@@ -170,12 +170,12 @@ export const ModalitySafetyCard: React.FC<ModalitySafetyCardProps> = ({
                 <span>Documented Contraindications:</span>
               </div>
               <div className="p-3 rounded-xl bg-rose-950/20 border border-rose-500/30 space-y-2">
-                <p className="text-[11px] text-rose-200/80 font-medium">
+                <p className="text-[11px] text-white/90 font-medium">
                   Do not implement or consult your physician prior to initiation if you have:
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   {safetyProfile.documentedContraindications.map((contra, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-rose-200 text-xs">
+                    <div key={idx} className="flex items-center gap-2 text-white text-xs">
                       <span className="text-rose-400 font-bold shrink-0">•</span>
                       <span>{contra}</span>
                     </div>

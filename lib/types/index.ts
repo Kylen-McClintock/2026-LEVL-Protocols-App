@@ -152,6 +152,8 @@ export interface QuickHotkeyConfig {
   presets?: QuickHotkeyPreset[]
   days_of_week?: string[] // e.g. ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   is_custom?: boolean
+  assigned_time_slots?: string[]
+  placement_type?: 'block' | 'floating_dock' | 'all_meals'
 }
 
 export interface DailyQuickLogEntry {
@@ -448,6 +450,7 @@ export type UserBenchItem = {
   notes?: string
   custom_dose?: string
   custom_timing?: string
+  custom_outcomes?: string[]
   schedule_config?: any
   elimination_reasons?: string[]
   protocolTags?: { protocol_name: string; color_hex?: string }[]

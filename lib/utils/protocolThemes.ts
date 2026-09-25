@@ -92,14 +92,14 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     categories: ['supplements', 'fitness', 'nutrition', 'sleep'],
     categoryBadges: [
       { type: 'supplements', label: 'Supplements', colorHex: '#F59E0B', bgTint: 'rgba(245, 158, 11, 0.2)' },
-      { type: 'fitness', label: 'Fitness', colorHex: '#F97316', bgTint: 'rgba(249, 115, 22, 0.2)' },
-      { type: 'sleep', label: 'Sleep', colorHex: '#6366F1', bgTint: 'rgba(99, 102, 241, 0.2)' }
+      { type: 'fitness', label: 'Fitness', colorHex: '#EF4444', bgTint: 'rgba(239, 68, 68, 0.2)' },
+      { type: 'sleep', label: 'Sleep', colorHex: '#A855F7', bgTint: 'rgba(168, 85, 247, 0.2)' }
     ],
     primaryColorHex: '#F59E0B',
-    secondaryColorHex: '#6366F1',
-    gradientCSS: 'linear-gradient(135deg, #F59E0B 0%, #6366F1 50%, #10B981 100%)',
+    secondaryColorHex: '#A855F7',
+    gradientCSS: 'linear-gradient(135deg, #F59E0B 0%, #A855F7 50%, #05DF72 100%)',
     glowColor: 'rgba(245, 158, 11, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #F59E0B, #6366F1, #10B981)',
+    accentBorderCSS: 'linear-gradient(90deg, #F59E0B, #A855F7, #05DF72)',
     subtleBgTint: 'rgba(245, 158, 11, 0.08)'
   },
 
@@ -110,15 +110,15 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     iconName: 'Activity',
     categories: ['fitness', 'nutrition'],
     categoryBadges: [
-      { type: 'fitness', label: 'Fitness', colorHex: '#F97316', bgTint: 'rgba(249, 115, 22, 0.2)' },
-      { type: 'nutrition', label: 'Nutrition', colorHex: '#10B981', bgTint: 'rgba(16, 185, 129, 0.2)' }
+      { type: 'fitness', label: 'Fitness', colorHex: '#EF4444', bgTint: 'rgba(239, 68, 68, 0.2)' },
+      { type: 'nutrition', label: 'Nutrition', colorHex: '#05DF72', bgTint: 'rgba(5, 223, 114, 0.2)' }
     ],
-    primaryColorHex: '#F97316',
-    secondaryColorHex: '#10B981',
-    gradientCSS: 'linear-gradient(135deg, #F97316 0%, #10B981 100%)',
-    glowColor: 'rgba(249, 115, 22, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #F97316, #10B981)',
-    subtleBgTint: 'rgba(249, 115, 22, 0.08)'
+    primaryColorHex: '#EF4444',
+    secondaryColorHex: '#05DF72',
+    gradientCSS: 'linear-gradient(135deg, #EF4444 0%, #05DF72 100%)',
+    glowColor: 'rgba(239, 68, 68, 0.35)',
+    accentBorderCSS: 'linear-gradient(90deg, #EF4444, #05DF72)',
+    subtleBgTint: 'rgba(239, 68, 68, 0.08)'
   },
 
   // 3. David Sinclair Epigenetic Renewal
@@ -129,13 +129,13 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     categories: ['supplements', 'nutrition'],
     categoryBadges: [
       { type: 'supplements', label: 'Supplements', colorHex: '#F59E0B', bgTint: 'rgba(245, 158, 11, 0.2)' },
-      { type: 'nutrition', label: 'Nutrition', colorHex: '#10B981', bgTint: 'rgba(16, 185, 129, 0.2)' }
+      { type: 'nutrition', label: 'Nutrition', colorHex: '#05DF72', bgTint: 'rgba(5, 223, 114, 0.2)' }
     ],
     primaryColorHex: '#F59E0B',
-    secondaryColorHex: '#10B981',
-    gradientCSS: 'linear-gradient(135deg, #F59E0B 0%, #10B981 100%)',
+    secondaryColorHex: '#05DF72',
+    gradientCSS: 'linear-gradient(135deg, #F59E0B 0%, #05DF72 100%)',
     glowColor: 'rgba(245, 158, 11, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #F59E0B, #10B981)',
+    accentBorderCSS: 'linear-gradient(90deg, #F59E0B, #05DF72)',
     subtleBgTint: 'rgba(245, 158, 11, 0.08)'
   },
 
@@ -147,13 +147,13 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     categories: ['thermal', 'mind'],
     categoryBadges: [
       { type: 'thermal', label: 'Thermal', colorHex: '#06B6D4', bgTint: 'rgba(6, 182, 212, 0.2)' },
-      { type: 'mind', label: 'Mind', colorHex: '#A855F7', bgTint: 'rgba(168, 85, 247, 0.2)' }
+      { type: 'mind', label: 'Mind', colorHex: '#3B82F6', bgTint: 'rgba(59, 130, 246, 0.2)' }
     ],
     primaryColorHex: '#06B6D4',
-    secondaryColorHex: '#A855F7',
-    gradientCSS: 'linear-gradient(135deg, #06B6D4 0%, #A855F7 100%)',
+    secondaryColorHex: '#3B82F6',
+    gradientCSS: 'linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%)',
     glowColor: 'rgba(6, 182, 212, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #06B6D4, #A855F7)',
+    accentBorderCSS: 'linear-gradient(90deg, #06B6D4, #3B82F6)',
     subtleBgTint: 'rgba(6, 182, 212, 0.08)'
   },
 
@@ -165,15 +165,15 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     categories: ['thermal', 'mind', 'supplements'],
     categoryBadges: [
       { type: 'thermal', label: 'Thermal', colorHex: '#06B6D4', bgTint: 'rgba(6, 182, 212, 0.2)' },
-      { type: 'mind', label: 'Mind', colorHex: '#A855F7', bgTint: 'rgba(168, 85, 247, 0.2)' },
+      { type: 'mind', label: 'Mind', colorHex: '#3B82F6', bgTint: 'rgba(59, 130, 246, 0.2)' },
       { type: 'supplements', label: 'Supplements', colorHex: '#F59E0B', bgTint: 'rgba(245, 158, 11, 0.2)' }
     ],
-    primaryColorHex: '#A855F7',
+    primaryColorHex: '#3B82F6',
     secondaryColorHex: '#06B6D4',
-    gradientCSS: 'linear-gradient(135deg, #A855F7 0%, #06B6D4 50%, #F59E0B 100%)',
-    glowColor: 'rgba(168, 85, 247, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #A855F7, #06B6D4, #F59E0B)',
-    subtleBgTint: 'rgba(168, 85, 247, 0.08)'
+    gradientCSS: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 50%, #F59E0B 100%)',
+    glowColor: 'rgba(59, 130, 246, 0.35)',
+    accentBorderCSS: 'linear-gradient(90deg, #3B82F6, #06B6D4, #F59E0B)',
+    subtleBgTint: 'rgba(59, 130, 246, 0.08)'
   },
 
   // 6. Dr. Matthew Walker Sleep Blueprint
@@ -183,15 +183,15 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     iconName: 'Moon',
     categories: ['sleep', 'supplements'],
     categoryBadges: [
-      { type: 'sleep', label: 'Sleep', colorHex: '#6366F1', bgTint: 'rgba(99, 102, 241, 0.2)' },
+      { type: 'sleep', label: 'Sleep', colorHex: '#A855F7', bgTint: 'rgba(168, 85, 247, 0.2)' },
       { type: 'supplements', label: 'Supplements', colorHex: '#F59E0B', bgTint: 'rgba(245, 158, 11, 0.2)' }
     ],
-    primaryColorHex: '#6366F1',
+    primaryColorHex: '#A855F7',
     secondaryColorHex: '#F59E0B',
-    gradientCSS: 'linear-gradient(135deg, #6366F1 0%, #818CF8 50%, #F59E0B 100%)',
-    glowColor: 'rgba(99, 102, 241, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #6366F1, #F59E0B)',
-    subtleBgTint: 'rgba(99, 102, 241, 0.08)'
+    gradientCSS: 'linear-gradient(135deg, #A855F7 0%, #C084FC 50%, #F59E0B 100%)',
+    glowColor: 'rgba(168, 85, 247, 0.35)',
+    accentBorderCSS: 'linear-gradient(90deg, #A855F7, #F59E0B)',
+    subtleBgTint: 'rgba(168, 85, 247, 0.08)'
   },
 
   // 7. Dr. Valter Longo Senolytic & Fasting Mimicking
@@ -201,15 +201,15 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     iconName: 'ShieldCheck',
     categories: ['nutrition', 'supplements'],
     categoryBadges: [
-      { type: 'nutrition', label: 'Nutrition', colorHex: '#10B981', bgTint: 'rgba(16, 185, 129, 0.2)' },
+      { type: 'nutrition', label: 'Nutrition', colorHex: '#05DF72', bgTint: 'rgba(5, 223, 114, 0.2)' },
       { type: 'supplements', label: 'Supplements', colorHex: '#F59E0B', bgTint: 'rgba(245, 158, 11, 0.2)' }
     ],
-    primaryColorHex: '#10B981',
+    primaryColorHex: '#05DF72',
     secondaryColorHex: '#F59E0B',
-    gradientCSS: 'linear-gradient(135deg, #10B981 0%, #F59E0B 100%)',
-    glowColor: 'rgba(16, 185, 129, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #10B981, #F59E0B)',
-    subtleBgTint: 'rgba(16, 185, 129, 0.08)'
+    gradientCSS: 'linear-gradient(135deg, #05DF72 0%, #F59E0B 100%)',
+    glowColor: 'rgba(5, 223, 114, 0.35)',
+    accentBorderCSS: 'linear-gradient(90deg, #05DF72, #F59E0B)',
+    subtleBgTint: 'rgba(5, 223, 114, 0.08)'
   },
 
   // 8. Dr. Casey Means Metabolic & Glycemic
@@ -219,15 +219,15 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     iconName: 'Flame',
     categories: ['nutrition', 'fitness'],
     categoryBadges: [
-      { type: 'nutrition', label: 'Nutrition', colorHex: '#10B981', bgTint: 'rgba(16, 185, 129, 0.2)' },
-      { type: 'fitness', label: 'Fitness', colorHex: '#F97316', bgTint: 'rgba(249, 115, 22, 0.2)' }
+      { type: 'nutrition', label: 'Nutrition', colorHex: '#05DF72', bgTint: 'rgba(5, 223, 114, 0.2)' },
+      { type: 'fitness', label: 'Fitness', colorHex: '#EF4444', bgTint: 'rgba(239, 68, 68, 0.2)' }
     ],
-    primaryColorHex: '#10B981',
-    secondaryColorHex: '#F97316',
-    gradientCSS: 'linear-gradient(135deg, #10B981 0%, #F97316 100%)',
-    glowColor: 'rgba(16, 185, 129, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #10B981, #F97316)',
-    subtleBgTint: 'rgba(16, 185, 129, 0.08)'
+    primaryColorHex: '#05DF72',
+    secondaryColorHex: '#EF4444',
+    gradientCSS: 'linear-gradient(135deg, #05DF72 0%, #EF4444 100%)',
+    glowColor: 'rgba(5, 223, 114, 0.35)',
+    accentBorderCSS: 'linear-gradient(90deg, #05DF72, #EF4444)',
+    subtleBgTint: 'rgba(5, 223, 114, 0.08)'
   },
 
   // 9. Dr. Thomas Dayspring Endothelial & Vascular Elasticity
@@ -238,15 +238,15 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     categories: ['supplements', 'fitness', 'diagnostics'],
     categoryBadges: [
       { type: 'supplements', label: 'Supplements', colorHex: '#F59E0B', bgTint: 'rgba(245, 158, 11, 0.2)' },
-      { type: 'fitness', label: 'Fitness', colorHex: '#F97316', bgTint: 'rgba(249, 115, 22, 0.2)' },
-      { type: 'diagnostics', label: 'Diagnostics', colorHex: '#3B82F6', bgTint: 'rgba(59, 130, 246, 0.2)' }
+      { type: 'fitness', label: 'Fitness', colorHex: '#EF4444', bgTint: 'rgba(239, 68, 68, 0.2)' },
+      { type: 'diagnostics', label: 'Diagnostics', colorHex: '#6366F1', bgTint: 'rgba(99, 102, 241, 0.2)' }
     ],
-    primaryColorHex: '#3B82F6',
+    primaryColorHex: '#6366F1',
     secondaryColorHex: '#F59E0B',
-    gradientCSS: 'linear-gradient(135deg, #3B82F6 0%, #F59E0B 100%)',
-    glowColor: 'rgba(59, 130, 246, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #3B82F6, #F59E0B)',
-    subtleBgTint: 'rgba(59, 130, 246, 0.08)'
+    gradientCSS: 'linear-gradient(135deg, #6366F1 0%, #EF4444 50%, #F59E0B 100%)',
+    glowColor: 'rgba(99, 102, 241, 0.35)',
+    accentBorderCSS: 'linear-gradient(90deg, #6366F1, #EF4444, #F59E0B)',
+    subtleBgTint: 'rgba(99, 102, 241, 0.08)'
   },
 
   // 10. Photonic GHK-Cu Red Light Protocol
@@ -293,13 +293,13 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     categories: ['peptides', 'fitness'],
     categoryBadges: [
       { type: 'peptides', label: 'Peptides', colorHex: '#E879F9', bgTint: 'rgba(232, 121, 249, 0.2)' },
-      { type: 'fitness', label: 'Fitness', colorHex: '#F97316', bgTint: 'rgba(249, 115, 22, 0.2)' }
+      { type: 'fitness', label: 'Fitness', colorHex: '#EF4444', bgTint: 'rgba(239, 68, 68, 0.2)' }
     ],
     primaryColorHex: '#E879F9',
-    secondaryColorHex: '#F97316',
-    gradientCSS: 'linear-gradient(135deg, #E879F9 0%, #F97316 100%)',
+    secondaryColorHex: '#EF4444',
+    gradientCSS: 'linear-gradient(135deg, #E879F9 0%, #EF4444 100%)',
     glowColor: 'rgba(232, 121, 249, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #E879F9, #F97316)',
+    accentBorderCSS: 'linear-gradient(90deg, #E879F9, #EF4444)',
     subtleBgTint: 'rgba(232, 121, 249, 0.08)'
   },
 
@@ -311,13 +311,13 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     categories: ['peptides', 'sleep'],
     categoryBadges: [
       { type: 'peptides', label: 'Peptides', colorHex: '#E879F9', bgTint: 'rgba(232, 121, 249, 0.2)' },
-      { type: 'sleep', label: 'Sleep', colorHex: '#6366F1', bgTint: 'rgba(99, 102, 241, 0.2)' }
+      { type: 'sleep', label: 'Sleep', colorHex: '#A855F7', bgTint: 'rgba(168, 85, 247, 0.2)' }
     ],
     primaryColorHex: '#E879F9',
-    secondaryColorHex: '#6366F1',
-    gradientCSS: 'linear-gradient(135deg, #E879F9 0%, #6366F1 100%)',
+    secondaryColorHex: '#A855F7',
+    gradientCSS: 'linear-gradient(135deg, #E879F9 0%, #A855F7 100%)',
     glowColor: 'rgba(232, 121, 249, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #E879F9, #6366F1)',
+    accentBorderCSS: 'linear-gradient(90deg, #E879F9, #A855F7)',
     subtleBgTint: 'rgba(232, 121, 249, 0.08)'
   },
 
@@ -329,13 +329,13 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     categories: ['peptides', 'mind'],
     categoryBadges: [
       { type: 'peptides', label: 'Peptides', colorHex: '#E879F9', bgTint: 'rgba(232, 121, 249, 0.2)' },
-      { type: 'mind', label: 'Mind', colorHex: '#A855F7', bgTint: 'rgba(168, 85, 247, 0.2)' }
+      { type: 'mind', label: 'Mind', colorHex: '#3B82F6', bgTint: 'rgba(59, 130, 246, 0.2)' }
     ],
     primaryColorHex: '#E879F9',
-    secondaryColorHex: '#A855F7',
-    gradientCSS: 'linear-gradient(135deg, #E879F9 0%, #A855F7 100%)',
+    secondaryColorHex: '#3B82F6',
+    gradientCSS: 'linear-gradient(135deg, #E879F9 0%, #3B82F6 100%)',
     glowColor: 'rgba(232, 121, 249, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #E879F9, #A855F7)',
+    accentBorderCSS: 'linear-gradient(90deg, #E879F9, #3B82F6)',
     subtleBgTint: 'rgba(232, 121, 249, 0.08)'
   },
 
@@ -346,14 +346,14 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     iconName: 'Dumbbell',
     categories: ['fitness'],
     categoryBadges: [
-      { type: 'fitness', label: 'Fitness', colorHex: '#F97316', bgTint: 'rgba(249, 115, 22, 0.2)' }
+      { type: 'fitness', label: 'Fitness', colorHex: '#EF4444', bgTint: 'rgba(239, 68, 68, 0.2)' }
     ],
-    primaryColorHex: '#F97316',
-    secondaryColorHex: '#FB923C',
-    gradientCSS: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)',
-    glowColor: 'rgba(249, 115, 22, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #EA580C, #F97316)',
-    subtleBgTint: 'rgba(249, 115, 22, 0.08)'
+    primaryColorHex: '#EF4444',
+    secondaryColorHex: '#F43F5E',
+    gradientCSS: 'linear-gradient(135deg, #BE123C 0%, #EF4444 100%)',
+    glowColor: 'rgba(239, 68, 68, 0.35)',
+    accentBorderCSS: 'linear-gradient(90deg, #BE123C, #EF4444)',
+    subtleBgTint: 'rgba(239, 68, 68, 0.08)'
   },
 
   // 16. Half Marathon Training
@@ -363,14 +363,14 @@ export const PRESET_PROTOCOL_THEMES: Record<string, ProtocolVisualTheme> = {
     iconName: 'Compass',
     categories: ['fitness'],
     categoryBadges: [
-      { type: 'fitness', label: 'Fitness', colorHex: '#F97316', bgTint: 'rgba(249, 115, 22, 0.2)' }
+      { type: 'fitness', label: 'Fitness', colorHex: '#EF4444', bgTint: 'rgba(239, 68, 68, 0.2)' }
     ],
-    primaryColorHex: '#F97316',
+    primaryColorHex: '#EF4444',
     secondaryColorHex: '#38BDF8',
-    gradientCSS: 'linear-gradient(135deg, #EA580C 0%, #F97316 50%, #38BDF8 100%)',
-    glowColor: 'rgba(249, 115, 22, 0.35)',
-    accentBorderCSS: 'linear-gradient(90deg, #EA580C, #F97316, #38BDF8)',
-    subtleBgTint: 'rgba(249, 115, 22, 0.08)'
+    gradientCSS: 'linear-gradient(135deg, #BE123C 0%, #EF4444 50%, #38BDF8 100%)',
+    glowColor: 'rgba(239, 68, 68, 0.35)',
+    accentBorderCSS: 'linear-gradient(90deg, #BE123C, #EF4444, #38BDF8)',
+    subtleBgTint: 'rgba(239, 68, 68, 0.08)'
   }
 }
 
@@ -511,29 +511,29 @@ export function getProtocolVisualTheme(
       accentBorderCSS = 'linear-gradient(90deg, #C026D3, #E879F9)'
       secondaryColorHex = '#F5D0FE'
     } else if (cat === 'fitness') {
-      gradientCSS = 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)'
-      accentBorderCSS = 'linear-gradient(90deg, #EA580C, #F97316)'
-      secondaryColorHex = '#FED7AA'
+      gradientCSS = 'linear-gradient(135deg, #BE123C 0%, #EF4444 100%)'
+      accentBorderCSS = 'linear-gradient(90deg, #BE123C, #EF4444)'
+      secondaryColorHex = '#FECDD3'
     } else if (cat === 'nutrition') {
-      gradientCSS = 'linear-gradient(135deg, #059669 0%, #10B981 100%)'
-      accentBorderCSS = 'linear-gradient(90deg, #059669, #10B981)'
+      gradientCSS = 'linear-gradient(135deg, #047857 0%, #05DF72 100%)'
+      accentBorderCSS = 'linear-gradient(90deg, #047857, #05DF72)'
       secondaryColorHex = '#A7F3D0'
     } else if (cat === 'sleep') {
-      gradientCSS = 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)'
-      accentBorderCSS = 'linear-gradient(90deg, #4F46E5, #6366F1)'
-      secondaryColorHex = '#C7D2FE'
-    } else if (cat === 'mind') {
-      gradientCSS = 'linear-gradient(135deg, #9333EA 0%, #A855F7 100%)'
-      accentBorderCSS = 'linear-gradient(90deg, #9333EA, #A855F7)'
+      gradientCSS = 'linear-gradient(135deg, #7E22CE 0%, #A855F7 100%)'
+      accentBorderCSS = 'linear-gradient(90deg, #7E22CE, #A855F7)'
       secondaryColorHex = '#E9D5FF'
+    } else if (cat === 'mind') {
+      gradientCSS = 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)'
+      accentBorderCSS = 'linear-gradient(90deg, #2563EB, #3B82F6)'
+      secondaryColorHex = '#BFDBFE'
     } else if (cat === 'thermal') {
       gradientCSS = 'linear-gradient(135deg, #0891B2 0%, #06B6D4 100%)'
       accentBorderCSS = 'linear-gradient(90deg, #0891B2, #06B6D4)'
       secondaryColorHex = '#A5F3FC'
     } else if (cat === 'diagnostics') {
-      gradientCSS = 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)'
-      accentBorderCSS = 'linear-gradient(90deg, #2563EB, #3B82F6)'
-      secondaryColorHex = '#BFDBFE'
+      gradientCSS = 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)'
+      accentBorderCSS = 'linear-gradient(90deg, #4F46E5, #6366F1)'
+      secondaryColorHex = '#C7D2FE'
     } else {
       gradientCSS = 'linear-gradient(135deg, #0D9488 0%, #14B8A6 100%)'
       accentBorderCSS = 'linear-gradient(90deg, #0D9488, #14B8A6)'

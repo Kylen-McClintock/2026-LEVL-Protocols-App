@@ -21,8 +21,10 @@ import {
   Pill,
   Moon,
   Wind,
-  ShieldCheck
+  ShieldCheck,
+  Utensils
 } from 'lucide-react'
+import { format } from 'date-fns'
 import { Modality, UserBenchItem, DailyProtocolTask } from '@/lib/types'
 import { 
   getModalities, 
@@ -34,6 +36,7 @@ import {
   upsertBenchItemOverride
 } from '@/lib/data'
 import ModalityIcon from '@/components/ui/ModalityIcon'
+import NutritionFastingModal from '@/components/quicklog/NutritionFastingModal'
 
 type AdHocLoggerModalProps = {
   isOpen: boolean
@@ -91,6 +94,7 @@ export default function AdHocLoggerModal({
   const [customDose, setCustomDose] = useState('')
   const [customNotes, setCustomNotes] = useState('')
   const [isSubmittingCustom, setIsSubmittingCustom] = useState(false)
+  const [isFoodLoggerOpen, setIsFoodLoggerOpen] = useState(false)
 
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -475,6 +479,34 @@ export default function AdHocLoggerModal({
                     </div>
                   </div>
                   <ChevronRight size={16} className="text-amber-400 group-hover:translate-x-1 transition-transform shrink-0" />
+                </div>
+              )}
+
+              {/* TOP PRIORITY: Quick Log Food / Meal */}
+              {!query.trim() && (
+                <div 
+                  onClick={() => setIsFoodLoggerOpen(true)}
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-slate-900/90 to-teal-950/50 border border-emerald-500/40 hover:border-emerald-400/80 cursor-pointer group transition-all shadow-md active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 group-hover:scale-110 transition-transform shadow-sm">
+                      <Utensils size={16} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-extrabold text-white group-hover:text-emerald-200 transition-colors">
+                          Log Food / Meal
+                        </span>
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          Nutrition
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        Track calories, protein, fasting window, or scan meal photo
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-emerald-400 group-hover:translate-x-1 transition-transform shrink-0" />
                 </div>
               )}
 
@@ -946,6 +978,18 @@ export default function AdHocLoggerModal({
           )}
         </div>
       </div>
+
+      {/* Embedded Full Nutrition & Fasting Logger Modal */}
+      {isFoodLoggerOpen && (
+        <NutritionFastingModal
+          date={dateStr || format(new Date(), 'yyyy-MM-dd')}
+          localUserId={localUserId}
+          onClose={() => setIsFoodLoggerOpen(false)}
+          onLogsChanged={() => {
+            onLogged()
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -79,6 +79,7 @@ export default function ManageHotkeysModal({
   const [customGoal, setCustomGoal] = useState('')
   const [customIcon, setCustomIcon] = useState('Activity')
   const [customPolarity, setCustomPolarity] = useState<'positive' | 'neutral' | 'negative'>('positive')
+  const [customTargetSlot, setCustomTargetSlot] = useState<string>('floating_dock')
   const [isSaving, setIsSaving] = useState(false)
   const [isSavedSuccess, setIsSavedSuccess] = useState(false)
 
@@ -158,7 +159,8 @@ export default function ManageHotkeysModal({
       polarity: customPolarity,
       color_theme: colorTheme,
       days_of_week: [...DEFAULT_ALL_DAYS],
-      is_custom: true
+      is_custom: true,
+      assigned_time_slots: customTargetSlot === 'floating_dock' ? [] : [customTargetSlot]
     }
 
     await saveCustomCreatedHotkey(localUserId, newHotkey)
@@ -603,6 +605,42 @@ export default function ManageHotkeysModal({
                         title={i.label}
                       >
                         <IconComponent size={16} />
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Time Block Placement in Blocks Mode */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Time Block Placement (Blocks Mode)
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: 'floating_dock', label: 'Floating Dock' },
+                    { id: 'morning', label: 'Morning' },
+                    { id: 'breakfast', label: 'Breakfast' },
+                    { id: 'midday', label: 'Midday' },
+                    { id: 'lunch', label: 'Lunch' },
+                    { id: 'afternoon', label: 'Afternoon' },
+                    { id: 'dinner', label: 'Dinner' },
+                    { id: 'evening', label: 'Evening' },
+                    { id: 'bedtime', label: 'Bedtime' }
+                  ].map((slot) => {
+                    const isSelected = customTargetSlot === slot.id
+                    return (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        onClick={() => setCustomTargetSlot(slot.id)}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-purple-600 text-white shadow-sm'
+                            : 'bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800'
+                        }`}
+                      >
+                        {slot.label}
                       </button>
                     )
                   })}

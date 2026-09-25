@@ -167,7 +167,8 @@ function TimingExposureCard({
   onChange,
   type,
   idealBedtime = '22:30',
-  theme = 'indigo'
+  theme = 'indigo',
+  autofillInfo
 }: {
   title: string
   icon: string
@@ -176,6 +177,7 @@ function TimingExposureCard({
   type: 'caffeine' | 'screen' | 'meal'
   idealBedtime?: string
   theme?: 'indigo' | 'rose'
+  autofillInfo?: { lastTime: string; count: number } | null
 }) {
   const isExplicitHours = value !== 'skip' && !value.startsWith('time:') && !isNaN(parseFloat(value))
   const [inputMode, setInputMode] = useState<'hours' | 'time'>(isExplicitHours ? 'hours' : 'time')
@@ -371,6 +373,18 @@ function TimingExposureCard({
           </span>
         </div>
       )}
+
+      {type === 'caffeine' && autofillInfo && (
+        <div className="flex items-center justify-between text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded-md">
+          <span className="flex items-center gap-1 font-semibold">
+            <span>⚡ Autofilled from Caffeine Hotkeys</span>
+            <span className="text-white font-mono">({autofillInfo.lastTime})</span>
+          </span>
+          <span className="text-[9px] text-amber-400 font-mono opacity-80">
+            {autofillInfo.count} logged today
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -507,12 +521,71 @@ export default function DailyWellbeingCheckin({
   // Negative Longevity Exposures State (Default: Exact Time for caffeine, screen, and meal)
   const [alcoholDrinks, setAlcoholDrinks] = useState<number | 'skip'>('skip')
   const [lateCaffeine, setLateCaffeine] = useState<string>('time:14:00')
+  const [caffeineAutofillInfo, setCaffeineAutofillInfo] = useState<{
+    lastTime: string
+    count: number
+  } | null>(null)
   const [nicotineExposure, setNicotineExposure] = useState<string>('skip')
   const [cannabisExposure, setCannabisExposure] = useState<string>('skip')
   const [sittingDuration, setSittingDuration] = useState<string>('skip')
   const [lateMeal, setLateMeal] = useState<string>('time:19:30')
   const [blueLight, setBlueLight] = useState<string>('time:21:30')
   const [processedSugar, setProcessedSugar] = useState<string>('skip')
+
+  // Auto-fill late caffeine cutoff time from caffeine quick hotkeys if present
+  useEffect(() => {
+    const syncCaffeineFromHotkeys = async () => {
+      const uid = profile?.id || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : null)
+      if (!uid) return
+      const dStr = format(date, 'yyyy-MM-dd')
+      try {
+        const { loadQuickLogsForDate } = await import('@/lib/storage/quickLogsStorage')
+        const logs = await loadQuickLogsForDate(uid, dStr)
+        const caffeineLogs = logs.filter((l) => {
+          const hid = (l.hotkey_id || '').toLowerCase()
+          const hname = (l.hotkey_name || '').toLowerCase()
+          return (
+            hid === 'coffee_caffeine' ||
+            hid.includes('caffeine') ||
+            hid.includes('coffee') ||
+            hname.includes('caffeine') ||
+            hname.includes('coffee') ||
+            hname.includes('espresso')
+          )
+        })
+
+        if (caffeineLogs.length > 0) {
+          const sorted = [...caffeineLogs].sort((a, b) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime())
+          const lastEntry = sorted[sorted.length - 1]
+          const d = new Date(lastEntry.logged_at)
+          const hh = String(d.getHours()).padStart(2, '0')
+          const mm = String(d.getMinutes()).padStart(2, '0')
+          const lastTimeStr = `${hh}:${mm}`
+
+          setCaffeineAutofillInfo({
+            lastTime: lastTimeStr,
+            count: caffeineLogs.length
+          })
+
+          // Auto-fill if lateCaffeine was not explicitly customized or is still the default 14:00
+          const customJSON = (initialData as any)?.custom_outcomes_jsonb
+          if (!customJSON?.late_caffeine || customJSON.late_caffeine === 'time:14:00') {
+            setLateCaffeine(`time:${lastTimeStr}`)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync caffeine hotkeys into DailyWellbeingCheckin:', err)
+      }
+    }
+
+    syncCaffeineFromHotkeys()
+
+    const handleQuickLogUpdated = () => {
+      syncCaffeineFromHotkeys()
+    }
+    window.addEventListener('levl_quicklog_updated', handleQuickLogUpdated)
+    return () => window.removeEventListener('levl_quicklog_updated', handleQuickLogUpdated)
+  }, [date, profile?.id, initialData])
 
   // Section Collapse Toggles
   const [showSleepSection, setShowSleepSection] = useState(true)
@@ -2991,6 +3064,7 @@ export default function DailyWellbeingCheckin({
                         type="caffeine"
                         idealBedtime={localProfile?.ideal_bedtime || '22:30'}
                         theme="indigo"
+                        autofillInfo={caffeineAutofillInfo}
                       />
                     )}
 
@@ -3940,6 +4014,7 @@ export default function DailyWellbeingCheckin({
                     type="caffeine"
                     idealBedtime={localProfile?.ideal_bedtime || '22:30'}
                     theme="rose"
+                    autofillInfo={caffeineAutofillInfo}
                   />
                 )}
 

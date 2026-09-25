@@ -26,8 +26,27 @@ export default function TopStickyHeader() {
   const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false)
   const [activeCalendarView, setActiveCalendarView] = useState<HeaderCalendarView>('today')
   const [activeLayoutView, setActiveLayoutView] = useState<HeaderLayoutView>('chronological')
+  const [displayMode, setDisplayMode] = useState<'classic' | 'blocks'>('classic')
   const lastScrollYRef = useRef(0)
   const viewDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Listen for display mode changes (Classic vs Blocks)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('levl_display_mode')
+      if (stored === 'classic' || stored === 'blocks') {
+        setDisplayMode(stored)
+      }
+    } catch (e) {}
+
+    const handleDisplayModeChange = (e: any) => {
+      if (e.detail?.mode && (e.detail.mode === 'classic' || e.detail.mode === 'blocks')) {
+        setDisplayMode(e.detail.mode)
+      }
+    }
+    window.addEventListener('levl_display_mode_change', handleDisplayModeChange)
+    return () => window.removeEventListener('levl_display_mode_change', handleDisplayModeChange)
+  }, [])
 
   // 1. Scroll-Direction Dynamic Visibility (Hide on Scroll Down, Reveal on Scroll Up)
   useEffect(() => {
@@ -137,6 +156,17 @@ export default function TopStickyHeader() {
     }))
   }
 
+  const handleToggleDisplayMode = (mode: 'classic' | 'blocks') => {
+    setDisplayMode(mode)
+    try {
+      localStorage.setItem('levl_display_mode', mode)
+    } catch (e) {}
+    window.dispatchEvent(new CustomEvent('levl_display_mode_change', { detail: { mode } }))
+    if (pathname !== '/today') {
+      router.push('/today')
+    }
+  }
+
   const is100Percent = stats.total > 0 && stats.completed === stats.total
   const percentCompleted = stats.total > 0 ? Math.min(100, Math.round((stats.completed / stats.total) * 100)) : 0
 
@@ -227,29 +257,95 @@ export default function TopStickyHeader() {
             )}
           </div>
 
-          {/* Center: View Selector Dropdown */}
-          <div className="flex items-center justify-center relative z-20" ref={viewDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsViewDropdownOpen(!isViewDropdownOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 hover:border-slate-600 shadow-lg text-white transition-all cursor-pointer active:scale-95"
-            >
-              <div className="flex items-center gap-1.5 min-w-0">
-                {currentViewDetails.icon}
-                <span className="text-xs font-bold tracking-tight">
-                  {currentViewDetails.label}
-                </span>
-              </div>
-              <ChevronDown size={11} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isViewDropdownOpen ? 'rotate-180 text-purple-400' : ''}`} />
-            </button>
-
-            {/* Floating Popover Dropdown Menu (Guaranteed in front of all page elements) */}
-            {isViewDropdownOpen && (
-              <div 
-                className="header-view-dropdown absolute top-full mt-2 w-64 p-2.5 rounded-2xl bg-slate-950 border border-slate-700 shadow-[0_25px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl z-[100000] animate-in fade-in zoom-in-95 duration-150 max-h-[calc(100vh-54px)] overflow-y-auto"
-                style={{ left: '50%', transform: 'translateX(-50%)' }}
+          {/* Center: Classic / Blocks Switch & View Selector Dropdown */}
+          <div className="flex items-center gap-1.5 sm:gap-2 justify-center relative z-20">
+            {/* Classic / Blocks Segmented Pill */}
+            <div className="flex items-center p-0.5 rounded-full bg-slate-900/90 border border-slate-700/80 shadow-md">
+              <button
+                type="button"
+                onClick={() => handleToggleDisplayMode('classic')}
+                className={`px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
+                  displayMode === 'classic'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
-                <div className="header-view-dropdown-grid grid grid-cols-1 gap-2">
+                Classic
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleDisplayMode('blocks')}
+                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
+                  displayMode === 'blocks'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Sparkles size={10} className={displayMode === 'blocks' ? 'text-amber-300' : 'text-slate-400'} />
+                <span>Blocks</span>
+              </button>
+            </div>
+
+            {/* View Selector Dropdown Button */}
+            <div className="relative" ref={viewDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsViewDropdownOpen(!isViewDropdownOpen)}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 hover:border-slate-600 shadow-lg text-white transition-all cursor-pointer active:scale-95"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {currentViewDetails.icon}
+                  <span className="text-[11px] sm:text-xs font-bold tracking-tight">
+                    {currentViewDetails.label}
+                  </span>
+                </div>
+                <ChevronDown size={11} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isViewDropdownOpen ? 'rotate-180 text-purple-400' : ''}`} />
+              </button>
+
+              {/* Floating Popover Dropdown Menu (Guaranteed in front of all page elements) */}
+              {isViewDropdownOpen && (
+                <div 
+                  className="header-view-dropdown absolute top-full mt-2 w-64 p-2.5 rounded-2xl bg-slate-950 border border-slate-700 shadow-[0_25px_60px_rgba(0,0,0,0.95)] backdrop-blur-2xl z-[100000] animate-in fade-in zoom-in-95 duration-150 max-h-[calc(100vh-54px)] overflow-y-auto"
+                  style={{ left: '50%', transform: 'translateX(-50%)' }}
+                >
+                  <div className="header-view-dropdown-grid grid grid-cols-1 gap-2">
+                    {/* Section 0: Interface Mode */}
+                    <div className="border-b border-slate-800 pb-2 mb-1">
+                      <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                        Display Mode
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 px-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleToggleDisplayMode('classic')
+                            setIsViewDropdownOpen(false)
+                          }}
+                          className={`flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            displayMode === 'classic'
+                              ? 'bg-purple-600 text-white font-extrabold shadow-sm'
+                              : 'text-slate-300 hover:bg-white/5'
+                          }`}
+                        >
+                          <span>Classic</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleToggleDisplayMode('blocks')
+                            setIsViewDropdownOpen(false)
+                          }}
+                          className={`flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            displayMode === 'blocks'
+                              ? 'bg-purple-600 text-white font-extrabold shadow-sm'
+                              : 'text-slate-300 hover:bg-white/5'
+                          }`}
+                        >
+                          <Sparkles size={11} className={displayMode === 'blocks' ? 'text-amber-300' : ''} />
+                          <span>Blocks</span>
+                        </button>
+                      </div>
+                    </div>
                   {/* Column 1 (Left in Landscape): Daily Layout Mode & Navigation Hubs */}
                   <div className="space-y-2">
                     {/* Section 1: Daily Layout Mode */}
@@ -404,6 +500,7 @@ export default function TopStickyHeader() {
               </div>
             )}
           </div>
+        </div>
 
           {/* Right: Quick Action (+) Trigger */}
           <div className="flex items-center">

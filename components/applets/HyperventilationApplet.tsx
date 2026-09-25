@@ -445,15 +445,10 @@ export default function HyperventilationApplet({
                 phase === 'RAPID_BREATHS' ? rapidSubPhase :
                 phase === 'RETENTION_HOLD' ? 'Hold' : 'Hold'
               }
-              subtext={
-                phase === 'RAPID_BREATHS'
-                  ? `Round ${currentRound} of ${TOTAL_ROUNDS} • Breath ${breathCount} / ${RAPID_BREATH_COUNT}`
-                  : `Round ${currentRound} of ${TOTAL_ROUNDS} • ${holdTimer}s remaining`
-              }
               glowColor={
                 phase === 'RAPID_BREATHS'
-                  ? (rapidSubPhase === 'Inhale' ? 'amber' : 'purple')
-                  : (phase === 'RETENTION_HOLD' ? 'indigo' : 'emerald')
+                ? (rapidSubPhase === 'Inhale' ? 'amber' : 'purple')
+                : (phase === 'RETENTION_HOLD' ? 'indigo' : 'emerald')
               }
               fadeDurationMs={phase === 'RAPID_BREATHS' ? 150 : 240}
             />

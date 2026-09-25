@@ -18,8 +18,13 @@
 - **Manual Protocol Builder**: Allow users to drag-and-drop modalities into custom stacks and set specific schedules.
 - **AI Coach Interface**: A functional chat interface replacing the stubs.
 - **Biomarker Expansion**: Let users log specific lab values manually.
+- **On-Demand Session Media Pre-Caching**:
+  - Automatically pre-cache heavy audio/visual session assets (Cold Plunge, Sauna, Walks, Breathwork) using the browser's native `CacheStorage` API only when a modality is added to the user's **Bench** or scheduled in **Today**.
+  - Evict/prune media from local device cache when the modality is removed from Bench to prevent local storage bloat.
+  - Ensures 100% offline playback and zero-latency audio start even in low-signal environments (basements, outdoor tubs, saunas).
 
 ## V2 (Medium Term)
+- **Remote CDN & Supabase Media Storage**: Decouple master session audio/video assets from the Next.js git repository and Vercel deployment package into a dedicated Supabase Storage bucket (`session-media`) with global edge CDN caching.
 - **Bloodwork Upload**: Secure extraction and integration of PDF lab results (e.g. from Quest/Labcorp).
 - **Wearable Integrations**: Sync with Oura, Apple Health, Whoop, etc., to automate completion and biometric outcomes.
 - **Full Modality Extraction Tool**: AI-driven extraction from papers and YouTube videos into Universal Modality Primitives.

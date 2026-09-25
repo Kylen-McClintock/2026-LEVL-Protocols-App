@@ -18,6 +18,7 @@ export type ModalityArchetype =
   | 'peptide'
   | 'supplement'
   | 'sport'
+  | 'caffeine_cutoff'
   | 'general'
 
 export interface SpecializedTraits {
@@ -275,7 +276,22 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     }
   }
 
-  // 10. SLEEP ENVIRONMENT & SANCTUARY
+  // 10. CAFFEINE CUTOFF & ADENOSINE CLEARANCE
+  if (
+    modality.id === 'walker_caffeine_cutoff' ||
+    modality.id === 'caffeine_cutoff' ||
+    (modality.slug || '').includes('caffeine_cutoff') ||
+    (modality.slug || '').includes('caffeine-cutoff') ||
+    name.includes('caffeine cutoff')
+  ) {
+    return {
+      archetype: 'caffeine_cutoff',
+      isSpecialized: true,
+      specializedTraits
+    }
+  }
+
+  // 11. SLEEP ENVIRONMENT & SANCTUARY
   // Oral supplements taken at night (e.g. Magnesium, Apigenin, GABA, Theanine) are supplements, not sleep environment
   const isOralSleepSupp = (
     logType === 'supplement' || 

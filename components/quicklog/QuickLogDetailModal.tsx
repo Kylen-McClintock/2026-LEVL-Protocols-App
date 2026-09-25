@@ -26,6 +26,7 @@ import {
 import { QuickHotkeyConfig, DailyQuickLogEntry } from '@/lib/types'
 import { saveQuickLogEntry, deleteQuickLogEntry } from '@/lib/storage/quickLogsStorage'
 import { format } from 'date-fns'
+import { getHotkeyVisualTheme } from './QuickHotkeyGrid'
 
 interface QuickLogDetailModalProps {
   hotkey: QuickHotkeyConfig
@@ -64,6 +65,7 @@ export default function QuickLogDetailModal({
   onLogsChanged,
   onHotkeyUpdated
 }: QuickLogDetailModalProps) {
+  const hTheme = getHotkeyVisualTheme(hotkey)
   const [customAmount, setCustomAmount] = useState<string>(hotkey.default_increment.toString())
   const [defaultIncrementInput, setDefaultIncrementInput] = useState<string>(hotkey.default_increment.toString())
   const [daysOfWeek, setDaysOfWeek] = useState<string[]>(
@@ -71,6 +73,9 @@ export default function QuickLogDetailModal({
       ? hotkey.days_of_week
       : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   )
+  const [assignedSlot, setAssignedSlot] = useState<string>(() => {
+    return hotkey.assigned_time_slots?.[0] || 'floating_dock'
+  })
   const [isUpdatingDefault, setIsUpdatingDefault] = useState(false)
   const [defaultSavedSuccess, setDefaultSavedSuccess] = useState(false)
   const [notes, setNotes] = useState<string>('')
@@ -84,17 +89,19 @@ export default function QuickLogDetailModal({
     if (!val || val <= 0) return
     setIsUpdatingDefault(true)
 
+    const updatedSlots = assignedSlot === 'floating_dock' ? [] : [assignedSlot]
     const { getUserHotkeys, saveUserHotkeys, saveCustomCreatedHotkey } = await import('@/lib/storage/quickLogsStorage')
     const allHotkeys = await getUserHotkeys(localUserId)
     const updated = allHotkeys.map(h =>
-      h.id === hotkey.id ? { ...h, default_increment: val, days_of_week: daysOfWeek } : h
+      h.id === hotkey.id ? { ...h, default_increment: val, days_of_week: daysOfWeek, assigned_time_slots: updatedSlots } : h
     )
     await saveUserHotkeys(localUserId, updated)
 
     const currentUpdated: QuickHotkeyConfig = {
       ...hotkey,
       default_increment: val,
-      days_of_week: daysOfWeek
+      days_of_week: daysOfWeek,
+      assigned_time_slots: updatedSlots
     }
 
     if (hotkey.is_custom || hotkey.id.startsWith('custom_')) {
@@ -158,11 +165,7 @@ export default function QuickLogDetailModal({
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <div className="flex items-center gap-3">
             <div
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center border shadow-inner ${
-                hotkey.is_negative
-                  ? 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                  : 'bg-orange-500/15 border-orange-500/30 text-orange-400'
-              }`}
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center border shadow-inner ${hTheme.iconBgClass} ${hTheme.iconTextClass}`}
             >
               <IconComp size={20} />
             </div>
@@ -202,15 +205,15 @@ export default function QuickLogDetailModal({
                   key={idx}
                   onClick={() => handleLog(p.amount, p.notes || p.label)}
                   disabled={isSaving}
-                  className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-orange-500/50 hover:bg-orange-950/20 text-left transition-all flex items-center justify-between cursor-pointer group"
+                  className={`p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 ${hTheme.borderHoverClass} text-left transition-all flex items-center justify-between cursor-pointer group`}
                 >
                   <div>
-                    <div className="text-xs font-bold text-white group-hover:text-orange-300 transition-colors">
+                    <div className={`text-xs font-bold text-white ${hTheme.nameHoverClass} transition-colors`}>
                       {p.label}
                     </div>
                     {p.notes && <div className="text-[10px] text-slate-500">{p.notes}</div>}
                   </div>
-                  <span className="text-xs font-mono font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">
+                  <span className={`text-xs font-mono font-bold ${hTheme.badgeTextClass} ${hTheme.badgeBgClass} px-2 py-0.5 rounded border ${hTheme.badgeBorderClass}`}>
                     +{p.amount}
                   </span>
                 </button>
@@ -233,7 +236,7 @@ export default function QuickLogDetailModal({
                 value={customAmount}
                 onChange={e => setCustomAmount(e.target.value)}
                 placeholder="Amount..."
-                className="w-full bg-slate-950 border border-slate-800 focus:border-orange-500 rounded-xl px-3.5 py-2.5 text-base font-bold text-white font-mono focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 focus:border-slate-500 rounded-xl px-3.5 py-2.5 text-base font-bold text-white font-mono focus:outline-none"
               />
               <span className="absolute right-3 top-3 text-xs font-mono text-slate-500">
                 {hotkey.unit}
@@ -245,14 +248,18 @@ export default function QuickLogDetailModal({
                 type="time"
                 value={timeStr}
                 onChange={e => setTimeStr(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-orange-500 rounded-xl px-2.5 py-2.5 text-xs font-bold text-white font-mono focus:outline-none text-center"
+                className="w-full bg-slate-950 border border-slate-800 focus:border-slate-500 rounded-xl px-2.5 py-2.5 text-xs font-bold text-white font-mono focus:outline-none text-center"
               />
             </div>
 
             <button
               onClick={() => handleLog(parseFloat(customAmount) || hotkey.default_increment)}
               disabled={isSaving}
-              className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-all shadow-md cursor-pointer flex items-center gap-1 shrink-0"
+              style={{
+                backgroundColor: hTheme.colorHex,
+                color: ['#05DF72', '#F59E0B', '#EAB308', '#06B6D4'].includes(hTheme.colorHex) ? '#000000' : '#ffffff'
+              }}
+              className="px-4 py-2.5 rounded-xl font-black text-xs transition-all shadow-md cursor-pointer flex items-center gap-1 shrink-0 hover:opacity-90 active:scale-95"
             >
               <Plus size={16} />
               <span>Log</span>
@@ -289,7 +296,7 @@ export default function QuickLogDetailModal({
                 step="any"
                 value={defaultIncrementInput}
                 onChange={e => setDefaultIncrementInput(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 focus:border-orange-500 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-white focus:outline-none"
+                className="w-full bg-slate-900 border border-slate-700 focus:border-slate-500 rounded-xl px-3 py-1.5 text-xs font-mono font-bold text-white focus:outline-none"
               />
               <span className="absolute right-3 top-2 text-[10px] font-mono text-slate-500">
                 {hotkey.unit} per tap
@@ -300,7 +307,11 @@ export default function QuickLogDetailModal({
               type="button"
               onClick={handleSaveDefaultIncrement}
               disabled={isUpdatingDefault}
-              className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-black font-black text-xs transition-colors cursor-pointer shrink-0"
+              style={{
+                backgroundColor: hTheme.colorHex,
+                color: ['#05DF72', '#F59E0B', '#EAB308', '#06B6D4'].includes(hTheme.colorHex) ? '#000000' : '#ffffff'
+              }}
+              className="px-3 py-1.5 rounded-xl font-black text-xs transition-opacity cursor-pointer shrink-0 hover:opacity-90 active:scale-95"
             >
               Save Preferences
             </button>
@@ -315,7 +326,8 @@ export default function QuickLogDetailModal({
               <button
                 type="button"
                 onClick={() => setDaysOfWeek(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])}
-                className="text-[9px] text-orange-400 hover:underline cursor-pointer"
+                style={{ color: hTheme.colorHex }}
+                className="text-[9px] hover:underline cursor-pointer"
               >
                 Reset to Everyday
               </button>
@@ -347,15 +359,53 @@ export default function QuickLogDetailModal({
                       setDaysOfWeek(next)
                     }}
                     title={day.full}
+                    style={isActive ? {
+                      backgroundColor: hTheme.colorHex,
+                      color: ['#05DF72', '#F59E0B', '#EAB308', '#06B6D4'].includes(hTheme.colorHex) ? '#000000' : '#ffffff'
+                    } : undefined}
                     className={`flex-1 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
                       isActive
-                        ? hotkey.is_negative
-                          ? 'bg-rose-500 text-white shadow-sm'
-                          : 'bg-orange-500 text-black shadow-sm font-black'
+                        ? 'shadow-sm font-black'
                         : 'bg-slate-900 text-slate-500 border border-slate-800 hover:text-slate-300'
                     }`}
                   >
                     {day.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Time Block Placement in Blocks Mode */}
+          <div className="pt-2 border-t border-white/5 space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              Time Block Placement (Blocks Mode):
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { id: 'floating_dock', label: 'Floating Dock' },
+                { id: 'morning', label: 'Morning' },
+                { id: 'breakfast', label: 'Breakfast' },
+                { id: 'midday', label: 'Midday' },
+                { id: 'lunch', label: 'Lunch' },
+                { id: 'afternoon', label: 'Afternoon' },
+                { id: 'dinner', label: 'Dinner' },
+                { id: 'evening', label: 'Evening' },
+                { id: 'bedtime', label: 'Bedtime' }
+              ].map((slot) => {
+                const isSelected = assignedSlot === slot.id
+                return (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    onClick={() => setAssignedSlot(slot.id)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    {slot.label}
                   </button>
                 )
               })}

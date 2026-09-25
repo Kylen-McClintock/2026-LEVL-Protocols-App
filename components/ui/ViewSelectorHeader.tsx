@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { CalendarDays, ChevronDown, Check, Filter, LayoutGrid, Calendar, Columns, Rows, AlignJustify, Zap, Activity, HelpCircle, Bookmark, Target, X, Search, Sparkles } from 'lucide-react'
 import { LongevityVectorIcon } from '@/components/icons'
 import { UserProfile, OutcomeDimension } from '@/lib/types'
+import { useTheme } from '@/lib/utils/useTheme'
 
 export type CalendarViewMode = 'today' | 'pulse' | '3day' | 'week' | 'month'
 export type LayoutOrientation = 'columns' | 'stack'
@@ -283,6 +284,9 @@ export const CategoryFiltersBar: React.FC<{
   availableProtocols = [],
   onEnrollClick
 }) => {
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
+
   const [internalLens, setInternalLens] = useState<FilterLens>(filterLens)
   const currentLens = onToggleFilterLens ? filterLens : internalLens
 
@@ -545,14 +549,16 @@ export const CategoryFiltersBar: React.FC<{
   }, [selectedMainCategories, isAllActive])
 
   return (
-    <div className={`flex flex-col gap-1.5 bg-slate-950/90 p-2 sm:p-2.5 rounded-2xl border border-slate-800/80 mb-3 shadow-xl backdrop-blur-md relative z-30 ${className}`}>
+    <div className={`flex flex-col gap-1.5 ${
+      isLight ? 'bg-white/90 border-slate-200 shadow-sm text-[#475569]' : 'bg-slate-950/90 border-slate-800/80 shadow-xl'
+    } p-2 sm:p-2.5 rounded-2xl border mb-3 backdrop-blur-md relative z-30 ${className}`}>
       {/* Master Toggle Header: Filter by: [ Category | Outcomes ] (Full row width on mobile) */}
       <div className="w-full flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-          <span className="text-[11px] sm:text-xs font-black text-slate-400 uppercase tracking-wider shrink-0">
+          <span className={`text-[11px] sm:text-xs font-black ${isLight ? 'text-slate-500' : 'text-slate-400'} uppercase tracking-wider shrink-0`}>
             Filter by:
           </span>
-          <div className="flex-1 grid grid-cols-2 bg-black/60 p-0.5 rounded-xl border border-white/10 gap-0.5 text-xs shadow-inner max-w-xs">
+          <div className={`flex-1 grid grid-cols-2 ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-black/60 border-white/10'} p-0.5 rounded-xl border gap-0.5 text-xs shadow-inner max-w-xs`}>
             <button
               type="button"
               onClick={() => {
@@ -562,7 +568,7 @@ export const CategoryFiltersBar: React.FC<{
               className={`w-full py-1.5 rounded-lg font-bold text-xs tracking-tight transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 currentLens === 'category'
                   ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm font-extrabold'
-                  : 'text-slate-400 hover:text-white'
+                  : isLight ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
               }`}
             >
               <span>🏷️</span>
@@ -578,7 +584,7 @@ export const CategoryFiltersBar: React.FC<{
               className={`w-full py-1.5 rounded-lg font-bold text-xs tracking-tight transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 currentLens === 'outcomes'
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm font-extrabold'
-                  : 'text-slate-400 hover:text-white'
+                  : isLight ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
               }`}
             >
               <span>🎯</span>
@@ -594,7 +600,11 @@ export const CategoryFiltersBar: React.FC<{
           {/* Guide Icon with buffer space next to toggle */}
           <Link
             href="/guide#today"
-            className="ml-3 sm:ml-4 p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-purple-500/50 text-slate-400 hover:text-purple-300 transition-colors cursor-pointer shadow-sm shrink-0 flex items-center justify-center"
+            className={`ml-3 sm:ml-4 p-1.5 rounded-xl border ${
+              isLight
+                ? 'bg-slate-100 border-slate-200 text-slate-500 hover:text-purple-600 hover:border-purple-300'
+                : 'bg-slate-900/90 border-slate-800 hover:border-purple-500/50 text-slate-400 hover:text-purple-300'
+            } transition-colors cursor-pointer shadow-sm shrink-0 flex items-center justify-center`}
             title="View Guide"
           >
             <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
@@ -603,13 +613,13 @@ export const CategoryFiltersBar: React.FC<{
 
         {/* Right Controls: Multi-day orientation toggle (columns vs stack) */}
         {viewMode && viewMode !== 'today' && onToggleLayoutOrientation && layoutOrientation && (
-          <div className="hidden sm:flex items-center bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 shrink-0 ml-auto">
+          <div className={`hidden sm:flex items-center ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-slate-900/90 border-slate-800'} border rounded-lg p-0.5 shrink-0 ml-auto`}>
             <button
               onClick={() => onToggleLayoutOrientation('columns')}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 layoutOrientation === 'columns'
                   ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  : isLight ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
               }`}
               title="Side-by-Side Columns View"
             >
@@ -621,7 +631,7 @@ export const CategoryFiltersBar: React.FC<{
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
                 layoutOrientation === 'stack'
                   ? 'bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  : isLight ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
               }`}
               title="Vertical Stacked View"
             >
@@ -644,19 +654,25 @@ export const CategoryFiltersBar: React.FC<{
             }}
             className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border font-bold text-xs transition-all cursor-pointer shadow-sm ${
               isCategoryFiltered
-                ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                ? isLight
+                  ? 'bg-[#E6F3EB] border-[#2B725C]/40 text-[#2B725C]'
+                  : 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
                 : isCategoryDropdownOpen
-                ? 'bg-slate-800 border-slate-600 text-white'
+                ? isLight
+                  ? 'bg-slate-100 border-slate-300 text-[#475569]'
+                  : 'bg-slate-800 border-slate-600 text-white'
+                : isLight
+                ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-[#475569] hover:text-[#334155]'
                 : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white'
             }`}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-              <Filter className={`w-3.5 h-3.5 shrink-0 ${isCategoryFiltered ? 'text-emerald-400' : 'text-slate-400'}`} />
+              <Filter className={`w-3.5 h-3.5 shrink-0 ${isCategoryFiltered ? (isLight ? 'text-[#2B725C]' : 'text-emerald-400') : (isLight ? 'text-slate-500' : 'text-slate-400')}`} />
               <span className="text-left text-xs font-bold leading-snug break-words">
                 {activeCategoryLabel}
               </span>
             </div>
-            <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180 text-emerald-400' : 'text-slate-400'}`} />
+            <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isCategoryDropdownOpen ? (isLight ? 'rotate-180 text-[#2B725C]' : 'rotate-180 text-emerald-400') : (isLight ? 'text-slate-500' : 'text-slate-400')}`} />
           </button>
 
           {/* Full-Opacity Category Dropdown Panel */}
@@ -664,11 +680,11 @@ export const CategoryFiltersBar: React.FC<{
             <div 
               onMouseDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
-              className="w-full bg-slate-950 p-3.5 rounded-2xl border border-slate-800 shadow-2xl space-y-3 z-30 animate-in fade-in slide-in-from-top-2"
+              className={`w-full ${isLight ? 'bg-white border-slate-200 shadow-xl' : 'bg-slate-950 border-slate-800 shadow-2xl'} p-3.5 rounded-2xl border space-y-3 z-30 animate-in fade-in slide-in-from-top-2`}
             >
               <div className="flex items-center justify-between px-1">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Filter className="w-3.5 h-3.5 text-emerald-400" /> Filter by Category
+                <span className={`text-[11px] font-black ${isLight ? 'text-slate-500' : 'text-slate-400'} uppercase tracking-wider flex items-center gap-1.5`}>
+                  <Filter className={`w-3.5 h-3.5 ${isLight ? 'text-[#2B725C]' : 'text-emerald-400'}`} /> Filter by Category
                 </span>
                 {isCategoryFiltered && (
                   <button
@@ -692,7 +708,11 @@ export const CategoryFiltersBar: React.FC<{
                       onClick={() => onToggleMainCategory(cat.id)}
                       className={`px-3 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all border cursor-pointer ${
                         isActive
-                          ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.3)] scale-[1.02]'
+                          ? isLight
+                            ? 'bg-[#E6F3EB] text-[#2B725C] border-[#2B725C]/50 shadow-sm scale-[1.02]'
+                            : 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.3)] scale-[1.02]'
+                          : isLight
+                          ? 'bg-slate-50 text-[#475569] border-slate-200 hover:bg-slate-100 hover:text-[#334155]'
                           : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
                       }`}
                     >
@@ -792,25 +812,31 @@ export const CategoryFiltersBar: React.FC<{
             }}
             className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border font-bold text-xs transition-all cursor-pointer shadow-sm ${
               selectedOutcomes.length > 0
-                ? 'bg-purple-950/60 border-purple-500/60 text-purple-200 shadow-[0_0_12px_rgba(168,85,247,0.25)]'
+                ? isLight
+                  ? 'bg-[#F0ECF9] border-[#765DB4]/40 text-[#765DB4]'
+                  : 'bg-purple-950/60 border-purple-500/60 text-purple-200 shadow-[0_0_12px_rgba(168,85,247,0.25)]'
                 : isOutcomeDropdownOpen
-                ? 'bg-slate-800 border-slate-600 text-white'
+                ? isLight
+                  ? 'bg-slate-100 border-slate-300 text-[#475569]'
+                  : 'bg-slate-800 border-slate-600 text-white'
+                : isLight
+                ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-[#475569] hover:text-[#334155]'
                 : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-200 hover:text-white'
             }`}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-              <Target className={`w-3.5 h-3.5 shrink-0 ${selectedOutcomes.length > 0 ? 'text-amber-400' : 'text-purple-400'}`} />
+              <Target className={`w-3.5 h-3.5 shrink-0 ${selectedOutcomes.length > 0 ? 'text-amber-400' : isLight ? 'text-[#765DB4]' : 'text-purple-400'}`} />
               <span className="text-left text-xs font-bold leading-snug break-words">
                 {activeOutcomeLabel}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               {selectedOutcomes.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-200 text-[10px] font-mono font-bold">
+                <span className={`px-2 py-0.5 rounded-full ${isLight ? 'bg-[#765DB4]/20 text-[#765DB4]' : 'bg-purple-500/30 text-purple-200'} text-[10px] font-mono font-bold`}>
                   {selectedOutcomes.length}
                 </span>
               )}
-              <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOutcomeDropdownOpen ? 'rotate-180 text-purple-400' : 'text-slate-400'}`} />
+              <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isOutcomeDropdownOpen ? (isLight ? 'rotate-180 text-[#765DB4]' : 'rotate-180 text-purple-400') : (isLight ? 'text-slate-500' : 'text-slate-400')}`} />
             </div>
           </button>
 
@@ -819,12 +845,12 @@ export const CategoryFiltersBar: React.FC<{
             <div 
               onMouseDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
-              className="w-full bg-slate-950 p-3.5 rounded-2xl border border-slate-800 shadow-2xl space-y-3 z-30 animate-in fade-in slide-in-from-top-2"
+              className={`w-full ${isLight ? 'bg-white border-slate-200 shadow-xl' : 'bg-slate-950 border-slate-800 shadow-2xl'} p-3.5 rounded-2xl border space-y-3 z-30 animate-in fade-in slide-in-from-top-2`}
             >
               {/* Header */}
               <div className="flex items-center justify-between px-1">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Target className="w-3.5 h-3.5 text-purple-400" /> Filter by Functional Outcomes
+                <span className={`text-[11px] font-black ${isLight ? 'text-slate-500' : 'text-slate-400'} uppercase tracking-wider flex items-center gap-1.5`}>
+                  <Target className={`w-3.5 h-3.5 ${isLight ? 'text-[#765DB4]' : 'text-purple-400'}`} /> Filter by Functional Outcomes
                 </span>
                 {selectedOutcomes.length > 0 && (
                   <button
@@ -845,7 +871,7 @@ export const CategoryFiltersBar: React.FC<{
                   value={outcomeSearchQuery}
                   onChange={(e) => setOutcomeSearchQuery(e.target.value)}
                   placeholder="Search trackable outcomes..."
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-purple-500"
+                  className={`w-full ${isLight ? 'bg-slate-100 border-slate-200 text-[#475569] placeholder:text-slate-400 focus:border-[#765DB4]' : 'bg-slate-900 border-slate-800 text-white placeholder:text-slate-500 focus:border-purple-500'} border rounded-xl pl-9 pr-8 py-2 text-xs focus:outline-none`}
                 />
                 {outcomeSearchQuery && (
                   <button
@@ -876,7 +902,11 @@ export const CategoryFiltersBar: React.FC<{
                         onClick={() => onToggleOutcome?.(item.name)}
                         className={`p-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left flex items-start justify-between gap-1.5 border ${
                           isChecked
-                            ? 'bg-purple-900/40 text-purple-100 border-purple-500/60 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
+                            ? isLight
+                              ? 'bg-[#F0ECF9] text-[#765DB4] border-[#765DB4]/60 shadow-sm'
+                              : 'bg-purple-900/40 text-purple-100 border-purple-500/60 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
+                            : isLight
+                            ? 'bg-slate-50 text-[#475569] hover:bg-slate-100 hover:text-[#334155] border-slate-200'
                             : 'bg-slate-900/90 text-slate-300 hover:bg-slate-800 hover:text-white border-slate-800/80 hover:border-slate-700'
                         }`}
                       >

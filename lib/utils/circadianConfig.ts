@@ -11,6 +11,7 @@ import {
   LucideIcon 
 } from 'lucide-react'
 import { canonicalizeTimingSlot } from './timingSlots'
+import { UserProfile } from '@/lib/types'
 
 export type PulsePhaseType = 
   | 'growth' 
@@ -676,7 +677,7 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     gradientCSS: 'linear-gradient(to bottom, #8B5CF6, #8B5CF6)',
     badgeGradientCSS: 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(99,102,241,0.2))',
     accentGradient: 'from-purple-500/20 via-indigo-500/10 to-transparent',
-    icon: Sparkles,
+    icon: Clock,
     badgeBg: 'bg-purple-500/15',
     badgeBorder: 'border-purple-500/30',
     badgeText: 'text-purple-300',
@@ -855,7 +856,7 @@ export const CHRONOLOGICAL_CIRCADIAN_SLOTS: string[] = [
  */
 export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   if (!slotKeys || slotKeys.length === 0) {
-    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 8%, #FBBF24 16%, #38BDF8 26%, #0284C7 38%, #3B82F6 50%, #F59E0B 60%, #F87E38 68%, #DF5558 78%, #A52D6A 86%, #50236B 92%, #231A45 96%, #1B1536 98%, #0B132B 100%)'
+    return 'linear-gradient(to bottom, #D97706 0%, #F59E0B 8%, #FBBF24 16%, #38BDF8 26%, #0284C7 38%, #2563EB 50%, #F59E0B 60%, #F87E38 68%, #DF5558 78%, #A52D6A 86%, #50236B 92%, #231A45 96%, #1B1536 98%, #0B132B 100%)'
   }
   if (slotKeys.length === 1) {
     return getCircadianConfig(slotKeys[0]).gradientCSS
@@ -864,6 +865,9 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
   const N = slotKeys.length
   const step = 100 / N
   const colorStops: { color: string; pct: number }[] = []
+
+  const isBlueFamily = (hex: string) => ['#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#2563eb', '#3b82f6', '#5b9bd5'].includes(hex.toLowerCase())
+  const isSunsetFamily = (hex: string) => ['#f87e38', '#df5558', '#f97316', '#ea580c'].includes(hex.toLowerCase())
 
   slotKeys.forEach((key, i) => {
     const cfg = getCircadianConfig(key)
@@ -875,84 +879,25 @@ export function buildDynamicCircadianGradientCSS(slotKeys: string[]): string {
     const nextCfg = nextKey ? getCircadianConfig(nextKey) : null
 
     if (i === 0) {
-      const firstIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
-      if (firstIdx > 2) {
-        colorStops.push({ color: '#D97706', pct: 0 })
-        colorStops.push({ color: '#F59E0B', pct: Math.min(Number((endPct * 0.25).toFixed(1)), 4) })
-        colorStops.push({ color: '#38BDF8', pct: Math.min(Number((endPct * 0.5).toFixed(1)), 8) })
-      } else if (['waking', 'morning_routine', 'morning', 'morning_supplement_stack', 'first_meal'].includes(cfg.key)) {
-        colorStops.push({ color: '#D97706', pct: 0 })
-        colorStops.push({ color: '#F59E0B', pct: Math.min(Number((endPct * 0.35).toFixed(1)), 8) })
-        colorStops.push({ color: '#FBBF24', pct: Math.min(Number((endPct * 0.7).toFixed(1)), 16) })
-      } else {
-        colorStops.push({ color: cfg.startColorHex || primary, pct: 0 })
-      }
+      colorStops.push({ color: cfg.startColorHex || primary, pct: 0 })
       colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.2).toFixed(1))) })
-    } else if (cfg.key === 'pre_meal' || cfg.key === 'post_meal') {
-      colorStops.push({ color: '#F87E38', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
-      colorStops.push({ color: '#F87E38', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
-    } else if (cfg.key === 'evening') {
-      colorStops.push({ color: '#DF5558', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
-      colorStops.push({ color: '#DF5558', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
-    } else if (cfg.key === 'evening_supplement_stack') {
-      colorStops.push({ color: '#A52D6A', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
-      colorStops.push({ color: '#A52D6A', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
-    } else if (cfg.key === 'wind_down') {
-      colorStops.push({ color: '#50236B', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
-      colorStops.push({ color: '#50236B', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
-    } else if (cfg.key === 'pre_bed') {
-      colorStops.push({ color: '#231A45', pct: Math.min(100, Number((startPct + 0.8).toFixed(1))) })
-      colorStops.push({ color: '#231A45', pct: Math.max(0, Number((endPct - 0.8).toFixed(1))) })
     } else if (i === N - 1) {
       colorStops.push({ color: primary, pct: Math.min(100, Number((startPct + 1.0).toFixed(1))) })
-      const lastIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
-      if (lastIdx !== -1 && lastIdx < CHRONOLOGICAL_CIRCADIAN_SLOTS.length - 2) {
-        const remainingKeys = CHRONOLOGICAL_CIRCADIAN_SLOTS.slice(lastIdx + 1)
-        const remCount = remainingKeys.length
-        remainingKeys.forEach((remKey, rIdx) => {
-          const remCfg = getCircadianConfig(remKey)
-          const pct = endPct - 6 + ((rIdx + 1) / (remCount + 1)) * 6
-          colorStops.push({ color: remCfg.skyColorHex, pct: Number(pct.toFixed(1)) })
-        })
-        colorStops.push({ color: '#0B132B', pct: 100 })
-      } else {
-        colorStops.push({ color: primary, pct: Number(((startPct + 100) / 2).toFixed(1)) })
-        colorStops.push({ color: cfg.endColorHex || '#0B132B', pct: 100 })
-      }
+      colorStops.push({ color: cfg.endColorHex || primary, pct: 100 })
     } else {
       colorStops.push({ color: primary, pct: Math.min(100, Number((startPct + 1.0).toFixed(1))) })
       colorStops.push({ color: primary, pct: Math.max(0, Number((endPct - 1.0).toFixed(1))) })
     }
 
-    const isBlueFamily = (hex: string) => ['#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#2563eb', '#3b82f6', '#5b9bd5'].includes(hex.toLowerCase())
-    const isSunsetFamily = (hex: string) => ['#f87e38', '#df5558', '#f97316', '#ea580c'].includes(hex.toLowerCase())
-
-    if (nextCfg && isBlueFamily(primary) && (isSunsetFamily(nextCfg.skyColorHex) || nextCfg.key === 'pre_meal' || nextCfg.key === 'post_meal' || nextCfg.key === 'evening')) {
-      // Natural golden hour bridge from daytime blue into sunset orange
-      colorStops.push({ color: '#F59E0B', pct: Number(endPct.toFixed(1)) })
-    } else if (nextCfg) {
-      const currIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
-      const nextIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(nextCfg.key)
-
-      if (currIdx !== -1 && nextIdx !== -1 && nextIdx > currIdx + 1) {
-        const skippedKeys = CHRONOLOGICAL_CIRCADIAN_SLOTS.slice(currIdx + 1, nextIdx)
-        const distinctSkippedColors: string[] = []
-        skippedKeys.forEach(k => {
-          const col = getCircadianConfig(k).skyColorHex
-          if (!distinctSkippedColors.includes(col) && col.toLowerCase() !== primary.toLowerCase() && col.toLowerCase() !== nextCfg.skyColorHex.toLowerCase()) {
-            distinctSkippedColors.push(col)
-          }
-        })
-
-        if (distinctSkippedColors.length > 0) {
-          const windowStart = Math.max(startPct + 1, endPct - 3)
-          const windowEnd = endPct
-          const count = distinctSkippedColors.length
-          distinctSkippedColors.forEach((color, sIdx) => {
-            const pct = windowStart + ((sIdx + 1) / (count + 1)) * (windowEnd - windowStart)
-            colorStops.push({ color, pct: Number(pct.toFixed(1)) })
-          })
-        }
+    if (nextCfg) {
+      if (isBlueFamily(primary) && (isSunsetFamily(nextCfg.skyColorHex) || nextCfg.key === 'pre_meal' || nextCfg.key === 'post_meal' || nextCfg.key === 'evening')) {
+        colorStops.push({ color: '#F59E0B', pct: Number(endPct.toFixed(1)) })
+      } else if (cfg.key === 'evening' && (nextCfg.key === 'evening_supplement_stack' || nextCfg.key === 'wind_down')) {
+        colorStops.push({ color: '#A52D6A', pct: Number(endPct.toFixed(1)) })
+      } else if (cfg.key === 'wind_down' && nextCfg.key === 'pre_bed') {
+        colorStops.push({ color: '#312154', pct: Number(endPct.toFixed(1)) })
+      } else if (nextCfg.startColorHex && nextCfg.startColorHex !== primary) {
+        colorStops.push({ color: nextCfg.startColorHex, pct: Number(endPct.toFixed(1)) })
       }
     }
   })
@@ -1014,3 +959,194 @@ export function isLateNightCarryoverWindow(
   }
   return false
 }
+
+export interface DynamicCircadianWindow {
+  slotKey: string
+  label: string
+  timeWindow: string
+  startHour: number
+  endHour: number
+}
+
+/**
+ * Dynamically computes circadian slot time windows based on the user's actual wake time,
+ * bedtime, fasting schedule (e.g. 16:8, 18:6, OMAD), and target eating window.
+ */
+export function getUserCircadianTimeWindows(
+  profile?: UserProfile | null
+): Record<string, DynamicCircadianWindow> {
+  // 1. Resolve user's wake time (default 06:30)
+  const wakeTimeStr = profile?.ideal_wake_time || (profile as any)?.actual_wake_time || '06:30'
+  let wakeH = 6
+  let wakeM = 30
+  if (wakeTimeStr && String(wakeTimeStr).includes(':')) {
+    const [h, m] = String(wakeTimeStr).split(':').map(Number)
+    if (!isNaN(h)) wakeH = h
+    if (!isNaN(m)) wakeM = m
+  }
+  const wakeHourDecimal = wakeH + wakeM / 60
+
+  // 2. Resolve user's bedtime (default 22:30)
+  const bedTimeStr = profile?.ideal_bedtime || '22:30'
+  let bedH = 22
+  let bedM = 30
+  if (bedTimeStr && String(bedTimeStr).includes(':')) {
+    const [h, m] = String(bedTimeStr).split(':').map(Number)
+    if (!isNaN(h)) bedH = h
+    if (!isNaN(m)) bedM = m
+  }
+  const bedHourDecimal = bedH + bedM / 60
+
+  // 3. Resolve user's fasting schedule & nutrition targets
+  const fastingSchedule = (profile?.fasting_schedule || '').toLowerCase().trim()
+  const eatingStartTarget = profile?.eating_window_start || (profile as any)?.nutrition_targets?.eating_window_start_target
+  const eatingEndTarget = profile?.eating_window_end || (profile as any)?.nutrition_targets?.eating_window_end_target
+  const targetFastHours = (profile as any)?.nutrition_targets?.target_fasting_hours || (profile as any)?.target_fasting_hours
+
+  const formatHourMin = (hourDecimal: number): string => {
+    let totalM = Math.round(hourDecimal * 60)
+    totalM = ((totalM % 1440) + 1440) % 1440
+    const h24 = Math.floor(totalM / 60)
+    const mins = totalM % 60
+    const ampm = h24 >= 12 ? 'PM' : 'AM'
+    const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+    return mins === 0 ? `${h12}:00 ${ampm}` : `${h12}:${mins.toString().padStart(2, '0')} ${ampm}`
+  }
+
+  // WAKING: Starts at wake time for ~1.5h
+  const wakingStart = wakeHourDecimal
+  const wakingEnd = wakeHourDecimal + 1.5
+
+  // MORNING: From end of waking to ~3.5-4h post-wake
+  const morningStart = wakingEnd
+  const morningEnd = wakeHourDecimal + 4.0
+
+  // FIRST MEAL: Dynamically calculated based on fasting schedule and eating window
+  let firstMealStart: number
+  let firstMealEnd: number
+
+  if (eatingStartTarget && String(eatingStartTarget).includes(':')) {
+    const [esh, esm] = String(eatingStartTarget).split(':').map(Number)
+    firstMealStart = (!isNaN(esh) ? esh : 12) + (!isNaN(esm) ? esm : 0) / 60
+    firstMealEnd = firstMealStart + 1.5
+  } else if (fastingSchedule.includes('18:6') || fastingSchedule.includes('18/6') || targetFastHours === 18) {
+    // 18:6 Fast: typically breaks fast at ~1:30 PM / 2:00 PM
+    firstMealStart = Math.max(wakeHourDecimal + 6.0, 13.5)
+    firstMealEnd = firstMealStart + 1.5
+  } else if (fastingSchedule.includes('20:4') || fastingSchedule.includes('20/4') || targetFastHours === 20) {
+    // 20:4 Fast: breaks fast around 3:30 PM / 4:00 PM
+    firstMealStart = Math.max(wakeHourDecimal + 8.0, 15.5)
+    firstMealEnd = firstMealStart + 1.5
+  } else if (fastingSchedule.includes('omad') || targetFastHours === 23) {
+    // OMAD: One single meal in late afternoon / evening
+    firstMealStart = 17.5
+    firstMealEnd = 19.5
+  } else if (fastingSchedule.includes('16:8') || fastingSchedule.includes('16/8') || targetFastHours === 16) {
+    // 16:8 Fast (Standard Time-Restricted Feeding): typically 12:00 PM – 1:30 PM
+    firstMealStart = Math.max(wakeHourDecimal + 4.5, 11.75)
+    firstMealEnd = firstMealStart + 1.5
+  } else {
+    // Standard / 12:12 gentle circadian fast: break-fast ~1.5 - 2h after waking
+    firstMealStart = wakeHourDecimal + 1.5
+    firstMealEnd = firstMealStart + 1.5
+  }
+
+  // LUNCH / MIDDAY:
+  let lunchStart: number
+  let lunchEnd: number
+  if (firstMealStart >= 13.0) {
+    // If first meal is late (1:00 PM or later), lunch is secondary meal in mid-feeding window
+    lunchStart = firstMealEnd + 1.5
+    lunchEnd = lunchStart + 1.5
+  } else {
+    // Solar peak midday meal
+    lunchStart = 11.75
+    lunchEnd = 14.0
+  }
+
+  // AFTERNOON: Between midday and evening
+  const afternoonStart = Math.max(lunchEnd, 14.0)
+  const afternoonEnd = Math.min(afternoonStart + 3.0, 17.5)
+
+  // LAST MEAL: Based on eating window end and bedtime buffer (finish ≥2.5–3h before sleep)
+  let lastMealStart: number
+  let lastMealEnd: number
+  if (eatingEndTarget && String(eatingEndTarget).includes(':')) {
+    const [eeh, eem] = String(eatingEndTarget).split(':').map(Number)
+    lastMealEnd = (!isNaN(eeh) ? eeh : 20) + (!isNaN(eem) ? eem : 0) / 60
+    lastMealStart = lastMealEnd - 1.5
+  } else if (fastingSchedule.includes('16:8') || fastingSchedule.includes('18:6')) {
+    // 8-hour or 6-hour feeding window from first meal
+    const windowHours = fastingSchedule.includes('18:6') ? 6 : 8
+    lastMealEnd = Math.min(firstMealStart + windowHours, bedHourDecimal - 2.5)
+    lastMealStart = lastMealEnd - 1.5
+  } else {
+    // Standard: finish ~3h before ideal bedtime
+    lastMealEnd = Math.max(bedHourDecimal - 2.5, 19.5)
+    lastMealStart = lastMealEnd - 1.5
+  }
+
+  // BEDTIME: 1.5h leading up to bedtime
+  const bedtimeStart = bedHourDecimal - 1.5
+  const bedtimeEnd = bedHourDecimal + 0.5
+
+  return {
+    waking: {
+      slotKey: 'waking',
+      label: 'Upon Waking',
+      timeWindow: `${formatHourMin(wakingStart)} – ${formatHourMin(wakingEnd)}`,
+      startHour: wakingStart,
+      endHour: wakingEnd
+    },
+    morning: {
+      slotKey: 'morning',
+      label: 'Morning',
+      timeWindow: `${formatHourMin(morningStart)} – ${formatHourMin(morningEnd)}`,
+      startHour: morningStart,
+      endHour: morningEnd
+    },
+    breakfast: {
+      slotKey: 'breakfast',
+      label: 'First Meal',
+      timeWindow: `${formatHourMin(firstMealStart)} – ${formatHourMin(firstMealEnd)}`,
+      startHour: firstMealStart,
+      endHour: firstMealEnd
+    },
+    lunch: {
+      slotKey: 'lunch',
+      label: 'Lunch / Midday Meal',
+      timeWindow: `${formatHourMin(lunchStart)} – ${formatHourMin(lunchEnd)}`,
+      startHour: lunchStart,
+      endHour: lunchEnd
+    },
+    afternoon: {
+      slotKey: 'afternoon',
+      label: 'Afternoon',
+      timeWindow: `${formatHourMin(afternoonStart)} – ${formatHourMin(afternoonEnd)}`,
+      startHour: afternoonStart,
+      endHour: afternoonEnd
+    },
+    dinner: {
+      slotKey: 'dinner',
+      label: 'Last Meal',
+      timeWindow: `${formatHourMin(lastMealStart)} – ${formatHourMin(lastMealEnd)}`,
+      startHour: lastMealStart,
+      endHour: lastMealEnd
+    },
+    bedtime: {
+      slotKey: 'bedtime',
+      label: 'Bedtime',
+      timeWindow: `${formatHourMin(bedtimeStart)} – ${formatHourMin(bedtimeEnd)}`,
+      startHour: bedtimeStart,
+      endHour: bedtimeEnd
+    },
+    anytime: {
+      slotKey: 'anytime',
+      label: 'Anytime',
+      timeWindow: 'Flexible',
+      startHour: 0,
+      endHour: 24
+    }
+  }
+}
+

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { DailyProtocolTask, Modality, ProtocolStep, Protocol, UserModalityHabit } from '@/lib/types'
-import { Check, CheckCircle2, X, Clock, AlertTriangle, Activity, ChevronDown, ChevronUp, ChevronRight, Microscope, Bookmark, User, Info, CalendarDays, RotateCcw, Sliders, Star, Sparkles, Archive, Trash2, ExternalLink, Edit3, SkipForward, Target, Pill } from 'lucide-react'
+import { Check, CheckCircle2, X, Clock, AlertTriangle, Activity, ChevronDown, ChevronUp, ChevronRight, Microscope, Bookmark, User, Info, CalendarDays, RotateCcw, Sliders, Star, Sparkles, Archive, Trash2, ExternalLink, Edit3, SkipForward, Target, Pill, Syringe } from 'lucide-react'
 import GeekMode from './GeekMode'
 import PersonalizeModalityModal from '../modals/PersonalizeModalityModal'
 import { DosageDetailModal } from '../modals/DosageDetailModal'
@@ -36,6 +36,7 @@ import CGMExecutionLog from '../execution/CGMExecutionLog'
 import BlueLightDimmingExecutionLog from '../execution/BlueLightDimmingExecutionLog'
 import SunlightCircadianExecutionLog from '../execution/SunlightCircadianExecutionLog'
 import SleepHygieneExecutionLog from '../execution/SleepHygieneExecutionLog'
+import CaffeineCutoffExecutionLog from '../execution/CaffeineCutoffExecutionLog'
 import HydrationElectrolyteExecutionLog from '../execution/HydrationElectrolyteExecutionLog'
 import BiometricPhlebotomyExecutionLog from '../execution/BiometricPhlebotomyExecutionLog'
 import PeptideExecutionLog from '../execution/PeptideExecutionLog'
@@ -45,7 +46,13 @@ import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import ModalityIcon from '../ui/ModalityIcon'
 import { HabitAnalyticsModal } from '../modals/HabitAnalyticsModal'
 import MedicalDisclaimerBanner from '../ui/MedicalDisclaimerBanner'
-import { saveInjectionSiteLog } from '@/lib/peptides/reconstitutionEngine'
+import {
+  saveInjectionSiteLog,
+  getSavedInjectionSiteHistory,
+  getRecommendedNextInjectionSite,
+  calculateReconstitution,
+  getSavedPeptideVialConfig
+} from '@/lib/peptides/reconstitutionEngine'
 import { useTemperatureUnit } from '@/lib/utils/useTemperatureUnit'
 import { isPreLoggableOutcome, hasAnyPreLoggableOutcome, getOutcomePhaseType } from '@/lib/utils/outcomePhaseRules'
 import { getPeakOnsetGuidance } from '@/lib/utils/peakOnsetGuidance'
@@ -867,20 +874,65 @@ export default function ProtocolTaskCard({
   const isCGM = archetype === 'cgm'
   const isBlueLightDimming = archetype === 'blue_light_dimming'
   const isSunlight = archetype === 'sunlight'
-  const isSleepHygiene = archetype === 'sleep'
+  const isCaffeineCutoff =
+    archetype === 'caffeine_cutoff' ||
+    modality?.id === 'walker_caffeine_cutoff' ||
+    modality?.id === 'caffeine_cutoff' ||
+    (modality?.slug || '').includes('caffeine_cutoff') ||
+    (modality?.slug || '').includes('caffeine-cutoff') ||
+    (modality?.name || '').toLowerCase().includes('caffeine cutoff') ||
+    (task.execution_details?.custom_name || '').toLowerCase().includes('caffeine cutoff')
+
+  const isSleepHygiene = archetype === 'sleep' && !isCaffeineCutoff
   const isHydration = archetype === 'hydration'
   const isPhlebotomy = archetype === 'phlebotomy'
-  const isPeptide = archetype === 'peptide'
+  const isPeptide =
+    archetype === 'peptide' ||
+    modality?.category?.toLowerCase().includes('peptide') ||
+    modality?.modality_type?.toLowerCase().includes('peptide') ||
+    modality?.logging_type?.toLowerCase() === 'peptide' ||
+    (modality?.slug || '').toLowerCase().includes('bpc') ||
+    (modality?.name || '').toLowerCase().includes('bpc') ||
+    (modality?.name || '').toLowerCase().includes('tb-500') ||
+    (modality?.name || '').toLowerCase().includes('tb500') ||
+    (modality?.name || '').toLowerCase().includes('cjc') ||
+    (modality?.name || '').toLowerCase().includes('ipamorelin') ||
+    (modality?.name || '').toLowerCase().includes('ghk') ||
+    (modality?.name || '').toLowerCase().includes('semaglutide') ||
+    (modality?.name || '').toLowerCase().includes('tirzepatide') ||
+    (modality?.name || '').toLowerCase().includes('retatrutide') ||
+    (modality?.name || '').toLowerCase().includes('epithalon') ||
+    (modality?.name || '').toLowerCase().includes('mots-c') ||
+    !!modality?.peptide_metadata?.is_peptide
+
   const isSupplement = archetype === 'supplement'
   const isSport = archetype === 'sport'
 
-  const hasPrecisionLogUI = archetype !== 'general'
+  const hasPrecisionLogUI = archetype !== 'general' || isCaffeineCutoff
 
   // Precision execution log default expansion determination (~40% open, ~60% collapsed)
+  // For peptides: ALWAYS OPEN BY DEFAULT so the syringe graphic and injection site rotation are immediately visible!
   const isPrecisionLogOpenByDefault = useMemo(() => {
-    // Session execution numbers/logging is collapsed by default for all modalities per specification
+    if (isPeptide) return true
     return false
-  }, [])
+  }, [isPeptide])
+
+  // Live calculation of peptide site rotation and syringe units
+  const peptideSiteData = useMemo(() => {
+    if (!isPeptide) return null
+    const siteHistory = getSavedInjectionSiteHistory(modalityKey)
+    const { recommendedSite, lastUsedSite } = getRecommendedNextInjectionSite(siteHistory)
+    const vialConfig = getSavedPeptideVialConfig(modalityKey, modality?.peptide_metadata?.default_vial_config)
+    const targetDose = task.protocol_step?.dose_amount || 250
+    const recon = vialConfig
+      ? calculateReconstitution(vialConfig.vial_size_mg, vialConfig.bac_water_ml, targetDose, vialConfig.syringe_type)
+      : null
+    return {
+      recommendedSite,
+      lastUsedSite,
+      units: recon?.units_to_draw || (targetDose >= 2500 ? 100 : 10)
+    }
+  }, [isPeptide, modalityKey, modality, task.protocol_step?.dose_amount])
 
   const [isPrecisionLogExpanded, setIsPrecisionLogExpanded] = useState<boolean>(isPrecisionLogOpenByDefault)
 
@@ -914,6 +966,11 @@ export default function ProtocolTaskCard({
   }, [modality])
 
   const currentRelevantOutcomes = useMemo(() => {
+    // SPECIAL CLINICAL STANDARD: Caffeine cutoff modality does NOT have tracked outcomes assigned by default!
+    if (isCaffeineCutoff) {
+      return []
+    }
+
     let functionalOutcomes = modality.functional_outcomes_to_track || []
     if (typeof functionalOutcomes === 'string') {
       const cleaned = (functionalOutcomes as string).replace(/^{|}$/g, '')
@@ -1770,7 +1827,7 @@ export default function ProtocolTaskCard({
                           if (effectiveDetails.distance) metrics.distance = parseFloat(effectiveDetails.distance)
                         }
                         if (isPeptide) {
-                          const site = effectiveDetails?.injection_site || 'abdomen_lower_right'
+                          const site = effectiveDetails?.injection_site || peptideSiteData?.recommendedSite?.id || 'abdomen_lower_right'
                           saveInjectionSiteLog(modalityKey, site)
                         }
                         onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails);
@@ -1999,9 +2056,14 @@ export default function ProtocolTaskCard({
             />
 
             {isPeptide && (
-              <span className="text-[10px] font-bold bg-cyan-950/70 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-sm">
-                <span>💉</span>
-                <span>{task.protocol_step?.dose_amount === 2500 ? '100 Units (1.0 mL)' : task.protocol_step?.dose_amount === 100 || task.protocol_step?.dose_amount === 200 || task.protocol_step?.dose_amount === 250 ? '10 Units (0.10 mL)' : 'SubQ Syringe'}</span>
+              <span className="text-[10px] font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                <Syringe size={12} className="text-cyan-400 shrink-0" />
+                <span>{peptideSiteData?.units || (task.protocol_step?.dose_amount === 2500 ? 100 : 10)} Units</span>
+                <span className="text-cyan-500/50">•</span>
+                <span className="text-emerald-400 font-extrabold flex items-center gap-1">
+                  <RotateCcw size={10} className="shrink-0" />
+                  <span>Next: {peptideSiteData?.recommendedSite?.shortLabel || 'Abdomen'}</span>
+                </span>
               </span>
             )}
 
@@ -2103,7 +2165,7 @@ export default function ProtocolTaskCard({
                           if (effectiveDetails.distance) metrics.distance = parseFloat(effectiveDetails.distance)
                         }
                         if (isPeptide) {
-                          const site = effectiveDetails?.injection_site || 'abdomen_lower_right'
+                          const site = effectiveDetails?.injection_site || peptideSiteData?.recommendedSite?.id || 'abdomen_lower_right'
                           saveInjectionSiteLog(modalityKey, site)
                         }
                         onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails);
@@ -2257,22 +2319,21 @@ export default function ProtocolTaskCard({
                 <div className="p-3.5 bg-slate-950/90 border border-cyan-500/30 rounded-xl space-y-3 shadow-lg">
                   <div className="flex items-center justify-between border-b border-white/10 pb-2">
                     <span className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
-                      <Activity size={14} className="text-cyan-400" /> Precision Execution Log
+                      {isPeptide ? <Syringe size={14} className="text-cyan-400" /> : <Activity size={14} className="text-cyan-400" />}
+                      <span>{isPeptide ? 'Peptide SubQ Administration & Precision Drawing' : 'Precision Execution Log'}</span>
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-slate-400 font-mono">
                         {modality.display_name || modality.name}
                       </span>
-                      {!isPrecisionLogOpenByDefault && (
-                        <button
-                          type="button"
-                          onClick={() => setIsPrecisionLogExpanded(false)}
-                          className="text-[10px] font-bold text-slate-400 hover:text-white px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors flex items-center gap-1 cursor-pointer border border-white/10"
-                        >
-                          <span>Hide Details</span>
-                          <ChevronUp size={12} />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIsPrecisionLogExpanded(false)}
+                        className="text-[10px] font-bold text-slate-400 hover:text-white px-2 py-0.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors flex items-center gap-1 cursor-pointer border border-white/10"
+                      >
+                        <span>Hide Details</span>
+                        <ChevronUp size={12} />
+                      </button>
                     </div>
                   </div>
 
@@ -2319,6 +2380,15 @@ export default function ProtocolTaskCard({
                   {isBlueLightDimming && <BlueLightDimmingExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isCaffeineCutoff && (
+                    <CaffeineCutoffExecutionLog
+                      value={executionDetails}
+                      onChange={setExecutionDetails}
+                      date={task.scheduled_date}
+                      localUserId={getLocalUserId()}
+                      idealBedtime={userProfile?.ideal_bedtime || '22:30'}
+                    />
+                  )}
                   {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isPhlebotomy && <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isPeptide && (
@@ -2393,18 +2463,22 @@ export default function ProtocolTaskCard({
               <div className="mb-4 space-y-2">
                 <div className="p-2.5 sm:p-3 bg-slate-950/70 border border-slate-800 hover:border-slate-700/80 rounded-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 transition-all">
                   <div className="flex items-center gap-2 text-xs text-slate-300 min-w-0">
-                    <div className="p-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                      {(modality.category || '').toLowerCase().includes('supplement') || (modality.category || '').toLowerCase().includes('peptide') ? (
+                    <div className="p-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shrink-0">
+                      {isPeptide ? (
+                        <Syringe size={13} className="text-cyan-400" />
+                      ) : (modality.category || '').toLowerCase().includes('supplement') ? (
                         <Pill size={13} />
                       ) : (
                         <Target size={13} />
                       )}
                     </div>
                     <span className="font-medium text-slate-400 shrink-0">
-                      {(modality.category || '').toLowerCase().includes('supplement') || (modality.category || '').toLowerCase().includes('peptide') ? 'Target Dose:' : 'Session Target:'}
+                      {isPeptide ? 'SubQ Syringe:' : (modality.category || '').toLowerCase().includes('supplement') ? 'Target Dose:' : 'Session Target:'}
                     </span>
                     <span className="font-bold text-white font-mono bg-white/5 px-2 py-0.5 rounded-lg border border-white/10 truncate">
-                      {customDose || modality.dose_or_exposure || 'Standard Protocol Session'}
+                      {isPeptide && peptideSiteData
+                        ? `${peptideSiteData.units} Units • Next: ${peptideSiteData.recommendedSite.shortLabel}`
+                        : customDose || modality.dose_or_exposure || 'Standard Protocol Session'}
                     </span>
                   </div>
 
@@ -2415,8 +2489,8 @@ export default function ProtocolTaskCard({
                         onClick={() => setIsPrecisionLogExpanded(true)}
                         className="flex-1 sm:flex-initial text-[11px] font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 px-3 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                       >
-                        <Activity size={13} className="text-cyan-400 shrink-0" />
-                        <span>+ Log Details</span>
+                        {isPeptide ? <Syringe size={13} className="text-cyan-400 shrink-0" /> : <Activity size={13} className="text-cyan-400 shrink-0" />}
+                        <span>{isPeptide ? 'Syringe & Site Rotation' : '+ Log Details'}</span>
                         <ChevronDown size={12} className="text-slate-400" />
                       </button>
                     )}
@@ -2438,6 +2512,11 @@ export default function ProtocolTaskCard({
                           }
                           const now = new Date()
                           logDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0)
+
+                          if (isPeptide) {
+                            const site = executionDetails?.injection_site || peptideSiteData?.recommendedSite?.id || 'abdomen_lower_right'
+                            saveInjectionSiteLog(modalityKey, site)
+                          }
 
                           if (currentRelevantOutcomes.length > 0) {
                             setShowInlineOutcomes(true)
@@ -2560,6 +2639,15 @@ export default function ProtocolTaskCard({
                   {isBlueLightDimming && <BlueLightDimmingExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isCaffeineCutoff && (
+                    <CaffeineCutoffExecutionLog
+                      value={executionDetails}
+                      onChange={setExecutionDetails}
+                      date={task.scheduled_date}
+                      localUserId={getLocalUserId()}
+                      idealBedtime={userProfile?.ideal_bedtime || '22:30'}
+                    />
+                  )}
                   {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isPhlebotomy && <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                   {isPeptide && (
@@ -2858,6 +2946,15 @@ export default function ProtocolTaskCard({
                         {isBlueLightDimming && <BlueLightDimmingExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                         {isSunlight && <SunlightCircadianExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                         {isSleepHygiene && <SleepHygieneExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isCaffeineCutoff && (
+                          <CaffeineCutoffExecutionLog
+                            value={executionDetails}
+                            onChange={setExecutionDetails}
+                            date={task.scheduled_date}
+                            localUserId={getLocalUserId()}
+                            idealBedtime={userProfile?.ideal_bedtime || '22:30'}
+                          />
+                        )}
                         {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                         {isPhlebotomy && <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                         {isPeptide && (

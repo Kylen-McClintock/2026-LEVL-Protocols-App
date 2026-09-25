@@ -325,10 +325,6 @@ function ExploreCard({
             )}
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <DosageBadgeButton modality={modality} userProfile={userProfile} />
-          </div>
-
           {/* Contraindication Warning Banner */}
           {hasContraindication && (
             <div className="mt-2 p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-[11px] text-rose-200 flex items-start gap-2 animate-in fade-in">
@@ -447,23 +443,6 @@ function ExploreCard({
         
         <p className="text-sm text-gray-300">{modality.brief_description}</p>
         
-        {modality.functional_impacts && Object.keys(modality.functional_impacts).some(k => modality.functional_impacts![k].score > 5) && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {Object.entries(modality.functional_impacts)
-              .filter(([_, impact]) => impact.score > 5)
-              .sort((a, b) => b[1].score - a[1].score)
-              .map(([outcome, impact]) => (
-                <OutcomePill
-                  key={outcome}
-                  outcome={outcome}
-                  score={impact.score}
-                  size="sm"
-                />
-              ))
-            }
-          </div>
-        )}
-        
         <div className="flex justify-between items-center mt-3 border-t border-white/5 pt-3 gap-2">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <span className="text-xs text-levl-text-secondary shrink-0">
@@ -488,6 +467,34 @@ function ExploreCard({
 
       {expanded && (
         <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-4 animate-in fade-in slide-in-from-top-2">
+          {/* Target Clinical Dosing */}
+          <div className="flex flex-wrap items-center gap-2">
+            <DosageBadgeButton modality={modality} userProfile={userProfile} />
+          </div>
+
+          {/* Functional Longevity Impacts */}
+          {modality.functional_impacts && Object.keys(modality.functional_impacts).some(k => modality.functional_impacts![k].score > 5) && (
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 block">
+                Targeted Outcomes &amp; Biomarkers:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(modality.functional_impacts)
+                  .filter(([_, impact]) => impact.score > 5)
+                  .sort((a, b) => b[1].score - a[1].score)
+                  .map(([outcome, impact]) => (
+                    <OutcomePill
+                      key={outcome}
+                      outcome={outcome}
+                      score={impact.score}
+                      size="sm"
+                    />
+                  ))
+                }
+              </div>
+            </div>
+          )}
+
           {/* Core Scientific Metric Tiles */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5">
@@ -620,7 +627,7 @@ function ExploreCard({
               }
             }}
             disabled={isCurrentlyOnBench && !isCurrentlyActiveInToday}
-            className={`flex-1 w-full sm:w-auto flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
+            className={`w-full sm:w-auto sm:flex-1 h-9 min-h-[36px] shrink-0 flex items-center justify-center gap-1.5 px-3 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm ${
               isCurrentlyActiveInToday
                 ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.15)]'
                 : isCurrentlyOnBench 
@@ -646,11 +653,11 @@ function ExploreCard({
             )}
           </button>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 w-full sm:w-auto">
             {onPinForCompare && (
               <button 
                 onClick={(e) => { e.stopPropagation(); onPinForCompare(modality); }}
-                className={`flex-1 sm:flex-none h-9 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-none h-9 min-h-[36px] shrink-0 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   isPinnedForCompare 
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm' 
                     : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
@@ -664,7 +671,7 @@ function ExploreCard({
 
             <button 
               onClick={(e) => { e.stopPropagation(); setShowLongevityDrawer(!showLongevityDrawer); }}
-              className={`flex-1 sm:flex-none h-9 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none h-9 min-h-[36px] shrink-0 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 showLongevityDrawer 
                   ? 'bg-purple-600 text-white border-purple-500 shadow-md' 
                   : 'bg-purple-500/10 border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white'
@@ -676,7 +683,7 @@ function ExploreCard({
 
             <button 
               onClick={(e) => { e.stopPropagation(); setShowGeekMode(!showGeekMode); }}
-              className={`flex-1 sm:flex-none h-9 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none h-9 min-h-[36px] shrink-0 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 showGeekMode 
                   ? 'bg-levl-purple text-white border-levl-purple shadow-md' 
                   : 'bg-levl-purple/10 border-levl-purple/30 text-purple-300 hover:bg-levl-purple hover:text-white'

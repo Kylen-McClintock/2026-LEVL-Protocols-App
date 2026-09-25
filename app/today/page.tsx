@@ -34,7 +34,7 @@ import {
 import { 
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
-  Columns, Rows, ChevronsUpDown, Moon, ArrowRight, ExternalLink, Search, Scale, Shield, ShieldAlert, ShieldCheck,
+  Columns, Rows, ChevronsUpDown, Moon, Sun, ArrowRight, ExternalLink, Search, Scale, Shield, ShieldAlert, ShieldCheck,
   Flame, SkipForward
 } from 'lucide-react'
 
@@ -59,6 +59,7 @@ import { ThreeDaySplitView } from '@/components/views/ThreeDaySplitView'
 import { SevenDayWeekView } from '@/components/views/SevenDayWeekView'
 import { MonthMatrixView } from '@/components/views/MonthMatrixView'
 import DailyVerticalPulseView from '@/components/calendar/DailyVerticalPulseView'
+import { useTheme } from '@/lib/utils/useTheme'
 import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolOverviewHeaderCard from '@/components/cards/ProtocolOverviewHeaderCard'
 import AdHocLoggerModal from '@/components/modals/AdHocLoggerModal'
@@ -78,7 +79,8 @@ import { getMacroCategory } from '@/lib/utils/categories'
 import { getOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { getModalityMacroType } from '@/lib/utils/modalityColors'
 import { getCircadianConfig, getAdaptiveCircadianConfig, isCurrentCircadianSlot, isCircadianSlotPast, buildDynamicCircadianGradientCSS, CHRONOLOGICAL_CIRCADIAN_SLOTS, isLateNightCarryoverWindow } from '@/lib/utils/circadianConfig'
-import { resolveOptimalTimingSlot, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
+import { supabase } from '@/lib/supabase/client'
+import { resolveOptimalTimingSlot, resolveSlotFromTimingString, parseMultiDoseTimingSlots, MultiDoseSlot } from '@/lib/data/resolveOptimalTiming'
 import { 
   canonicalizeTimingSlot, 
   getTimeBlockOrder, 
@@ -93,6 +95,7 @@ import { Outcome8020SpotlightCard } from '@/components/outcomes/Outcome8020Spotl
 import NewUserWelcomeHub from '@/components/onboarding/NewUserWelcomeHub'
 import SampleDayPreviewTimeline from '@/components/today/SampleDayPreviewTimeline'
 import { OutcomeOptimizationState, AntagonisticClash } from '@/lib/outcomes/outcomeOptimizationEngine'
+import { BlocksViewContainer, getStoredDisplayMode } from '@/components/blocks'
 
 export function normalizeChronologicalTimeBlock(slot: string): string {
   return canonicalizeTimingSlot(slot)
@@ -229,6 +232,8 @@ function TodayPageContent() {
   const nameParam = searchParams.get('name')
 
   const { user: authUser, localUserId: authUserId, loading: authLoading } = useAuth()
+  const { theme, toggleTheme } = useTheme()
+  const isLight = theme === 'light'
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
@@ -544,6 +549,19 @@ function TodayPageContent() {
 
   const [completedSortBy, setCompletedSortBy] = useState<'chronological' | 'completed_time'>('chronological')
   const [completedSortOrder, setCompletedSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  // Interface Visual Display Mode: 'classic' | 'blocks'
+  const [displayMode, setDisplayMode] = useState<'classic' | 'blocks'>(() => getStoredDisplayMode())
+
+  useEffect(() => {
+    const handleDisplayModeChange = (e: any) => {
+      if (e.detail?.mode && (e.detail.mode === 'classic' || e.detail.mode === 'blocks')) {
+        setDisplayMode(e.detail.mode)
+      }
+    }
+    window.addEventListener('levl_display_mode_change', handleDisplayModeChange)
+    return () => window.removeEventListener('levl_display_mode_change', handleDisplayModeChange)
+  }, [])
 
   const [isCompletedSectionExpanded, setIsCompletedSectionExpanded] = useState<boolean>(false)
   const [isUncompletedSectionExpanded, setIsUncompletedSectionExpanded] = useState<boolean>(false)
@@ -893,6 +911,7 @@ function TodayPageContent() {
 
   // Scroll-Driven Circadian Spine & Icon Ignition Engine
   const timelineContainerRef = useRef<HTMLDivElement | null>(null)
+  const previousSectionRef = useRef<HTMLDivElement | null>(null)
   const groupHeaderRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const beaconRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const [spineHeight, setSpineHeight] = useState<number>(0)
@@ -1825,6 +1844,151 @@ function TodayPageContent() {
     })()
   }
 
+  const handleMoveTaskToSlot = async (taskId: string, targetSlotKey: string, targetTaskId?: string) => {
+    const localUserId = authUserId || profile?.local_user_id || getLocalUserId()
+    const baseId = taskId.includes('-split-') ? taskId.split('-split-')[0] : taskId
+    const task = tasks.find(t => 
+      t.id === taskId || 
+      t.id === baseId || 
+      t.id.startsWith(baseId + '-split-') ||
+      (t.modality_id && (t.modality_id === taskId || t.modality_id === baseId)) ||
+      (t.protocol_step?.modality_id && (t.protocol_step.modality_id === taskId || t.protocol_step.modality_id === baseId)) ||
+      (t.protocol_step?.modality?.id && (t.protocol_step.modality.id === taskId || t.protocol_step.modality.id === baseId)) ||
+      (t.protocol_step?.modality?.slug && (t.protocol_step.modality.slug === taskId || t.protocol_step.modality.slug === baseId)) ||
+      (t.loose_modality?.id && (t.loose_modality.id === taskId || t.loose_modality.id === baseId)) ||
+      (t.execution_details?.modality_name && t.execution_details.modality_name.toLowerCase() === taskId.toLowerCase())
+    )
+    if (!task) return
+
+    const cleanSlotName = targetSlotKey
+      .split('_')
+      .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
+    const modalityId = 
+      task.protocol_step?.modality_id || 
+      task.protocol_step?.modality?.id || 
+      task.modality_id || 
+      task.loose_modality?.id
+
+    // 1. Optimistic UI update across today's state
+    setTasks(prev => {
+      const updated = prev.map(t => {
+        const matchId = 
+          t.id === taskId || 
+          t.id === baseId || 
+          t.id.startsWith(baseId + '-split-') ||
+          (modalityId && (
+            t.modality_id === modalityId || 
+            t.protocol_step?.modality_id === modalityId ||
+            t.protocol_step?.modality?.id === modalityId ||
+            t.loose_modality?.id === modalityId
+          ))
+        if (matchId) {
+          return {
+            ...t,
+            timing_slot: targetSlotKey,
+            protocol_step: t.protocol_step ? {
+              ...t.protocol_step,
+              timing_slot: targetSlotKey
+            } : undefined,
+            execution_details: {
+              ...(t.execution_details || {}),
+              custom_timing: cleanSlotName
+            }
+          }
+        }
+        return t
+      })
+
+      // If reordering relative to a target task, move item in array
+      if (targetTaskId && targetTaskId !== taskId) {
+        const movedIdx = updated.findIndex(t => t.id === taskId || t.id.startsWith(taskId + '-split-'))
+        if (movedIdx !== -1) {
+          const [movedItem] = updated.splice(movedIdx, 1)
+          const targetIdx = updated.findIndex(t => 
+            t.id === targetTaskId || 
+            t.modality_id === targetTaskId || 
+            t.protocol_step?.modality_id === targetTaskId
+          )
+          if (targetIdx !== -1) {
+            updated.splice(targetIdx, 0, movedItem)
+          } else {
+            updated.push(movedItem)
+          }
+        }
+      }
+
+      return updated
+    })
+
+    // 2. Optimistic update of user bench items for future-day hydration
+    if (modalityId) {
+      setBenchItems(prev => prev.map(b => {
+        if (b.modality_id === modalityId) {
+          return {
+            ...b,
+            custom_timing: cleanSlotName
+          }
+        }
+        return b
+      }))
+    }
+
+    triggerHaptic('selection')
+
+    // 3. Background database persistence
+    ;(async () => {
+      try {
+        await updateDailyTaskStatus(
+          baseId,
+          task.status || 'pending',
+          `Moved to ${cleanSlotName}`,
+          undefined,
+          task.completed_at,
+          task.execution_metrics,
+          {
+            ...(task.execution_details || {}),
+            custom_timing: cleanSlotName
+          },
+          targetSlotKey
+        )
+
+        if (modalityId && localUserId) {
+          // Save bench item override for future-day sync
+          await upsertBenchItemOverride(
+            localUserId,
+            modalityId,
+            task.execution_details?.custom_dose || '',
+            cleanSlotName,
+            task.execution_details?.notes
+          )
+
+          // Update any scheduled future tasks in Supabase for this modality
+          try {
+            if (supabase) {
+              await supabase
+                .from('daily_protocol_tasks')
+                .update({
+                  timing_slot: targetSlotKey,
+                  execution_details: {
+                    ...(task.execution_details || {}),
+                    custom_timing: cleanSlotName
+                  }
+                })
+                .eq('local_user_id', localUserId)
+                .eq('modality_id', modalityId)
+                .gte('task_date', dateStr)
+            }
+          } catch {
+            // Ignore future-day bulk update error
+          }
+        }
+      } catch (err) {
+        console.error('Failed to persist task move to slot:', err)
+      }
+    })()
+  }
+
   const handleMoveToBench = async (taskOrModalityId: DailyProtocolTask | string) => {
     if (!profile) return
     const localUserId = profile.local_user_id
@@ -1972,10 +2136,10 @@ function TodayPageContent() {
       const benchItem = mId ? benchItems.find(b => b.modality_id === mId) : null
       
       const effectiveTiming = 
+        task.timing_slot ||
         task.execution_details?.custom_timing || 
         task.custom_timing || 
         benchItem?.custom_timing || 
-        task.timing_slot ||
         modality?.default_timing_slot ||
         modality?.timing_summary || 
         modality?.frequency || 
@@ -2053,9 +2217,7 @@ function TodayPageContent() {
         const protoKey = `${pId}_${modalityKey}_split_${splitNumber}`
         const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
         const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id && b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
-        const resolvedSlot = isSplitTask && task.timing_slot && task.timing_slot !== 'anytime'
-          ? task.timing_slot
-          : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
+        const resolvedSlot = task.timing_slot || (customTimingStr ? resolveSlotFromTimingString(customTimingStr) : '') || resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
         
         if (!protoMap.has(protoKey)) {
           protoMap.set(protoKey, {
@@ -2064,6 +2226,9 @@ function TodayPageContent() {
           })
         } else {
           const existing = protoMap.get(protoKey)!
+          if (task.timing_slot && task.timing_slot !== existing.timing_slot) {
+            existing.timing_slot = task.timing_slot
+          }
           if (task.status === 'completed' && existing.status !== 'completed') {
             existing.status = 'completed'
             existing.completed_at = task.completed_at
@@ -2088,9 +2253,7 @@ function TodayPageContent() {
       const dedupeKey = splitNumber > 0 ? `${baseKey}-split-${splitNumber}` : baseKey
       const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
       const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id && b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
-      const resolvedSlot = isSplitTask && task.timing_slot && task.timing_slot !== 'anytime'
-        ? task.timing_slot
-        : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
+      const resolvedSlot = task.timing_slot || (customTimingStr ? resolveSlotFromTimingString(customTimingStr) : '') || resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
 
       if (!map.has(dedupeKey)) {
         const initialLineages: Array<{ protocol_id?: string; protocol_name: string; color_hex?: string; protocol_type?: string }> = []
@@ -2141,6 +2304,10 @@ function TodayPageContent() {
             existing.lineages!.push(l)
           }
         })
+
+        if (task.timing_slot && task.timing_slot !== existing.timing_slot) {
+          existing.timing_slot = task.timing_slot
+        }
 
         if (task.status === 'completed' && existing.status !== 'completed') {
           existing.status = 'completed'
@@ -2751,9 +2918,15 @@ function TodayPageContent() {
 
   // Fallback static gradient stops
   const fallbackCircadianGradientCSS = useMemo(() => {
+    if (viewMode === 'chronological') {
+      const keys = activeTimelineGroups.length > 0 
+        ? activeTimelineGroups.map(([g]) => g) 
+        : activeGroups.map(([g]) => g)
+      return buildDynamicCircadianGradientCSS(keys)
+    }
     const groupKeys = activeGroups.map(([groupName]) => groupName)
     return buildDynamicCircadianGradientCSS(groupKeys)
-  }, [activeGroups])
+  }, [viewMode, activeTimelineGroups, activeGroups])
 
   const [measuredCircadianGradientCSS, setMeasuredCircadianGradientCSS] = useState<string>('')
 
@@ -2762,123 +2935,144 @@ function TodayPageContent() {
     if (!timelineContainerRef.current) return
     const container = timelineContainerRef.current
     const totalHeight = container.offsetHeight
-    if (totalHeight <= 0 || activeGroups.length === 0) return
+    if (totalHeight <= 0) return
 
     const colorStops: { color: string; pct: number }[] = []
 
     const isBlueFamily = (hex: string) => ['#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#2563eb', '#3b82f6', '#5b9bd5'].includes(hex.toLowerCase())
-    const isOrangeFamily = (hex: string) => ['#f97316', '#ea580c', '#f87e38', '#f88a20', '#f7c275', '#f59e0b', '#d97706', '#fbbf24'].includes(hex.toLowerCase())
-    const isDarkBlueFamily = (hex: string) => ['#1d4ed8', '#1e40af', '#2563eb', '#1e3a8a', '#172554', '#0b132b', '#231a45', '#1b1536'].includes(hex.toLowerCase())
+    const isSunsetFamily = (hex: string) => ['#f87e38', '#df5558', '#f97316', '#ea580c'].includes(hex.toLowerCase())
 
-    activeGroups.forEach(([groupName], i) => {
-      const el = groupHeaderRefs.current[groupName]
-      const cfg = getCircadianConfig(groupName)
-      const primary = cfg.skyColorHex
+    if (viewMode === 'chronological') {
+      let prevBottomPct = 0
 
-      let topPct = 0
-      let bottomPct = 100
+      // 1. "Previous" summary section at the top of the chronological timeline
+      if (pastGroups.length > 0) {
+        const prevEl = previousSectionRef.current
+        const prevHeight = prevEl ? prevEl.offsetHeight : 54
+        prevBottomPct = Math.max(1.5, Math.min(25, (prevHeight / totalHeight) * 100))
 
-      if (el) {
-        const topPx = el.offsetTop
-        const heightPx = el.offsetHeight
-        topPct = Math.max(0, Math.min(100, (topPx / totalHeight) * 100))
-        bottomPct = Math.max(0, Math.min(100, ((topPx + heightPx) / totalHeight) * 100))
-      } else {
-        topPct = (i / activeGroups.length) * 100
-        bottomPct = ((i + 1) / activeGroups.length) * 100
-      }
+        const firstPastCfg = getCircadianConfig(pastGroups[0][0])
+        colorStops.push({ color: firstPastCfg.startColorHex || firstPastCfg.skyColorHex, pct: 0 })
 
-      const nextGroupName = i < activeGroups.length - 1 ? activeGroups[i + 1][0] : null
-      const nextCfg = nextGroupName ? getCircadianConfig(nextGroupName) : null
-      const nextPrimary = nextCfg ? nextCfg.skyColorHex : null
-
-      const isTransitioningToSunset = nextPrimary && (
-        (isBlueFamily(primary) && isOrangeFamily(nextPrimary)) ||
-        (isBlueFamily(primary) && (nextGroupName === 'pre_meal' || nextGroupName === 'post_meal' || nextGroupName === 'evening' || nextGroupName === 'late_afternoon'))
-      )
-
-      if (i === 0) {
-        const firstIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
-        if (firstIdx > 2) {
-          colorStops.push({ color: '#D97706', pct: 0 })
-          colorStops.push({ color: '#F59E0B', pct: Math.min(Number((bottomPct * 0.25).toFixed(1)), 4) })
-          colorStops.push({ color: '#38BDF8', pct: Math.min(Number((bottomPct * 0.5).toFixed(1)), 8) })
-        } else if (['waking', 'morning_routine', 'morning', 'morning_supplement_stack', 'first_meal'].includes(cfg.key)) {
-          colorStops.push({ color: '#D97706', pct: 0 })
-          colorStops.push({ color: '#F59E0B', pct: Math.min(Number((bottomPct * 0.35).toFixed(1)), 8) })
-          colorStops.push({ color: '#FBBF24', pct: Math.min(Number((bottomPct * 0.7).toFixed(1)), 16) })
-        } else {
-          const startCol = cfg.startColorHex || primary
-          colorStops.push({ color: startCol, pct: 0 })
-        }
-        colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
-      } else if (cfg.key === 'pre_meal' || cfg.key === 'post_meal') {
-        colorStops.push({ color: '#F87E38', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: '#F87E38', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
-      } else if (cfg.key === 'evening') {
-        colorStops.push({ color: '#DF5558', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: '#DF5558', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
-      } else if (cfg.key === 'evening_supplement_stack') {
-        colorStops.push({ color: '#A52D6A', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: '#A52D6A', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
-      } else if (cfg.key === 'wind_down') {
-        colorStops.push({ color: '#50236B', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: '#50236B', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
-      } else if (cfg.key === 'pre_bed') {
-        colorStops.push({ color: '#231A45', pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: '#231A45', pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
-      } else if (i === activeGroups.length - 1) {
-        colorStops.push({ color: cfg.startColorHex || primary, pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        const lastIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
-        if (lastIdx !== -1 && lastIdx < CHRONOLOGICAL_CIRCADIAN_SLOTS.length - 2) {
-          const remainingKeys = CHRONOLOGICAL_CIRCADIAN_SLOTS.slice(lastIdx + 1)
-          const remCount = remainingKeys.length
-          remainingKeys.forEach((remKey, rIdx) => {
-            const remCfg = getCircadianConfig(remKey)
-            const pct = bottomPct + ((rIdx + 1) / (remCount + 1)) * (100 - bottomPct)
-            colorStops.push({ color: remCfg.skyColorHex, pct: Number(pct.toFixed(1)) })
+        if (pastGroups.length > 1) {
+          pastGroups.forEach(([pName], pIdx) => {
+            const pCfg = getCircadianConfig(pName)
+            const pPct = (pIdx / Math.max(1, pastGroups.length - 1)) * (prevBottomPct - 1.0)
+            colorStops.push({ color: pCfg.skyColorHex, pct: Number(pPct.toFixed(1)) })
           })
-          colorStops.push({ color: '#0B132B', pct: 100 })
         } else {
-          colorStops.push({ color: primary, pct: Number(((topPct + 100) / 2).toFixed(1)) })
-          colorStops.push({ color: cfg.endColorHex || '#0B132B', pct: 100 })
+          colorStops.push({ color: firstPastCfg.skyColorHex, pct: Number((prevBottomPct - 1.0).toFixed(1)) })
         }
-      } else {
-        colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 1.0).toFixed(1))) })
-        colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 1.0).toFixed(1))) })
-      }
 
-      // Atmospheric golden sunset bridge between daytime blue and sunset orange/coral
-      if (nextPrimary && isBlueFamily(primary) && (isOrangeFamily(nextPrimary) || nextGroupName === 'pre_meal' || nextGroupName === 'post_meal' || nextGroupName === 'evening')) {
-        colorStops.push({ color: '#F59E0B', pct: Number(bottomPct.toFixed(1)) })
-      } else if (nextCfg) {
-        // Gap-bridging for skipped intermediate time blocks
-        const currIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(cfg.key)
-        const nextIdx = CHRONOLOGICAL_CIRCADIAN_SLOTS.indexOf(nextCfg.key)
-
-        if (currIdx !== -1 && nextIdx !== -1 && nextIdx > currIdx + 1) {
-          const skippedKeys = CHRONOLOGICAL_CIRCADIAN_SLOTS.slice(currIdx + 1, nextIdx)
-          const distinctSkippedColors: string[] = []
-          skippedKeys.forEach(k => {
-            const col = getCircadianConfig(k).skyColorHex
-            if (!distinctSkippedColors.includes(col) && col.toLowerCase() !== primary.toLowerCase() && col.toLowerCase() !== nextCfg.skyColorHex.toLowerCase()) {
-              distinctSkippedColors.push(col)
-            }
-          })
-
-          if (distinctSkippedColors.length > 0) {
-            const seamCenter = bottomPct
-            const windowStart = Math.max(topPct + 1, seamCenter - 3.0)
-            const windowEnd = seamCenter // Never bleed into next block
-            const count = distinctSkippedColors.length
-            distinctSkippedColors.forEach((color, sIdx) => {
-              const pct = windowStart + ((sIdx + 1) / (count + 1)) * (windowEnd - windowStart)
-              colorStops.push({ color, pct: Number(pct.toFixed(1)) })
-            })
+        // Bridge from Previous section into the first active block
+        const firstActive = activeTimelineGroups[0] ? getCircadianConfig(activeTimelineGroups[0][0]) : null
+        if (firstActive) {
+          const lastPast = getCircadianConfig(pastGroups[pastGroups.length - 1][0])
+          if (isBlueFamily(lastPast.skyColorHex) && (isSunsetFamily(firstActive.skyColorHex) || firstActive.key === 'pre_meal' || firstActive.key === 'post_meal' || firstActive.key === 'evening')) {
+            colorStops.push({ color: '#F59E0B', pct: Number(prevBottomPct.toFixed(1)) })
+          } else {
+            colorStops.push({ color: firstActive.startColorHex || firstActive.skyColorHex, pct: Number(prevBottomPct.toFixed(1)) })
           }
         }
       }
-    })
+
+      // 2. Active and Upcoming chronological time blocks
+      if (activeTimelineGroups.length === 0) {
+        if (colorStops.length === 0) {
+          colorStops.push({ color: '#10B981', pct: 0 })
+          colorStops.push({ color: '#059669', pct: 100 })
+        } else {
+          colorStops.push({ color: '#0B132B', pct: 100 })
+        }
+      } else {
+        activeTimelineGroups.forEach(([groupName], i) => {
+          const el = groupHeaderRefs.current[groupName]
+          const cfg = getCircadianConfig(groupName)
+          const primary = cfg.skyColorHex
+
+          let topPct = 0
+          let bottomPct = 100
+
+          if (el) {
+            const topPx = el.offsetTop
+            const heightPx = el.offsetHeight
+            topPct = Math.max(0, Math.min(100, (topPx / totalHeight) * 100))
+            bottomPct = Math.max(0, Math.min(100, ((topPx + heightPx) / totalHeight) * 100))
+          } else {
+            const baseTop = pastGroups.length > 0 ? prevBottomPct : 0
+            const available = 100 - baseTop
+            topPct = baseTop + (i / activeTimelineGroups.length) * available
+            bottomPct = baseTop + ((i + 1) / activeTimelineGroups.length) * available
+          }
+
+          const nextGroupName = i < activeTimelineGroups.length - 1 ? activeTimelineGroups[i + 1][0] : null
+          const nextCfg = nextGroupName ? getCircadianConfig(nextGroupName) : null
+          const nextPrimary = nextCfg ? nextCfg.skyColorHex : null
+
+          // Ensure the block's start is painted
+          if (i === 0 && pastGroups.length === 0) {
+            colorStops.push({ color: cfg.startColorHex || primary, pct: 0 })
+          }
+
+          // Solid hold across the measured block body
+          colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+          colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+
+          // Seamless chromatic seam transitions between blocks
+          if (nextPrimary) {
+            if (isBlueFamily(primary) && (isSunsetFamily(nextPrimary) || nextGroupName === 'pre_meal' || nextGroupName === 'post_meal' || nextGroupName === 'evening')) {
+              colorStops.push({ color: '#F59E0B', pct: Number(bottomPct.toFixed(1)) })
+            } else if (cfg.key === 'evening' && (nextGroupName === 'evening_supplement_stack' || nextGroupName === 'wind_down')) {
+              colorStops.push({ color: '#A52D6A', pct: Number(bottomPct.toFixed(1)) })
+            } else if (cfg.key === 'wind_down' && nextGroupName === 'pre_bed') {
+              colorStops.push({ color: '#312154', pct: Number(bottomPct.toFixed(1)) })
+            } else if (nextCfg?.startColorHex && nextCfg.startColorHex !== primary) {
+              colorStops.push({ color: nextCfg.startColorHex, pct: Number(bottomPct.toFixed(1)) })
+            }
+          }
+
+          // Tail transition for the final active block of the day
+          if (i === activeTimelineGroups.length - 1) {
+            if (bottomPct < 98) {
+              const midTailPct = (bottomPct + 100) / 2
+              colorStops.push({ color: cfg.endColorHex || '#231A45', pct: Number(midTailPct.toFixed(1)) })
+              colorStops.push({ color: '#0B132B', pct: 100 })
+            } else {
+              colorStops.push({ color: cfg.endColorHex || '#0B132B', pct: 100 })
+            }
+          }
+        })
+      }
+    } else {
+      // Protocol Mode
+      if (sortedProtocolGroups.length === 0) return
+
+      sortedProtocolGroups.forEach(([groupName, groupTasks], i) => {
+        const el = groupHeaderRefs.current[groupName]
+        const theme = getProtocolVisualTheme(groupName, groupTasks)
+        const primary = theme.primaryColorHex || '#8B5CF6'
+
+        let topPct = (i / sortedProtocolGroups.length) * 100
+        let bottomPct = ((i + 1) / sortedProtocolGroups.length) * 100
+
+        if (el) {
+          const topPx = el.offsetTop
+          const heightPx = el.offsetHeight
+          topPct = Math.max(0, Math.min(100, (topPx / totalHeight) * 100))
+          bottomPct = Math.max(0, Math.min(100, ((topPx + heightPx) / totalHeight) * 100))
+        }
+
+        if (i === 0) {
+          colorStops.push({ color: primary, pct: 0 })
+        }
+        colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
+        colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
+
+        if (i === sortedProtocolGroups.length - 1) {
+          colorStops.push({ color: primary, pct: 100 })
+        }
+      })
+    }
 
     colorStops.sort((a, b) => a.pct - b.pct)
     const uniqueStops: { color: string; pct: number }[] = []
@@ -2896,13 +3090,23 @@ function TodayPageContent() {
       const css = `linear-gradient(to bottom, ${uniqueStops.map((s) => `${s.color} ${s.pct}%`).join(', ')})`
       setMeasuredCircadianGradientCSS(css)
     }
-  }, [activeGroups])
+  }, [viewMode, pastGroups, activeTimelineGroups, sortedProtocolGroups])
 
   useEffect(() => {
     recalculateSpineGradient()
     const timer = setTimeout(recalculateSpineGradient, 100)
     return () => clearTimeout(timer)
-  }, [activeGroups, tasks.length, viewMode, calendarViewMode, recalculateSpineGradient])
+  }, [
+    activeGroups, 
+    activeTimelineGroups, 
+    pastGroups.length, 
+    isAllPastExpanded, 
+    expandedPastBlocks, 
+    tasks.length, 
+    viewMode, 
+    calendarViewMode, 
+    recalculateSpineGradient
+  ])
 
   useEffect(() => {
     if (!timelineContainerRef.current || typeof ResizeObserver === 'undefined') return
@@ -2924,18 +3128,38 @@ function TodayPageContent() {
 
   // Get active tip color for the leading photon spark
   const latestIgnitedSkyColor = useMemo(() => {
-    if (ignitedGroupKeys.size === 0) {
-      if (activeGroups.length > 0) return getCircadianConfig(activeGroups[0][0]).skyColorHex
-      return '#F59E0B'
-    }
-    for (let i = activeGroups.length - 1; i >= 0; i--) {
-      const gName = activeGroups[i][0]
-      if (ignitedGroupKeys.has(gName)) {
-        return getCircadianConfig(gName).skyColorHex
+    if (viewMode === 'chronological') {
+      const groupsToCheck = activeTimelineGroups.length > 0 ? activeTimelineGroups : activeGroups
+      if (ignitedGroupKeys.size === 0) {
+        if (groupsToCheck.length > 0) return getCircadianConfig(groupsToCheck[0][0]).skyColorHex
+        return '#F59E0B'
       }
+      for (let i = groupsToCheck.length - 1; i >= 0; i--) {
+        const gName = groupsToCheck[i][0]
+        if (ignitedGroupKeys.has(gName)) {
+          return getCircadianConfig(gName).skyColorHex
+        }
+      }
+      if (groupsToCheck.length > 0) return getCircadianConfig(groupsToCheck[0][0]).skyColorHex
+      return '#F59E0B'
+    } else {
+      if (ignitedGroupKeys.size === 0) {
+        if (sortedProtocolGroups.length > 0) {
+          const theme = getProtocolVisualTheme(sortedProtocolGroups[0][0], sortedProtocolGroups[0][1])
+          return theme.primaryColorHex || '#8B5CF6'
+        }
+        return '#8B5CF6'
+      }
+      for (let i = sortedProtocolGroups.length - 1; i >= 0; i--) {
+        const gName = sortedProtocolGroups[i][0]
+        if (ignitedGroupKeys.has(gName)) {
+          const theme = getProtocolVisualTheme(gName, sortedProtocolGroups[i][1])
+          return theme.primaryColorHex || '#8B5CF6'
+        }
+      }
+      return '#8B5CF6'
     }
-    return '#F59E0B'
-  }, [ignitedGroupKeys, activeGroups])
+  }, [viewMode, ignitedGroupKeys, activeTimelineGroups, activeGroups, sortedProtocolGroups])
 
   const totalWeight = dedupedTasks.reduce((acc, t) => {
     const opt = t.protocol_step?.optionality || 'required'
@@ -3421,6 +3645,7 @@ function TodayPageContent() {
             return (
               <div 
                 key={groupName} 
+                ref={(el) => { groupHeaderRefs.current[groupName] = el }}
                 id={`protocol-group-${protoSlug}`}
                 data-protocol-id={protoId}
                 data-protocol-name={groupName.toLowerCase()}
@@ -3454,6 +3679,7 @@ function TodayPageContent() {
           return (
             <div 
               key={groupName} 
+              ref={(el) => { groupHeaderRefs.current[groupName] = el }}
               id={`protocol-group-${protoSlug}`}
               data-protocol-id={protoId}
               data-protocol-name={groupName.toLowerCase()}
@@ -3574,7 +3800,11 @@ function TodayPageContent() {
 
         // Standalone & Individual Modalities in Protocol Mode
         return (
-          <div key={groupName} className="p-4 rounded-3xl bg-slate-950/70 border border-white/10 space-y-3 mb-6">
+          <div 
+            key={groupName} 
+            ref={(el) => { groupHeaderRefs.current[groupName] = el }}
+            className="p-4 rounded-3xl bg-slate-950/70 border border-white/10 space-y-3 mb-6"
+          >
             <div className="flex items-center justify-between pb-1 border-b border-white/10">
               <span className="text-xs font-bold uppercase text-slate-300">
                 {groupName}
@@ -3596,7 +3826,10 @@ function TodayPageContent() {
       <>
         {/* Unified "Previous" Section (One header, strictly 2-row items, NO preview trays) */}
         {pastGroups.length > 0 && (
-          <div className="mb-4 sm:mb-6 rounded-2xl border border-purple-500/25 bg-slate-900/60 overflow-hidden backdrop-blur-md shadow-lg">
+          <div 
+            ref={previousSectionRef}
+            className="mb-4 sm:mb-6 rounded-2xl border border-purple-500/25 bg-slate-900/60 overflow-hidden backdrop-blur-md shadow-lg"
+          >
             {/* "Previous" Header */}
             <button
               type="button"
@@ -4142,7 +4375,11 @@ function TodayPageContent() {
       {/* Main Container */}
       <div 
         className={`mx-auto px-3 sm:px-6 pt-4 sm:pt-6 transition-all duration-300 ${
-          calendarViewMode === 'today' ? 'max-w-4xl' : 'max-w-7xl'
+          calendarViewMode === 'today'
+            ? displayMode === 'blocks'
+              ? 'max-w-4xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1500px]'
+              : 'max-w-4xl'
+            : 'max-w-7xl'
         }`}
       >
         
@@ -4194,7 +4431,11 @@ function TodayPageContent() {
           <button 
             type="button"
             onClick={handlePreviousBatch}
-            className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-800 transition-all shadow-sm cursor-pointer active:scale-95 shrink-0"
+            className={`p-2 rounded-xl border transition-all shadow-sm cursor-pointer active:scale-95 shrink-0 ${
+              isLight
+                ? 'bg-white/90 hover:bg-white text-slate-700 hover:text-slate-900 border-slate-200 shadow-sm'
+                : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-800'
+            }`}
             aria-label={prevButtonTooltip}
             title={prevButtonTooltip}
           >
@@ -4206,13 +4447,17 @@ function TodayPageContent() {
               <button 
                 type="button"
                 onClick={() => navigateToDate(new Date())}
-                className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900/80 border border-emerald-800/80 text-emerald-300 hover:text-emerald-200 font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer active:scale-95"
+                className={`px-3 py-1.5 font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer active:scale-95 border ${
+                  isLight
+                    ? 'bg-emerald-100 hover:bg-emerald-200 border-emerald-300 text-emerald-800'
+                    : 'bg-emerald-950/80 hover:bg-emerald-900/80 border-emerald-800/80 text-emerald-300 hover:text-emerald-200'
+                }`}
               >
                 {jumpButtonLabel}
               </button>
             )}
 
-            <span className={`text-sm sm:text-base font-extrabold text-white tracking-tight transition-opacity duration-150 ${isDateSwitching ? 'opacity-60' : 'opacity-100'}`}>
+            <span className={`text-sm sm:text-base font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} tracking-tight transition-opacity duration-150 ${isDateSwitching ? 'opacity-60' : 'opacity-100'}`}>
               {navBarTitle}
             </span>
 
@@ -4241,16 +4486,50 @@ function TodayPageContent() {
                   triggerHaptic('selection')
                   toggleFocusMode()
                 }}
-                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 border ${
                   isFocusMode
-                    ? 'bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-300'
+                    ? isLight
+                      ? 'bg-emerald-100 hover:bg-emerald-200 border-emerald-300 text-emerald-800'
+                      : 'bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-500/40 text-emerald-300'
+                    : isLight
+                    ? 'bg-white/90 hover:bg-white border-slate-200 text-slate-700 hover:text-slate-900'
                     : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
                 }`}
                 title={isFocusMode ? "Focus Mode ON (Super Simple View) — Click to show all tools & completed tasks" : "Focus Mode OFF — Click to collapse tools and focus on pending modalities"}
                 aria-label="Toggle Focus Mode"
               >
-                <Zap size={13} className={isFocusMode ? "fill-emerald-400 text-emerald-400 animate-pulse" : "text-slate-400"} />
+                <Zap size={13} className={isFocusMode ? "fill-emerald-400 text-emerald-400 animate-pulse" : isLight ? "text-slate-500" : "text-slate-400"} />
                 <span>Focus</span>
+              </button>
+            )}
+
+            {/* Dark / Light Theme Toggle (In Classic Mode, Not Focus Mode) */}
+            {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  toggleTheme()
+                }}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 border ${
+                  isLight
+                    ? 'bg-amber-50 hover:bg-amber-100/80 border-amber-200 text-amber-900 shadow-xs'
+                    : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
+                }`}
+                title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
+                aria-label="Toggle Dark / Light Mode"
+              >
+                {isLight ? (
+                  <>
+                    <Sun size={13} className="text-amber-500 fill-amber-400/30" />
+                    <span>Light</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon size={13} className="text-purple-300 fill-purple-400/20" />
+                    <span>Dark</span>
+                  </>
+                )}
               </button>
             )}
 
@@ -4301,7 +4580,11 @@ function TodayPageContent() {
           <button 
             type="button"
             onClick={handleNextBatch}
-            className="p-2 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-800 transition-all shadow-sm cursor-pointer active:scale-95 shrink-0"
+            className={`p-2 rounded-xl border transition-all shadow-sm cursor-pointer active:scale-95 shrink-0 ${
+              isLight
+                ? 'bg-white/90 hover:bg-white text-slate-700 hover:text-slate-900 border-slate-200 shadow-sm'
+                : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-800'
+            }`}
             aria-label={nextButtonTooltip}
             title={nextButtonTooltip}
           >
@@ -4347,8 +4630,42 @@ function TodayPageContent() {
           </div>
         )}
 
+        {/* BLOCKS MODE RENDERING */}
+        {calendarViewMode === 'today' && displayMode === 'blocks' && (
+          <div className="mb-8">
+            <BlocksViewContainer
+              tasks={dedupedTasks.map(task => {
+                const resolvedMod = resolveTaskModality(task)
+                return {
+                  ...task,
+                  loose_modality: task.loose_modality || resolvedMod
+                }
+              })}
+              benchItems={benchItems}
+              userProfile={profile}
+              allOutcomes={allOutcomes}
+              allModalities={allModalities}
+              wellbeingCheckin={wellbeingCheckin}
+              date={dateStr}
+              localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
+              onStatusChange={handleStatusChange}
+              onOpenRescheduleModal={handleOpenRescheduleModal}
+              onMoveToBench={async (modalityId) => {
+                await handleMoveToBench(modalityId)
+              }}
+              onSaveCustomOutcomes={handleSaveCustomOutcomes}
+              onAddActivity={(slotKey) => {
+                setAsNeededSlot(slotKey)
+                setAsNeededModalityId(undefined)
+                setIsAdHocModalOpen(true)
+              }}
+              onMoveTaskToSlot={handleMoveTaskToSlot}
+            />
+          </div>
+        )}
+
         {/* 3-Wide Daily Quick-Log Hotkeys Bar */}
-        {calendarViewMode === 'today' && !isFocusMode && (
+        {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && (
           <QuickHotkeyGrid
             date={dateStr}
             localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
@@ -4357,7 +4674,7 @@ function TodayPageContent() {
         )}
 
         {/* As Needed Quick-Tap Strip (Single Row, Horizontal Scroll) */}
-        {calendarViewMode === 'today' && !isFocusMode && (
+        {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && (
           <div className="mb-4 -mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-none py-1 px-1">
             <div className="flex items-center gap-1.5 shrink-0 text-amber-400 font-extrabold text-[11px] uppercase tracking-wider pl-0.5">
               <Zap size={13} className="text-amber-400" />
@@ -4413,7 +4730,7 @@ function TodayPageContent() {
         )}
 
         {/* Infradian & Menstrual Cycle Adaptive Protocol Banner (When enabled for Female < 52) */}
-        {calendarViewMode === 'today' && !isFocusMode && infradianStatus && infradianStatus.enabled && (
+        {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && infradianStatus && infradianStatus.enabled && (
           <div className="mb-6">
             <InfradianAdaptiveBanner
               status={infradianStatus}
@@ -4587,7 +4904,7 @@ function TodayPageContent() {
         )}
 
         {/* Primary Timeline & Today Section */}
-        {calendarViewMode === 'today' && (
+        {calendarViewMode === 'today' && displayMode !== 'blocks' && (
           <>
             {/* Late-Night Window Notification Banner */}
             {isViewingYesterdayLateNight && (
@@ -5351,22 +5668,25 @@ function TodayPageContent() {
                     ref={timelineContainerRef}
                     className="relative space-y-8"
                   >
-                    {/* Background Dim Ambient Ghost Track (20% Ambient Circadian Glow) */}
+                    {/* Background Ambient Ghost Track (Shows full circadian spectrum preview across entire day) */}
                     <div 
-                      className="absolute -left-1.5 sm:-left-2 top-2 bottom-6 w-[3px] rounded-full opacity-20 pointer-events-none" 
-                      style={{ background: circadianGradientCSS }}
+                      className="absolute -left-1.5 sm:-left-2 top-2 bottom-6 w-[3px] rounded-full opacity-40 dark:opacity-45 pointer-events-none transition-opacity duration-300" 
+                      style={{ 
+                        background: circadianGradientCSS,
+                        boxShadow: '0 0 6px rgba(255, 255, 255, 0.08)'
+                      }}
                     />
 
                     {/* Revealing Circadian Sky Gradient Spine (Masks true vertical gradient matching each block as user scrolls) */}
                     <div 
-                      className="absolute -left-1.5 sm:-left-2 top-2 w-[3px] rounded-full overflow-hidden transition-[height] duration-75 ease-out pointer-events-none"
+                      className="absolute -left-1.5 sm:-left-2 top-2 w-[3px] rounded-full overflow-hidden transition-[height] duration-75 ease-out pointer-events-none shadow-[0_0_10px_rgba(255,255,255,0.25)]"
                       style={{ height: `${spineHeight}px` }}
                     >
                       {/* Inner Full-Height Gradient Line (Pinned to timeline height, masked by outer overflow-hidden) */}
                       <div 
                         className="w-full"
                         style={{ 
-                          height: timelineContainerRef.current ? `${timelineContainerRef.current.offsetHeight}px` : '1200px',
+                          height: timelineContainerRef.current ? `${timelineContainerRef.current.offsetHeight}px` : '100%',
                           background: circadianGradientCSS
                         }}
                       />

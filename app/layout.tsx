@@ -81,10 +81,16 @@ export default function RootLayout({
         <AuthProvider>
           <OrientationController />
           <TopPhotonProgressBar />
-          {/* Background Glowing Orbs */}
-          <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+          {/* Background Ambient Wash: Dark Neon Orbs vs Light Daylight Wash */}
+          <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10 dark:block hidden">
             <div className="absolute top-[-10%] left-[-10%] w-[70vw] h-[70vw] max-w-[800px] max-h-[800px] bg-sky-500/20 blur-[100px] rounded-full" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[80vw] h-[80vw] max-w-[1000px] max-h-[1000px] bg-blue-600/15 blur-[120px] rounded-full" />
+          </div>
+          <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10 block dark:hidden bg-[#f7f9f7]">
+            {/* Pale botanical green wash on left side */}
+            <div className="absolute -top-[80px] -left-[80px] w-[55vw] h-[420px] bg-gradient-to-br from-[#e6f3eb]/70 via-[#e6f3eb]/25 to-transparent blur-[80px] rounded-full" />
+            {/* Pale lilac wash on right side */}
+            <div className="absolute -top-[80px] -right-[80px] w-[55vw] h-[420px] bg-gradient-to-bl from-[#f0edfb]/70 via-[#f0edfb]/25 to-transparent blur-[80px] rounded-full" />
           </div>
 
           {/* Desktop Sidebar (Only visible on true desktop/tablet: width >= 768px and height >= 550px) */}

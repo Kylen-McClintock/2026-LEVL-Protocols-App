@@ -39,8 +39,17 @@ import {
   Sparkle,
   Layers,
   Radio,
-  Thermometer
+  Thermometer,
+  Trophy,
+  Users,
+  Snowflake,
+  Wine,
+  Cigarette,
+  Leaf,
+  Cookie,
+  Smartphone
 } from 'lucide-react'
+import { useTheme } from '@/lib/utils/useTheme'
 
 export interface ModalityIconProps {
   modality?: {
@@ -76,175 +85,187 @@ interface GradientConfig {
   ambient: string
 }
 
+function lightenHex(hex: string, percent: number): string {
+  try {
+    let clean = hex.replace('#', '')
+    if (clean.length === 3) {
+      clean = clean.split('').map(c => c + c).join('')
+    }
+    const num = parseInt(clean, 16)
+    if (isNaN(num)) return hex
+    let r = (num >> 16) + Math.round((255 - (num >> 16)) * (percent / 100))
+    let g = ((num >> 8) & 0x00FF) + Math.round((255 - ((num >> 8) & 0x00FF)) * (percent / 100))
+    let b = (num & 0x0000FF) + Math.round((255 - (num & 0x0000FF)) * (percent / 100))
+    r = Math.min(255, Math.max(0, r))
+    g = Math.min(255, Math.max(0, g))
+    b = Math.min(255, Math.max(0, b))
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+  } catch {
+    return hex
+  }
+}
+
 const CATEGORY_GRADIENTS: Record<string, GradientConfig> = {
   // Thermal & Environmental
   thermal_cold: { 
     from: '#06B6D4', // Ice Cyan
-    to: '#38BDF8',   // Luminous Sky Blue
-    glow: 'rgba(6, 182, 212, 0.75)', 
-    ambient: 'rgba(56, 189, 248, 0.35)' 
+    to: '#A5F3FC',   // Luminous Glacier Ice
+    glow: 'rgba(6, 182, 212, 0.85)', 
+    ambient: 'rgba(56, 189, 248, 0.50)' 
   },
   thermal_heat: { 
-    from: '#FB923C', // Luminous Ember Orange
-    to: '#F87171',   // Infrared Coral
-    glow: 'rgba(251, 146, 60, 0.75)', 
-    ambient: 'rgba(248, 113, 113, 0.35)' 
+    from: '#F97316', // Luminous Ember Orange
+    to: '#FECDD3',   // Infrared Radiant Coral
+    glow: 'rgba(249, 115, 22, 0.85)', 
+    ambient: 'rgba(248, 113, 113, 0.50)' 
   },
   thermal_contrast: { 
     from: '#06B6D4', // Vivid Cyan
-    to: '#FB923C',   // Radiant Coral
-    glow: 'rgba(6, 182, 212, 0.75)', 
-    ambient: 'rgba(251, 146, 60, 0.35)' 
+    to: '#38BDF8',   // Luminous Sky Glacier
+    glow: 'rgba(6, 182, 212, 0.90)', 
+    ambient: 'rgba(56, 189, 248, 0.60)' 
   },
   
   // Supplements & Nutraceuticals (Dedicated Solar Amber Theme)
   supplements: {
     from: '#F59E0B', // Solar Amber
-    to: '#FBBF24',   // Luminous Gold
-    glow: 'rgba(245, 158, 11, 0.75)', 
-    ambient: 'rgba(251, 191, 36, 0.35)' 
+    to: '#FDE047',   // Luminous Neon Gold
+    glow: 'rgba(245, 158, 11, 0.90)', 
+    ambient: 'rgba(251, 191, 36, 0.60)' 
   },
 
-  // Fitness & Movement (Electric Coral / Orange)
+  // Fitness & Movement (Energetic Crimson / Scarlet Red)
   fitness: { 
-    from: '#F97316', // Electric Coral / Orange
-    to: '#FB923C',   // Luminous Ember
-    glow: 'rgba(249, 115, 22, 0.75)', 
-    ambient: 'rgba(251, 146, 60, 0.35)' 
+    from: '#EF4444', // Energetic Crimson
+    to: '#FDA4AF',   // Radiant Scarlet Rose
+    glow: 'rgba(239, 68, 68, 0.90)', 
+    ambient: 'rgba(244, 63, 94, 0.60)' 
   },
   fitness_intense: { 
-    from: '#F97316', // Luminous Coral
-    to: '#EF4444',   // Neon Red / Burst
-    glow: 'rgba(249, 115, 22, 0.75)', 
-    ambient: 'rgba(239, 68, 68, 0.35)' 
+    from: '#DC2626', // Deep Crimson
+    to: '#FCA5A5',   // Neon Red / Burst
+    glow: 'rgba(220, 38, 38, 0.90)', 
+    ambient: 'rgba(239, 68, 68, 0.60)' 
   },
   
-  // Mind & Nervous System (Electric Violet / Purple)
+  // Mind & Nervous System (Focus & Cognitive Blue)
   mind: { 
-    from: '#A855F7', // Electric Violet
-    to: '#C084FC',   // Vivid Purple
-    glow: 'rgba(168, 85, 247, 0.75)', 
-    ambient: 'rgba(192, 132, 252, 0.35)' 
+    from: '#3B82F6', // Focus / Cognitive Blue
+    to: '#BAE6FD',   // High-Tech Ice Blue
+    glow: 'rgba(59, 130, 246, 0.90)', 
+    ambient: 'rgba(96, 165, 250, 0.60)' 
   },
   
-  // Sleep & Circadian (Moonlight Indigo)
+  // Sleep & Circadian (Deep Royal Purple)
   sleep: { 
-    from: '#6366F1', // Moonlight Indigo
-    to: '#818CF8',   // Luminous Periwinkle
-    glow: 'rgba(99, 102, 241, 0.75)', 
-    ambient: 'rgba(129, 140, 248, 0.35)' 
+    from: '#A855F7', // Deep Royal Purple
+    to: '#E9D5FF',   // Vivid Violet Lilac
+    glow: 'rgba(168, 85, 247, 0.90)', 
+    ambient: 'rgba(192, 132, 252, 0.60)' 
   },
   circadian: { 
-    from: '#FDE047', // Radiant Solar Gold
-    to: '#38BDF8',   // Daylight Sky Blue
-    glow: 'rgba(253, 224, 71, 0.75)', 
-    ambient: 'rgba(56, 189, 248, 0.35)' 
+    from: '#FACC15', // Radiant Solar Gold
+    to: '#FEF08A',   // Luminous Warm Sun
+    glow: 'rgba(250, 204, 21, 0.95)', 
+    ambient: 'rgba(245, 158, 11, 0.65)' 
   },
   
-  // Nutrition & Fasting (Radiant Emerald)
+  // Nutrition & Fasting (Vibrant Rich Emerald / Spring Green)
   nutrition: { 
-    from: '#10B981', // Radiant Emerald
-    to: '#34D399',   // Vital Mint
-    glow: 'rgba(16, 185, 129, 0.75)', 
-    ambient: 'rgba(52, 211, 153, 0.35)' 
+    from: '#05DF72', // Vibrant Rich Emerald
+    to: '#A7F3D0',   // Electric Spring Mint
+    glow: 'rgba(5, 223, 114, 0.85)', 
+    ambient: 'rgba(16, 229, 122, 0.50)' 
   },
   fasting: { 
-    from: '#10B981', // Radiant Emerald
-    to: '#059669',   // Deep Autophagy Emerald
-    glow: 'rgba(16, 185, 129, 0.75)', 
-    ambient: 'rgba(5, 150, 105, 0.35)' 
+    from: '#05DF72', // Vibrant Rich Emerald
+    to: '#6EE7B7',   // Autophagy Luminous Emerald
+    glow: 'rgba(5, 223, 114, 0.85)', 
+    ambient: 'rgba(4, 120, 87, 0.50)' 
   },
   
   // Peptides & Bioactives (Bioactive Fuchsia)
   peptides: { 
     from: '#E879F9', // Neon Bioactive Fuchsia
-    to: '#F472B6',   // Radiant Bioactive Rose
-    glow: 'rgba(232, 121, 249, 0.75)', 
-    ambient: 'rgba(244, 114, 182, 0.35)' 
+    to: '#FCE7F3',   // Radiant Bioactive Rose
+    glow: 'rgba(232, 121, 249, 0.85)', 
+    ambient: 'rgba(244, 114, 182, 0.50)' 
   },
   
-  // Diagnostics & Biomarkers (High-Tech Cobalt)
+  // Diagnostics & Biomarkers (High-Tech Indigo)
   diagnostics: { 
-    from: '#3B82F6', // Cobalt Blue
-    to: '#60A5FA',   // High-Tech Blue
-    glow: 'rgba(59, 130, 246, 0.75)', 
-    ambient: 'rgba(96, 165, 250, 0.35)' 
+    from: '#6366F1', // High-Tech Indigo
+    to: '#E0E7FF',   // Luminous Periwinkle
+    glow: 'rgba(99, 102, 241, 0.85)', 
+    ambient: 'rgba(129, 140, 248, 0.50)' 
   },
   
   // Gut Microbiome & Intestinal Barrier (Bioactive Emerald / Jade)
   microbiome: { 
     from: '#10B981', 
-    to: '#14B8A6', 
-    glow: 'rgba(16, 185, 129, 0.75)', 
-    ambient: 'rgba(20, 184, 166, 0.35)' 
+    to: '#A7F3D0', 
+    glow: 'rgba(16, 185, 129, 0.85)', 
+    ambient: 'rgba(20, 184, 166, 0.50)' 
   },
   
   // Glymphatic Neuro-Flushing (Lapis / Indigo Fluid)
   glymphatic: { 
     from: '#818CF8', 
-    to: '#6366F1', 
-    glow: 'rgba(129, 140, 248, 0.75)', 
-    ambient: 'rgba(99, 102, 241, 0.35)' 
+    to: '#C7D2FE', 
+    glow: 'rgba(129, 140, 248, 0.85)', 
+    ambient: 'rgba(99, 102, 241, 0.50)' 
   },
   
   // Retinal & Macular Phototherapy (670nm Luminous Ruby / Rose)
   retinal: { 
     from: '#F43F5E', 
-    to: '#E11D48', 
-    glow: 'rgba(244, 63, 94, 0.75)', 
-    ambient: 'rgba(225, 29, 72, 0.35)' 
+    to: '#FECDD3', 
+    glow: 'rgba(244, 63, 94, 0.85)', 
+    ambient: 'rgba(225, 29, 72, 0.50)' 
   },
 
   // Rapid Arterial Compliance & Endothelial NO (Arterial Crimson / Rose)
   arterial: {
     from: '#EF4444', 
-    to: '#B91C1C', 
-    glow: 'rgba(239, 68, 68, 0.75)', 
-    ambient: 'rgba(185, 28, 28, 0.35)' 
+    to: '#FECACA', 
+    glow: 'rgba(239, 68, 68, 0.85)', 
+    ambient: 'rgba(185, 28, 28, 0.50)' 
   },
 
   // Bone Mineral Density & Mechanotransduction (Solar Mineral Gold / Amber)
   bone_density: {
     from: '#F59E0B', 
-    to: '#D97706', 
-    glow: 'rgba(245, 158, 11, 0.75)', 
-    ambient: 'rgba(217, 119, 6, 0.35)' 
+    to: '#FEF08A', 
+    glow: 'rgba(245, 158, 11, 0.85)', 
+    ambient: 'rgba(217, 119, 6, 0.50)' 
   },
 
   // Hair Follicle Longevity & Scalp Perfusion (Luminous Amber-Copper / Anagen Rose)
   follicular: {
     from: '#F97316', 
-    to: '#E11D48', 
-    glow: 'rgba(249, 115, 22, 0.75)', 
-    ambient: 'rgba(225, 29, 72, 0.35)' 
+    to: '#FDA4AF', 
+    glow: 'rgba(249, 115, 22, 0.85)', 
+    ambient: 'rgba(225, 29, 72, 0.50)' 
   },
 
   // Interstitial Lymphatic Drainage & Microvascular Fluid Flushing (Aquamarine / Cerulean Flow)
   lymphatic: {
     from: '#06B6D4', 
-    to: '#3B82F6', 
-    glow: 'rgba(6, 182, 212, 0.75)', 
-    ambient: 'rgba(59, 130, 246, 0.35)' 
+    to: '#BAE6FD', 
+    glow: 'rgba(6, 182, 212, 0.85)', 
+    ambient: 'rgba(59, 130, 246, 0.50)' 
   },
   
   // Fallback / General Longevity
   default: { 
     from: '#14B8A6', 
-    to: '#22D3EE', 
-    glow: 'rgba(20, 184, 166, 0.7)', 
-    ambient: 'rgba(34, 211, 238, 0.35)' 
+    to: '#A5F3FC', 
+    glow: 'rgba(20, 184, 166, 0.85)', 
+    ambient: 'rgba(34, 211, 238, 0.50)' 
   }
 }
 
 function resolveGradient(nameLower: string, catLower: string, customHex?: string): GradientConfig {
-  if (customHex && customHex.startsWith('#')) {
-    return {
-      from: customHex,
-      to: customHex,
-      glow: `${customHex}B3`,
-      ambient: `${customHex}4D`
-    }
-  }
   // 1. Peptides first (prevents "CJC-1295 Bedtime" from resolving to sleep)
   if (
     catLower.includes('peptide') ||
@@ -336,6 +357,30 @@ function resolveGradient(nameLower: string, catLower: string, customHex?: string
   if (nameLower.includes('hiit') || nameLower.includes('sprint') || nameLower.includes('vilpa') || nameLower.includes('vo2')) {
     return CATEGORY_GRADIENTS.fitness_intense
   }
+  // 3b. Nocturnal Blue-Light Blocking & Melatonin Wind-Down -> Deep Royal Purple
+  if (
+    nameLower.includes('blue light') ||
+    nameLower.includes('blue-light') ||
+    nameLower.includes('melatonin') ||
+    nameLower.includes('screen filter') ||
+    nameLower.includes('amber glasses') ||
+    nameLower.includes('evening darkness') ||
+    nameLower.includes('dim light')
+  ) {
+    return CATEGORY_GRADIENTS.sleep
+  }
+
+  // 3c. Caffeine, Coffee & Stimulants -> Solar Amber
+  if (
+    nameLower.includes('caffeine') ||
+    nameLower.includes('coffee') ||
+    nameLower.includes('matcha') ||
+    nameLower.includes('espresso') ||
+    /\btea\b/.test(nameLower)
+  ) {
+    return CATEGORY_GRADIENTS.supplements
+  }
+
   if (nameLower.includes('light') || nameLower.includes('sun') || nameLower.includes('photobio') || nameLower.includes('circadian')) {
     return CATEGORY_GRADIENTS.circadian
   }
@@ -372,7 +417,10 @@ function resolveGradient(nameLower: string, catLower: string, customHex?: string
   if (catLower.includes('mind') || catLower.includes('nervous') || catLower.includes('mental') || catLower.includes('breath') || catLower.includes('meditation')) {
     return CATEGORY_GRADIENTS.mind
   }
-  if (catLower.includes('sleep') || catLower.includes('circadian') || catLower.includes('wind_down') || catLower.includes('night') || catLower.includes('bed')) {
+  if (catLower.includes('circadian') || catLower.includes('light') || catLower.includes('sun')) {
+    return CATEGORY_GRADIENTS.circadian
+  }
+  if (catLower.includes('sleep') || catLower.includes('wind_down') || catLower.includes('night') || catLower.includes('bed')) {
     return CATEGORY_GRADIENTS.sleep
   }
   if (catLower.includes('nutrition') || catLower.includes('diet') || catLower.includes('food') || catLower.includes('fasting')) {
@@ -380,6 +428,16 @@ function resolveGradient(nameLower: string, catLower: string, customHex?: string
   }
   if (catLower.includes('diagnostic') || catLower.includes('biomarker') || catLower.includes('tracking') || catLower.includes('lab') || catLower.includes('scan')) {
     return CATEGORY_GRADIENTS.diagnostics
+  }
+
+  // Fallback: If customHex is provided and no specific keyword/category matched, derive an authentic luminous 2-stop gradient
+  if (customHex && customHex.startsWith('#') && customHex.toLowerCase() !== '#ffffff' && customHex.toLowerCase() !== '#fff') {
+    return {
+      from: customHex,
+      to: lightenHex(customHex, 45),
+      glow: `${customHex}E6`,
+      ambient: `${customHex}80`
+    }
   }
 
   return CATEGORY_GRADIENTS.default
@@ -924,9 +982,11 @@ export default function ModalityIcon({
   customIcon
 }: ModalityIconProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
 
-  // Scroll-driven ignition state
-  const [internalIgnited, setInternalIgnited] = useState(!scrollIgnite)
+  // Scroll-driven ignition state: default to true so all icons are immediately lit
+  const [internalIgnited, setInternalIgnited] = useState(true)
 
   useEffect(() => {
     if (!scrollIgnite) {
@@ -939,10 +999,9 @@ export default function ModalityIcon({
       const rect = containerRef.current.getBoundingClientRect()
       // Guard against zero-size or unrendered/collapsed elements
       if (rect.width === 0 && rect.height === 0) return
-      // Lights up only after scrolled past (trigger horizon at 45% of viewport, matching circadian time-block engine)
-      const horizon = window.innerHeight * 0.45
-      const isPast = (rect.top + rect.height / 2) <= horizon + 12
-      setInternalIgnited(isPast)
+      // Fully illuminated whenever anywhere visible in or near the viewport
+      const isVisible = rect.top <= window.innerHeight + 100 && rect.bottom >= -50
+      setInternalIgnited(isVisible)
     }
 
     let rafId: number | null = null
@@ -981,79 +1040,109 @@ export default function ModalityIcon({
 
   const effectiveColorHex = customColor || modality?.color_hex || modality?.media_assets?.color_hex
   const grad = resolveGradient(nameLower, catLower, effectiveColorHex)
-  // Crucial: Use solid high-luminance stroke color (grad.from) instead of SVG url(#gradId).
-  // SVG linearGradient with default objectBoundingBox fails to paint any zero-width or zero-height
-  // lines (e.g., BedDouble mattress line, Sun cardinal rays, Utensils center fork tine/handle),
-  // causing parts of icons to disappear when lit up. Solid hex stroke guarantees 100% of every line is drawn.
-  const effectiveStroke = activeIgnited ? grad.from : '#94A3B8'
+  
+  // Unique gradient ID per color pairing for authentic multi-stop gradient stroke
+  const gradId = `mod_grad_${(grad.from || '').replace('#', '')}_${(grad.to || '').replace('#', '')}`
+  
+  // High-contrast stroke determination:
+  // If customColor is provided and is white (such as on full-gradient cards), use solid white.
+  // Otherwise, ALWAYS use the authentic SVG linear gradient!
+  const isHighContrastWhite = customColor === '#FFFFFF' || customColor === 'white'
+  const effectiveStroke = !activeIgnited
+    ? '#64748B'
+    : isHighContrastWhite
+    ? '#FFFFFF'
+    : `url(#${gradId})`
 
-  // Micro-precise edge definition for crisp lines:
-  // We use a deep dark shadow (NO color blur!) that casts behind the stroke,
-  // making high-luminance lines pop with crisp, high-contrast separation.
-  const foregroundFilter = (glow && activeIgnited)
-    ? 'drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.85))'
+  // Micro-precise edge definition for crisp lines and high-contrast pop:
+  const foregroundFilter = isHighContrastWhite
+    ? 'drop-shadow(0 2px 5px rgba(0, 0, 0, 0.70)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.95))'
+    : (glow && activeIgnited)
+    ? isLight
+      ? 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.08))'
+      : 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45))'
     : undefined
 
-  // Helper renderer for Lucide icons using the gradient stroke & dual-layer lighting
+  // Helper renderer for Lucide icons using the gradient stroke & subtle ambient glow
   const renderLucide = (IconComponent: React.ComponentType<any>) => (
     <div 
       ref={containerRef}
-      className={`relative inline-flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${
-        activeIgnited ? 'opacity-100 scale-100' : 'opacity-60 scale-95'
+      className={`relative inline-flex items-center justify-center shrink-0 transition-all duration-700 ease-out ${
+        activeIgnited ? 'opacity-100 scale-100' : 'opacity-50 scale-95'
       } ${className}`}
     >
-      {/* Layer 1: Ambient Background Lighting Halo (Soft, delicate aura that leaves negative space pitch-dark) */}
-      {glow && activeIgnited && (
+      {/* SVG Defs for 100% reliable multi-stop gradient stroke across all browsers */}
+      <svg width="0" height="0" className="absolute pointer-events-none opacity-0" aria-hidden="true">
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={grad.from} />
+            <stop offset="100%" stopColor={grad.to} />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {/* Layer 1: Ambient Glow (Restrained & delicate in both light and dark modes) */}
+      {glow && activeIgnited && !isHighContrastWhite && (
         <div 
-          className="absolute inset-0 -m-1 rounded-full pointer-events-none transition-all duration-700 ease-out"
+          className="modality-icon-ambient absolute inset-0 -m-1 rounded-full pointer-events-none transition-all duration-700 ease-out"
           style={{
-            background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || 'transparent'} 40%, transparent 70%)`,
-            filter: 'blur(6px)',
-            opacity: 0.32,
-            transform: 'scale(1.2)'
+            background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || grad.glow} 50%, transparent 80%)`,
+            filter: isLight ? 'blur(4px)' : 'blur(6px)',
+            opacity: isLight ? 0.10 : 0.20,
+            transform: isLight ? 'scale(1.05)' : 'scale(1.15)'
           }}
         />
       )}
 
-      {/* Layer 2: Foreground Razor-Sharp Vector Icon */}
+      {/* Layer 2: Foreground Razor-Sharp Vector Icon with High-Contrast Stroke */}
       <div 
-        className="relative z-10 inline-flex items-center justify-center transition-all duration-500"
+        className="relative z-10 inline-flex items-center justify-center transition-all duration-700"
         style={{ filter: foregroundFilter }}
       >
         <IconComponent 
           size={size} 
           stroke={effectiveStroke} 
-          strokeWidth={1.65} 
-          className="shrink-0 transition-all duration-500"
+          strokeWidth={isHighContrastWhite ? 2.2 : 1.85} 
+          className="shrink-0 transition-all duration-700"
         />
       </div>
     </div>
   )
 
-  // Helper renderer for custom SVG glyphs using the gradient stroke & dual-layer lighting
+  // Helper renderer for custom SVG glyphs using the gradient stroke & subtle ambient glow
   const renderCustom = (GlyphComponent: React.ComponentType<{ stroke: string; size: number }>) => (
     <div 
       ref={containerRef}
-      className={`relative inline-flex items-center justify-center shrink-0 transition-all duration-500 ease-out ${
-        activeIgnited ? 'opacity-100 scale-100' : 'opacity-60 scale-95'
+      className={`relative inline-flex items-center justify-center shrink-0 transition-all duration-700 ease-out ${
+        activeIgnited ? 'opacity-100 scale-100' : 'opacity-50 scale-95'
       } ${className}`}
     >
-      {/* Layer 1: Ambient Background Lighting Halo (Soft, delicate aura that leaves negative space pitch-dark) */}
-      {glow && activeIgnited && (
+      {/* SVG Defs for 100% reliable multi-stop gradient stroke across all browsers */}
+      <svg width="0" height="0" className="absolute pointer-events-none opacity-0" aria-hidden="true">
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={grad.from} />
+            <stop offset="100%" stopColor={grad.to} />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {/* Layer 1: Ambient Glow (Restrained & delicate in both light and dark modes) */}
+      {glow && activeIgnited && !isHighContrastWhite && (
         <div 
-          className="absolute inset-0 -m-1 rounded-full pointer-events-none transition-all duration-700 ease-out"
+          className="modality-icon-ambient absolute inset-0 -m-1 rounded-full pointer-events-none transition-all duration-700 ease-out"
           style={{
-            background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || 'transparent'} 40%, transparent 70%)`,
-            filter: 'blur(6px)',
-            opacity: 0.32,
-            transform: 'scale(1.2)'
+            background: `radial-gradient(circle at center, ${grad.glow} 0%, ${grad.ambient || grad.glow} 50%, transparent 80%)`,
+            filter: isLight ? 'blur(4px)' : 'blur(6px)',
+            opacity: isLight ? 0.10 : 0.20,
+            transform: isLight ? 'scale(1.05)' : 'scale(1.15)'
           }}
         />
       )}
 
-      {/* Layer 2: Foreground Razor-Sharp Vector Icon */}
+      {/* Layer 2: Foreground Razor-Sharp Vector Icon with Gradient Stroke */}
       <div 
-        className="relative z-10 inline-flex items-center justify-center transition-all duration-500"
+        className="relative z-10 inline-flex items-center justify-center transition-all duration-700"
         style={{ filter: foregroundFilter }}
       >
         <GlyphComponent stroke={effectiveStroke} size={size} />
@@ -1179,6 +1268,48 @@ export default function ModalityIcon({
         return renderLucide(Pill)
       case 'scanline':
         return renderLucide(ScanLine)
+      case 'coffee':
+      case 'caffeine':
+        return renderLucide(Coffee)
+      case 'droplets':
+      case 'water':
+      case 'hydration':
+        return renderLucide(Droplets)
+      case 'footprints':
+      case 'walk':
+      case 'walking':
+      case 'steps':
+        return renderLucide(Footprints)
+      case 'snowflake':
+      case 'cold':
+        return renderLucide(Snowflake)
+      case 'wine':
+      case 'alcohol':
+        return renderLucide(Wine)
+      case 'cigarette':
+      case 'nicotine':
+      case 'smoking':
+        return renderLucide(Cigarette)
+      case 'leaf':
+      case 'cannabis':
+      case 'thc':
+        return renderLucide(Leaf)
+      case 'cookie':
+      case 'sugar':
+      case 'junkfood':
+        return renderLucide(Cookie)
+      case 'smartphone':
+      case 'screentime':
+      case 'phone':
+        return renderLucide(Smartphone)
+      case 'sparkles':
+        return renderLucide(Sparkles)
+      case 'utensils':
+      case 'food':
+      case 'meal':
+        return renderLucide(Utensils)
+      case 'activity':
+        return renderLucide(Activity)
       default:
         break
     }
@@ -1449,6 +1580,21 @@ export default function ModalityIcon({
     return renderLucide(Dumbbell)
   }
   if (
+    nameLower.includes('team sport') ||
+    nameLower.includes('sports') ||
+    nameLower.includes('sport') ||
+    nameLower.includes('basketball') ||
+    nameLower.includes('soccer') ||
+    nameLower.includes('football') ||
+    nameLower.includes('tennis') ||
+    nameLower.includes('pickleball') ||
+    nameLower.includes('padel') ||
+    nameLower.includes('volleyball') ||
+    nameLower.includes('baseball')
+  ) {
+    return renderLucide(Trophy)
+  }
+  if (
     catLower.includes('fitness') ||
     catLower.includes('physical') ||
     catLower.includes('movement') ||
@@ -1467,7 +1613,7 @@ export default function ModalityIcon({
     return renderCustom(RedLightGlyph)
   }
   if (nameLower.includes('morning light') || nameLower.includes('sunrise') || nameLower.includes('outdoor light') || nameLower.includes('lux') || nameLower.includes('sunlight')) {
-    return renderLucide(Sunrise)
+    return renderLucide(Sun)
   }
   if (nameLower.includes('blue light') || nameLower.includes('screen') || nameLower.includes('glasses') || nameLower.includes('screen filter') || nameLower.includes('amber glasses')) {
     return renderLucide(Glasses)
@@ -1521,7 +1667,13 @@ export default function ModalityIcon({
   if (nameLower.includes('water') || nameLower.includes('hydrate') || nameLower.includes('hydration') || nameLower.includes('electrolytes') || nameLower.includes('salt')) {
     return renderLucide(Droplets)
   }
-  if (nameLower.includes('caffeine') || nameLower.includes('coffee') || nameLower.includes('tea') || nameLower.includes('espresso') || nameLower.includes('matcha')) {
+  if (
+    nameLower.includes('caffeine') ||
+    nameLower.includes('coffee') ||
+    /\btea\b/.test(nameLower) ||
+    nameLower.includes('espresso') ||
+    nameLower.includes('matcha')
+  ) {
     return renderLucide(Coffee)
   }
   if (

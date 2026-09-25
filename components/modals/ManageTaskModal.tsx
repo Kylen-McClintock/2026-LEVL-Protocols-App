@@ -694,7 +694,7 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
               {isContraindicationsOpen && (
                 <div className="p-3 pt-0 border-t border-white/5 space-y-1.5 animate-in fade-in">
                   {modality.contraindications.map((contra: string, idx: number) => (
-                    <div key={idx} className="text-[11px] text-slate-400 flex items-start gap-2">
+                    <div key={idx} className="text-[11px] text-white flex items-start gap-2">
                       <span className="text-amber-400 font-bold shrink-0">•</span>
                       <span>{contra}</span>
                     </div>
