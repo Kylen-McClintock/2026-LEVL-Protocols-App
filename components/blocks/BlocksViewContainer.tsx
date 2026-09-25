@@ -77,10 +77,13 @@ import { triggerHaptic } from '@/lib/utils/haptics'
 import { saveOutcomeObservation, getCachedModalitiesSync } from '@/lib/data'
 import { getUserCircadianTimeWindows } from '@/lib/utils/circadianConfig'
 
+import { useHomeWidgets, useFocusRules } from '@/lib/utils/layoutSettings'
+
 interface BlocksViewContainerProps {
   tasks: DedupedTask[]
   benchItems?: UserBenchItem[]
   userProfile?: UserProfile | null
+  isFocusMode?: boolean
   allOutcomes?: OutcomeDimension[]
   allModalities?: Modality[]
   wellbeingCheckin?: DailyWellbeingCheckin | null
@@ -119,6 +122,7 @@ export default function BlocksViewContainer({
   tasks,
   benchItems = [],
   userProfile,
+  isFocusMode = false,
   allOutcomes = [],
   allModalities = [],
   wellbeingCheckin,
@@ -131,6 +135,11 @@ export default function BlocksViewContainer({
   onAddActivity,
   onMoveTaskToSlot
 }: BlocksViewContainerProps) {
+  // Home widgets & focus rules
+  const { widgets: homeWidgets } = useHomeWidgets(userProfile || undefined)
+  const { rules: focusRules } = useFocusRules(userProfile || undefined)
+  const showHotkeys = isFocusMode ? focusRules.keepHotkeys : homeWidgets.quickHotkeys
+
   // Sub-view toggle: 'time' vs 'protocol'
   const [subView, setSubView] = useState<'time' | 'protocol'>('time')
 
@@ -674,131 +683,24 @@ export default function BlocksViewContainer({
   return (
     <div className="w-full max-w-4xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1500px] mx-auto px-2.5 sm:px-4 lg:px-6 pb-24 pt-1 transition-all">
 
-      {/* Top Blocks Controls Bar */}
-      <div className={`flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-3xl backdrop-blur-xl mb-4 transition-all ${
-        theme === 'light'
-          ? 'bg-white/80 border border-[#E1E8E3] text-[#475569] shadow-sm'
-          : 'bg-slate-950/70 border border-white/10 text-white shadow-md'
-      }`}>
-        {/* Left: View Mode Group (Time/Protocol + Dynamic/Squares + Dose Toggle) */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Subview Toggle: By Time / By Protocol */}
-          <div className={`flex items-center p-1 rounded-full border shadow-inner ${
-            theme === 'light' ? 'bg-slate-100 border-slate-200' : 'bg-black/50 border-white/10'
-          }`}>
+      {/* Dynamic Action Bar: Done Resizing & Jump to Completed Section */}
+      {((completedTasks.length > 0 && completedPlacement === 'section') || isEditMode) && (
+        <div className="flex items-center justify-end gap-2 mb-3">
+          {isEditMode && (
             <button
               type="button"
-              onClick={() => setSubView('time')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                subView === 'time'
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : theme === 'light' ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={() => {
+                triggerHaptic('light')
+                setIsEditMode(false)
+              }}
+              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white border border-purple-400 shadow-md animate-pulse cursor-pointer flex items-center gap-1.5 active:scale-95"
             >
-              <Clock size={13} />
-              <span>By Time</span>
+              <Check size={13} />
+              <span>Done Resizing</span>
             </button>
+          )}
 
-            <button
-              type="button"
-              onClick={() => setSubView('protocol')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                subView === 'protocol'
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : theme === 'light' ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Layers size={13} />
-              <span>By Protocol</span>
-            </button>
-          </div>
-
-          {/* Layout Mode Selector: Dynamic | 2-Wide | 3-Wide | 1-Wide */}
-          <div className={`flex items-center p-0.5 sm:p-1 rounded-full border shadow-inner ${
-            theme === 'light' ? 'bg-slate-100 border-slate-200' : 'bg-black/50 border-white/10'
-          }`}>
-            {/* Dynamic */}
-            <button
-              type="button"
-              onClick={() => handleSelectLayoutMode('dynamic')}
-              title="Dynamic: Visual hierarchy by clinical priority"
-              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                layoutMode === 'dynamic'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
-                  : theme === 'light' ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Sparkles size={12} className={layoutMode === 'dynamic' ? 'text-amber-300' : ''} />
-              <span>Dynamic</span>
-            </button>
-
-            {/* 2-Wide Squares (Default) */}
-            <button
-              type="button"
-              onClick={() => handleSelectLayoutMode('2-wide')}
-              title="2-Wide Squares: 2 across on mobile, scales dynamically on desktop"
-              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                layoutMode === '2-wide' || layoutMode === 'uniform'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
-                  : theme === 'light' ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Grid2X2 size={12} />
-              <span>2-Wide</span>
-            </button>
-
-            {/* 3-Wide Squares */}
-            <button
-              type="button"
-              onClick={() => handleSelectLayoutMode('3-wide')}
-              title="3-Wide Squares: 3 across on mobile, scales dynamically on desktop"
-              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                layoutMode === '3-wide'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
-                  : theme === 'light' ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Grid3X3 size={12} />
-              <span>3-Wide</span>
-            </button>
-
-            {/* 1-Wide Shorter */}
-            <button
-              type="button"
-              onClick={() => handleSelectLayoutMode('1-wide')}
-              title="1-Wide Shorter: 1 horizontal banner per row on mobile, scales dynamically on desktop"
-              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                layoutMode === '1-wide'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
-                  : theme === 'light' ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Rows3 size={12} />
-              <span>1-Wide</span>
-            </button>
-          </div>
-
-          {/* Clinical Dosing Badge Toggle (Yields 4 distinct view modes) */}
-          <button
-            type="button"
-            onClick={handleToggleShowDosing}
-            title={showDosing ? 'Clinical Dosing: ON (Tap to hide)' : 'Clinical Dosing: OFF (Tap to show)'}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border ${
-              showDosing
-                ? theme === 'light'
-                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-sm'
-                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/20'
-                : theme === 'light'
-                ? 'bg-slate-100 text-slate-500 border-slate-200 hover:text-[#475569]'
-                : 'bg-black/50 text-slate-400 border-white/10 hover:text-white'
-            }`}
-          >
-            <Pill size={12} className={showDosing ? (theme === 'light' ? 'text-emerald-700' : 'text-emerald-400') : (theme === 'light' ? 'text-slate-500' : 'text-slate-400')} />
-            <span>Dose {showDosing ? 'ON' : 'OFF'}</span>
-          </button>
-
-          {/* Jump to Completed Section Pill */}
-          {completedTasks.length > 0 && (
+          {completedTasks.length > 0 && completedPlacement === 'section' && (
             <button
               type="button"
               onClick={() => {
@@ -827,97 +729,13 @@ export default function BlocksViewContainer({
               </span>
             </button>
           )}
-
-          {/* Show Inline in Blocks Toggle */}
-          <button
-            type="button"
-            onClick={handleToggleCompletedPlacement}
-            title={
-              completedPlacement === 'inline'
-                ? 'Completed Tasks: Showing inline in time blocks (Click to hide from blocks and keep in Completed section only)'
-                : 'Completed Tasks: Hidden from active blocks (Click to also show inline in blocks)'
-            }
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border ${
-              completedPlacement === 'inline'
-                ? theme === 'light'
-                  ? 'bg-purple-100 text-purple-800 border-purple-300 shadow-sm'
-                  : 'bg-purple-600/30 text-purple-300 border-purple-500/40 shadow-sm'
-                : theme === 'light'
-                ? 'bg-slate-100 text-slate-500 border-slate-200 hover:text-[#475569]'
-                : 'bg-black/50 text-slate-400 border-white/10 hover:text-white'
-            }`}
-          >
-            <span>Inline: {completedPlacement === 'inline' ? 'ON' : 'OFF'}</span>
-          </button>
         </div>
+      )}
 
-        {/* Right: Visual Style Selector & Edit Grid Toggle */}
-        <div className="flex items-center gap-2">
-          {/* Style Picker */}
-          <div className={`flex items-center p-1 rounded-full border text-xs ${
-            theme === 'light' ? 'bg-slate-100 border-slate-200' : 'bg-black/50 border-white/10'
-          }`}>
-            <button
-              type="button"
-              onClick={() => handleSelectVisualStyle('full-gradient')}
-              title="Full Gradient Style"
-              className={`px-2.5 py-1 rounded-full font-bold transition-all text-[11px] ${
-                visualStyle === 'full-gradient'
-                  ? theme === 'light' ? 'bg-white text-[#475569] shadow-sm' : 'bg-white/20 text-white shadow-sm'
-                  : theme === 'light' ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Gradient
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectVisualStyle('dark-outline')}
-              title="Dark Neon Outline Style"
-              className={`px-2.5 py-1 rounded-full font-bold transition-all text-[11px] ${
-                visualStyle === 'dark-outline'
-                  ? theme === 'light' ? 'bg-white text-[#475569] shadow-sm' : 'bg-white/20 text-white shadow-sm'
-                  : theme === 'light' ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Dark
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectVisualStyle('light-glass')}
-              title="Light Glass Style"
-              className={`px-2.5 py-1 rounded-full font-bold transition-all text-[11px] ${
-                (visualStyle as string) === 'light-glass'
-                  ? theme === 'light' ? 'bg-white text-[#475569] shadow-sm' : 'bg-white/20 text-white shadow-sm'
-                  : theme === 'light' ? 'text-slate-500 hover:text-[#475569]' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Glass
-            </button>
-          </div>
-
-          {/* Edit Layout Button */}
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('light')
-              setIsEditMode(!isEditMode)
-            }}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
-              isEditMode
-                ? 'bg-purple-600 text-white border-purple-400 shadow-md animate-pulse'
-                : theme === 'light'
-                ? 'bg-slate-100 hover:bg-slate-200 text-[#475569] border-slate-200'
-                : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
-            }`}
-          >
-            <Sliders size={12} />
-            <span>{isEditMode ? 'Done' : 'Resize'}</span>
-          </button>
-        </div>
-      </div>
-
-          {/* Daily Quick-Log Hotkeys (Exact Square Grid from other layout) */}
-          <QuickHotkeyGrid date={date} localUserId={localUserId} userProfile={userProfile} defaultCollapsed={false} />
+      {/* Daily Quick-Log Hotkeys */}
+      {showHotkeys && (
+        <QuickHotkeyGrid date={date} localUserId={localUserId} userProfile={userProfile} defaultCollapsed={false} />
+      )}
 
       {/* Active Swipe In-Feed Section (Single Active Rule) */}
       {activeSwipe && (

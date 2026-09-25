@@ -35,11 +35,13 @@ import {
   Activity, Check, ChevronDown, ChevronLeft, ChevronRight, 
   ChevronUp, Clock, Layers, ListOrdered, Plus, Slash, Sparkles, Stethoscope, X, Zap, RefreshCw,
   Columns, Rows, ChevronsUpDown, Moon, Sun, ArrowRight, ExternalLink, Search, Scale, Shield, ShieldAlert, ShieldCheck,
-  Flame, SkipForward
+  Flame, SkipForward, SlidersHorizontal
 } from 'lucide-react'
 
 import { evaluateDailyBandwidth, DailyBandwidthMode, BandwidthEvaluation } from '@/lib/adaptive/dailyBandwidthEngine'
 import AdaptiveRoutineAdjustmentModal from '@/components/modals/AdaptiveRoutineAdjustmentModal'
+import DashboardLayoutModal from '@/components/modals/DashboardLayoutModal'
+import { useHomeWidgets, useFocusRules } from '@/lib/utils/layoutSettings'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
 import ProtocolAvatar from '@/components/ui/ProtocolAvatar'
@@ -595,6 +597,11 @@ function TodayPageContent() {
       return next
     })
   }, [])
+
+  // Dashboard Layout & Additions Preferences Modal & Dynamic Config
+  const [isLayoutModalOpen, setIsLayoutModalOpen] = useState<boolean>(false)
+  const { widgets: homeWidgets } = useHomeWidgets(profile || undefined)
+  const { rules: focusRules } = useFocusRules(profile || undefined)
 
   // Daily Bandwidth & Adaptive Routine Governor State
   const [dailyBandwidthMode, setDailyBandwidthMode] = useState<DailyBandwidthMode>(() => {
@@ -2708,7 +2715,7 @@ function TodayPageContent() {
 
       if (isCompleted) {
         completedTop.push(task)
-        if (!isFocusMode && (showCompletedInline || isRecentlyCompleted)) {
+        if ((!isFocusMode || !focusRules.hideCompleted) && (showCompletedInline || isRecentlyCompleted)) {
           routine.push(task)
         }
       } else if (isSnoozed) {
@@ -2749,7 +2756,7 @@ function TodayPageContent() {
       allSkippedTasks: skippedTop,
       infrequentTasks: infrequent 
     }
-  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline, filterLens, selectedOutcomes, isFocusMode, resolveTaskModality])
+  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline, filterLens, selectedOutcomes, isFocusMode, focusRules, resolveTaskModality])
 
   const sortedCompletedGroups = useMemo(() => {
     if (allCompletedTasks.length === 0) return []
@@ -3729,8 +3736,8 @@ function TodayPageContent() {
         const isCardCollapsed = isAllCompleted && isProtocolCardCollapsed(groupName, groupTasks)
 
         if (groupName !== 'Standalone & Individual Modalities') {
-          // In Focus Mode, hide completely finished protocols
-          if (isFocusMode && isAllCompleted) {
+          // In Focus Mode, hide completely finished protocols if hideCompleted rule is active
+          if (isFocusMode && focusRules.hideCompleted && isAllCompleted) {
             return null
           }
 
@@ -3752,11 +3759,11 @@ function TodayPageContent() {
           })
 
           // In Focus Mode, hide completed, snoozed, and skipped tasks within the protocol
-          const tasksToRender = isFocusMode
+          const tasksToRender = isFocusMode && focusRules.hideCompleted
             ? sortedGroupTasks.filter(t => t.status !== 'completed' && t.status !== 'skipped' && t.status !== 'not_today')
             : sortedGroupTasks
 
-          if (isFocusMode && tasksToRender.length === 0) {
+          if (isFocusMode && focusRules.hideCompleted && tasksToRender.length === 0) {
             return null
           }
 
@@ -4625,33 +4632,26 @@ function TodayPageContent() {
               </button>
             )}
 
-            {/* Dark / Light Theme Toggle (In Classic Mode, Not Focus Mode) */}
-            {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && (
+            {/* Consolidated Dashboard & Layout Button */}
+            {calendarViewMode === 'today' && (
               <button
                 type="button"
                 onClick={() => {
                   triggerHaptic('selection')
-                  toggleTheme()
+                  setIsLayoutModalOpen(true)
                 }}
                 className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 border ${
-                  isLight
-                    ? 'bg-amber-50 hover:bg-amber-100/80 border-amber-200 text-amber-900 shadow-xs'
+                  isLayoutModalOpen
+                    ? 'bg-purple-600 text-white border-purple-400 shadow-md'
+                    : isLight
+                    ? 'bg-white/90 hover:bg-white border-slate-200 text-slate-700 hover:text-slate-900'
                     : 'bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white'
                 }`}
-                title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
-                aria-label="Toggle Dark / Light Mode"
+                title="Customize Theme, Density, Typography, Widgets & Focus Rules"
+                aria-label="Open Layout Preferences"
               >
-                {isLight ? (
-                  <>
-                    <Sun size={13} className="text-amber-500 fill-amber-400/30" />
-                    <span>Light</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon size={13} className="text-purple-300 fill-purple-400/20" />
-                    <span>Dark</span>
-                  </>
-                )}
+                <SlidersHorizontal size={13} className={isLayoutModalOpen ? "text-white" : "text-purple-400"} />
+                <span>Layout</span>
               </button>
             )}
 
@@ -4765,6 +4765,7 @@ function TodayPageContent() {
               })}
               benchItems={benchItems}
               userProfile={profile}
+              isFocusMode={isFocusMode}
               allOutcomes={allOutcomes}
               allModalities={allModalities}
               wellbeingCheckin={wellbeingCheckin}
@@ -4787,7 +4788,7 @@ function TodayPageContent() {
         )}
 
         {/* 3-Wide Daily Quick-Log Hotkeys Bar */}
-        {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && (
+        {calendarViewMode === 'today' && displayMode !== 'blocks' && (isFocusMode ? focusRules.keepHotkeys : homeWidgets.quickHotkeys) && (
           <QuickHotkeyGrid
             date={dateStr}
             localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
@@ -4796,7 +4797,7 @@ function TodayPageContent() {
         )}
 
         {/* As Needed Quick-Tap Strip (Single Row, Horizontal Scroll) */}
-        {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && (
+        {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && homeWidgets.asNeeded && (
           <div className="mb-4 -mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-none py-1 px-1">
             <div className="flex items-center gap-1.5 shrink-0 text-amber-400 font-extrabold text-[11px] uppercase tracking-wider pl-0.5">
               <Zap size={13} className="text-amber-400" />
@@ -4852,7 +4853,7 @@ function TodayPageContent() {
         )}
 
         {/* Infradian & Menstrual Cycle Adaptive Protocol Banner (When enabled for Female < 52) */}
-        {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && infradianStatus && infradianStatus.enabled && (
+        {calendarViewMode === 'today' && displayMode !== 'blocks' && (isFocusMode ? focusRules.keepInfradian : homeWidgets.infradian) && infradianStatus && infradianStatus.enabled && (
           <div className="mb-6">
             <InfradianAdaptiveBanner
               status={infradianStatus}
@@ -5074,23 +5075,25 @@ function TodayPageContent() {
             )}
 
             {/* 4. Daily Wellbeing Check-in: Morning & Daytime */}
-            <div className="mb-6">
-              <DailyWellbeingCheckin 
-                onSave={handleWellbeingSave} 
-                initialData={wellbeingCheckin}
-                profile={profile}
-                allOutcomes={allOutcomes}
-                date={currentDate}
-                isCurrentDay={isCurrentDay}
-                isCollapsedByDefault={true}
-                forceCollapseTier={isFocusMode ? 'minimal' : undefined}
-                recentTasks={tasks}
-                section="morning_anytime"
-              />
-            </div>
+            {(isFocusMode ? focusRules.keepWellbeing : homeWidgets.wellbeing) && (
+              <div className="mb-6">
+                <DailyWellbeingCheckin 
+                  onSave={handleWellbeingSave} 
+                  initialData={wellbeingCheckin}
+                  profile={profile}
+                  allOutcomes={allOutcomes}
+                  date={currentDate}
+                  isCurrentDay={isCurrentDay}
+                  isCollapsedByDefault={true}
+                  forceCollapseTier={isFocusMode ? 'minimal' : undefined}
+                  recentTasks={tasks}
+                  section="morning_anytime"
+                />
+              </div>
+            )}
 
             {/* 4b. Adaptive Sleep Recovery Protocol Triage Card */}
-            {shouldShowSleepTriage && !isFocusMode && (
+            {shouldShowSleepTriage && (isFocusMode ? focusRules.keepSleepTriage : homeWidgets.sleepTriage) && (
               <AdaptiveSleepTriageCard
                 actualSleepMinutes={userActualSleepMinutes || 0}
                 subjectiveSleep={userSubjectiveSleep ?? 5}
@@ -5107,7 +5110,7 @@ function TodayPageContent() {
             )}
 
             {/* 5. Daily Longevity Tip Banner (Hidden once added to today, benched, or skipped) */}
-            {!isFocusMode && !isTipActedUpon && (
+            {!isTipActedUpon && (isFocusMode ? focusRules.keepTip : homeWidgets.longevityTip) && (
               <div className="mb-4">
                 <DailyLongevityTipBanner 
                   scoredTips={scoredTips}
@@ -5141,7 +5144,7 @@ function TodayPageContent() {
             )}
 
             {/* Full-Width AI Longevity Coach Input Bar */}
-            {!isFocusMode && (
+            {(isFocusMode ? focusRules.keepAICoach : homeWidgets.aiCoach) && (
               <div className="mb-6">
                 <LongevityCoachInputBar
                   userProfile={profile}
@@ -6007,6 +6010,15 @@ function TodayPageContent() {
           }}
         />
       )}
+
+      {/* Dashboard Layout, Density, Appearance & Focus Preferences Modal */}
+      <DashboardLayoutModal
+        isOpen={isLayoutModalOpen}
+        onClose={() => setIsLayoutModalOpen(false)}
+        userProfile={profile || undefined}
+        currentDisplayMode={displayMode}
+        onDisplayModeChange={setDisplayMode}
+      />
     </div>
   )
 }
