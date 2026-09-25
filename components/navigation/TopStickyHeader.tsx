@@ -257,34 +257,8 @@ export default function TopStickyHeader() {
             )}
           </div>
 
-          {/* Center: Classic / Blocks Switch & View Selector Dropdown */}
+          {/* Center: View Selector Dropdown */}
           <div className="flex items-center gap-1.5 sm:gap-2 justify-center relative z-20">
-            {/* Classic / Blocks Segmented Pill */}
-            <div className="flex items-center p-0.5 rounded-full bg-slate-900/90 border border-slate-700/80 shadow-md">
-              <button
-                type="button"
-                onClick={() => handleToggleDisplayMode('classic')}
-                className={`px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                  displayMode === 'classic'
-                    ? 'bg-purple-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Classic
-              </button>
-              <button
-                type="button"
-                onClick={() => handleToggleDisplayMode('blocks')}
-                className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                  displayMode === 'blocks'
-                    ? 'bg-purple-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Sparkles size={10} className={displayMode === 'blocks' ? 'text-amber-300' : 'text-slate-400'} />
-                <span>Blocks</span>
-              </button>
-            </div>
 
             {/* View Selector Dropdown Button */}
             <div className="relative" ref={viewDropdownRef}>

@@ -41,7 +41,7 @@ import {
 import { evaluateDailyBandwidth, DailyBandwidthMode, BandwidthEvaluation } from '@/lib/adaptive/dailyBandwidthEngine'
 import AdaptiveRoutineAdjustmentModal from '@/components/modals/AdaptiveRoutineAdjustmentModal'
 import DashboardLayoutModal from '@/components/modals/DashboardLayoutModal'
-import { useHomeWidgets, useFocusRules } from '@/lib/utils/layoutSettings'
+import { useHomeWidgets, useFocusRules, useCardBadges } from '@/lib/utils/layoutSettings'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
 import ProtocolAvatar from '@/components/ui/ProtocolAvatar'
@@ -602,6 +602,7 @@ function TodayPageContent() {
   const [isLayoutModalOpen, setIsLayoutModalOpen] = useState<boolean>(false)
   const { widgets: homeWidgets } = useHomeWidgets(profile || undefined)
   const { rules: focusRules } = useFocusRules(profile || undefined)
+  const { badges: cardBadges } = useCardBadges(profile || undefined)
 
   // Daily Bandwidth & Adaptive Routine Governor State
   const [dailyBandwidthMode, setDailyBandwidthMode] = useState<DailyBandwidthMode>(() => {
@@ -2715,7 +2716,7 @@ function TodayPageContent() {
 
       if (isCompleted) {
         completedTop.push(task)
-        if ((!isFocusMode || !focusRules.hideCompleted) && (showCompletedInline || isRecentlyCompleted)) {
+        if ((!isFocusMode || !focusRules.hideCompleted) && (showCompletedInline || cardBadges.showCompletedInline || isRecentlyCompleted)) {
           routine.push(task)
         }
       } else if (isSnoozed) {
@@ -2756,7 +2757,7 @@ function TodayPageContent() {
       allSkippedTasks: skippedTop,
       infrequentTasks: infrequent 
     }
-  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline, filterLens, selectedOutcomes, isFocusMode, focusRules, resolveTaskModality])
+  }, [dedupedTasks, selectedMainCategories, selectedSubCategories, showCompletedInline, cardBadges, showSnoozedInline, showSkippedInline, recentlyCompletedIds, benchedOrEliminatedModalityIds, isFutureTimeline, filterLens, selectedOutcomes, isFocusMode, focusRules, resolveTaskModality])
 
   const sortedCompletedGroups = useMemo(() => {
     if (allCompletedTasks.length === 0) return []
@@ -4852,8 +4853,8 @@ function TodayPageContent() {
           </div>
         )}
 
-        {/* Infradian & Menstrual Cycle Adaptive Protocol Banner (When enabled for Female < 52) */}
-        {calendarViewMode === 'today' && displayMode !== 'blocks' && (isFocusMode ? focusRules.keepInfradian : homeWidgets.infradian) && infradianStatus && infradianStatus.enabled && (
+        {/* Infradian & Menstrual Cycle Adaptive Protocol Banner (Strictly for Female Users < 52) */}
+        {calendarViewMode === 'today' && displayMode !== 'blocks' && profile?.biological_sex?.toLowerCase() === 'female' && (isFocusMode ? focusRules.keepInfradian : homeWidgets.infradian) && infradianStatus && infradianStatus.enabled && (
           <div className="mb-6">
             <InfradianAdaptiveBanner
               status={infradianStatus}

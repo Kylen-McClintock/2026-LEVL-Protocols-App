@@ -45,10 +45,28 @@ export const DEFAULT_FOCUS_RULES: FocusRulesConfig = {
   keepWellbeing: false
 }
 
+export interface CardBadgesConfig {
+  showDosing: boolean           // Target dosage & units (Default: true)
+  showCompletedInline: boolean  // Keep completed tasks inline in time blocks (Default: false)
+  showProtocol: boolean         // Protocol Attribution name & badge (Default: true)
+  showSynergies: boolean        // Synergies, fat-soluble & pairing notes (Default: true)
+  showCategory: boolean         // Modality Category / Macro-type badge (Default: true)
+}
+
+export const DEFAULT_CARD_BADGES: CardBadgesConfig = {
+  showDosing: true,
+  showCompletedInline: false,
+  showProtocol: true,
+  showSynergies: true,
+  showCategory: true
+}
+
 const STORAGE_KEY_HOME_WIDGETS = 'levl_home_widgets'
 const STORAGE_KEY_FOCUS_RULES = 'levl_focus_rules'
+const STORAGE_KEY_CARD_BADGES = 'levl_card_badges'
 const EVENT_HOME_WIDGETS = 'levl_home_widgets_changed'
 const EVENT_FOCUS_RULES = 'levl_focus_rules_changed'
+const EVENT_CARD_BADGES = 'levl_card_badges_changed'
 
 export function getStoredHomeWidgets(): HomeWidgetsConfig {
   if (typeof window === 'undefined') return { ...DEFAULT_HOME_WIDGETS }
@@ -62,7 +80,7 @@ export function getStoredHomeWidgets(): HomeWidgetsConfig {
   return { ...DEFAULT_HOME_WIDGETS }
 }
 
-export function setStoredHomeWidgets(config: Partial<HomeWidgetsConfig>, profile?: UserProfile): void {
+export function setStoredHomeWidgets(config: Partial<HomeWidgetsConfig>, profile?: UserProfile | null): void {
   if (typeof window === 'undefined') return
   try {
     const current = getStoredHomeWidgets()
@@ -87,7 +105,7 @@ export function getStoredFocusRules(): FocusRulesConfig {
   return { ...DEFAULT_FOCUS_RULES }
 }
 
-export function setStoredFocusRules(rules: Partial<FocusRulesConfig>, profile?: UserProfile): void {
+export function setStoredFocusRules(rules: Partial<FocusRulesConfig>, profile?: UserProfile | null): void {
   if (typeof window === 'undefined') return
   try {
     const current = getStoredFocusRules()
@@ -100,10 +118,57 @@ export function setStoredFocusRules(rules: Partial<FocusRulesConfig>, profile?: 
   } catch (e) {}
 }
 
+export function getStoredCardBadges(): CardBadgesConfig {
+  if (typeof window === 'undefined') return { ...DEFAULT_CARD_BADGES }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CARD_BADGES)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return { ...DEFAULT_CARD_BADGES, ...parsed }
+    }
+    // Fallback hydration from legacy keys if card badges not set yet
+    const legacyDosing = localStorage.getItem('levl_blocks_show_dosing')
+    const legacyCompleted = localStorage.getItem('levl_blocks_completed_placement')
+    const legacyShowInline = localStorage.getItem('levl_show_completed_inline')
+    return {
+      ...DEFAULT_CARD_BADGES,
+      ...(legacyDosing !== null ? { showDosing: legacyDosing === 'true' } : {}),
+      ...(legacyCompleted !== null ? { showCompletedInline: legacyCompleted === 'inline' } : (legacyShowInline === 'true' ? { showCompletedInline: true } : {}))
+    }
+  } catch (e) {}
+  return { ...DEFAULT_CARD_BADGES }
+}
+
+export function setStoredCardBadges(config: Partial<CardBadgesConfig>, profile?: UserProfile | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    const current = getStoredCardBadges()
+    const updated = { ...current, ...config }
+    localStorage.setItem(STORAGE_KEY_CARD_BADGES, JSON.stringify(updated))
+    window.dispatchEvent(new CustomEvent(EVENT_CARD_BADGES, { detail: { config: updated } }))
+
+    // Keep legacy events in sync for existing listeners
+    if (config.showDosing !== undefined) {
+      localStorage.setItem('levl_blocks_show_dosing', String(config.showDosing))
+      window.dispatchEvent(new CustomEvent('levl_blocks_show_dosing_change', { detail: { show: config.showDosing } }))
+    }
+    if (config.showCompletedInline !== undefined) {
+      const placement = config.showCompletedInline ? 'inline' : 'section'
+      localStorage.setItem('levl_blocks_completed_placement', placement)
+      localStorage.setItem('levl_show_completed_inline', String(config.showCompletedInline))
+      window.dispatchEvent(new CustomEvent('levl_blocks_completed_placement_change', { detail: { placement } }))
+      window.dispatchEvent(new CustomEvent('levl_show_completed_inline_change', { detail: { show: config.showCompletedInline } }))
+    }
+
+    // Sync to user profile if available
+    syncLayoutToProfile({ card_badges: updated }, profile)
+  } catch (e) {}
+}
+
 /**
  * Async background sync to remote Supabase user_profile
  */
-async function syncLayoutToProfile(patch: Record<string, any>, profile?: UserProfile) {
+async function syncLayoutToProfile(patch: Record<string, any>, profile?: UserProfile | null) {
   try {
     const uid = profile?.local_user_id || getLocalUserId()
     if (!uid) return
@@ -125,7 +190,7 @@ async function syncLayoutToProfile(patch: Record<string, any>, profile?: UserPro
 /**
  * React hook to observe and update Home Widgets state
  */
-export function useHomeWidgets(profile?: UserProfile) {
+export function useHomeWidgets(profile?: UserProfile | null) {
   const [widgets, setWidgets] = useState<HomeWidgetsConfig>(() => getStoredHomeWidgets())
 
   useEffect(() => {
@@ -165,7 +230,7 @@ export function useHomeWidgets(profile?: UserProfile) {
 /**
  * React hook to observe and update Focus Rules state
  */
-export function useFocusRules(profile?: UserProfile) {
+export function useFocusRules(profile?: UserProfile | null) {
   const [rules, setRules] = useState<FocusRulesConfig>(() => getStoredFocusRules())
 
   useEffect(() => {
@@ -208,4 +273,52 @@ export function useFocusRules(profile?: UserProfile) {
   }, [profile])
 
   return { rules, setRules, updateRule, toggleRule }
+}
+
+/**
+ * React hook to observe and update Card Badges state across Classic and Blocks
+ */
+export function useCardBadges(profile?: UserProfile | null) {
+  const [badges, setBadges] = useState<CardBadgesConfig>(() => getStoredCardBadges())
+
+  useEffect(() => {
+    // Hydrate from profile if available
+    if (profile?.outcome_preference_scores) {
+      const cloudLayout = (profile.outcome_preference_scores as any)?._layout_settings
+      if (cloudLayout?.card_badges) {
+        const local = localStorage.getItem(STORAGE_KEY_CARD_BADGES)
+        if (!local) {
+          const merged = { ...DEFAULT_CARD_BADGES, ...cloudLayout.card_badges }
+          setBadges(merged)
+          localStorage.setItem(STORAGE_KEY_CARD_BADGES, JSON.stringify(merged))
+        }
+      }
+    }
+
+    const handler = (e: any) => {
+      if (e.detail?.config) {
+        setBadges(e.detail.config)
+      }
+    }
+    window.addEventListener(EVENT_CARD_BADGES, handler)
+    return () => window.removeEventListener(EVENT_CARD_BADGES, handler)
+  }, [profile])
+
+  const toggleBadge = useCallback((key: keyof CardBadgesConfig) => {
+    setBadges(prev => {
+      const next = { ...prev, [key]: !prev[key] }
+      setStoredCardBadges(next, profile)
+      return next
+    })
+  }, [profile])
+
+  const updateBadge = useCallback((key: keyof CardBadgesConfig, val: boolean) => {
+    setBadges(prev => {
+      const next = { ...prev, [key]: val }
+      setStoredCardBadges(next, profile)
+      return next
+    })
+  }, [profile])
+
+  return { badges, setBadges, toggleBadge, updateBadge }
 }

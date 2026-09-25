@@ -61,6 +61,7 @@ import { resolveOptimalTimingSlot } from '@/lib/data/resolveOptimalTiming'
 import { getModalityArchetype } from '@/lib/data/modalityArchetypes'
 import { detectPreFlightSpacingNudge } from '@/lib/synergy/preFlightSpacingNudge'
 import PreFlightSpacingNudgeBanner from './PreFlightSpacingNudgeBanner'
+import { useCardBadges } from '@/lib/utils/layoutSettings'
 import dynamic from 'next/dynamic'
 
 const CyclicSighingApplet = dynamic(() => import('../applets/CyclicSighingApplet'), {
@@ -485,6 +486,8 @@ export default function ProtocolTaskCard({
   isIgnited
 }: ProtocolTaskCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
+  const { badges } = useCardBadges(userProfile)
+
   const [showSkipReason, setShowSkipReason] = useState(false)
   const [skipReason, setSkipReason] = useState('')
   const [showEliminateReason, setShowEliminateReason] = useState(false)
@@ -780,6 +783,21 @@ export default function ProtocolTaskCard({
     default_timing_slot: task.timing_slot || 'morning',
     functional_impacts: {}
   } as any : null)
+
+  const synergySummary = useMemo(() => {
+    if (!modality?.synergy_notes) return null
+    if (typeof modality.synergy_notes === 'string') {
+      return modality.synergy_notes
+    }
+    if (Array.isArray(modality.synergy_notes.pairsWellWith) && modality.synergy_notes.pairsWellWith.length > 0) {
+      const pairs = modality.synergy_notes.pairsWellWith.map((p: string) => p.replace(/_/g, ' ')).join(', ')
+      return `Pairs: ${pairs}`
+    }
+    if (typeof modality.synergy_notes.rationale === 'string') {
+      return modality.synergy_notes.rationale
+    }
+    return null
+  }, [modality?.synergy_notes])
 
   const isModerateOrHighSafetyRisk = useMemo(() => {
     if (!modality) return false
@@ -1763,33 +1781,35 @@ export default function ProtocolTaskCard({
                     <span>{preFlightNudge.severity === 'critical' ? 'Conflict' : 'Spacing'}</span>
                   </span>
                 )}
-                <div onClick={(e) => e.stopPropagation()} className="min-w-0 max-w-full">
-                <DosageBadgeButton
-                  modality={modality}
-                  userProfile={userProfile}
-                  task={task}
-                  benchItem={benchItem}
-                  existingTiming={task.execution_details?.custom_timing || benchItem?.custom_timing}
-                  onOpenCustomizeOutcomes={() => setShowCustomizeOutcomesModal(true)}
-                  onSavePersonalization={async (customDose, customTiming, notes) => {
-                    const localUserId = getLocalUserId()
-                    const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
-                    await reconcileModalityScheduleAndFutureTasks(localUserId, modality.id, {
-                      customDose,
-                      customTiming,
-                      notes,
-                      fromDate,
-                      protocolStepId: task?.protocol_step_id || undefined,
-                      scheduleConfig: task?.execution_details?.schedule_config
-                    })
-                    if (typeof window !== 'undefined') {
-                      window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
-                      window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
-                    }
-                  }}
-                  protocolContext={null}
-                />
-              </div>
+                {badges.showDosing && (
+                  <div onClick={(e) => e.stopPropagation()} className="min-w-0 max-w-full">
+                    <DosageBadgeButton
+                      modality={modality}
+                      userProfile={userProfile}
+                      task={task}
+                      benchItem={benchItem}
+                      existingTiming={task.execution_details?.custom_timing || benchItem?.custom_timing}
+                      onOpenCustomizeOutcomes={() => setShowCustomizeOutcomesModal(true)}
+                      onSavePersonalization={async (customDose, customTiming, notes) => {
+                        const localUserId = getLocalUserId()
+                        const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+                        await reconcileModalityScheduleAndFutureTasks(localUserId, modality.id, {
+                          customDose,
+                          customTiming,
+                          notes,
+                          fromDate,
+                          protocolStepId: task?.protocol_step_id || undefined,
+                          scheduleConfig: task?.execution_details?.schedule_config
+                        })
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+                          window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+                        }
+                      }}
+                      protocolContext={null}
+                    />
+                  </div>
+                )}
             </div>
           </div>
 
@@ -1915,8 +1935,8 @@ export default function ProtocolTaskCard({
         /* PENDING & OTHER STATUSES HEADER */
         <div className={`${isSupplement ? 'p-3 sm:px-4 sm:py-3 gap-1.5' : 'p-4 sm:p-5 gap-3'} flex flex-col relative cursor-pointer`} onClick={() => setExpanded(!expanded)}>
         
-        {/* Under Protocol View: Show Time Block instead of redundant parent protocol. In Chronological view: Show Lineage Badges */}
-        {(isProtocolGroupView || displayLineages.length > 0) && (
+        {/* Under Protocol View: Show Time Block instead of redundant parent protocol. In Chronological view: Show Lineage Badges & Category */}
+        {(isProtocolGroupView || (badges.showProtocol && displayLineages.length > 0) || (badges.showCategory && (modality?.category || modality?.modality_type))) && (
           <div className={`flex flex-wrap items-center ${isSupplement ? 'gap-1 mb-0.5' : 'gap-1.5 mb-1'}`}>
             {/* When under protocol view, display the correct time block here in the same smaller less prominent font */}
             {isProtocolGroupView && (
@@ -1935,7 +1955,7 @@ export default function ProtocolTaskCard({
             )}
 
             {/* Other lineages (if any exist that are not the current umbrella protocol) */}
-            {displayLineages.map((lineage, idx) => {
+            {badges.showProtocol && displayLineages.map((lineage, idx) => {
               const protoTargetId = (lineage as any).protocol_id || task.protocol_step?.protocol_id || lineage.protocol_name
               return (
                 <Link 
@@ -1955,6 +1975,16 @@ export default function ProtocolTaskCard({
                 </Link>
               )
             })}
+
+            {/* Modality Category Tag (Toggleable via Layout) */}
+            {badges.showCategory && (modality?.category || modality?.modality_type) && (
+              <span
+                className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-300 border border-slate-700/60 flex items-center gap-1 shadow-sm"
+                title={`Category: ${modality.category || modality.modality_type}`}
+              >
+                <span>{modality.category || modality.modality_type}</span>
+              </span>
+            )}
           </div>
         )}
 
@@ -2013,47 +2043,60 @@ export default function ProtocolTaskCard({
         {/* Line 2: Dosage + Badges (Left) & Details / Actions (Right) */}
         <div className={`flex items-center justify-between ${isSupplement ? 'gap-2 pt-0' : 'gap-3 pt-0.5'} flex-wrap`}>
           <div className={`flex flex-wrap items-center ${isSupplement ? 'gap-1' : 'gap-1.5'} flex-1 min-w-0`}>
-            <DosageBadgeButton
-              modality={modality}
-              userProfile={userProfile}
-              task={task}
-              benchItem={benchItem}
-              existingTiming={task.execution_details?.custom_timing || benchItem?.custom_timing}
-              onOpenCustomizeOutcomes={() => setShowCustomizeOutcomesModal(true)}
-              onSavePersonalization={async (customDose, customTiming, notes) => {
-                const localUserId = getLocalUserId()
-                const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
-                await reconcileModalityScheduleAndFutureTasks(localUserId, modality.id, {
-                  customDose,
-                  customTiming,
-                  notes,
-                  fromDate,
-                  protocolStepId: task?.protocol_step_id || undefined,
-                  scheduleConfig: task?.execution_details?.schedule_config
-                })
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
-                  window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+            {badges.showDosing && (
+              <DosageBadgeButton
+                modality={modality}
+                userProfile={userProfile}
+                task={task}
+                benchItem={benchItem}
+                existingTiming={task.execution_details?.custom_timing || benchItem?.custom_timing}
+                onOpenCustomizeOutcomes={() => setShowCustomizeOutcomesModal(true)}
+                onSavePersonalization={async (customDose, customTiming, notes) => {
+                  const localUserId = getLocalUserId()
+                  const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+                  await reconcileModalityScheduleAndFutureTasks(localUserId, modality.id, {
+                    customDose,
+                    customTiming,
+                    notes,
+                    fromDate,
+                    protocolStepId: task?.protocol_step_id || undefined,
+                    scheduleConfig: task?.execution_details?.schedule_config
+                  })
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+                    window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+                  }
+                }}
+                protocolContext={
+                  lineages.length > 0
+                    ? lineages.map((l, i) => ({
+                        protocolName: l.protocol_name,
+                        colorHex: l.color_hex,
+                        doseAmount: task.protocol_step?.dose_amount,
+                        doseUnit: task.protocol_step?.dose_unit,
+                        doseText: task.protocol_step?.dose_text
+                      }))
+                    : (task.protocol_step?.protocol ? {
+                        protocolName: task.protocol_step.protocol.name,
+                        colorHex: (task.protocol_step.protocol as any).color_hex || getColorForProtocol(task.protocol_step.protocol.name),
+                        doseAmount: task.protocol_step?.dose_amount,
+                        doseUnit: task.protocol_step?.dose_unit,
+                        doseText: task.protocol_step?.dose_text
+                      } : null)
                 }
-              }}
-              protocolContext={
-                lineages.length > 0
-                  ? lineages.map((l, i) => ({
-                      protocolName: l.protocol_name,
-                      colorHex: l.color_hex,
-                      doseAmount: task.protocol_step?.dose_amount,
-                      doseUnit: task.protocol_step?.dose_unit,
-                      doseText: task.protocol_step?.dose_text
-                    }))
-                  : (task.protocol_step?.protocol ? {
-                      protocolName: task.protocol_step.protocol.name,
-                      colorHex: (task.protocol_step.protocol as any).color_hex || getColorForProtocol(task.protocol_step.protocol.name),
-                      doseAmount: task.protocol_step?.dose_amount,
-                      doseUnit: task.protocol_step?.dose_unit,
-                      doseText: task.protocol_step?.dose_text
-                    } : null)
-              }
-            />
+              />
+            )}
+
+            {/* Synergies & Nutrient Pairings Badge (Toggleable via Layout) */}
+            {badges.showSynergies && synergySummary && (
+              <span
+                className="text-[10px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/25 px-1.5 py-0.5 rounded flex items-center gap-1 truncate max-w-[220px] sm:max-w-[320px] shadow-sm"
+                title={typeof modality?.synergy_notes === 'string' ? modality.synergy_notes : modality?.synergy_notes?.rationale || synergySummary}
+              >
+                <Sparkles size={10} className="text-amber-400 shrink-0" />
+                <span className="truncate">{synergySummary}</span>
+              </span>
+            )}
 
             {isPeptide && (
               <span className="text-[10px] font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-lg flex items-center gap-1.5 shadow-sm">

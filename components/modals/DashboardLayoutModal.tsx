@@ -23,7 +23,8 @@ import {
   HeartPulse,
   Type,
   Eye,
-  Check
+  Check,
+  Bookmark
 } from 'lucide-react'
 import { useTheme } from '@/lib/utils/useTheme'
 import {
@@ -50,8 +51,10 @@ import {
 import {
   useHomeWidgets,
   useFocusRules,
+  useCardBadges,
   HomeWidgetsConfig,
-  FocusRulesConfig
+  FocusRulesConfig,
+  CardBadgesConfig
 } from '@/lib/utils/layoutSettings'
 import { triggerHaptic } from '@/lib/utils/haptics'
 import { UserProfile } from '@/lib/types'
@@ -86,9 +89,13 @@ export default function DashboardLayoutModal({
   )
   const [visualStyle, setVisualStyleState] = useState<BlocksVisualStyle>(() => getStoredVisualStyle())
 
-  // Home Page Widgets & Focus Mode Rules
+  // Home Page Widgets, Focus Mode Rules & Universal Card Badges
   const { widgets, toggleWidget } = useHomeWidgets(userProfile)
   const { rules, toggleRule } = useFocusRules(userProfile)
+  const { badges, toggleBadge } = useCardBadges(userProfile)
+
+  // Infradian & Period Cycle tracking is strictly for females
+  const isFemale = userProfile?.biological_sex?.toLowerCase() === 'female'
 
   // Configure Focus accordion collapsed by default as requested!
   const [isFocusSectionOpen, setIsFocusSectionOpen] = useState<boolean>(false)
@@ -217,71 +224,93 @@ export default function DashboardLayoutModal({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              {/* Theme Toggle Pill */}
+            {/* Theme Toggle Switch Row */}
+            <div
+              className={`p-3 rounded-2xl border flex items-center justify-between transition-all ${
+                isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900/60 border-slate-800/80'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                    isLight
+                      ? 'bg-amber-100 text-amber-600 shadow-sm'
+                      : 'bg-purple-950/70 border border-purple-500/30 text-purple-300'
+                  }`}
+                >
+                  {isLight ? <Sun size={16} className="fill-amber-400/40" /> : <Moon size={16} className="fill-purple-400/30" />}
+                </div>
+                <div>
+                  <div className="text-xs font-bold flex items-center gap-1.5">
+                    <span>{isLight ? 'Light Mode' : 'Dark Mode'}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    {isLight ? 'Crisp daylight contrast' : 'OLED low-glare dark aesthetic'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Interactive iOS-style Toggle Switch */}
               <button
                 type="button"
+                role="switch"
+                aria-checked={!isLight}
+                aria-label="Toggle dark/light theme"
                 onClick={() => {
                   triggerHaptic('selection')
                   toggleTheme()
                 }}
-                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl font-bold text-xs border transition-all cursor-pointer active:scale-95 shadow-sm ${
-                  isLight
-                    ? 'bg-amber-100/80 border-amber-300 text-amber-900 hover:bg-amber-100'
-                    : 'bg-slate-900 hover:bg-slate-850 border-purple-500/30 text-purple-200'
+                className={`w-12 h-7 rounded-full p-1 transition-colors cursor-pointer relative flex items-center shadow-inner ${
+                  isLight ? 'bg-slate-300 hover:bg-slate-400/80' : 'bg-purple-600 hover:bg-purple-500 shadow-[0_0_12px_rgba(147,51,234,0.4)]'
                 }`}
               >
-                {isLight ? (
-                  <>
-                    <Sun size={15} className="text-amber-600 fill-amber-400/40" />
-                    <span>Light Mode</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon size={15} className="text-purple-300 fill-purple-400/30" />
-                    <span>Dark Mode</span>
-                  </>
-                )}
+                <span
+                  className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 flex items-center justify-center ${
+                    isLight ? 'translate-x-0 text-amber-500' : 'translate-x-5 text-purple-600'
+                  }`}
+                >
+                  {isLight ? <Sun size={11} /> : <Moon size={11} />}
+                </span>
               </button>
+            </div>
 
-              {/* View Switcher: Blocks vs Classic */}
-              <div
-                className={`p-1 rounded-2xl border flex items-center gap-1 ${
-                  isLight ? 'bg-slate-200/80 border-slate-300' : 'bg-slate-900 border-slate-800'
+            {/* View Switcher: Blocks vs Classic */}
+            <div
+              className={`p-1.5 rounded-2xl border flex items-center gap-1.5 ${
+                isLight ? 'bg-slate-200/80 border-slate-300' : 'bg-slate-900 border-slate-800'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => handleToggleDisplayMode('classic')}
+                className={`flex-1 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                  displayMode === 'classic'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
-                <button
-                  type="button"
-                  onClick={() => handleToggleDisplayMode('classic')}
-                  className={`flex-1 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                    displayMode === 'classic'
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : isLight
-                      ? 'text-slate-600 hover:text-slate-900'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Classic
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleToggleDisplayMode('blocks')}
-                  className={`flex-1 py-1.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                    displayMode === 'blocks'
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : isLight
-                      ? 'text-slate-600 hover:text-slate-900'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Sparkles size={11} className={displayMode === 'blocks' ? 'text-amber-300' : ''} />
-                  <span>Blocks</span>
-                </button>
-              </div>
+                Classic Mode
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleDisplayMode('blocks')}
+                className={`flex-1 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  displayMode === 'blocks'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Sparkles size={12} className={displayMode === 'blocks' ? 'text-amber-300' : ''} />
+                <span>Blocks Mode</span>
+              </button>
             </div>
           </div>
 
-          {/* 2. Block Grid Density & Badges (Visible when in Blocks Mode) */}
+          {/* 2. Block Grid Density & Aesthetic (Visible in Blocks Mode) */}
           {displayMode === 'blocks' && (
             <div
               className={`p-3.5 rounded-2xl border space-y-3 ${
@@ -291,9 +320,9 @@ export default function DashboardLayoutModal({
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
                   <Grid2X2 size={13} />
-                  <span>Block Density</span>
+                  <span>Block Grid Density</span>
                 </span>
-                <span className="text-[10px] text-slate-400 font-medium">Card Layout</span>
+                <span className="text-[10px] text-slate-400 font-medium">Card Width</span>
               </div>
 
               {/* 1-Wide, 2-Wide, 3-Wide Pills */}
@@ -344,43 +373,6 @@ export default function DashboardLayoutModal({
                 </button>
               </div>
 
-              {/* Secondary Block Options: Dosing Badges & Inline Completed */}
-              <div className="flex items-center gap-2 pt-1 flex-wrap">
-                <button
-                  type="button"
-                  onClick={handleToggleDosing}
-                  className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
-                    showDosing
-                      ? isLight
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                        : 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-                      : isLight
-                      ? 'bg-slate-100 text-slate-600 border-slate-200'
-                      : 'bg-slate-800/50 text-slate-400 border-slate-700/50'
-                  }`}
-                >
-                  <Pill size={12} className={showDosing ? 'text-emerald-400' : 'text-slate-400'} />
-                  <span>Dose Badges: {showDosing ? 'ON' : 'OFF'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleToggleCompletedPlacement}
-                  className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
-                    completedPlacement === 'inline'
-                      ? isLight
-                        ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
-                        : 'bg-indigo-950/70 text-indigo-300 border-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.2)]'
-                      : isLight
-                      ? 'bg-slate-100 text-slate-600 border-slate-200'
-                      : 'bg-slate-800/50 text-slate-400 border-slate-700/50'
-                  }`}
-                >
-                  <CheckCircle2 size={12} className={completedPlacement === 'inline' ? 'text-indigo-400' : 'text-slate-400'} />
-                  <span>Inline Done: {completedPlacement === 'inline' ? 'ON' : 'OFF'}</span>
-                </button>
-              </div>
-
               {/* Visual Style Selector */}
               <div className="pt-1 border-t border-slate-800/40">
                 <div className="flex items-center justify-between pb-1.5">
@@ -413,6 +405,242 @@ export default function DashboardLayoutModal({
               </div>
             </div>
           )}
+
+          {/* 3. Card Details & Badges (Visible for Both Classic & Blocks) */}
+          <div
+            className={`p-3.5 rounded-2xl border space-y-3 ${
+              isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900/60 border-slate-800/80'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                  <Bookmark size={13} />
+                  <span>Card Details &amp; Badges</span>
+                </span>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Visible badges across Classic &amp; Blocks view
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              {/* 1. Target Dose Badges */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  toggleBadge('showDosing')
+                }}
+                className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                  badges.showDosing
+                    ? isLight
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                      : 'bg-emerald-950/50 border-emerald-500/50 text-emerald-200 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                    : isLight
+                    ? 'bg-slate-50 border-slate-200 text-slate-500'
+                    : 'bg-slate-800/40 border-slate-700/50 text-slate-400'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      badges.showDosing
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-slate-700/40 text-slate-500'
+                    }`}
+                  >
+                    <Pill size={14} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold">Dose &amp; Parameters</div>
+                    <div className="text-[10px] text-slate-400 truncate">Target dosage, temperature, duration &amp; reps</div>
+                  </div>
+                </div>
+                <span
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${
+                    badges.showDosing
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-slate-800 text-slate-500'
+                  }`}
+                >
+                  {badges.showDosing ? 'ON' : 'OFF'}
+                </span>
+              </button>
+
+              {/* 2. Completed Modalities Inline */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  toggleBadge('showCompletedInline')
+                }}
+                className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                  badges.showCompletedInline
+                    ? isLight
+                      ? 'bg-indigo-50 border-indigo-300 text-indigo-950'
+                      : 'bg-indigo-950/50 border-indigo-500/50 text-indigo-200 shadow-[0_0_10px_rgba(99,102,241,0.15)]'
+                    : isLight
+                    ? 'bg-slate-50 border-slate-200 text-slate-500'
+                    : 'bg-slate-800/40 border-slate-700/50 text-slate-400'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      badges.showCompletedInline
+                        ? 'bg-indigo-500/20 text-indigo-400'
+                        : 'bg-slate-700/40 text-slate-500'
+                    }`}
+                  >
+                    <CheckCircle2 size={14} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold">Completed Inline</div>
+                    <div className="text-[10px] text-slate-400 truncate">Keep completed tasks in scheduled time blocks</div>
+                  </div>
+                </div>
+                <span
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${
+                    badges.showCompletedInline
+                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                      : 'bg-slate-800 text-slate-500'
+                  }`}
+                >
+                  {badges.showCompletedInline ? 'ON' : 'OFF'}
+                </span>
+              </button>
+
+              {/* 3. Protocol Lineage Attribution */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  toggleBadge('showProtocol')
+                }}
+                className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                  badges.showProtocol
+                    ? isLight
+                      ? 'bg-purple-50 border-purple-300 text-purple-950'
+                      : 'bg-purple-950/50 border-purple-500/50 text-purple-200 shadow-[0_0_10px_rgba(168,85,247,0.15)]'
+                    : isLight
+                    ? 'bg-slate-50 border-slate-200 text-slate-500'
+                    : 'bg-slate-800/40 border-slate-700/50 text-slate-400'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      badges.showProtocol
+                        ? 'bg-purple-500/20 text-purple-400'
+                        : 'bg-slate-700/40 text-slate-500'
+                    }`}
+                  >
+                    <Bookmark size={14} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold">Protocol Attribution</div>
+                    <div className="text-[10px] text-slate-400 truncate">Show parent protocol badge (e.g. Blueprint, Attia)</div>
+                  </div>
+                </div>
+                <span
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${
+                    badges.showProtocol
+                      ? 'bg-purple-500/20 text-purple-300 border border-purple-400/40'
+                      : 'bg-slate-800 text-slate-500'
+                  }`}
+                >
+                  {badges.showProtocol ? 'ON' : 'OFF'}
+                </span>
+              </button>
+
+              {/* 4. Synergies & Nutrient Pairings */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  toggleBadge('showSynergies')
+                }}
+                className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                  badges.showSynergies
+                    ? isLight
+                      ? 'bg-amber-50 border-amber-300 text-amber-950'
+                      : 'bg-amber-950/50 border-amber-500/50 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.15)]'
+                    : isLight
+                    ? 'bg-slate-50 border-slate-200 text-slate-500'
+                    : 'bg-slate-800/40 border-slate-700/50 text-slate-400'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      badges.showSynergies
+                        ? 'bg-amber-500/20 text-amber-400'
+                        : 'bg-slate-700/40 text-slate-500'
+                    }`}
+                  >
+                    <Sparkles size={14} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold">Synergies &amp; Pairings</div>
+                    <div className="text-[10px] text-slate-400 truncate">Biochemical pairings, cofactors &amp; meal timing</div>
+                  </div>
+                </div>
+                <span
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${
+                    badges.showSynergies
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40'
+                      : 'bg-slate-800 text-slate-500'
+                  }`}
+                >
+                  {badges.showSynergies ? 'ON' : 'OFF'}
+                </span>
+              </button>
+
+              {/* 5. Modality Category Tags */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  toggleBadge('showCategory')
+                }}
+                className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                  badges.showCategory
+                    ? isLight
+                      ? 'bg-cyan-50 border-cyan-300 text-cyan-950'
+                      : 'bg-cyan-950/50 border-cyan-500/50 text-cyan-200 shadow-[0_0_10px_rgba(6,182,212,0.15)]'
+                    : isLight
+                    ? 'bg-slate-50 border-slate-200 text-slate-500'
+                    : 'bg-slate-800/40 border-slate-700/50 text-slate-400'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      badges.showCategory
+                        ? 'bg-cyan-500/20 text-cyan-400'
+                        : 'bg-slate-700/40 text-slate-500'
+                    }`}
+                  >
+                    <Activity size={14} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold">Category Tags</div>
+                    <div className="text-[10px] text-slate-400 truncate">Modality tags (Supplements, Thermal, Cardio)</div>
+                  </div>
+                </div>
+                <span
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${
+                    badges.showCategory
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
+                      : 'bg-slate-800 text-slate-500'
+                  }`}
+                >
+                  {badges.showCategory ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            </div>
+          </div>
 
           {/* 3. Typography Scale (Direct Without Preview Box) */}
           <div className="space-y-2">
@@ -630,46 +858,48 @@ export default function DashboardLayoutModal({
                 </div>
               </button>
 
-              {/* Infradian Protocol Tracker */}
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic('selection')
-                  toggleWidget('infradian')
-                }}
-                className={`p-2.5 rounded-2xl border text-left flex items-center gap-3 transition-all cursor-pointer active:scale-98 ${
-                  widgets.infradian
-                    ? 'bg-rose-950/70 border-rose-500/70 text-rose-100 shadow-[0_0_14px_rgba(244,63,94,0.35)]'
-                    : isLight
-                    ? 'bg-slate-100/90 border-slate-200 text-slate-500'
-                    : 'bg-slate-900/50 border-slate-800/80 text-slate-400 opacity-60 hover:opacity-80'
-                }`}
-              >
-                <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+              {/* Infradian Protocol Tracker (Strictly for Female Users) */}
+              {isFemale && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('selection')
+                    toggleWidget('infradian')
+                  }}
+                  className={`p-2.5 rounded-2xl border text-left flex items-center gap-3 transition-all cursor-pointer active:scale-98 ${
                     widgets.infradian
-                      ? 'bg-rose-500/30 text-rose-300 shadow-inner'
-                      : 'bg-slate-800/60 text-slate-500'
+                      ? 'bg-rose-950/70 border-rose-500/70 text-rose-100 shadow-[0_0_14px_rgba(244,63,94,0.35)]'
+                      : isLight
+                      ? 'bg-slate-100/90 border-slate-200 text-slate-500'
+                      : 'bg-slate-900/50 border-slate-800/80 text-slate-400 opacity-60 hover:opacity-80'
                   }`}
                 >
-                  <CalendarDays size={16} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold flex items-center justify-between">
-                    <span>Infradian Cycle</span>
-                    <span
-                      className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full font-bold ${
-                        widgets.infradian
-                          ? 'bg-rose-500/30 text-rose-200 border border-rose-400/40'
-                          : 'bg-slate-800 text-slate-500'
-                      }`}
-                    >
-                      {widgets.infradian ? 'ON' : 'OFF'}
-                    </span>
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                      widgets.infradian
+                        ? 'bg-rose-500/30 text-rose-300 shadow-inner'
+                        : 'bg-slate-800/60 text-slate-500'
+                    }`}
+                  >
+                    <CalendarDays size={16} />
                   </div>
-                  <p className="text-[10px] text-slate-400 truncate">Hormonal cycle protocol phasing</p>
-                </div>
-              </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold flex items-center justify-between">
+                      <span>Infradian Cycle</span>
+                      <span
+                        className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full font-bold ${
+                          widgets.infradian
+                            ? 'bg-rose-500/30 text-rose-200 border border-rose-400/40'
+                            : 'bg-slate-800 text-slate-500'
+                        }`}
+                      >
+                        {widgets.infradian ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 truncate">Hormonal cycle protocol phasing</p>
+                  </div>
+                </button>
+              )}
 
               {/* Daily Wellbeing Check-in */}
               <button
@@ -851,6 +1081,27 @@ export default function DashboardLayoutModal({
                     className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500"
                   />
                 </label>
+
+                {/* Rule: Keep Infradian Phasing Visible (Only for Females) */}
+                {isFemale && (
+                  <label className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 cursor-pointer">
+                    <div className="pr-2">
+                      <div className="text-xs font-bold text-slate-200">Keep Infradian Phasing Visible</div>
+                      <div className="text-[10px] text-slate-400">
+                        Maintain hormonal cycle protocol phasing during focus
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={rules.keepInfradian}
+                      onChange={() => {
+                        triggerHaptic('selection')
+                        toggleRule('keepInfradian')
+                      }}
+                      className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 focus:ring-emerald-500"
+                    />
+                  </label>
+                )}
               </div>
             )}
           </div>

@@ -22,6 +22,7 @@ import { useBlocksDrag } from './BlocksDragContext'
 import { triggerHaptic } from '@/lib/utils/haptics'
 import { useTheme } from '@/lib/utils/useTheme'
 import { getDaylightCategoryStyle } from '@/lib/utils/modalityColors'
+import { useCardBadges } from '@/lib/utils/layoutSettings'
 
 interface ModalityBlockTileProps {
   task: DedupedTask
@@ -79,6 +80,26 @@ export default function ModalityBlockTile({
   const { theme } = useTheme()
   const isDaylight = theme === 'light'
   const daylightCategory = useMemo(() => getDaylightCategoryStyle(modality || task), [modality, task])
+  const { badges } = useCardBadges()
+  const effectiveShowDosing = showDosing !== undefined ? showDosing : badges.showDosing
+
+  const protocolName = useMemo(() => {
+    return (
+      task.protocol_step?.protocol?.name ||
+      task.lineages?.[0]?.protocol_name ||
+      (task as any).lineage ||
+      ''
+    )
+  }, [task])
+
+  const categoryName = useMemo(() => {
+    return modality?.category || (modality as any)?.modality_type || ''
+  }, [modality])
+
+  const hasSynergy = useMemo(() => {
+    return Boolean(synergy || modality?.synergy_notes)
+  }, [synergy, modality?.synergy_notes])
+
   const protocolLineage = useMemo(() => {
     return (
       task.protocol_step?.protocol?.name ||
@@ -542,16 +563,38 @@ export default function ModalityBlockTile({
                 >
                   {simplifiedName}
                 </div>
-                {showDosing && doseDisplay && (
-                  <span
-                    className={`text-[10px] sm:text-[11px] font-mono font-medium truncate max-w-[280px] ${
-                      isDaylight ? 'text-[#526661]' : 'text-slate-400'
-                    }`}
-                    title={doseDisplay}
-                  >
-                    {doseDisplay}
-                  </span>
-                )}
+                {/* Meta details row: Dose, Protocol, Category, Synergies */}
+                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                  {effectiveShowDosing && doseDisplay && (
+                    <span
+                      className={`text-[10px] sm:text-[11px] font-mono font-medium truncate max-w-[200px] ${
+                        isDaylight ? 'text-[#526661]' : 'text-slate-400'
+                      }`}
+                      title={doseDisplay}
+                    >
+                      {doseDisplay}
+                    </span>
+                  )}
+
+                  {badges.showProtocol && protocolName && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-400/30 truncate max-w-[140px]">
+                      {protocolName}
+                    </span>
+                  )}
+
+                  {badges.showCategory && categoryName && (
+                    <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-300 border border-slate-700/50 truncate max-w-[120px]">
+                      {categoryName}
+                    </span>
+                  )}
+
+                  {badges.showSynergies && hasSynergy && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center gap-0.5">
+                      <Sparkles size={9} className="text-amber-300" />
+                      <span>Synergy</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -655,31 +698,59 @@ export default function ModalityBlockTile({
                 {simplifiedName}
               </div>
 
-              {/* Clinical Dosing Overlay Badge (Toggleable for any mode) */}
-              {showDosing && doseDisplay && (
-                <div
-                  className="mt-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold tracking-tight truncate max-w-[95%] shadow-sm backdrop-blur-sm"
-                  style={{
-                    backgroundColor:
-                      isDaylight
-                        ? 'rgba(0,0,0,0.04)'
-                        : visualStyle === 'full-gradient'
-                        ? 'rgba(0,0,0,0.18)'
-                        : (visualStyle as string) === 'light-glass'
-                        ? 'rgba(255,255,255,0.08)'
-                        : 'rgba(255,255,255,0.14)',
-                    border:
-                      isDaylight
-                        ? `1px solid ${styles.borderColor}`
-                        : visualStyle === 'full-gradient'
-                        ? '1px solid rgba(255,255,255,0.3)'
-                        : `1px solid ${styles.borderColor}`,
-                    color: styles.textColor
-                  }}
-                >
-                  {doseDisplay}
-                </div>
-              )}
+              {/* Badges container: Dose, Protocol, Category, Synergies */}
+              <div className="flex flex-col items-center gap-1 mt-1 max-w-[95%]">
+                {effectiveShowDosing && doseDisplay && (
+                  <div
+                    className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold tracking-tight truncate max-w-full shadow-sm backdrop-blur-sm"
+                    style={{
+                      backgroundColor:
+                        isDaylight
+                          ? 'rgba(0,0,0,0.04)'
+                          : visualStyle === 'full-gradient'
+                          ? 'rgba(0,0,0,0.18)'
+                          : (visualStyle as string) === 'light-glass'
+                          ? 'rgba(255,255,255,0.08)'
+                          : 'rgba(255,255,255,0.14)',
+                      border:
+                        isDaylight
+                          ? `1px solid ${styles.borderColor}`
+                          : visualStyle === 'full-gradient'
+                          ? '1px solid rgba(255,255,255,0.3)'
+                          : `1px solid ${styles.borderColor}`,
+                      color: styles.textColor
+                    }}
+                  >
+                    {doseDisplay}
+                  </div>
+                )}
+
+                {/* Optional metadata badges row */}
+                {Boolean(
+                  (badges.showProtocol && protocolName) ||
+                  (badges.showCategory && categoryName) ||
+                  (badges.showSynergies && hasSynergy)
+                ) && (
+                  <div className="flex items-center justify-center gap-1 flex-wrap">
+                    {badges.showProtocol && protocolName && (
+                      <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30 truncate max-w-[120px]">
+                        {protocolName}
+                      </span>
+                    )}
+                    {badges.showCategory && categoryName && (
+                      <span className="text-[8px] sm:text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700/50 truncate max-w-[100px]">
+                        {categoryName}
+                      </span>
+                    )}
+                    {badges.showSynergies && hasSynergy && (
+                      <span className="text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30 flex items-center gap-0.5">
+                        <Sparkles size={8} className="text-amber-300" />
+                        <span>Synergy</span>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
