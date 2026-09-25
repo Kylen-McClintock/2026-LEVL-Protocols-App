@@ -50,6 +50,7 @@ import BlocksFloatingWaterDock from './BlocksFloatingWaterDock'
 import SwipeActionInFeedCard from './SwipeActionInFeedCard'
 import FullScreenModalityModal from './FullScreenModalityModal'
 import CompletedBlocksSection from './CompletedBlocksSection'
+import BlocksNextBestActionSection from './BlocksNextBestActionSection'
 import QuickLogDetailModal from '@/components/quicklog/QuickLogDetailModal'
 import ManageHotkeysModal from '@/components/quicklog/ManageHotkeysModal'
 import { BlocksDragProvider } from './BlocksDragContext'
@@ -102,6 +103,8 @@ interface BlocksViewContainerProps {
   onSaveCustomOutcomes?: (modalityId: string, outcomeIds: string[]) => void
   onAddActivity?: (slotKey?: string) => void
   onMoveTaskToSlot?: (taskId: string, targetSlotKey: string, targetTaskId?: string) => void
+  onAddToToday?: (modalityId: string) => Promise<void>
+  streakDays?: number
 }
 
 interface ActiveSwipeState {
@@ -133,7 +136,9 @@ export default function BlocksViewContainer({
   onMoveToBench,
   onSaveCustomOutcomes,
   onAddActivity,
-  onMoveTaskToSlot
+  onMoveTaskToSlot,
+  onAddToToday,
+  streakDays = 0
 }: BlocksViewContainerProps) {
   // Home widgets & focus rules & card badges
   const { widgets: homeWidgets } = useHomeWidgets(userProfile || undefined)
@@ -823,6 +828,21 @@ export default function BlocksViewContainer({
               )
             })}
 
+            {/* Dedicated Next Best Action & 80/20 Stack Progression Section */}
+            {tasks.length > 0 && !isFocusMode && (
+              <BlocksNextBestActionSection
+                tasks={tasks}
+                allModalities={allModalities}
+                userProfile={userProfile}
+                benchItems={benchItems}
+                streakDays={streakDays}
+                visualStyle={visualStyle}
+                date={date}
+                onAddToToday={onAddToToday}
+                onMoveToBench={onMoveToBench}
+              />
+            )}
+
             {/* Dedicated Completed Modalities Section (Rendered whenever completed tasks exist) */}
             {completedTasks.length > 0 && (
               <CompletedBlocksSection
@@ -866,6 +886,21 @@ export default function BlocksViewContainer({
                 onMoveTask={handleMoveTask}
               />
             ))}
+
+            {/* Dedicated Next Best Action & 80/20 Stack Progression Section */}
+            {tasks.length > 0 && !isFocusMode && (
+              <BlocksNextBestActionSection
+                tasks={tasks}
+                allModalities={allModalities}
+                userProfile={userProfile}
+                benchItems={benchItems}
+                streakDays={streakDays}
+                visualStyle={visualStyle}
+                date={date}
+                onAddToToday={onAddToToday}
+                onMoveToBench={onMoveToBench}
+              />
+            )}
 
             {/* Dedicated Completed Modalities Section (Rendered whenever completed tasks exist) */}
             {completedTasks.length > 0 && (

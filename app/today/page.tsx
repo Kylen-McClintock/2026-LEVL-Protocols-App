@@ -4784,6 +4784,13 @@ function TodayPageContent() {
                 setIsAdHocModalOpen(true)
               }}
               onMoveTaskToSlot={handleMoveTaskToSlot}
+              onAddToToday={async (modalityId: string) => {
+                if (profile) {
+                  await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
+                  await refreshTodayTasks()
+                }
+              }}
+              streakDays={0}
             />
           </div>
         )}
