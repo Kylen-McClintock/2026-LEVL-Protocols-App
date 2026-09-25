@@ -337,7 +337,25 @@ export default function ProtocolFocusPage() {
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     const localUserId = getLocalUserId()
-    await updateDailyTaskStatus(taskId, newStatus as any)
+    const targetTask = todayTasks.find(t => t.id === taskId)
+    const targetModId = (targetTask?.modality_id || targetTask?.protocol_step?.modality_id || '').trim().toLowerCase()
+    const matchingIds = todayTasks
+      .filter(t => {
+        if (t.id === taskId) return true
+        if (targetModId) {
+          const m = (t.modality_id || t.protocol_step?.modality_id || '').trim().toLowerCase()
+          if (m === targetModId || m.replace(/-/g, '_') === targetModId.replace(/-/g, '_')) return true
+        }
+        return false
+      })
+      .map(t => t.id)
+
+    // Optimistic local update
+    setTodayTasks(prev => prev.map(t => matchingIds.includes(t.id) ? { ...t, status: newStatus as any, completed_at: newStatus === 'completed' ? (t.completed_at || new Date().toISOString()) : undefined } : t))
+
+    for (const id of matchingIds) {
+      await updateDailyTaskStatus(id, newStatus as any)
+    }
     const updatedTasks = await getDailyProtocolTasks(localUserId, currentDateStr)
     setTodayTasks(updatedTasks)
   }

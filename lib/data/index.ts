@@ -3818,8 +3818,16 @@ export async function updateDailyTaskStatus(
 
   const updateData: any = { status }
   if (reason !== undefined) updateData.status_reason = reason
-  if (adherenceValue !== undefined) updateData.adherence_value = adherenceValue
-  if (completedAt !== undefined) updateData.completed_at = completedAt
+  if (adherenceValue !== undefined) {
+    updateData.adherence_value = adherenceValue
+  } else if (status === 'pending') {
+    updateData.adherence_value = 0
+  }
+  if (completedAt !== undefined) {
+    updateData.completed_at = completedAt
+  } else if (status === 'pending') {
+    updateData.completed_at = null
+  }
   if (executionMetrics !== undefined) updateData.execution_metrics = executionMetrics
   if (timingSlot !== undefined) updateData.timing_slot = timingSlot
 
@@ -3852,6 +3860,53 @@ export async function updateDailyTaskStatus(
 
   if (error) {
     console.error('Error updating task status:', error)
+    return null
+  }
+  clearUserHistoryCache()
+  return data
+}
+
+export async function updateDailyTasksBatchStatus(
+  taskIds: string[],
+  status: string,
+  reason?: string,
+  adherenceValue?: number,
+  completedAt?: string,
+  executionMetrics?: any,
+  executionDetails?: any,
+  timingSlot?: string
+) {
+  if (!supabase || !taskIds || taskIds.length === 0) return null
+  const validUuids = taskIds.filter(id => id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
+  if (validUuids.length === 0) return null
+
+  const updateData: any = { status }
+  if (reason !== undefined) updateData.status_reason = reason
+  if (adherenceValue !== undefined) {
+    updateData.adherence_value = adherenceValue
+  } else if (status === 'pending') {
+    updateData.adherence_value = 0
+  }
+  if (completedAt !== undefined) {
+    updateData.completed_at = completedAt
+  } else if (status === 'pending') {
+    updateData.completed_at = null
+  }
+  if (executionMetrics !== undefined) updateData.execution_metrics = executionMetrics
+  if (timingSlot !== undefined) updateData.timing_slot = timingSlot
+
+  if (executionDetails !== undefined) {
+    updateData.execution_details = executionDetails
+  }
+
+  const { data, error } = await supabase
+    .from('daily_protocol_tasks')
+    .update(updateData)
+    .in('id', validUuids)
+    .select()
+
+  if (error) {
+    console.error('Error updating tasks batch status:', error)
     return null
   }
   clearUserHistoryCache()

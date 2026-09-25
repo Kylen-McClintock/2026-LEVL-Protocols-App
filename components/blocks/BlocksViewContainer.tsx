@@ -111,6 +111,8 @@ interface UndoEntry {
   previousStatus: string
   previousCompletedAt?: string
   taskName: string
+  actionLabel?: string
+  buttonLabel?: string
 }
 
 export default function BlocksViewContainer({
@@ -282,7 +284,7 @@ export default function BlocksViewContainer({
   // Fast 1-tap undo completion handler: immediately reverts task to pending and shows tactile toast
   const handleUndoTaskCompletion = (task: DedupedTask) => {
     triggerHaptic('light')
-    triggerUndo(task, 'completed')
+    triggerUndo(task, 'completed', 'marked pending', 'Re-complete')
     onStatusChange(task.id, 'pending')
   }
 
@@ -444,14 +446,21 @@ export default function BlocksViewContainer({
   }, [tasks, layoutMode, onMoveTaskToSlot])
 
   // Trigger undo toast
-  const triggerUndo = (task: DedupedTask, previousStatus: string = 'pending') => {
+  const triggerUndo = (
+    task: DedupedTask, 
+    previousStatus: string = 'pending',
+    actionLabel?: string,
+    buttonLabel: string = 'Undo'
+  ) => {
     const mod = task.protocol_step?.modality || task.loose_modality
     const taskName = getSimplifiedModalityName(mod, task)
     setUndoEntry({
       taskId: task.id,
       previousStatus,
       previousCompletedAt: task.completed_at,
-      taskName
+      taskName,
+      actionLabel,
+      buttonLabel
     })
 
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
@@ -493,7 +502,7 @@ export default function BlocksViewContainer({
   // Handle Swipe In-Feed completions
   const handleInFeedComplete = async (taskId: string, outcomes?: Record<string, number>, customDose?: string) => {
     const targetTask = tasks.find((t) => t.id === taskId)
-    if (targetTask) triggerUndo(targetTask, targetTask.status)
+    if (targetTask) triggerUndo(targetTask, targetTask.status, 'completed', 'Undo')
 
     if (outcomes && Object.keys(outcomes).length > 0 && localUserId) {
       for (const [outcomeId, score] of Object.entries(outcomes)) {
@@ -520,7 +529,7 @@ export default function BlocksViewContainer({
   // Handle Swipe In-Feed skips
   const handleInFeedSkip = (taskId: string, reason?: string) => {
     const targetTask = tasks.find((t) => t.id === taskId)
-    if (targetTask) triggerUndo(targetTask, targetTask.status)
+    if (targetTask) triggerUndo(targetTask, targetTask.status, 'skipped', 'Undo')
 
     onStatusChange(taskId, 'skipped', reason || 'Skipped by user')
     setActiveSwipe(null)
@@ -529,7 +538,7 @@ export default function BlocksViewContainer({
   // Handle In-Feed snoozes
   const handleInFeedSnooze = (taskId: string, snoozeSlotOrMinutes: string | number) => {
     const targetTask = tasks.find((t) => t.id === taskId)
-    if (targetTask) triggerUndo(targetTask, targetTask.status)
+    if (targetTask) triggerUndo(targetTask, targetTask.status, 'snoozed', 'Undo')
 
     if (typeof snoozeSlotOrMinutes === 'number') {
       onStatusChange(taskId, 'snoozed', `Snoozed +${snoozeSlotOrMinutes}m`)
@@ -1113,14 +1122,14 @@ export default function BlocksViewContainer({
       {undoEntry && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3.5 px-5 py-3 rounded-2xl bg-slate-900/95 border border-white/25 text-white shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 max-w-[92vw] sm:max-w-2xl">
           <span className="text-xs sm:text-sm font-bold text-white whitespace-normal leading-snug">
-            {undoEntry.taskName}
+            {undoEntry.actionLabel ? `${undoEntry.taskName} ${undoEntry.actionLabel}` : undoEntry.taskName}
           </span>
           <button
             onClick={handleExecuteUndo}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-black text-xs transition-all cursor-pointer shrink-0 shadow-lg shadow-purple-600/30"
           >
             <RotateCcw size={13} />
-            <span>Undo</span>
+            <span>{undoEntry.buttonLabel || 'Undo'}</span>
           </button>
           <button
             onClick={() => setUndoEntry(null)}

@@ -1453,9 +1453,77 @@ function TodayPageContent() {
     const targetUuids: string[] = []
     const uuidSet = new Set<string>()
 
-    const baseId = id.includes('-split-') ? id.split('-split-')[0] : id
+    const isSplit = id.includes('-split-')
+    const splitNumber = isSplit ? parseInt(id.split('-split-')[1], 10) : 0
+    const baseId = isSplit ? id.split('-split-')[0] : id
+
+    // Resolve target task and modality from tasks or dedupedTasks
+    const refTask = tasks.find(t => t.id === id || t.id === baseId) || dedupedTasks.find(t => t.id === id || t.id === baseId)
+    const targetModalityId = (
+      refTask?.modality_id || 
+      refTask?.protocol_step?.modality_id || 
+      refTask?.protocol_step?.modality?.id || 
+      refTask?.loose_modality?.id || 
+      ''
+    ).trim().toLowerCase()
+
+    // 1. Gather all IDs from original_tasks if deduped
+    if ((refTask as any)?.original_tasks) {
+      (refTask as any).original_tasks.forEach((ot: any) => {
+        if (ot.id) {
+          const rawId = ot.id.includes('-split-') ? ot.id.split('-split-')[0] : ot.id
+          targetUuids.push(rawId)
+          uuidSet.add(rawId)
+        }
+      })
+    }
+
+    // 2. Also check dedupedTasks for any matching entry
+    const dedupedMatch = dedupedTasks.find(t => 
+      t.id === id || 
+      t.id === baseId || 
+      (targetModalityId && (t.modality_id || t.protocol_step?.modality_id || t.loose_modality?.id || '').toLowerCase() === targetModalityId)
+    )
+    if (dedupedMatch?.original_tasks) {
+      dedupedMatch.original_tasks.forEach(ot => {
+        if (ot.id) {
+          const rawId = ot.id.includes('-split-') ? ot.id.split('-split-')[0] : ot.id
+          targetUuids.push(rawId)
+          uuidSet.add(rawId)
+        }
+      })
+    }
+
+    // 3. Find all matching task instances for this modality on this scheduled date
+    const normTargetMod = targetModalityId.replace(/-/g, '_')
+    const matchingTasks = tasks.filter(t => {
+      if (t.id === id || t.id === baseId || uuidSet.has(t.id)) return true
+      if (normTargetMod) {
+        const tMid = (t.modality_id || t.protocol_step?.modality_id || t.protocol_step?.modality?.id || t.loose_modality?.id || '').trim().toLowerCase().replace(/-/g, '_')
+        if (tMid && tMid === normTargetMod) return true
+      }
+      if (refTask?.protocol_step_id && t.protocol_step_id && t.protocol_step_id === refTask.protocol_step_id) return true
+      return false
+    })
+
+    matchingTasks.forEach(t => {
+      targetUuids.push(t.id)
+      uuidSet.add(t.id)
+    })
     targetUuids.push(baseId)
     uuidSet.add(baseId)
+    if (id) uuidSet.add(id)
+
+    // Handle multi-dose split tracking
+    let splitCompletedDoses: number[] | undefined = undefined
+    if (isSplit && splitNumber > 0) {
+      const existingCompletedDoses: number[] = refTask?.execution_details?.completed_doses || (refTask?.status === 'completed' ? [1, 2] : [])
+      if (status === 'completed') {
+        splitCompletedDoses = Array.from(new Set([...existingCompletedDoses, splitNumber]))
+      } else if (status === 'pending') {
+        splitCompletedDoses = existingCompletedDoses.filter(d => d !== splitNumber)
+      }
+    }
 
     // Anchor completion timestamp to selected historical day if backfilling past days
     let effectiveCompletedAt = completedAt
@@ -1485,6 +1553,18 @@ function TodayPageContent() {
       }
     } else if (status !== 'completed' && !completedAt) {
       effectiveCompletedAt = undefined
+    }
+
+    // Clear recently completed markers and completion toast immediately when undoing / resetting to pending
+    if (status !== 'completed') {
+      setRecentlyCompletedIds(prev => {
+        const next = new Set(prev)
+        targetUuids.forEach(u => next.delete(u))
+        next.delete(id)
+        next.delete(baseId)
+        return next
+      })
+      setCompletionToast(null)
     }
 
     // Optimistic UI update: If modality was eliminated, remove it immediately from today tasks
@@ -1520,25 +1600,47 @@ function TodayPageContent() {
       return
     }
 
-    // Optimistic UI update
-    setTasks(prev => prev.map(t => {
-      if (t.id === id || uuidSet.has(t.id)) {
-        const finalDetails = executionDetails !== undefined ? executionDetails : t.execution_details
+    // Optimistic UI update across all matching tasks
+    const updatedTasks = tasks.map(t => {
+      if (uuidSet.has(t.id)) {
+        let taskExecutionDetails = executionDetails !== undefined ? executionDetails : t.execution_details
+        if (splitCompletedDoses !== undefined) {
+          taskExecutionDetails = {
+            ...(taskExecutionDetails || {}),
+            completed_doses: splitCompletedDoses
+          }
+        } else if (status === 'pending' && taskExecutionDetails?.completed_doses) {
+          const { completed_doses, ...rest } = taskExecutionDetails
+          taskExecutionDetails = rest
+        }
+
+        const effectiveStatus = (splitCompletedDoses !== undefined)
+          ? (splitCompletedDoses.length > 0 ? (status === 'completed' ? 'completed' : 'partial') : 'pending')
+          : status
+
         return { 
           ...t, 
-          status: status as any, 
+          status: effectiveStatus as any, 
           status_reason: reason, 
           completed_at: effectiveCompletedAt || (status === 'completed' ? new Date().toISOString() : undefined), 
           execution_metrics: executionMetrics || t.execution_metrics, 
-          execution_details: finalDetails 
+          execution_details: taskExecutionDetails 
         }
       }
       return t
-    }))
+    })
+
+    setTasks(updatedTasks)
+
+    // Synchronously update in-memory SWR cache and localStorage so background cycles see fresh state
+    tasksDateCacheRef.current.set(dateStr, updatedTasks)
+    if (typeof window !== 'undefined') {
+      safeLocalStorageSet('levl_cached_tasks_' + dateStr, JSON.stringify(updatedTasks))
+    }
 
     // Check if this completion achieves 100% adherence for the day
     const willBeCompleted = status === 'completed'
-    const pendingOtherTasks = tasks.filter(t => {
+    const pendingOtherTasks = updatedTasks.filter(t => {
       if (t.id === id || uuidSet.has(t.id)) return false
       if (t.status !== 'pending') return false
       if (isShieldActive && (t.status_reason?.toLowerCase().includes('80/20') || t.execution_details?.adaptive_muted)) return false
@@ -1556,7 +1658,7 @@ function TodayPageContent() {
     }
 
     if (status === 'completed') {
-      const completedTask = tasks.find(t => t.id === id || t.id === baseId)
+      const completedTask = tasks.find(t => t.id === id || t.id === baseId || uuidSet.has(t.id))
       const modName = resolveTaskModalityName(completedTask)
       const dose = completedTask?.execution_details?.custom_dose || completedTask?.loose_modality?.dose_or_exposure || completedTask?.protocol_step?.modality?.dose_or_exposure
       setCompletionToast({ id: baseId, name: modName, dose })
@@ -1577,13 +1679,27 @@ function TodayPageContent() {
       }, 4000)
     }
 
-    // Asynchronous background persistence (does not block instant UI responsiveness)
+    // Asynchronous background persistence across all affected rows in Supabase
     ;(async () => {
       try {
-        for (const uuid of targetUuids) {
+        const uniqueUuids = Array.from(new Set(targetUuids)).filter(
+          u => u && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u)
+        )
+        for (const uuid of uniqueUuids) {
           const existingTask = tasks.find(t => t.id === uuid)
-          const finalDetails = executionDetails !== undefined ? executionDetails : existingTask?.execution_details
-          await updateDailyTaskStatus(uuid, status, reason, undefined, effectiveCompletedAt, executionMetrics, finalDetails)
+          let finalDetails = executionDetails !== undefined ? executionDetails : existingTask?.execution_details
+          if (splitCompletedDoses !== undefined) {
+            finalDetails = { ...(finalDetails || {}), completed_doses: splitCompletedDoses }
+          } else if (status === 'pending' && finalDetails?.completed_doses) {
+            const { completed_doses, ...rest } = finalDetails
+            finalDetails = rest
+          }
+
+          const effectiveStatus = (splitCompletedDoses !== undefined)
+            ? (splitCompletedDoses.length > 0 ? (status === 'completed' ? 'completed' : 'partial') : 'pending')
+            : status
+
+          await updateDailyTaskStatus(uuid, effectiveStatus, reason, undefined, effectiveCompletedAt, executionMetrics, finalDetails)
         }
       } catch (err) {
         console.error('Error saving task status to database:', err)
@@ -2222,10 +2338,13 @@ function TodayPageContent() {
         if (!protoMap.has(protoKey)) {
           protoMap.set(protoKey, {
             ...task,
-            timing_slot: resolvedSlot
+            timing_slot: resolvedSlot,
+            original_tasks: [task]
           })
         } else {
           const existing = protoMap.get(protoKey)!
+          if (!existing.original_tasks) existing.original_tasks = [existing]
+          existing.original_tasks.push(task)
           if (task.timing_slot && task.timing_slot !== existing.timing_slot) {
             existing.timing_slot = task.timing_slot
           }
@@ -2276,10 +2395,13 @@ function TodayPageContent() {
         map.set(dedupeKey, {
           ...task,
           timing_slot: resolvedSlot,
-          lineages: initialLineages
+          lineages: initialLineages,
+          original_tasks: [task]
         })
       } else {
         const existing = map.get(dedupeKey)!
+        if (!existing.original_tasks) existing.original_tasks = [existing]
+        existing.original_tasks.push(task)
         if (!existing.lineages) existing.lineages = []
 
         const newLin: Array<{ protocol_id?: string; protocol_name: string; color_hex?: string; protocol_type?: string }> = []
