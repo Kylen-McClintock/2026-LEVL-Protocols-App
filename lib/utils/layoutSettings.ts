@@ -20,7 +20,7 @@ export const DEFAULT_HOME_WIDGETS: HomeWidgetsConfig = {
   longevityTip: true,
   quickHotkeys: true,
   sleepTriage: true,
-  infradian: true,
+  infradian: false,
   asNeeded: true,
   wellbeing: true
 }

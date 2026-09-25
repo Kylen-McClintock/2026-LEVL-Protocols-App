@@ -94,8 +94,10 @@ export default function DashboardLayoutModal({
   const { rules, toggleRule } = useFocusRules(userProfile)
   const { badges, toggleBadge } = useCardBadges(userProfile)
 
-  // Infradian & Period Cycle tracking is strictly for females
-  const isFemale = userProfile?.biological_sex?.toLowerCase() === 'female'
+  // Infradian & Period Cycle tracking option strictly shows for females under 52
+  const isFemaleEligible =
+    userProfile?.biological_sex?.toLowerCase() === 'female' &&
+    Boolean(userProfile?.age && userProfile.age < 52)
 
   // Configure Focus accordion collapsed by default as requested!
   const [isFocusSectionOpen, setIsFocusSectionOpen] = useState<boolean>(false)
@@ -858,8 +860,8 @@ export default function DashboardLayoutModal({
                 </div>
               </button>
 
-              {/* Infradian Protocol Tracker (Strictly for Female Users) */}
-              {isFemale && (
+              {/* Infradian Protocol Tracker (Strictly for Female Users < 52) */}
+              {isFemaleEligible && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1082,8 +1084,8 @@ export default function DashboardLayoutModal({
                   />
                 </label>
 
-                {/* Rule: Keep Infradian Phasing Visible (Only for Females) */}
-                {isFemale && (
+                {/* Rule: Keep Infradian Phasing Visible (Only for Females < 52) */}
+                {isFemaleEligible && (
                   <label className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 cursor-pointer">
                     <div className="pr-2">
                       <div className="text-xs font-bold text-slate-200">Keep Infradian Phasing Visible</div>

@@ -415,8 +415,12 @@ export default function QuickHotkeyGrid({
             )}
           </button>
 
-          {/* Contextual Infradian Period Hotkey */}
-          {infradianStatus && infradianStatus.enabled && (
+          {/* Contextual Infradian Period Hotkey (Strictly for Female Users < 52 who opted in) */}
+          {userProfile?.biological_sex?.toLowerCase() === 'female' &&
+            Boolean(userProfile?.age && userProfile.age < 52) &&
+            Boolean(userProfile?.infradian_cycle_enabled) &&
+            infradianStatus &&
+            infradianStatus.enabled && (
             <button
               type="button"
               onClick={() => setIsPeriodModalOpen(true)}

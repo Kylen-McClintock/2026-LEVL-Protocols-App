@@ -4797,7 +4797,7 @@ function TodayPageContent() {
           />
         )}
 
-        {/* As Needed Quick-Tap Strip (Single Row, Horizontal Scroll) */}
+        {/* As Needed Quick-Tap Strip (Single Row: "As Needed: + Log" and "Search") */}
         {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && homeWidgets.asNeeded && (
           <div className="mb-4 -mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-none py-1 px-1">
             <div className="flex items-center gap-1.5 shrink-0 text-amber-400 font-extrabold text-[11px] uppercase tracking-wider pl-0.5">
@@ -4820,23 +4820,6 @@ function TodayPageContent() {
               <span>Log</span>
             </button>
 
-
-            {asNeededQuickPills.map(item => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setAsNeededSlot(undefined)
-                  setAsNeededModalityId(item.id)
-                  setIsAdHocModalOpen(true)
-                }}
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-900/90 border border-amber-500/30 hover:border-amber-400 hover:bg-amber-500/10 text-slate-200 hover:text-white text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 shadow-sm active:scale-95"
-              >
-                <span className="text-amber-400 font-extrabold">+</span>
-                <span>{item.name}</span>
-              </button>
-            ))}
-
             <button
               type="button"
               onClick={() => {
@@ -4853,8 +4836,15 @@ function TodayPageContent() {
           </div>
         )}
 
-        {/* Infradian & Menstrual Cycle Adaptive Protocol Banner (Strictly for Female Users < 52) */}
-        {calendarViewMode === 'today' && displayMode !== 'blocks' && profile?.biological_sex?.toLowerCase() === 'female' && (isFocusMode ? focusRules.keepInfradian : homeWidgets.infradian) && infradianStatus && infradianStatus.enabled && (
+        {/* Infradian & Menstrual Cycle Adaptive Protocol Banner (Strictly for Female Users < 52 who opted in) */}
+        {calendarViewMode === 'today' &&
+          displayMode !== 'blocks' &&
+          profile?.biological_sex?.toLowerCase() === 'female' &&
+          Boolean(profile?.age && profile.age < 52) &&
+          Boolean(profile?.infradian_cycle_enabled) &&
+          (isFocusMode ? focusRules.keepInfradian : homeWidgets.infradian) &&
+          infradianStatus &&
+          infradianStatus.enabled && (
           <div className="mb-6">
             <InfradianAdaptiveBanner
               status={infradianStatus}

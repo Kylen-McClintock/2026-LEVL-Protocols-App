@@ -83,9 +83,9 @@ export function calculateInfradianStatus(
 ): InfradianStatus | null {
   if (!profile) return null
 
-  // 1. Guard check: User must be Female, under 52 (or unspecified age), and have infradian tracking enabled
+  // 1. Guard check: User must be Female, under 52 (explicitly set), and have infradian tracking explicitly opted into
   const isFemale = profile.biological_sex?.toLowerCase() === 'female'
-  const isEligibleAge = !profile.age || profile.age < 52
+  const isEligibleAge = Boolean(profile.age && profile.age < 52)
   const isEnabled = Boolean(profile.infradian_cycle_enabled)
 
   if (!isFemale || !isEligibleAge || !isEnabled) {
