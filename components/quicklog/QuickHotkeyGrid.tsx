@@ -40,6 +40,7 @@ import NutritionFastingModal from './NutritionFastingModal'
 import PeriodFlowLoggerModal from '@/components/modals/PeriodFlowLoggerModal'
 import { calculateInfradianStatus } from '@/lib/tracking/infradianEngine'
 import { useHomeWidgets } from '@/lib/utils/layoutSettings'
+import { useTheme } from '@/lib/utils/useTheme'
 
 interface QuickHotkeyGridProps {
   date: string
@@ -48,6 +49,106 @@ interface QuickHotkeyGridProps {
   className?: string
   defaultCollapsed?: boolean
   showInfradian?: boolean
+}
+
+export function getHotkeyPalette(hotkey: QuickHotkeyConfig, isDaylight: boolean) {
+  const isNegative = hotkey.is_negative || hotkey.polarity === 'negative'
+  const cat = (hotkey.category || '').toLowerCase()
+  const theme = (hotkey.color_theme || '').toLowerCase()
+  const id = (hotkey.id || '').toLowerCase()
+  const name = (hotkey.name || '').toLowerCase()
+
+  if (isNegative) {
+    return {
+      iconBg: isDaylight ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-rose-500/20 border-rose-500/35 text-rose-300',
+      badge: isDaylight ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-600 hover:text-white' : 'bg-rose-500/20 text-rose-300 border-rose-500/40 group-hover/card:bg-rose-500 group-hover/card:text-white',
+      progress: isDaylight ? 'bg-rose-500' : 'bg-gradient-to-t from-rose-600 via-rose-500 to-red-400'
+    }
+  }
+
+  // 1. Hydration & Thermal & Cold -> Sky / Cyan
+  if (
+    cat === 'hydration' ||
+    cat === 'thermal' ||
+    theme === 'cyan' ||
+    theme === 'sky' ||
+    id.includes('water') ||
+    id.includes('cold') ||
+    id.includes('sauna') ||
+    name.includes('water') ||
+    name.includes('plunge') ||
+    id.includes('collagen') ||
+    name.includes('collagen')
+  ) {
+    return {
+      iconBg: isDaylight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-sky-500/20 border-sky-500/35 text-sky-300',
+      badge: isDaylight ? 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-500 hover:text-white' : 'bg-sky-500/20 text-sky-300 border-sky-500/40 group-hover/card:bg-sky-400 group-hover/card:text-black',
+      progress: isDaylight ? 'bg-sky-500' : 'bg-gradient-to-t from-sky-600 via-sky-500 to-cyan-400'
+    }
+  }
+
+  // 2. Amber / Warm Gold / Orange -> Coffee, Creatine, Sunlight, Movement, Steps, Protein Pulse
+  if (
+    theme === 'amber' ||
+    theme === 'orange' ||
+    cat === 'fitness' ||
+    cat === 'movement' ||
+    id.includes('coffee') ||
+    id.includes('caffeine') ||
+    name.includes('coffee') ||
+    name.includes('caffeine') ||
+    id.includes('creatine') ||
+    name.includes('creatine') ||
+    id.includes('sunlight') ||
+    id.includes('sun') ||
+    name.includes('sunlight') ||
+    id.includes('step') ||
+    name.includes('step') ||
+    id.includes('protein_pulse')
+  ) {
+    return {
+      iconBg: isDaylight ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-amber-500/20 border-amber-500/35 text-amber-300',
+      badge: isDaylight ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-500 hover:text-white' : 'bg-orange-500/20 text-orange-300 border-orange-500/40 group-hover/card:bg-orange-500 group-hover/card:text-black',
+      progress: isDaylight ? 'bg-amber-500' : 'bg-gradient-to-t from-orange-500 via-amber-400 to-emerald-400'
+    }
+  }
+
+  // 3. Circadian / Sleep -> Purple
+  if (
+    cat === 'circadian' ||
+    cat === 'sleep' ||
+    theme === 'purple' ||
+    id.includes('sleep') ||
+    name.includes('sleep')
+  ) {
+    return {
+      iconBg: isDaylight ? 'bg-purple-50 border-purple-200 text-purple-600' : 'bg-purple-500/20 border-purple-500/35 text-purple-300',
+      badge: isDaylight ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-600 hover:text-white' : 'bg-purple-500/20 text-purple-300 border-purple-500/40 group-hover/card:bg-purple-500 group-hover/card:text-white',
+      progress: isDaylight ? 'bg-purple-500' : 'bg-gradient-to-t from-purple-600 via-purple-500 to-indigo-400'
+    }
+  }
+
+  // 4. Mind / Breathwork / Eye rest -> Indigo
+  if (
+    cat === 'mind' ||
+    theme === 'blue' ||
+    theme === 'indigo' ||
+    id.includes('mind') ||
+    id.includes('screen')
+  ) {
+    return {
+      iconBg: isDaylight ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-indigo-500/20 border-indigo-500/35 text-indigo-300',
+      badge: isDaylight ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-600 hover:text-white' : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 group-hover/card:bg-indigo-500 group-hover/card:text-white',
+      progress: isDaylight ? 'bg-indigo-500' : 'bg-gradient-to-t from-indigo-600 via-indigo-500 to-sky-400'
+    }
+  }
+
+  // 5. Default / Nutrition / Emerald -> Meals, EVOO, general
+  return {
+    iconBg: isDaylight ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-emerald-500/20 border-emerald-500/35 text-emerald-300',
+    badge: isDaylight ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-600 hover:text-white' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 group-hover/card:bg-emerald-500 group-hover/card:text-black',
+    progress: isDaylight ? 'bg-emerald-500' : 'bg-gradient-to-t from-emerald-600 via-emerald-500 to-teal-400'
+  }
 }
 
 export interface HotkeyThemeStyle {
@@ -245,6 +346,9 @@ export default function QuickHotkeyGrid({
   defaultCollapsed,
   showInfradian
 }: QuickHotkeyGridProps) {
+  const { theme } = useTheme()
+  const isDaylight = theme === 'light'
+
   const { widgets: homeWidgets } = useHomeWidgets(userProfile)
   const isPeriodLayoutActive = showInfradian !== undefined ? showInfradian : homeWidgets.infradian
 
@@ -406,7 +510,9 @@ export default function QuickHotkeyGrid({
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <Sparkles size={15} className="text-levl-accent animate-pulse" />
-          <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wider">
+          <span className={`text-xs sm:text-sm font-black uppercase tracking-wider ${
+            isDaylight ? 'text-[#1E293B]' : 'text-white'
+          }`}>
             Daily Quick-Log Hotkeys
           </span>
         </div>
@@ -415,12 +521,16 @@ export default function QuickHotkeyGrid({
           <button
             type="button"
             onClick={toggleCollapse}
-            className="text-xs sm:text-[12.5px] font-bold text-slate-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-white/10 active:scale-95 shadow-sm"
+            className={`text-xs sm:text-[12.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border active:scale-95 shadow-sm ${
+              isDaylight
+                ? 'bg-white hover:bg-slate-50 text-[#475569] border-[#E1E8E3]'
+                : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border-white/10'
+            }`}
             title={isCollapsed ? 'Show hotkeys tray' : 'Hide hotkeys tray'}
           >
             {isCollapsed ? (
               <>
-                <Eye size={13} className="text-orange-400" />
+                <Eye size={13} className="text-orange-500" />
                 <span>Show All ({visibleHotkeys.length})</span>
               </>
             ) : (
@@ -453,7 +563,11 @@ export default function QuickHotkeyGrid({
             <button
               type="button"
               onClick={() => setIsManageModalOpen(true)}
-              className="text-xs sm:text-[12.5px] font-bold text-slate-300 hover:text-orange-300 flex items-center gap-1.5 transition-all cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-white/10 active:scale-95 shadow-sm"
+              className={`text-xs sm:text-[12.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border active:scale-95 shadow-sm ${
+                isDaylight
+                  ? 'bg-white hover:bg-slate-50 text-[#475569] hover:text-orange-600 border-[#E1E8E3]'
+                  : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-orange-300 border-white/10'
+              }`}
             >
               <Sliders size={13} />
               <span>Customize Tray</span>
@@ -467,6 +581,7 @@ export default function QuickHotkeyGrid({
         visibleHotkeys.length > 0 ? (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-2.5 md:gap-3 animate-in fade-in duration-200">
             {visibleHotkeys.map(hotkey => {
+              const palette = getHotkeyPalette(hotkey, isDaylight)
               const IconComp = ICON_MAP[hotkey.icon] || Activity
               const hotkeyLogs = logs.filter(l => l.hotkey_id === hotkey.id)
               const mealCalories = meals.reduce((acc, m) => acc + (m.calories || 0), 0)
@@ -478,159 +593,159 @@ export default function QuickHotkeyGrid({
                 ? Math.min(100, Math.max(0, Math.round((totalVal / hotkey.daily_goal) * 100)))
                 : totalVal > 0 ? 100 : 0
               const isNegative = hotkey.is_negative || hotkey.polarity === 'negative'
-              const isNeutral = hotkey.is_neutral || hotkey.polarity === 'neutral' || hotkey.color_theme === 'cyan' || hotkey.color_theme === 'blue' || hotkey.color_theme === 'slate' || hotkey.color_theme === 'sky'
               const isTapped = justTappedId === hotkey.id
 
-          return (
+              return (
+                <div
+                  key={hotkey.id}
+                  onClick={(e) => handleQuickTapIncrement(e, hotkey)}
+                  className={`h-[110px] sm:h-[116px] rounded-2xl border transition-all flex flex-col justify-between p-2.5 sm:p-3 overflow-hidden relative select-none shadow-sm cursor-pointer active:scale-[0.97] group/card ${
+                    isTapped
+                      ? isDaylight
+                        ? 'ring-2 ring-emerald-400 scale-[0.96] bg-slate-50 border-slate-300'
+                        : 'ring-2 ring-white/60 scale-[0.96] bg-slate-800 border-slate-700'
+                      : isDaylight
+                      ? 'bg-white border-[#E1E8E3] hover:border-[#8B5CF6]/40 hover:shadow-md'
+                      : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 hover:bg-white/[0.03]'
+                  }`}
+                  title={`1-Click: Log +${hotkey.default_increment} ${hotkey.unit}`}
+                >
+                  {/* Thin Vertical Gradient Bar filling up proportionately along left side */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 sm:w-1.5 ${
+                    isDaylight ? 'bg-slate-200/80' : 'bg-slate-800/60'
+                  } z-10 pointer-events-none rounded-l-2xl overflow-hidden`}>
+                    <div
+                      className={`absolute bottom-0 left-0 right-0 transition-all duration-300 rounded-bl-2xl ${
+                        progressPct >= 100 ? 'rounded-tl-2xl' : ''
+                      } ${palette.progress}`}
+                      style={{ height: `${progressPct}%` }}
+                    />
+                  </div>
+
+                  {/* TOP ROW: Icon + Increment Badge */}
+                  <div className="flex items-center justify-between gap-1 w-full pl-0.5">
+                    <div
+                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center border text-xs shrink-0 transition-colors ${palette.iconBg}`}
+                    >
+                      <IconComp size={13} className="sm:size-3.5" />
+                    </div>
+
+                    <span
+                      className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[11px] sm:text-xs font-mono font-black border transition-all flex items-baseline gap-0.5 sm:gap-1 shadow-sm shrink-0 ${palette.badge}`}
+                    >
+                      <Plus size={10} strokeWidth={3} className="shrink-0 self-center" />
+                      <span className="font-black">{hotkey.default_increment}</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold opacity-90 uppercase tracking-tight ml-0.5">{hotkey.unit}</span>
+                    </span>
+                  </div>
+
+                  {/* FULL-WIDTH NAME ROW: Single line, crisp, high legibility, truncate without vertical collision */}
+                  <div
+                    className={`w-full pl-0.5 text-xs sm:text-[12.5px] font-bold tracking-tight transition-colors truncate leading-tight ${
+                      isDaylight ? 'text-[#334155]' : 'text-slate-100'
+                    }`}
+                    title={hotkey.name}
+                  >
+                    {hotkey.name}
+                  </div>
+
+                  {/* BOTTOM ROW: Numerator & Denominator Value Metric + Expand/Detail Chevron */}
+                  <div className="flex items-center justify-between gap-1 w-full pl-0.5">
+                    <div className="flex items-baseline gap-1 min-w-0">
+                      <span className={`text-lg sm:text-xl font-black font-mono tracking-tight leading-none transition-colors ${
+                        isGoalReached && !isNegative
+                          ? 'text-emerald-500 font-bold'
+                          : isDaylight
+                          ? 'text-[#1E293B]'
+                          : 'text-white'
+                      }`}>
+                        {totalVal}
+                      </span>
+                      {hotkey.daily_goal && !isNegative ? (
+                        <span className={`text-[11px] sm:text-xs font-bold font-mono transition-colors truncate ${
+                          isGoalReached
+                            ? 'text-emerald-500 font-bold'
+                            : isDaylight
+                            ? 'text-[#64748B]'
+                            : 'text-slate-300'
+                        }`}>
+                          /{hotkey.daily_goal} <span className={`text-[9.5px] sm:text-[10.5px] font-medium ${isDaylight ? 'text-[#94A3B8]' : 'text-slate-400'}`}>{hotkey.unit}</span>
+                        </span>
+                      ) : (
+                        <span className={`text-[10.5px] sm:text-xs font-bold font-mono truncate ${isDaylight ? 'text-[#94A3B8]' : 'text-slate-400'}`}>
+                          {hotkey.unit}
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleCardClick(hotkey)
+                      }}
+                      className={`shrink-0 p-0.5 sm:p-1 transition-colors cursor-pointer rounded-lg ml-auto ${
+                        isDaylight
+                          ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                          : 'text-slate-400 hover:text-white hover:bg-white/10'
+                      }`}
+                      title="Click for details & logs"
+                    >
+                      <ChevronRight size={14} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Add Hotkey Card */}
             <div
-              key={hotkey.id}
-              onClick={(e) => handleQuickTapIncrement(e, hotkey)}
-              className={`h-[110px] sm:h-[116px] rounded-2xl border transition-all flex flex-col justify-between p-2.5 sm:p-3 overflow-hidden relative select-none shadow-md cursor-pointer hover:bg-white/[0.03] active:scale-[0.97] group/card ${
-                isTapped
-                  ? 'ring-2 ring-white/60 scale-[0.96] bg-slate-800 border-slate-700'
-                  : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
+              onClick={() => setIsManageModalOpen(true)}
+              className={`h-[110px] sm:h-[116px] rounded-2xl border border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center p-2 sm:p-2.5 space-y-1 group shadow-sm select-none ${
+                isDaylight
+                  ? 'border-slate-300 hover:border-orange-500/70 bg-white hover:bg-orange-50/50'
+                  : 'border-slate-800 hover:border-orange-500/50 bg-slate-950/40 hover:bg-orange-950/10'
               }`}
-              title={`1-Click: Log +${hotkey.default_increment} ${hotkey.unit}`}
             >
-              {/* Thin Vertical Gradient Bar filling up proportionately along left side */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 sm:w-1.5 bg-slate-800/60 z-10 pointer-events-none rounded-l-2xl overflow-hidden">
-                <div
-                  className={`absolute bottom-0 left-0 right-0 transition-all duration-300 rounded-bl-2xl ${
-                    progressPct >= 100 ? 'rounded-tl-2xl' : ''
-                  } ${
-                    isNegative
-                      ? 'bg-gradient-to-t from-rose-600 via-rose-500 to-red-400'
-                      : isNeutral
-                      ? 'bg-gradient-to-t from-sky-600 via-sky-500 to-cyan-400'
-                      : hotkey.id === 'nutrition_macros'
-                      ? 'bg-gradient-to-t from-emerald-600 via-emerald-500 to-teal-400'
-                      : hotkey.id === 'protein_pulse'
-                      ? 'bg-gradient-to-t from-orange-600 via-orange-500 to-amber-400'
-                      : 'bg-gradient-to-t from-orange-500 via-amber-400 to-emerald-400'
-                  }`}
-                  style={{ height: `${progressPct}%` }}
-                />
+              <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors ${
+                isDaylight
+                  ? 'bg-slate-100 group-hover:bg-orange-100 text-slate-500 group-hover:text-orange-600'
+                  : 'bg-white/5 group-hover:bg-orange-500/20 text-slate-400 group-hover:text-orange-400'
+              }`}>
+                <Plus size={14} strokeWidth={2.5} />
               </div>
-
-              {/* TOP ROW: Icon + Increment Badge */}
-              <div className="flex items-center justify-between gap-1 w-full pl-0.5">
-                <div
-                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center border text-xs shrink-0 transition-colors ${
-                    isNegative
-                      ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
-                      : isNeutral
-                      ? 'bg-sky-500/15 border-sky-500/30 text-sky-300'
-                      : hotkey.id === 'nutrition_macros'
-                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                      : hotkey.id === 'protein_pulse'
-                      ? 'bg-orange-500/20 border-orange-500/40 text-orange-300'
-                      : 'bg-slate-800 border-white/5 text-slate-300 group-hover/card:text-white'
-                  }`}
-                >
-                  <IconComp size={13} className="sm:size-3.5" />
-                </div>
-
-                <span
-                  className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[11px] sm:text-xs font-mono font-black border transition-all flex items-baseline gap-0.5 sm:gap-1 shadow-sm shrink-0 ${
-                    isNegative
-                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 group-hover/card:bg-rose-500 group-hover/card:text-white'
-                      : isNeutral
-                      ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 group-hover/card:bg-sky-400 group-hover/card:text-black'
-                      : hotkey.id === 'nutrition_macros'
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 group-hover/card:bg-emerald-500 group-hover/card:text-black'
-                      : 'bg-orange-500/20 text-orange-300 border-orange-500/40 group-hover/card:bg-orange-500 group-hover/card:text-black'
-                  }`}
-                >
-                  <Plus size={10} strokeWidth={3} className="shrink-0 self-center" />
-                  <span className="font-black">{hotkey.default_increment}</span>
-                  <span className="text-[9px] sm:text-[10px] font-bold opacity-90 uppercase tracking-tight ml-0.5">{hotkey.unit}</span>
-                </span>
-              </div>
-
-              {/* FULL-WIDTH NAME ROW: Single line, crisp, high legibility, truncate without vertical collision */}
-              <div
-                className={`w-full pl-0.5 text-xs sm:text-[12.5px] font-bold text-slate-100 tracking-tight transition-colors truncate leading-tight ${
-                  isNegative
-                    ? 'group-hover/card:text-rose-300'
-                    : isNeutral
-                    ? 'group-hover/card:text-sky-300'
-                    : 'group-hover/card:text-orange-300'
-                }`}
-                title={hotkey.name}
-              >
-                {hotkey.name}
-              </div>
-
-              {/* BOTTOM ROW: Numerator & Denominator Value Metric + Expand/Detail Chevron */}
-              <div className="flex items-center justify-between gap-1 w-full pl-0.5">
-                <div className="flex items-baseline gap-1 min-w-0">
-                  <span className={`text-lg sm:text-xl font-black font-mono tracking-tight leading-none transition-colors ${
-                    isGoalReached && !isNegative ? 'text-emerald-400' : 'text-white'
-                  }`}>
-                    {totalVal}
-                  </span>
-                  {hotkey.daily_goal && !isNegative ? (
-                    <span className={`text-[11px] sm:text-xs font-bold font-mono transition-colors truncate ${
-                      isGoalReached ? 'text-emerald-400 font-bold' : 'text-slate-300'
-                    }`}>
-                      /{hotkey.daily_goal} <span className="text-[9.5px] sm:text-[10.5px] font-medium text-slate-400">{hotkey.unit}</span>
-                    </span>
-                  ) : (
-                    <span className="text-[10.5px] sm:text-xs font-bold font-mono text-slate-400 truncate">
-                      {hotkey.unit}
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleCardClick(hotkey)
-                  }}
-                  className="shrink-0 p-0.5 sm:p-1 text-slate-400 hover:text-white transition-colors cursor-pointer rounded-lg hover:bg-white/10 ml-auto"
-                  title="Click for details & logs"
-                >
-                  <ChevronRight size={14} strokeWidth={2.5} />
-                </button>
-              </div>
+              <span className={`text-[11.5px] sm:text-xs font-bold transition-colors leading-tight ${
+                isDaylight ? 'text-[#334155] group-hover:text-orange-600' : 'text-slate-200 group-hover:text-white'
+              }`}>
+                + Add Hotkey
+              </span>
+              <span className={`text-[9.5px] sm:text-[10px] font-medium tracking-tight ${
+                isDaylight ? 'text-[#94A3B8]' : 'text-slate-400'
+              }`}>Custom / Preset</span>
             </div>
-          )
-        })}
-
-        {/* Add Hotkey Card */}
-        <div
-          onClick={() => setIsManageModalOpen(true)}
-          className="h-[110px] sm:h-[116px] rounded-2xl border border-dashed border-slate-800 hover:border-orange-500/50 bg-slate-950/40 hover:bg-orange-950/10 transition-all cursor-pointer flex flex-col items-center justify-center text-center p-2 sm:p-2.5 space-y-1 group shadow-sm select-none"
-        >
-          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-white/5 group-hover:bg-orange-500/20 text-slate-400 group-hover:text-orange-400 flex items-center justify-center transition-colors">
-            <Plus size={14} strokeWidth={2.5} />
           </div>
-          <span className="text-[11.5px] sm:text-xs font-bold text-slate-200 group-hover:text-white transition-colors leading-tight">
-            + Add Hotkey
-          </span>
-          <span className="text-[9.5px] sm:text-[10px] text-slate-400 font-medium tracking-tight">Custom / Preset</span>
-        </div>
-      </div>
-      ) : (
-        <div className="p-4 rounded-2xl bg-slate-950/60 border border-dashed border-slate-800 text-center space-y-2">
-          <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400 font-bold">
-            <Calendar size={14} className="text-orange-400" />
-            <span>No Hotkeys Scheduled for {currentDayOfWeek}</span>
+        ) : (
+          <div className={`p-4 rounded-2xl border border-dashed text-center space-y-2 ${
+            isDaylight ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-slate-950/60 border-slate-800 text-slate-400'
+          }`}>
+            <div className="flex items-center justify-center gap-1.5 text-xs font-bold">
+              <Calendar size={14} className="text-orange-400" />
+              <span>No Hotkeys Scheduled for {currentDayOfWeek}</span>
+            </div>
+            <p className={`text-[11px] max-w-sm mx-auto ${isDaylight ? 'text-slate-500' : 'text-slate-500'}`}>
+              You have {hotkeys.length} hotkey{hotkeys.length !== 1 ? 's' : ''} configured, but none are active on {currentDayOfWeek}s.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsManageModalOpen(true)}
+              className="text-xs font-bold text-orange-400 hover:text-orange-300 px-3 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 transition-all cursor-pointer inline-flex items-center gap-1.5"
+            >
+              <Sliders size={12} />
+              <span>Customize Hotkey Schedule</span>
+            </button>
           </div>
-          <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-            You have {hotkeys.length} hotkey{hotkeys.length !== 1 ? 's' : ''} configured, but none are active on {currentDayOfWeek}s.
-          </p>
-          <button
-            type="button"
-            onClick={() => setIsManageModalOpen(true)}
-            className="text-xs font-bold text-orange-400 hover:text-orange-300 px-3 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 transition-all cursor-pointer inline-flex items-center gap-1.5"
-          >
-            <Sliders size={12} />
-            <span>Customize Hotkey Schedule</span>
-          </button>
-        </div>
-      ))}
+        )
+      )}
 
       {/* Modal: Quick Log Detail & Custom Presets */}
       {selectedHotkeyForDetail && (
