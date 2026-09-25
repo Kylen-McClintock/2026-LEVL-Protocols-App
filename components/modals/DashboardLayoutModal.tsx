@@ -8,6 +8,7 @@ import {
   Sun,
   Moon,
   Sparkles,
+  LayoutGrid,
   Grid2X2,
   Grid3X3,
   Rows3,
@@ -327,12 +328,27 @@ export default function DashboardLayoutModal({
                 <span className="text-[10px] text-slate-400 font-medium">Card Width</span>
               </div>
 
-              {/* 1-Wide, 2-Wide, 3-Wide Pills */}
-              <div className="grid grid-cols-3 gap-1.5">
+              {/* Dynamic, 2-Wide, 3-Wide, 1-Wide Pills */}
+              <div className="grid grid-cols-4 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleSelectBlockDensity('dynamic')}
+                  className={`py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                    blockDensity === 'dynamic'
+                      ? 'bg-purple-600 border-purple-400 text-white shadow-sm'
+                      : isLight
+                      ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                      : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700 text-slate-300'
+                  }`}
+                >
+                  <LayoutGrid size={14} />
+                  <span className="whitespace-nowrap">Dynamic</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => handleSelectBlockDensity('2-wide')}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  className={`py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
                     blockDensity === '2-wide' || blockDensity === 'uniform'
                       ? 'bg-purple-600 border-purple-400 text-white shadow-sm'
                       : isLight
@@ -341,13 +357,13 @@ export default function DashboardLayoutModal({
                   }`}
                 >
                   <Grid2X2 size={14} />
-                  <span>2-Wide</span>
+                  <span className="whitespace-nowrap">2-Wide</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleSelectBlockDensity('3-wide')}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  className={`py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
                     blockDensity === '3-wide'
                       ? 'bg-purple-600 border-purple-400 text-white shadow-sm'
                       : isLight
@@ -356,13 +372,13 @@ export default function DashboardLayoutModal({
                   }`}
                 >
                   <Grid3X3 size={14} />
-                  <span>3-Wide</span>
+                  <span className="whitespace-nowrap">3-Wide</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleSelectBlockDensity('1-wide')}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  className={`py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
                     blockDensity === '1-wide'
                       ? 'bg-purple-600 border-purple-400 text-white shadow-sm'
                       : isLight
@@ -371,7 +387,7 @@ export default function DashboardLayoutModal({
                   }`}
                 >
                   <Rows3 size={14} />
-                  <span>1-Wide</span>
+                  <span className="whitespace-nowrap">1-Wide</span>
                 </button>
               </div>
 
