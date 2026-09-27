@@ -137,7 +137,7 @@ export default function BlocksNutritionTile({
     }
   }
 
-  const isOneWide = layoutMode === '1-wide'
+  const isOneWide = layoutMode === '1-wide' || layoutMode === 'streamline'
   const iconSize = isOneWide ? 22 : layoutMode === '3-wide' ? 34 : 44
 
   return (

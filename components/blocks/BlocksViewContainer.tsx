@@ -70,7 +70,8 @@ import {
   getSimplifiedModalityName,
   getSmartSlotForHotkey,
   getCurrentTimeBlockSlotKey,
-  reconcileRowSizingsOnDrop
+  reconcileRowSizingsOnDrop,
+  isSupplementTask
 } from './blocksUtils'
 import { canonicalizeTimingSlot } from '@/lib/utils/timingSlots'
 import { triggerHaptic } from '@/lib/utils/haptics'
@@ -99,6 +100,7 @@ interface BlocksViewContainerProps {
   ) => void
   onOpenRescheduleModal?: (task: DedupedTask) => void
   onMoveToBench?: (modalityId: string) => void
+  onEliminate?: (task: DedupedTask, reason?: string) => void
   onSaveCustomOutcomes?: (modalityId: string, outcomeIds: string[]) => void
   onAddActivity?: (slotKey?: string) => void
   onMoveTaskToSlot?: (taskId: string, targetSlotKey: string, targetTaskId?: string) => void
@@ -133,6 +135,7 @@ export default function BlocksViewContainer({
   onStatusChange,
   onOpenRescheduleModal,
   onMoveToBench,
+  onEliminate,
   onSaveCustomOutcomes,
   onAddActivity,
   onMoveTaskToSlot,
@@ -293,9 +296,34 @@ export default function BlocksViewContainer({
     return getUserCircadianTimeWindows(userProfile)
   }, [userProfile])
 
+  // Pre-calculate total scheduled supplements per time slot for the day
+  // Slots with >= 2 supplements are bundled into a persistent supplement stack for that day
+  const slotSuppCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    tasks.forEach((t) => {
+      const rawSlot = t.timing_slot || t.protocol_step?.timing_slot || t.loose_modality?.default_timing_slot
+      const slot = canonicalizeTimingSlot(rawSlot)
+      if (isSupplementTask(t, allModalities)) {
+        counts[slot] = (counts[slot] || 0) + 1
+      }
+    })
+    return counts
+  }, [tasks, allModalities])
+
   const completedTasks = useMemo(() => {
-    return tasks.filter((t) => t.status === 'completed')
-  }, [tasks])
+    return tasks.filter((t) => {
+      if (t.status !== 'completed') return false
+      // If it's a supplement in a slot with a dedicated supplement stack (>= 2 supplements),
+      // it stays housed in that slot's stack rather than cluttering the standalone completed list!
+      const rawSlot = t.timing_slot || t.protocol_step?.timing_slot || t.loose_modality?.default_timing_slot
+      const slot = canonicalizeTimingSlot(rawSlot)
+      const isSupp = isSupplementTask(t, allModalities)
+      if (isSupp && ((slotSuppCounts[slot] || 0) >= 2)) {
+        return false
+      }
+      return true
+    })
+  }, [tasks, allModalities, slotSuppCounts])
 
   // Fast 1-tap undo completion handler: immediately reverts task to pending and shows tactile toast
   const handleUndoTaskCompletion = (task: DedupedTask) => {
@@ -336,6 +364,15 @@ export default function BlocksViewContainer({
 
   // Drag & drop or placement move handler
   const handleMoveHotkey = useCallback(async (hotkeyId: string, targetSlotKey: string, targetHotkeyId?: string) => {
+    const currentHotkey = hotkeys.find(h => h.id === hotkeyId)
+    const currentSlot = currentHotkey?.assigned_time_slots?.[0] || 'floating_dock'
+    const isSameSlot = currentSlot === targetSlotKey
+    const isTargetingDifferentHotkey = Boolean(targetHotkeyId && targetHotkeyId !== hotkeyId)
+
+    if (isSameSlot && !isTargetingDifferentHotkey) {
+      return // In-place release: absolute NO-OP
+    }
+
     triggerHaptic('selection')
 
     // If reordering within floating dock:
@@ -426,9 +463,19 @@ export default function BlocksViewContainer({
       }
     }
 
-    // Clean up source slot order if moving to a different slot
+    // In-place release safeguard:
+    // If dropped in the same slot without targeting another task, do NOTHING!
+    // Never push to the end of the slot, never alter slot task order, never resize.
     const sourceSlotRaw = t?.timing_slot || t?.protocol_step?.timing_slot || t?.loose_modality?.default_timing_slot
     const sourceSlotKey = sourceSlotRaw ? canonicalizeTimingSlot(sourceSlotRaw) : null
+    const isSameSlot = Boolean(sourceSlotKey && sourceSlotKey === targetSlotKey)
+    const isTargetingDifferentTask = Boolean(targetTaskId && targetTaskId !== taskId && !movedKeys.includes(targetTaskId))
+
+    if (isSameSlot && !isTargetingDifferentTask) {
+      return
+    }
+
+    // Clean up source slot order if moving to a different slot
     if (sourceSlotKey && sourceSlotKey !== targetSlotKey) {
       const sourceOrder = getStoredSlotTaskOrder(sourceSlotKey)
       if (sourceOrder.length > 0) {
@@ -533,29 +580,36 @@ export default function BlocksViewContainer({
   }
 
   // Handle Swipe In-Feed completions
-  const handleInFeedComplete = async (taskId: string, outcomes?: Record<string, number>, customDose?: string) => {
+  const handleInFeedComplete = async (
+    taskId: string,
+    outcomes?: Record<string, number>,
+    customDose?: string,
+    completedAt?: string,
+    notes?: string
+  ) => {
     const targetTask = tasks.find((t) => t.id === taskId)
     if (targetTask) triggerUndo(targetTask, targetTask.status, 'completed', 'Undo')
 
     if (outcomes && Object.keys(outcomes).length > 0 && localUserId) {
       for (const [outcomeId, score] of Object.entries(outcomes)) {
         try {
-          await saveOutcomeObservation(localUserId, outcomeId, 'post', score, date, taskId)
+          await saveOutcomeObservation(localUserId, outcomeId, 'post', score, date, taskId, undefined, notes)
         } catch (e) {
           console.error('Error saving in-feed outcome rating:', e)
         }
       }
     }
 
-    const execDetails = (customDose || outcomes)
+    const execDetails = (customDose || outcomes || notes)
       ? {
           ...(targetTask?.execution_details || {}),
           ...(customDose ? { custom_dose: customDose } : {}),
-          ...(outcomes ? { outcome_ratings: outcomes } : {})
+          ...(outcomes ? { outcome_ratings: outcomes } : {}),
+          ...(notes ? { notes } : {})
         }
       : undefined
 
-    onStatusChange(taskId, 'completed', undefined, undefined, undefined, execDetails)
+    onStatusChange(taskId, 'completed', undefined, completedAt, undefined, execDetails)
     setActiveSwipe(null)
   }
 
@@ -631,13 +685,17 @@ export default function BlocksViewContainer({
     }
 
     tasks.forEach((t) => {
-      // If completed tasks are moved to the dedicated Completed section, skip inline placement
-      if (effectiveCompletedPlacement === 'section' && t.status === 'completed') {
-        return
-      }
-
       const rawSlot = t.timing_slot || t.protocol_step?.timing_slot || t.loose_modality?.default_timing_slot
       const slot = canonicalizeTimingSlot(rawSlot)
+      const isSupp = isSupplementTask(t, allModalities)
+      // If a slot has 2 or more supplements scheduled for today, they form a permanent supplement stack for the day
+      const isPartOfSuppStack = isSupp && ((slotSuppCounts[slot] || 0) >= 2)
+
+      // If completed tasks are moved to the dedicated Completed section, skip inline placement,
+      // EXCEPT for supplements that belong to a supplement stack (which remain housed in their stack for the day!)
+      if (effectiveCompletedPlacement === 'section' && t.status === 'completed' && !isPartOfSuppStack) {
+        return
+      }
 
       if (slot === 'waking' || rawSlot === 'waking') {
         groups.waking.tasks.push(t)
@@ -678,7 +736,7 @@ export default function BlocksViewContainer({
     }
 
     return resultEntries
-  }, [tasks, date, effectiveCompletedPlacement, circadianWindows])
+  }, [tasks, date, effectiveCompletedPlacement, circadianWindows, allModalities, slotSuppCounts])
 
   // 2. Group tasks by Protocol for By Protocol view
   const protocolGroups = useMemo(() => {
@@ -793,6 +851,7 @@ export default function BlocksViewContainer({
                   slotTitle={block.title}
                   timeWindowLabel={block.timeWindow}
                   tasks={block.tasks}
+                  allDayTasks={tasks}
                   benchItems={benchItems}
                   userProfile={userProfile}
                   allOutcomes={allOutcomes}
@@ -820,6 +879,8 @@ export default function BlocksViewContainer({
                   onSelectHotkey={(h) => setSelectedHotkeyForModal(h)}
                   onMoveHotkey={handleMoveHotkey}
                   onMoveTask={handleMoveTask}
+                  onMoveToBench={onMoveToBench}
+                  onEliminate={onEliminate}
                 />
               )
             })}
@@ -885,6 +946,8 @@ export default function BlocksViewContainer({
                 onStatusChange={(taskId, status) => onStatusChange(taskId, status)}
                 onLongPress={() => setIsEditMode(true)}
                 onMoveTask={handleMoveTask}
+                onMoveToBench={onMoveToBench}
+                onEliminate={onEliminate}
               />
             ))}
 

@@ -51,7 +51,8 @@ import {
   updateTaskExecutionDetails,
   upsertBenchItemOverride,
   reconcileModalityScheduleAndFutureTasks,
-  assessSafetyWithAI
+  assessSafetyWithAI,
+  clearAllTasksAndScheduleCaches
 } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { getCircadianTipForModality } from '@/lib/utils/circadianTimingTips'
@@ -491,6 +492,7 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
       }
     }
 
+    clearAllTasksAndScheduleCaches()
     setIsProcessing(false)
     onSaveSuccess()
   }
@@ -501,6 +503,7 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
     if (task?.id) {
       await deleteTask(localUserId, task.id, applyToFuture)
     }
+    clearAllTasksAndScheduleCaches()
     setIsProcessing(false)
     onSaveSuccess()
   }

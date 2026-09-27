@@ -19,6 +19,7 @@ export type ModalityArchetype =
   | 'supplement'
   | 'sport'
   | 'caffeine_cutoff'
+  | 'skincare'
   | 'general'
 
 export interface SpecializedTraits {
@@ -62,7 +63,40 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
 
   const specializedTraits: SpecializedTraits = {}
 
-  // 1. PEPTIDES (Strict Priority - Excludes Oral Collagen Peptides Powder)
+  // 1. DERMAL TOPICALS & SKINCARE (Serums, Creams, Retinoids, Copper Peptides, Sunscreen)
+  const isTopicalSkincare = (
+    cat.includes('skin') ||
+    cat.includes('dermatology') ||
+    modType.includes('topical') ||
+    modType.includes('retinoid') ||
+    logType === 'skincare' ||
+    logType === 'topical' ||
+    name.includes('serum') ||
+    name.includes('cream') ||
+    name.includes('lotion') ||
+    name.includes('tretinoin') ||
+    name.includes('retinol') ||
+    name.includes('retinoid') ||
+    name.includes('sunscreen') ||
+    name.includes('spf') ||
+    name.includes('cleanser') ||
+    name.includes('exfoliant') ||
+    name.includes('moisturizer') ||
+    name.includes('barrier cream') ||
+    name.includes('copper peptide') ||
+    name.includes('topical ghk') ||
+    (name.includes('ghk') && (name.includes('topical') || name.includes('serum') || name.includes('cream')))
+  ) && !name.includes('subq') && !name.includes('inject')
+
+  if (isTopicalSkincare) {
+    return {
+      archetype: 'skincare',
+      isSpecialized: true,
+      specializedTraits
+    }
+  }
+
+  // 2. PEPTIDES (Strict Priority - Excludes Oral Collagen & Topical Peptides)
   const isOralCollagen = name.includes('collagen')
   if (
     !isOralCollagen && (
@@ -181,18 +215,47 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     }
   }
 
-  // 5. NUTRITION MACROS & PROTEIN TIMING (Excludes Oral Collagen Supplement Powder)
-  if (
+  // 5. HYDRATION & ELECTROLYTES (Strict Priority before Nutrition/Meals)
+  const isHydrationMatch = (
+    logType === 'hydration' || 
+    logType === 'electrolytes' || 
+    cat.includes('hydration') || 
+    cat.includes('electrolyte') || 
+    name.includes('hydration') || 
+    name.includes('electrolyte') || 
+    name.includes('water intake') || 
+    name.includes('sodium') || 
+    name.includes('lmnt') ||
+    modality.id === 'baseline_hydration_electrolytes' ||
+    (modality.slug || '').includes('hydration') ||
+    (modality.slug || '').includes('electrolyte')
+  ) && !name.includes('sauna') && !name.includes('plunge')
+
+  if (isHydrationMatch) {
+    return {
+      archetype: 'hydration',
+      isSpecialized: true,
+      specializedTraits
+    }
+  }
+
+  // 6. NUTRITION MACROS & PROTEIN TIMING (Excludes Oral Collagen & Hydration)
+  const isProteinOrMacro = (
     logType === 'nutrition_protein' || 
-    (logType === 'nutrition' && !isOralCollagen) || 
-    (cat.includes('nutrition') && !isOralCollagen) || 
+    logType === 'macros' || 
+    logType === 'protein' || 
     name.includes('protein distribution') || 
     name.includes('leucine threshold') || 
     name.includes('protein synthesis') || 
     name.includes('macro timing') || 
+    name.includes('macro distribution') || 
+    name.includes('protein pacing') || 
+    name.includes('protein pulse') || 
     name.includes('pre-workout fuel') || 
     name.includes('post-workout protein')
-  ) {
+  ) && !isOralCollagen && !isHydrationMatch
+
+  if (isProteinOrMacro) {
     return {
       archetype: 'nutrition_macro',
       isSpecialized: true,
@@ -326,22 +389,6 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     }
   }
 
-  // 10. HYDRATION & ELECTROLYTES
-  if (
-    logType === 'hydration' || 
-    cat.includes('hydration') || 
-    name.includes('hydration') || 
-    name.includes('electrolyte') || 
-    name.includes('water intake') || 
-    name.includes('sodium') || 
-    name.includes('lmnt')
-  ) {
-    return {
-      archetype: 'hydration',
-      isSpecialized: true,
-      specializedTraits
-    }
-  }
 
   // 11. PHLEBOTOMY & BLOOD WORK
   if (

@@ -282,15 +282,15 @@ export default function ProtocolOverviewHeaderCard({
         <div className="space-y-2.5 border-b border-white/10 pb-3 pt-0.5">
           {/* Line 1: Full-width protocol title as clickable link to protocol page */}
           <div className="w-full">
-            <h2 className="text-base sm:text-lg font-extrabold text-white tracking-wide leading-snug break-words w-full">
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-wide leading-snug break-words w-full">
               <Link 
                 href={`/protocols/${encodeURIComponent(protocolInfo?.id || protocolName)}`}
                 onClick={(e) => e.stopPropagation()}
-                className="hover:underline hover:text-purple-300 transition-colors inline items-center gap-1.5 max-w-full"
+                className="hover:underline text-slate-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-300 transition-colors inline items-center gap-1.5 max-w-full"
                 title="Click to view full protocol focus page"
               >
-                <span>{protocolName}</span>
-                <ExternalLink size={14} className="text-purple-400 opacity-80 inline-block ml-1.5 align-middle shrink-0" />
+                <span className="line-clamp-3 leading-snug break-words">{protocolName}</span>
+                <ExternalLink size={14} className="text-purple-600 dark:text-purple-400 opacity-80 inline-block ml-1.5 align-middle shrink-0" />
               </Link>
             </h2>
           </div>
@@ -312,13 +312,13 @@ export default function ProtocolOverviewHeaderCard({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setIsVarianceOpen(true); }}
-                  className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                  className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-all flex items-center gap-1 cursor-pointer shrink-0"
                   title="Click to view variances from the original blueprint"
                 >
                   <GitBranch size={10} /> 🛠️ Modified
                 </button>
               )}
-              <span className="text-xs text-gray-400 font-medium tracking-wide">
+              <span className="text-xs text-slate-600 dark:text-gray-400 font-medium tracking-wide">
                 {totalCount} {totalCount === 1 ? 'Modality' : 'Modalities'}
               </span>
             </div>
@@ -331,8 +331,8 @@ export default function ProtocolOverviewHeaderCard({
                 disabled={isFutureTimeline || isFullyCompleted}
                 className={`text-xs px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5 uppercase tracking-wider font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${
                   isFullyCompleted 
-                    ? 'bg-white/10 border border-white/20 text-gray-400' 
-                    : 'bg-levl-accent/20 border border-levl-accent text-levl-accent hover:bg-levl-accent hover:text-white'
+                    ? 'bg-slate-200 dark:bg-white/10 border border-slate-300 dark:border-white/20 text-slate-500 dark:text-gray-400' 
+                    : 'bg-purple-100 border border-purple-500 text-purple-700 dark:bg-levl-accent/20 dark:border-levl-accent dark:text-levl-accent hover:bg-purple-600 hover:text-white dark:hover:bg-levl-accent dark:hover:text-white'
                 }`}
               >
                 <Check size={13} /> {groupStatusLabel}
@@ -343,11 +343,11 @@ export default function ProtocolOverviewHeaderCard({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onCollapseProtocol(); }}
-                  className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-purple-500/30 text-purple-300 hover:text-white transition-all cursor-pointer shadow-sm shrink-0 active:scale-95 flex items-center gap-1"
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-purple-400/40 text-purple-700 hover:text-purple-900 dark:bg-slate-900/90 dark:hover:bg-slate-800 dark:border-purple-500/30 dark:text-purple-300 dark:hover:text-white transition-all cursor-pointer shadow-sm shrink-0 active:scale-95 flex items-center gap-1"
                   title="Collapse to protocol name"
                   aria-label="Collapse to protocol name"
                 >
-                  <ChevronUp className="w-4 h-4 text-purple-300" />
+                  <ChevronUp className="w-4 h-4 text-purple-600 dark:text-purple-300" />
                   <span className="hidden sm:inline text-xs font-bold">Collapse</span>
                 </button>
               )}
@@ -356,11 +356,11 @@ export default function ProtocolOverviewHeaderCard({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-                className="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm shrink-0 active:scale-95"
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 hover:text-slate-900 dark:bg-slate-900/90 dark:hover:bg-slate-800 dark:border-slate-700/80 dark:text-slate-300 dark:hover:text-white transition-all cursor-pointer shadow-sm shrink-0 active:scale-95"
                 aria-label={isExpanded ? "Collapse protocol details" : "Expand protocol details"}
                 title={isExpanded ? "Collapse protocol details" : "Expand protocol details"}
               >
-                {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-300" /> : <ChevronDown className="w-4 h-4 text-slate-300" />}
+                {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-600 dark:text-slate-300" /> : <ChevronDown className="w-4 h-4 text-slate-600 dark:text-slate-300" />}
               </button>
             </div>
           </div>
@@ -370,7 +370,7 @@ export default function ProtocolOverviewHeaderCard({
             <div className="pt-1">
               {isDescriptionExpanded ? (
                 <div className="space-y-1.5">
-                  <p className="text-xs sm:text-sm text-slate-300/90 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300/90 leading-relaxed">
                     {protocolInfo?.description || preset.synergyText}
                   </p>
                   <button

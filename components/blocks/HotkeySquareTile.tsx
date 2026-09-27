@@ -128,8 +128,9 @@ export default function HotkeySquareTile({
   }), [hotkey.id, hotkey.name, currentSlotKey])
 
   const dragHandlers = React.useMemo(() => {
-    if (!dragCtx || isEditMode) return null
+    if (!dragCtx) return null
     return dragCtx.bindDraggable(dragItem, {
+      isEditMode,
       onClick: () => {
         triggerHaptic('light')
         setIsJustTapped(true)
@@ -147,7 +148,7 @@ export default function HotkeySquareTile({
     dragCtx.activeDrag.id !== hotkey.id
   )
 
-  const isOneWide = layoutMode === '1-wide'
+  const isOneWide = layoutMode === '1-wide' || layoutMode === 'streamline'
 
   return (
     <div
@@ -166,7 +167,7 @@ export default function HotkeySquareTile({
       className={`${colSpanClass} ${heightClass} rounded-2xl sm:rounded-3xl ${
         isOneWide ? 'px-3 sm:px-4 py-2 flex flex-row items-center justify-between' : 'p-3 sm:p-3.5 flex flex-col justify-between'
       } transition-all duration-500 select-none cursor-pointer relative group overflow-hidden shadow-lg ${
-        isCurrentDragged ? 'opacity-30 scale-95 pointer-events-none' : 'hover:scale-[1.02] active:scale-95 hover:shadow-xl'
+        isCurrentDragged ? 'opacity-25 scale-95' : 'hover:scale-[1.02] active:scale-95 hover:shadow-xl'
       } ${
         isReorderTarget ? 'ring-2 ring-purple-400 border-purple-400 shadow-xl shadow-purple-500/30 scale-[1.02]' : ''
       } ${
@@ -256,16 +257,25 @@ export default function HotkeySquareTile({
               <div className={`font-black tracking-tight leading-tight truncate text-sm sm:text-base ${isDaylight ? 'text-[#475569]' : 'text-white'}`}>
                 {hotkey.name}
               </div>
-              <div className={`text-[10px] sm:text-[11px] font-mono font-medium truncate ${isDaylight ? 'text-[#64748B]' : 'text-white/80'}`}>
-                {totalVal > 0 ? (
-                  <span className={isGoalReached ? "text-emerald-500 font-bold" : isDaylight ? "text-[#475569] font-bold" : "text-white font-bold"}>
-                    {totalVal}{hotkey.daily_goal ? `/${hotkey.daily_goal}` : ''} {hotkey.unit}
-                  </span>
-                ) : (
-                  <span className={isDaylight ? "text-[#94A3B8]" : "text-white/60"}>
-                    0{hotkey.daily_goal ? `/${hotkey.daily_goal}` : ''} {hotkey.unit}
-                  </span>
-                )}
+              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                <span className={`text-[10px] sm:text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${
+                  isGoalReached
+                    ? isDaylight
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                      : 'bg-emerald-950/50 text-emerald-300 border-emerald-500/40'
+                    : totalVal > 0
+                    ? isDaylight
+                      ? 'bg-slate-100 text-slate-800 border-slate-300'
+                      : 'bg-white/10 text-slate-200 border-white/20'
+                    : isDaylight
+                    ? 'bg-slate-50 text-slate-500 border-slate-200'
+                    : 'bg-white/5 text-slate-400 border-white/10'
+                }`}>
+                  {totalVal}{hotkey.daily_goal ? ` / ${hotkey.daily_goal}` : ''} {hotkey.unit.toUpperCase()}
+                </span>
+                <span className="text-[10px] font-medium text-slate-400 capitalize">
+                  {hotkey.category}
+                </span>
               </div>
             </div>
           </div>

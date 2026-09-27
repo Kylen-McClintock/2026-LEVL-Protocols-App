@@ -11,6 +11,7 @@ import ScheduleModalityModal from '../modals/ScheduleModalityModal'
 import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import { evaluateStackFit, StackFitResult } from '@/lib/synergy/stackFitEngine'
 import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
+import { getEvidenceQualityDetail } from '@/lib/utils/evidenceQuality'
 import OutcomePill from '@/components/outcomes/OutcomePill'
 import { LongevityVectorIcon } from '@/components/icons'
 import ModalityIcon from '../ui/ModalityIcon'
@@ -497,7 +498,7 @@ function ExploreCard({
             <div className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5">
               <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">Evidence Quality</span>
               <span className="text-xs font-bold text-levl-text-primary font-mono">
-                {modality.evidence_quality ? `${modality.evidence_quality}/5 (Clinical RCTs)` : 'Grade A (5/5)'}
+                {getEvidenceQualityDetail(modality.evidence_quality).displayScore} ({getEvidenceQualityDetail(modality.evidence_quality).shortGrade})
               </span>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-950/80 border border-white/5">

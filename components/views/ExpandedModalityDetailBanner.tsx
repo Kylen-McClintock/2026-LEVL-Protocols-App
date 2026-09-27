@@ -15,6 +15,7 @@ import { getModalityVideoInfo } from '@/lib/data/modalityVideos'
 import MedicalDisclaimerBanner from '@/components/ui/MedicalDisclaimerBanner'
 import ModalityLongevityDrawer from '@/components/cards/ModalityLongevityDrawer'
 import { ModalitySafetyCard } from '@/components/cards/ModalitySafetyCard'
+import { getEvidenceQualityDetail } from '@/lib/utils/evidenceQuality'
 
 export const ELIMINATION_REASON_OPTIONS = [
   { id: 'time', label: 'Too Time-Consuming / Schedule Conflict', icon: '⏰' },
@@ -484,7 +485,7 @@ export const ExpandedModalityDetailBanner: React.FC<ExpandedModalityDetailBanner
               <div>
                 <span className="text-[9px] text-slate-400 uppercase block font-bold">Evidence Quality</span>
                 <span className="text-xs font-bold text-white">
-                  {mod.evidence_quality ? `${mod.evidence_quality}/5 (Verified)` : 'High Evidence'}
+                  {getEvidenceQualityDetail(mod.evidence_quality).displayScore} ({getEvidenceQualityDetail(mod.evidence_quality).shortGrade})
                 </span>
               </div>
 

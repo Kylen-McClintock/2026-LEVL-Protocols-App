@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
 import { Modality } from '@/lib/types'
-import { Microscope, AlertTriangle, Target, BookOpen, ExternalLink, Activity, ChevronDown, ChevronUp, Zap, Sparkles } from 'lucide-react'
+import { Microscope, AlertTriangle, Target, BookOpen, ExternalLink, Activity, ChevronDown, ChevronUp, Zap, Sparkles, Info, HelpCircle } from 'lucide-react'
 import { modalityReferences } from '@/lib/data/references'
 import { getEffortMetadata, getCostMetadata } from '@/lib/ranking/adaptiveRecommendationEngine'
 import MedicalDisclaimerBanner from '../ui/MedicalDisclaimerBanner'
 import ModalityLongevityDrawer from './ModalityLongevityDrawer'
+import GeekMetricExplanationModal, { GeekMetricType } from '../modals/GeekMetricExplanationModal'
+import { getEvidenceQualityDetail } from '@/lib/utils/evidenceQuality'
 import { LONGEVITY_VECTORS_METADATA } from '@/lib/data/longevityKnowledgeBase'
 import { getSafeEfficacyStats } from '@/lib/utils/efficacyStats'
 import { useTheme } from '@/lib/utils/useTheme'
@@ -30,11 +32,13 @@ export default function GeekMode({
   const [isAntagonismsExpanded, setIsAntagonismsExpanded] = useState(false)
   const [isHallmarksExpanded, setIsHallmarksExpanded] = useState(false)
   const [isFunctionalExpanded, setIsFunctionalExpanded] = useState(false)
+  const [activeMetricModal, setActiveMetricModal] = useState<GeekMetricType | null>(null)
 
   const refs = modality.scientific_references && modality.scientific_references.length > 0 
     ? modality.scientific_references 
     : modalityReferences[modality.id] || []
 
+  const evidenceDetail = getEvidenceQualityDetail(modality.evidence_quality, refs.length)
   const effortMeta = getEffortMetadata(modality)
   const costMeta = getCostMetadata(modality.cost_tier)
 
@@ -44,63 +48,155 @@ export default function GeekMode({
         ? 'bg-white border-[#E1E8E3] text-[#475569] shadow-sm'
         : 'bg-black/40 border-levl-purple/20 text-white'
     }`}>
-      <div className={`flex items-center gap-2 font-bold border-b pb-2 ${
+      <div className={`flex items-center justify-between font-bold border-b pb-2 ${
         isLight
           ? 'text-[#6954C8] border-[#E1E8E3]'
           : 'text-levl-purple border-white/10'
       }`}>
-        <Microscope size={16} /> Geek Mode
+        <div className="flex items-center gap-2">
+          <Microscope size={16} /> Geek Mode
+        </div>
+        <span className="text-[10px] font-normal opacity-60">Tap any metric box for clinical breakdown</span>
       </div>
       
+      {/* 4 Interactive Metric Tiles */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className={`p-2.5 rounded-xl border ${
-          isLight
-            ? 'bg-[#EFF3F0] border-[#E1E8E3]'
-            : 'bg-slate-900/80 border-white/5'
-        }`}>
-          <span className={`text-[10px] uppercase font-bold block mb-1 ${
-            isLight ? 'text-[#526661]' : 'text-levl-text-secondary'
-          }`}>Evidence Quality</span>
-          <span className={`font-bold font-mono ${isLight ? 'text-[#475569]' : 'text-white'}`}>
-            {modality.evidence_quality ? `${modality.evidence_quality}/5` : 'Grade A'}
+        {/* Evidence Quality Box */}
+        <button
+          type="button"
+          onClick={() => setActiveMetricModal('evidence')}
+          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98] ${
+            isLight
+              ? 'bg-[#EFF3F0] hover:bg-[#F0EDFB] border-[#E1E8E3] hover:border-[#6954C8]/50 shadow-sm'
+              : 'bg-slate-900/80 hover:bg-slate-800/90 border-white/5 hover:border-purple-500/40 shadow-sm'
+          }`}
+          title="Click to view evidence rubric & citations"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${
+              isLight ? 'text-[#526661]' : 'text-levl-text-secondary'
+            }`}>
+              Evidence Quality
+            </span>
+            <HelpCircle size={11} className={`opacity-40 group-hover:opacity-100 transition-opacity ${
+              isLight ? 'text-[#6954C8]' : 'text-purple-400'
+            }`} />
+          </div>
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className={`font-extrabold font-mono text-base ${isLight ? 'text-[#1E293B]' : 'text-white'}`}>
+              {evidenceDetail.score}<span className="text-[10px] font-normal opacity-60">/100</span>
+            </span>
+            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+              isLight ? evidenceDetail.badgeColorLight : evidenceDetail.badgeColorDark
+            }`}>
+              {evidenceDetail.shortGrade}
+            </span>
+          </div>
+          <span className={`block text-[9px] mt-1 truncate ${
+            isLight ? 'text-[#6954C8]' : 'text-purple-300/80'
+          }`}>
+            {refs.length > 0 ? `${refs.length} studies` : 'Tap for rubric →'}
           </span>
-        </div>
-        <div className={`p-2.5 rounded-xl border ${
-          isLight
-            ? 'bg-[#EFF3F0] border-[#E1E8E3]'
-            : 'bg-slate-900/80 border-white/5'
-        }`}>
-          <span className={`text-[10px] uppercase font-bold block mb-1 ${
-            isLight ? 'text-[#526661]' : 'text-levl-text-secondary'
-          }`}>Effect Size</span>
-          <span className={`font-bold capitalize ${isLight ? 'text-[#475569]' : 'text-white'}`}>
+        </button>
+
+        {/* Effect Size Box */}
+        <button
+          type="button"
+          onClick={() => setActiveMetricModal('effect_size')}
+          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98] ${
+            isLight
+              ? 'bg-[#EFF3F0] hover:bg-[#ECFEFF] border-[#E1E8E3] hover:border-[#0891B2]/50 shadow-sm'
+              : 'bg-slate-900/80 hover:bg-slate-800/90 border-white/5 hover:border-cyan-500/40 shadow-sm'
+          }`}
+          title="Click to view clinical effect size & biomarker shifts"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${
+              isLight ? 'text-[#526661]' : 'text-levl-text-secondary'
+            }`}>
+              Effect Size
+            </span>
+            <HelpCircle size={11} className={`opacity-40 group-hover:opacity-100 transition-opacity ${
+              isLight ? 'text-[#0891B2]' : 'text-cyan-400'
+            }`} />
+          </div>
+          <span className={`font-extrabold text-sm sm:text-base capitalize block truncate ${
+            isLight ? 'text-[#1E293B]' : 'text-white'
+          }`}>
             {modality.effect_size_estimate || 'Medium'}
           </span>
-        </div>
-        <div className={`p-2.5 rounded-xl border ${
-          isLight
-            ? 'bg-[#EFF3F0] border-[#E1E8E3]'
-            : 'bg-slate-900/80 border-white/5'
-        }`}>
-          <span className={`text-[10px] uppercase font-bold block mb-1 ${
-            isLight ? 'text-[#526661]' : 'text-levl-text-secondary'
-          }`}>Daily Cost</span>
-          <span className={`font-bold capitalize ${isLight ? 'text-[#475569]' : 'text-white'}`}>
+          <span className={`block text-[9px] mt-1 truncate ${
+            isLight ? 'text-[#0891B2]' : 'text-cyan-300/80'
+          }`}>
+            {modality.primary_outcome ? `${modality.primary_outcome}` : 'Tap for impact →'}
+          </span>
+        </button>
+
+        {/* Daily Cost Box */}
+        <button
+          type="button"
+          onClick={() => setActiveMetricModal('cost')}
+          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98] ${
+            isLight
+              ? 'bg-[#EFF3F0] hover:bg-[#E6F3EB] border-[#E1E8E3] hover:border-[#2B725C]/50 shadow-sm'
+              : 'bg-slate-900/80 hover:bg-slate-800/90 border-white/5 hover:border-emerald-500/40 shadow-sm'
+          }`}
+          title="Click to view daily cost & monthly projection"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${
+              isLight ? 'text-[#526661]' : 'text-levl-text-secondary'
+            }`}>
+              Daily Cost
+            </span>
+            <HelpCircle size={11} className={`opacity-40 group-hover:opacity-100 transition-opacity ${
+              isLight ? 'text-[#2B725C]' : 'text-emerald-400'
+            }`} />
+          </div>
+          <span className={`font-extrabold text-sm sm:text-base capitalize block truncate ${
+            isLight ? 'text-[#1E293B]' : 'text-white'
+          }`}>
             {costMeta.label}
           </span>
-        </div>
-        <div className={`p-2.5 rounded-xl border ${
-          isLight
-            ? 'bg-[#EFF3F0] border-[#E1E8E3]'
-            : 'bg-slate-900/80 border-white/5'
-        }`}>
-          <span className={`text-[10px] uppercase font-bold block mb-1 ${
-            isLight ? 'text-[#526661]' : 'text-levl-text-secondary'
-          }`}>Effort &amp; Time</span>
-          <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded border ${effortMeta.badgeColor}`}>
-            {effortMeta.shortLabel}
+          <span className={`block text-[9px] mt-1 truncate ${
+            isLight ? 'text-[#2B725C]' : 'text-emerald-300/80'
+          }`}>
+            {costMeta.dailyEstimate} • Tap for tiering →
           </span>
-        </div>
+        </button>
+
+        {/* Effort & Time Box */}
+        <button
+          type="button"
+          onClick={() => setActiveMetricModal('effort')}
+          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer group hover:scale-[1.02] active:scale-[0.98] ${
+            isLight
+              ? 'bg-[#EFF3F0] hover:bg-[#FFFBEB] border-[#E1E8E3] hover:border-[#D97706]/50 shadow-sm'
+              : 'bg-slate-900/80 hover:bg-slate-800/90 border-white/5 hover:border-amber-500/40 shadow-sm'
+          }`}
+          title="Click to view effort level & friction rubric"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${
+              isLight ? 'text-[#526661]' : 'text-levl-text-secondary'
+            }`}>
+              Effort &amp; Time
+            </span>
+            <HelpCircle size={11} className={`opacity-40 group-hover:opacity-100 transition-opacity ${
+              isLight ? 'text-[#D97706]' : 'text-amber-400'
+            }`} />
+          </div>
+          <div className="mt-0.5">
+            <span className={`inline-block text-[11px] font-extrabold px-2 py-0.5 rounded border truncate max-w-full ${effortMeta.badgeColor}`}>
+              {effortMeta.shortLabel}
+            </span>
+          </div>
+          <span className={`block text-[9px] mt-1 truncate ${
+            isLight ? 'text-[#D97706]' : 'text-amber-300/80'
+          }`}>
+            {effortMeta.timeEstimate} • Tap for rubric →
+          </span>
+        </button>
       </div>
 
       {/* Collapsible Deep Physiological Mechanism & Hemodynamic Analysis (Collapsed by Default) */}
@@ -717,6 +813,16 @@ export default function GeekMode({
           modalityName={modality.display_name || modality.name}
         />
       </div>
+
+      {/* Interactive Metric Explanation Modal */}
+      {activeMetricModal && (
+        <GeekMetricExplanationModal
+          isOpen={Boolean(activeMetricModal)}
+          onClose={() => setActiveMetricModal(null)}
+          initialMetric={activeMetricModal}
+          modality={modality}
+        />
+      )}
     </div>
   )
 }

@@ -19,6 +19,7 @@ import {
   saveOutcomeObservation,
   addModalityOrProtocolToToday,
   getModalities,
+  getCachedModalitiesSync,
   addToBench,
   upsertBenchItemOverride,
   updateTaskExecutionDetails,
@@ -38,9 +39,8 @@ import {
   Flame, SkipForward, SlidersHorizontal
 } from 'lucide-react'
 
+import dynamic from 'next/dynamic'
 import { evaluateDailyBandwidth, DailyBandwidthMode, BandwidthEvaluation } from '@/lib/adaptive/dailyBandwidthEngine'
-import AdaptiveRoutineAdjustmentModal from '@/components/modals/AdaptiveRoutineAdjustmentModal'
-import DashboardLayoutModal from '@/components/modals/DashboardLayoutModal'
 import { useHomeWidgets, useFocusRules, useCardBadges } from '@/lib/utils/layoutSettings'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
@@ -57,20 +57,12 @@ import { LongevityCoachInputBar } from '@/components/ai/LongevityCoachInputBar'
 import { DailyHistoricalDebriefHeader } from '@/components/cards/DailyHistoricalDebriefHeader'
 import { ViewSelectorHeader, CalendarViewMode, LayoutOrientation, MainCategory, SUB_CATEGORIES_MAP, CategoryFiltersBar, FilterLens } from '@/components/ui/ViewSelectorHeader'
 import ModalityIcon from '@/components/ui/ModalityIcon'
-import { ThreeDaySplitView } from '@/components/views/ThreeDaySplitView'
-import { SevenDayWeekView } from '@/components/views/SevenDayWeekView'
-import { MonthMatrixView } from '@/components/views/MonthMatrixView'
-import DailyVerticalPulseView from '@/components/calendar/DailyVerticalPulseView'
 import { useTheme } from '@/lib/utils/useTheme'
 import ExploreCard from '@/components/cards/ExploreCard'
 import ProtocolOverviewHeaderCard from '@/components/cards/ProtocolOverviewHeaderCard'
-import AdHocLoggerModal from '@/components/modals/AdHocLoggerModal'
-import EnrollProtocolModal from '@/components/modals/EnrollProtocolModal'
-import StackHealthOptimizerModal from '@/components/modals/StackHealthOptimizerModal'
 import { auditRoutineStackHealth } from '@/lib/synergy/routineStackHealthEngine'
-import { SmartRescheduleModal, RescheduleActionType } from '@/components/modals/SmartRescheduleModal'
-import CustomizeModalityOutcomesModal from '@/components/modals/CustomizeModalityOutcomesModal'
-import CreateCustomModalityModal, { CustomModalityInitialData } from '@/components/modals/CreateCustomModalityModal'
+import type { RescheduleActionType } from '@/components/modals/SmartRescheduleModal'
+import type { CustomModalityInitialData } from '@/components/modals/CreateCustomModalityModal'
 import QuickHotkeyGrid from '@/components/quicklog/QuickHotkeyGrid'
 import { InfradianAdaptiveBanner } from '@/components/banners/InfradianAdaptiveBanner'
 import { calculateInfradianStatus } from '@/lib/tracking/infradianEngine'
@@ -91,13 +83,29 @@ import {
   CANONICAL_TIMING_SLOTS 
 } from '@/lib/utils/timingSlots'
 import AdaptiveSleepTriageCard from '@/components/today/AdaptiveSleepTriageCard'
-import { OutcomeLensView } from '@/components/outcomes/OutcomeLensView'
-import { OutcomeOptimizationModal } from '@/components/modals/OutcomeOptimizationModal'
 import { Outcome8020SpotlightCard } from '@/components/outcomes/Outcome8020SpotlightCard'
-import NewUserWelcomeHub from '@/components/onboarding/NewUserWelcomeHub'
 import SampleDayPreviewTimeline from '@/components/today/SampleDayPreviewTimeline'
 import { OutcomeOptimizationState, AntagonisticClash } from '@/lib/outcomes/outcomeOptimizationEngine'
 import { BlocksViewContainer, getStoredDisplayMode } from '@/components/blocks'
+
+// Asynchronous dynamic code-splitting for heavy modals and secondary calendar views:
+// Dramatically reduces initial page JS bundle size so /today loads in milliseconds!
+const AdaptiveRoutineAdjustmentModal = dynamic(() => import('@/components/modals/AdaptiveRoutineAdjustmentModal'), { ssr: false })
+const DashboardLayoutModal = dynamic(() => import('@/components/modals/DashboardLayoutModal'), { ssr: false })
+const AdHocLoggerModal = dynamic(() => import('@/components/modals/AdHocLoggerModal'), { ssr: false })
+const EnrollProtocolModal = dynamic(() => import('@/components/modals/EnrollProtocolModal'), { ssr: false })
+const StackHealthOptimizerModal = dynamic(() => import('@/components/modals/StackHealthOptimizerModal'), { ssr: false })
+const SmartRescheduleModal = dynamic(() => import('@/components/modals/SmartRescheduleModal').then(m => m.SmartRescheduleModal), { ssr: false })
+const CustomizeModalityOutcomesModal = dynamic(() => import('@/components/modals/CustomizeModalityOutcomesModal'), { ssr: false })
+const CreateCustomModalityModal = dynamic(() => import('@/components/modals/CreateCustomModalityModal'), { ssr: false })
+const OutcomeOptimizationModal = dynamic(() => import('@/components/modals/OutcomeOptimizationModal').then(m => m.OutcomeOptimizationModal), { ssr: false })
+const NewUserWelcomeHub = dynamic(() => import('@/components/onboarding/NewUserWelcomeHub'), { ssr: false })
+
+const ThreeDaySplitView = dynamic(() => import('@/components/views/ThreeDaySplitView').then(m => m.ThreeDaySplitView), { ssr: false })
+const SevenDayWeekView = dynamic(() => import('@/components/views/SevenDayWeekView').then(m => m.SevenDayWeekView), { ssr: false })
+const MonthMatrixView = dynamic(() => import('@/components/views/MonthMatrixView').then(m => m.MonthMatrixView), { ssr: false })
+const DailyVerticalPulseView = dynamic(() => import('@/components/calendar/DailyVerticalPulseView'), { ssr: false })
+const OutcomeLensView = dynamic(() => import('@/components/outcomes/OutcomeLensView').then(m => m.OutcomeLensView), { ssr: false })
 
 export function normalizeChronologicalTimeBlock(slot: string): string {
   return canonicalizeTimingSlot(slot)
@@ -314,7 +322,7 @@ function TodayPageContent() {
     return []
   })
 
-  const [allModalities, setAllModalities] = useState<Modality[]>([])
+  const [allModalities, setAllModalities] = useState<Modality[]>(() => getCachedModalitiesSync())
   const [allOutcomes, setAllOutcomes] = useState<OutcomeDimension[]>([])
 
   const userFirstName = useMemo(() => {
@@ -1270,6 +1278,17 @@ function TodayPageContent() {
       } catch (e) {}
     }
 
+    // 0ms SWR Profile Hydration if not already populated
+    if (typeof window !== 'undefined' && !profile) {
+      try {
+        const rawProfile = localStorage.getItem(`levl_user_profile_${effectiveUserId}`) || localStorage.getItem('levl_cached_user_profile')
+        if (rawProfile) {
+          const parsedProfile = normalizeUserProfile(JSON.parse(rawProfile))
+          if (parsedProfile) setProfile(parsedProfile)
+        }
+      } catch (e) {}
+    }
+
     async function loadData() {
       const reqId = ++activeDateReqIdRef.current
       lastLoadedUserIdRef.current = effectiveUserId
@@ -1693,22 +1712,24 @@ function TodayPageContent() {
         const uniqueUuids = Array.from(new Set(targetUuids)).filter(
           u => u && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u)
         )
-        for (const uuid of uniqueUuids) {
-          const existingTask = tasks.find(t => t.id === uuid)
-          let finalDetails = executionDetails !== undefined ? executionDetails : existingTask?.execution_details
-          if (splitCompletedDoses !== undefined) {
-            finalDetails = { ...(finalDetails || {}), completed_doses: splitCompletedDoses }
-          } else if (status === 'pending' && finalDetails?.completed_doses) {
-            const { completed_doses, ...rest } = finalDetails
-            finalDetails = rest
-          }
+        await Promise.all(
+          uniqueUuids.map(async (uuid) => {
+            const existingTask = tasks.find(t => t.id === uuid)
+            let finalDetails = executionDetails !== undefined ? executionDetails : existingTask?.execution_details
+            if (splitCompletedDoses !== undefined) {
+              finalDetails = { ...(finalDetails || {}), completed_doses: splitCompletedDoses }
+            } else if (status === 'pending' && finalDetails?.completed_doses) {
+              const { completed_doses, ...rest } = finalDetails
+              finalDetails = rest
+            }
 
-          const effectiveStatus = (splitCompletedDoses !== undefined)
-            ? (splitCompletedDoses.length > 0 ? (status === 'completed' ? 'completed' : 'partial') : 'pending')
-            : status
+            const effectiveStatus = (splitCompletedDoses !== undefined)
+              ? (splitCompletedDoses.length > 0 ? (status === 'completed' ? 'completed' : 'partial') : 'pending')
+              : status
 
-          await updateDailyTaskStatus(uuid, effectiveStatus, reason, undefined, effectiveCompletedAt, executionMetrics, finalDetails)
-        }
+            return updateDailyTaskStatus(uuid, effectiveStatus, reason, undefined, effectiveCompletedAt, executionMetrics, finalDetails)
+          })
+        )
       } catch (err) {
         console.error('Error saving task status to database:', err)
       }
@@ -2448,6 +2469,17 @@ function TodayPageContent() {
 
     return Array.from(map.values())
   }, [tasks, benchItems, viewMode, profile, benchedOrEliminatedModalityIds])
+
+  // Stable memoized task array for BlocksViewContainer to prevent thousands of unnecessary child re-renders
+  const blocksViewTasks = useMemo(() => {
+    return dedupedTasks.map(task => {
+      const resolvedMod = resolveTaskModality(task)
+      return {
+        ...task,
+        loose_modality: task.loose_modality || resolvedMod
+      }
+    })
+  }, [dedupedTasks, resolveTaskModality])
 
   const isTaskMatchingCategoryFilter = (task: DedupedTask): boolean => {
     if (selectedMainCategories.includes('all') || selectedMainCategories.length === 0) return true
@@ -3780,7 +3812,7 @@ function TodayPageContent() {
                 data-protocol-id={protoId}
                 data-protocol-name={groupName.toLowerCase()}
                 onClick={() => toggleProtocolCardCollapse(groupName)}
-                className="p-3.5 sm:p-4 rounded-2xl bg-slate-950/80 border border-purple-500/20 hover:border-purple-500/40 shadow-xl mb-4 relative overflow-hidden backdrop-blur-md transition-all duration-300 cursor-pointer group hover:bg-slate-900/70"
+                className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-purple-500/20 hover:border-purple-400 dark:hover:border-purple-500/40 shadow-sm dark:shadow-xl mb-4 relative overflow-hidden backdrop-blur-md transition-all duration-300 cursor-pointer group hover:bg-slate-50 dark:hover:bg-slate-900/70"
               >
                 {/* Top Edge Signature Protocol Gradient Ribbon */}
                 <div 
@@ -3788,19 +3820,19 @@ function TodayPageContent() {
                   style={{ background: visualTheme.accentBorderCSS }} 
                 />
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
-                      <Check size={12} className="text-emerald-400 stroke-[3]" />
+                      <Check size={12} className="text-emerald-500 dark:text-emerald-400 stroke-[3]" />
                     </div>
-                    <span className="text-xs sm:text-sm font-bold text-slate-200 group-hover:text-white truncate">
+                    <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-white line-clamp-3 leading-snug break-words flex-1 min-w-0">
                       {groupName}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 shrink-0">
+                    <span className="text-[10px] sm:text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 shrink-0">
                       {completedCount}/{totalCount}
                     </span>
                   </div>
-                  <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-white transition-colors shrink-0" />
                 </div>
               </div>
             )
@@ -3813,7 +3845,7 @@ function TodayPageContent() {
               id={`protocol-group-${protoSlug}`}
               data-protocol-id={protoId}
               data-protocol-name={groupName.toLowerCase()}
-              className="p-4 sm:p-5 rounded-3xl bg-slate-950/70 border border-purple-500/30 shadow-2xl space-y-4 mb-6 relative overflow-hidden backdrop-blur-md transition-all duration-500"
+              className="p-4 sm:p-5 rounded-3xl bg-white/95 dark:bg-slate-950/70 border border-slate-200/90 dark:border-purple-500/30 shadow-md dark:shadow-2xl space-y-4 mb-6 relative overflow-hidden backdrop-blur-md transition-all duration-500"
             >
               {/* Ambient subtle glow */}
               <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -3905,15 +3937,15 @@ function TodayPageContent() {
                   <button
                     type="button"
                     onClick={() => toggleGroupCollapse(groupName, groupTasks)}
-                    className="text-[11px] font-extrabold uppercase tracking-wider text-purple-300 hover:text-purple-200 flex items-center gap-1.5 cursor-pointer focus:outline-none"
+                    className="text-[11px] font-extrabold uppercase tracking-wider text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-200 flex items-center gap-1.5 cursor-pointer focus:outline-none"
                   >
                     <ChevronDown 
                       size={14} 
-                      className={`transition-transform duration-200 ${isCollapsed ? '-rotate-90 text-purple-400' : 'text-purple-300'}`} 
+                      className={`transition-transform duration-200 ${isCollapsed ? '-rotate-90 text-purple-600 dark:text-purple-400' : 'text-purple-700 dark:text-purple-300'}`} 
                     />
                     <span>Protocol Modalities ({groupTasks.length})</span>
                   </button>
-                  <span className="text-[10px] font-mono text-purple-300/70">
+                  <span className="text-[10px] font-mono text-purple-700/80 dark:text-purple-300/70">
                     {completedCount}/{groupTasks.length} Completed
                   </span>
                 </div>
@@ -3933,13 +3965,13 @@ function TodayPageContent() {
           <div 
             key={groupName} 
             ref={(el) => { groupHeaderRefs.current[groupName] = el }}
-            className="p-4 rounded-3xl bg-slate-950/70 border border-white/10 space-y-3 mb-6"
+            className="p-4 rounded-3xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 space-y-3 mb-6 shadow-sm dark:shadow-xl"
           >
-            <div className="flex items-center justify-between pb-1 border-b border-white/10">
-              <span className="text-xs font-bold uppercase text-slate-300">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-white/10">
+              <span className="text-xs font-bold uppercase text-slate-800 dark:text-slate-300">
                 {groupName}
               </span>
-              <span className="text-[10px] font-mono text-slate-400">
+              <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
                 {completedCount}/{groupTasks.length} Completed
               </span>
             </div>
@@ -4757,13 +4789,7 @@ function TodayPageContent() {
         {calendarViewMode === 'today' && displayMode === 'blocks' && (
           <div className="mb-8">
             <BlocksViewContainer
-              tasks={dedupedTasks.map(task => {
-                const resolvedMod = resolveTaskModality(task)
-                return {
-                  ...task,
-                  loose_modality: task.loose_modality || resolvedMod
-                }
-              })}
+              tasks={blocksViewTasks}
               benchItems={benchItems}
               userProfile={profile}
               isFocusMode={isFocusMode}
@@ -4776,6 +4802,9 @@ function TodayPageContent() {
               onOpenRescheduleModal={handleOpenRescheduleModal}
               onMoveToBench={async (modalityId) => {
                 await handleMoveToBench(modalityId)
+              }}
+              onEliminate={async (task, reason) => {
+                await handleEliminateEntirely(task, reason)
               }}
               onSaveCustomOutcomes={handleSaveCustomOutcomes}
               onAddActivity={(slotKey) => {

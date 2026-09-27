@@ -30,6 +30,7 @@ import NSDRExecutionLog from '../execution/NSDRExecutionLog'
 import { triggerHaptic } from '@/lib/utils/haptics'
 import CardioExecutionLog from '../execution/CardioExecutionLog'
 import SupplementExecutionLog from '../execution/SupplementExecutionLog'
+import TopicalSkincareExecutionLog from '../execution/TopicalSkincareExecutionLog'
 import NutritionMacroExecutionLog from '../execution/NutritionMacroExecutionLog'
 import RedLightExecutionLog from '../execution/RedLightExecutionLog'
 import CGMExecutionLog from '../execution/CGMExecutionLog'
@@ -44,6 +45,7 @@ import CompletedExecutionSummary from '../execution/CompletedExecutionSummary'
 import ManageTaskModal from '../modals/ManageTaskModal'
 import { DosageBadgeButton } from '../ui/DosageBadgeButton'
 import ModalityIcon from '../ui/ModalityIcon'
+import { resolveModalityTimingRelationship } from '@/lib/utils/modalityTimingRelationships'
 import { HabitAnalyticsModal } from '../modals/HabitAnalyticsModal'
 import MedicalDisclaimerBanner from '../ui/MedicalDisclaimerBanner'
 import {
@@ -919,6 +921,13 @@ export default function ProtocolTaskCard({
 
   const isSupplement = archetype === 'supplement'
   const isSport = archetype === 'sport'
+  const isSkincare =
+    archetype === 'skincare' ||
+    (modality.category || '').toLowerCase().includes('skin') ||
+    (modality.modality_type || '').toLowerCase().includes('topical') ||
+    /\b(topical|serum|cream|lotion|tretinoin|skincare|cleanser|moisturizer|sunscreen)\b/i.test(
+      `${modalityKey} ${modality.name || ''}`.toLowerCase()
+    )
 
   const hasPrecisionLogUI = archetype !== 'general' || isCaffeineCutoff
 
@@ -1527,6 +1536,10 @@ export default function ProtocolTaskCard({
     return customDose || baseDose || ''
   }
 
+  const timingRel = useMemo(() => {
+    return resolveModalityTimingRelationship(task, modality)
+  }, [task, modality])
+
   const completedSummaryText = getCompletedSummaryText()
   
   const getCompletedDisplayContext = (): string | null => {
@@ -1797,7 +1810,18 @@ export default function ProtocolTaskCard({
                     <span>{preFlightNudge.severity === 'critical' ? 'Conflict' : 'Spacing'}</span>
                   </span>
                 )}
-                {badges.showDosing && (
+                {timingRel ? (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowManageModal(true)
+                    }}
+                    className="text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full border border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:text-white transition-all cursor-pointer shadow-sm shrink-0"
+                    title={timingRel.scientificRationale || timingRel.pillText}
+                  >
+                    {timingRel.pillText}
+                  </span>
+                ) : badges.showDosing && (
                   <div onClick={(e) => e.stopPropagation()} className="min-w-0 max-w-full">
                     <DosageBadgeButton
                       modality={modality}
@@ -2059,7 +2083,18 @@ export default function ProtocolTaskCard({
         {/* Line 2: Dosage + Badges (Left) & Details / Actions (Right) */}
         <div className={`flex items-center justify-between ${isSupplement ? 'gap-2 pt-0' : 'gap-3 pt-0.5'} flex-wrap`}>
           <div className={`flex flex-wrap items-center ${isSupplement ? 'gap-1' : 'gap-1.5'} flex-1 min-w-0`}>
-            {badges.showDosing && (
+            {timingRel ? (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowManageModal(true)
+                }}
+                className="text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full border border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:text-white transition-all cursor-pointer shadow-sm shrink-0"
+                title={timingRel.scientificRationale || timingRel.pillText}
+              >
+                {timingRel.pillText}
+              </span>
+            ) : badges.showDosing && (
               <DosageBadgeButton
                 modality={modality}
                 userProfile={userProfile}
@@ -2444,6 +2479,7 @@ export default function ProtocolTaskCard({
                     />
                   )}
                   {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isSkincare && <TopicalSkincareExecutionLog value={executionDetails} onChange={setExecutionDetails} modality={modality} />}
 
                   {/* COMPLETE & LOG SESSION ACTION BUTTON */}
                   <div className="flex items-center justify-between gap-3 pt-3 border-t border-emerald-500/20 flex-wrap">
@@ -2703,6 +2739,7 @@ export default function ProtocolTaskCard({
                     />
                   )}
                   {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                  {isSkincare && <TopicalSkincareExecutionLog value={executionDetails} onChange={setExecutionDetails} modality={modality} />}
 
                   {/* Save / Cancel Action Bar */}
                   <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
@@ -3010,6 +3047,7 @@ export default function ProtocolTaskCard({
                           />
                         )}
                         {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                        {isSkincare && <TopicalSkincareExecutionLog value={executionDetails} onChange={setExecutionDetails} modality={modality} />}
                       </div>
                     )}
                   </div>

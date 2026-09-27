@@ -32,7 +32,13 @@ interface BlocksProtocolContainerProps {
   isEditMode: boolean
   activeSwipe?: { task: DedupedTask; type: 'complete' | 'skip_snooze' } | null
   onCloseSwipe?: () => void
-  onInFeedComplete?: (taskId: string, outcomes?: Record<string, number>, customDose?: string) => void
+  onInFeedComplete?: (
+    taskId: string,
+    outcomes?: Record<string, number>,
+    customDose?: string,
+    completedAt?: string,
+    notes?: string
+  ) => void
   onInFeedSkip?: (taskId: string, reason?: string) => void
   onInFeedSnooze?: (taskId: string, snoozeSlotOrMinutes: string | number) => void
   onOpenDetails: (task: DedupedTask) => void
@@ -41,6 +47,8 @@ interface BlocksProtocolContainerProps {
   onStatusChange: (taskId: string, status: string) => void
   onLongPress: () => void
   onMoveTask?: (taskId: string, targetSlotKey: string, targetTaskId?: string) => void
+  onMoveToBench?: (modalityId: string) => void
+  onEliminate?: (task: DedupedTask, reason?: string) => void
 }
 
 export default function BlocksProtocolContainer({
@@ -64,7 +72,9 @@ export default function BlocksProtocolContainer({
   onSwipeLeft,
   onStatusChange,
   onLongPress,
-  onMoveTask
+  onMoveTask,
+  onMoveToBench,
+  onEliminate
 }: BlocksProtocolContainerProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [sizings, setSizings] = useState<Record<string, BlockSizing>>({})
@@ -81,20 +91,25 @@ export default function BlocksProtocolContainer({
 
   // Viewport ignition engine: fully illuminate icons & borders whenever visible in viewport
   useEffect(() => {
-    const checkIgnition = () => {
-      if (!containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      // Active whenever visible anywhere in or near the viewport
-      const ignited = rect.top <= window.innerHeight + 100 && rect.bottom >= -50
-      setIsIgnited(ignited)
+    if (!containerRef.current || typeof IntersectionObserver === 'undefined') {
+      setIsIgnited(true)
+      return
     }
 
-    checkIgnition()
-    window.addEventListener('scroll', checkIgnition, { passive: true })
-    window.addEventListener('resize', checkIgnition, { passive: true })
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsIgnited(entry.isIntersecting)
+      },
+      {
+        rootMargin: '100px 0px 50px 0px',
+        threshold: 0
+      }
+    )
+
+    observer.observe(containerRef.current)
+
     return () => {
-      window.removeEventListener('scroll', checkIgnition)
-      window.removeEventListener('resize', checkIgnition)
+      observer.disconnect()
     }
   }, [isCollapsed])
 
@@ -139,7 +154,7 @@ export default function BlocksProtocolContainer({
     const def =
       layoutMode === '3-wide'
         ? ({ width: '1/3' as const, height: '1x' as const })
-        : layoutMode === '1-wide'
+        : layoutMode === '1-wide' || layoutMode === 'streamline'
         ? ({ width: 'full' as const, height: '1x' as const })
         : layoutMode === 'uniform' || layoutMode === '2-wide'
         ? ({ width: '1/2' as const, height: '1x' as const })
@@ -279,6 +294,8 @@ export default function BlocksProtocolContainer({
                     onComplete={onInFeedComplete || (() => {})}
                     onSkip={onInFeedSkip || (() => {})}
                     onSnooze={onInFeedSnooze || (() => {})}
+                    onMoveToBench={onMoveToBench}
+                    onEliminate={onEliminate}
                   />
                 </div>
               )

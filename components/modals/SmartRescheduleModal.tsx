@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { DailyProtocolTask, Modality } from '@/lib/types'
-import { X, Calendar, FastForward, ArrowRightLeft, Clock, SkipForward, Sparkles, Check, Archive, Trash2 } from 'lucide-react'
+import { X, Calendar, FastForward, ArrowRightLeft, Clock, SkipForward, Sparkles, Check, Archive, Trash2, Sliders } from 'lucide-react'
+import { DosageDetailModal } from '@/components/modals/DosageDetailModal'
 
 export type RescheduleActionType = 
   | 'slide_forward'        // Push session to next day (slides entire sequence)
@@ -12,6 +13,7 @@ export type RescheduleActionType =
   | 'custom_date'          // Pick a custom future date on calendar
   | 'move_to_bench'        // Move modality to bench (deactivate from routine)
   | 'eliminate_entirely'   // Permanently eliminate modality from stack
+  | 'change_dosing'        // Adjust dosing / schedule
 
 interface SmartRescheduleModalProps {
   isOpen: boolean
@@ -51,6 +53,8 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
   isPastMissedTask = false,
   onExecuteReschedule
 }) => {
+  const [selectedSkipReason, setSelectedSkipReason] = useState<string | null>(null)
+  const [isDosageModalOpen, setIsDosageModalOpen] = useState(false)
   const modName = modality?.name || ''
   const isPulsed = (modality as any)?.is_pulsed || 
                   ['weekly', 'biweekly', 'monthly', 'quarterly', 'pulsed', 'cyclical', 'infrequent'].includes((modality?.cadence_layer || '').toLowerCase()) ||
@@ -256,31 +260,203 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
             </button>
           )}
 
-          {/* Option 4: Skip Completely (Default for Daily Supplements / Habits) */}
-          <button
-            type="button"
-            onClick={() => onExecuteReschedule('skip_session')}
-            className={`w-full p-4 rounded-2xl border text-left flex items-start gap-3.5 transition-all active:scale-[0.98] cursor-pointer ${
-              isDailySupplement && !isPulsed
-                ? 'bg-slate-800/90 border-slate-700 hover:border-slate-500'
-                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-            } group`}
-          >
-            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0 group-hover:scale-105 transition-transform">
-              <SkipForward className="w-5 h-5" />
-            </div>
-            <div className="space-y-1 flex-1">
-              <div className="text-sm font-bold text-white flex items-center gap-2">
-                <span>Skip Completely</span>
-                {isDailySupplement && !isPulsed && (
-                  <span className="text-[10px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-medium">Default Daily Action</span>
-                )}
+          {/* Option 4: Skip Completely with Adaptive Reasons */}
+          <div className={`w-full p-4 rounded-2xl border space-y-3 ${
+            isDailySupplement && !isPulsed
+              ? 'bg-slate-800/90 border-slate-700'
+              : 'bg-slate-950/60 border-slate-800'
+          }`}>
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0">
+                <SkipForward className="w-5 h-5" />
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Mark this session as skipped for this cycle. Your schedule continues normally without making up this session.
-              </p>
+              <div className="space-y-1 flex-1">
+                <div className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>Skip Completely</span>
+                  {isDailySupplement && !isPulsed && (
+                    <span className="text-[10px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-medium">Default Daily Action</span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Mark this session as skipped for this cycle. Why are you skipping?
+                </p>
+              </div>
             </div>
-          </button>
+
+            {/* Quick Reason Chips */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {[
+                { id: 'Too busy', label: 'Too busy', icon: '⚡' },
+                { id: 'Too frequent', label: 'Too frequent', icon: '🔄' },
+                { id: 'Not helpful', label: 'Not helpful', icon: '📉' },
+                { id: 'Not feeling well', label: 'Not feeling well', icon: '🤒' },
+                { id: 'Travel / Schedule conflict', label: 'Travel / Conflict', icon: '✈️' },
+                { id: 'Rest day substitution', label: 'Rest day', icon: '🏖️' },
+              ].map((reason) => {
+                const isSelected = selectedSkipReason === reason.id
+                return (
+                  <button
+                    key={reason.id}
+                    type="button"
+                    onClick={() => setSelectedSkipReason(isSelected ? null : reason.id)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
+                      isSelected
+                        ? 'bg-white text-slate-950 border-white shadow-md'
+                        : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
+                    }`}
+                  >
+                    <span>{reason.icon}</span>
+                    <span>{reason.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* ADAPTIVE ACTION TRAY FOR 'Too busy' */}
+            {selectedSkipReason === 'Too busy' && (
+              <div className="p-3 rounded-xl border bg-amber-950/30 border-amber-500/40 text-amber-200 space-y-2 animate-in fade-in slide-in-from-top-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    ⚡ Too busy today?
+                  </span>
+                  <span className="text-[10px] text-amber-200/70 font-semibold">Choose an action:</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Short on time? Reduce the duration or dose, bench this modality for later, or eliminate it from your routine:
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsDosageModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-500/40 active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Sliders size={13} className="text-cyan-400" />
+                    <span>Change Dosing</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onExecuteReschedule('move_to_bench')}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40 active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Archive size={13} className="text-amber-400" />
+                    <span>Move to Bench</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onExecuteReschedule('eliminate_entirely')}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/40 active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Trash2 size={13} className="text-rose-400" />
+                    <span>Eliminate</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onExecuteReschedule('skip_session')}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all bg-white/10 hover:bg-white/15 text-slate-300 border-white/20 active:scale-95 cursor-pointer"
+                  >
+                    <SkipForward size={13} />
+                    <span>Skip Session Only</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ADAPTIVE ACTION TRAY FOR 'Too frequent' */}
+            {selectedSkipReason === 'Too frequent' && (
+              <div className="p-3 rounded-xl border bg-cyan-950/30 border-cyan-500/40 text-cyan-200 space-y-2 animate-in fade-in slide-in-from-top-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                    🔄 Too frequent?
+                  </span>
+                  <span className="text-[10px] text-cyan-200/70 font-semibold">Choose an action:</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Cadence feels overwhelming? Adjust weekly frequency or session intervals:
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsDosageModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-500/40 active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Sliders size={13} className="text-cyan-400" />
+                    <span>Change Dosing / Frequency</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onExecuteReschedule('skip_session')}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all bg-white/10 hover:bg-white/15 text-slate-300 border-white/20 active:scale-95 cursor-pointer"
+                  >
+                    <SkipForward size={13} />
+                    <span>Skip Session Only</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ADAPTIVE ACTION TRAY FOR 'Not helpful' */}
+            {selectedSkipReason === 'Not helpful' && (
+              <div className="p-3 rounded-xl border bg-rose-950/30 border-rose-500/40 text-rose-200 space-y-2 animate-in fade-in slide-in-from-top-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                    📉 Not helpful?
+                  </span>
+                  <span className="text-[10px] text-rose-200/70 font-semibold">Choose an action:</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Not getting the expected clinical payoff? Recalibrate the dose/timing, move to bench while trying alternatives, or eliminate from your stack:
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsDosageModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-500/40 active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Sliders size={13} className="text-cyan-400" />
+                    <span>Change Dosing</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onExecuteReschedule('move_to_bench')}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40 active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Archive size={13} className="text-amber-400" />
+                    <span>Move to Bench</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onExecuteReschedule('eliminate_entirely')}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border-rose-500/40 active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Trash2 size={13} className="text-rose-400" />
+                    <span>Eliminate</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onExecuteReschedule('skip_session')}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all bg-white/10 hover:bg-white/15 text-slate-300 border-white/20 active:scale-95 cursor-pointer"
+                  >
+                    <SkipForward size={13} />
+                    <span>Skip Session Only</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Standard Skip Button if no adaptive reason selected */}
+            {!['Too busy', 'Too frequent', 'Not helpful'].includes(selectedSkipReason || '') && (
+              <div className="pt-1 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => onExecuteReschedule('skip_session')}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                >
+                  <SkipForward size={13} />
+                  <span>Confirm Skip</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Option 5: Custom Date Picker */}
           <div className="p-4 rounded-2xl border border-slate-800 bg-slate-950/40 space-y-3">
@@ -367,6 +543,28 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Full Canonical Dosage & Scheduling Configuration Modal */}
+      {isDosageModalOpen && modality && (
+        <DosageDetailModal
+          isOpen={true}
+          onClose={() => setIsDosageModalOpen(false)}
+          modality={modality}
+          task={task}
+          onSelectDose={() => {
+            setIsDosageModalOpen(false)
+            onClose()
+          }}
+          onSavePersonalization={() => {
+            setIsDosageModalOpen(false)
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+              window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+            }
+            onClose()
+          }}
+        />
+      )}
     </div>
   )
 }

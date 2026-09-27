@@ -18,6 +18,7 @@ import {
 } from './blocksUtils'
 import BlocksSynergyConnector, { ModalitySynergyInfo } from './BlocksSynergyConnector'
 import BlocksSequenceBadge, { ModalitySequenceInfo } from './BlocksSequenceSpine'
+import { resolveModalityTimingRelationship } from '@/lib/utils/modalityTimingRelationships'
 import { useBlocksDrag } from './BlocksDragContext'
 import { triggerHaptic } from '@/lib/utils/haptics'
 import { useTheme } from '@/lib/utils/useTheme'
@@ -26,6 +27,7 @@ import { useCardBadges } from '@/lib/utils/layoutSettings'
 
 interface ModalityBlockTileProps {
   task: DedupedTask
+  allDayTasks?: DedupedTask[]
   modality?: Modality | null
   benchItem?: UserBenchItem | null
   sizing: BlockSizing
@@ -35,6 +37,7 @@ interface ModalityBlockTileProps {
   currentSlotKey?: string
   isEditMode: boolean
   isIgnited?: boolean
+  isDuring?: boolean
   synergy?: ModalitySynergyInfo
   sequence?: ModalitySequenceInfo
   isPartnerHighlighted?: boolean
@@ -51,6 +54,7 @@ interface ModalityBlockTileProps {
 
 export default function ModalityBlockTile({
   task,
+  allDayTasks,
   modality,
   benchItem,
   sizing,
@@ -60,6 +64,7 @@ export default function ModalityBlockTile({
   currentSlotKey,
   isEditMode,
   isIgnited = true,
+  isDuring = false,
   synergy,
   sequence,
   isPartnerHighlighted = false,
@@ -179,7 +184,7 @@ export default function ModalityBlockTile({
 
   const { colSpanClass, heightClass } = getGridClassesForSizing(activeSizing, layoutMode)
   const styles = getBlockVisualStyles(modality, visualStyle, isCompleted, isSnoozed, isSkipped, isIgnited)
-  const isOneWideSquare = layoutMode === '1-wide'
+  const isOneWideSquare = layoutMode === '1-wide' || layoutMode === 'streamline'
 
   // Large centered icon size tailored for each layout mode
   const iconSize = isOneWideSquare
@@ -407,6 +412,10 @@ export default function ModalityBlockTile({
     return getModalityDoseDisplay(task, modality, benchItem)
   }, [task, modality, benchItem])
 
+  const timingRel = useMemo(() => {
+    return resolveModalityTimingRelationship(task, modality, allDayTasks)
+  }, [task, modality, allDayTasks])
+
   const [isDragging, setIsDragging] = useState(false)
   const [swipeOffset, setSwipeOffset] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
@@ -432,8 +441,9 @@ export default function ModalityBlockTile({
   )
 
   const dragHandlers = useMemo(() => {
-    if (!dragCtx || isEditMode) return null
+    if (!dragCtx) return null
     return dragCtx.bindDraggable(dragItem, {
+      isEditMode,
       onSwipeRight,
       onSwipeLeft,
       onClick: () => {
@@ -446,7 +456,7 @@ export default function ModalityBlockTile({
 
   // Touch Handlers with horizontal swipe detection and underlayer translation
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (isEditMode || isResizing) return
+    if (isResizing) return
     const touch = e.touches[0]
     if (!touch) return
     swipeStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() }
@@ -455,13 +465,12 @@ export default function ModalityBlockTile({
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (isEditMode || isResizing || !swipeStartRef.current) {
+    if (isResizing || !swipeStartRef.current) {
       dragHandlers?.onTouchMove(e)
       return
     }
 
     if (dragCtx?.activeDrag) {
-      dragHandlers?.onTouchMove(e)
       return
     }
 
@@ -473,8 +482,8 @@ export default function ModalityBlockTile({
     const absX = Math.abs(diffX)
     const absY = Math.abs(diffY)
 
-    if (isHorizontalSwipeRef.current === null) {
-      if (absY > 8 && absY > absX) {
+    if (isHorizontalSwipeRef.current === null && !isEditMode) {
+      if (absY > 7 && absY > absX) {
         isHorizontalSwipeRef.current = false
       } else if (absX > 10 && absX > absY * 1.2) {
         isHorizontalSwipeRef.current = true
@@ -513,6 +522,7 @@ export default function ModalityBlockTile({
       setIsSwiping(false)
       swipeStartRef.current = null
       isHorizontalSwipeRef.current = null
+      dragHandlers?.onTouchCancel?.(e)
       return
     }
 
@@ -533,7 +543,7 @@ export default function ModalityBlockTile({
 
   // Desktop Mouse Handlers (Click for details, horizontal drag to swipe, vertical/diagonal to drag-reorder)
   const handleTileMouseDown = (e: React.MouseEvent) => {
-    if (isEditMode || isResizing || e.button !== 0) return
+    if (isResizing || e.button !== 0) return
     const target = e.target as HTMLElement
     if (target.closest('[data-resize-handle]')) return
 
@@ -550,10 +560,10 @@ export default function ModalityBlockTile({
       const absY = Math.abs(diffY)
 
       if (mode === 'idle') {
-        if (absX > 14 && absX > absY * 1.3) {
+        if (!isEditMode && absX > 14 && absX > absY * 1.3) {
           mode = 'swipe'
           setIsSwiping(true)
-        } else if (Math.hypot(diffX, diffY) > 16) {
+        } else if (Math.hypot(diffX, diffY) > (isEditMode ? 6 : 14)) {
           mode = 'drag'
           window.removeEventListener('mousemove', onMouseMove)
           window.removeEventListener('mouseup', onMouseUp)
@@ -620,11 +630,15 @@ export default function ModalityBlockTile({
       onTouchCancel={handleTouchCancel}
       style={{ touchAction: isCurrentDragged ? 'none' : 'pan-y' }}
       className={`relative select-none ${colSpanClass} ${heightClass} transition-all duration-300 ${
-        isCurrentDragged ? 'opacity-30 scale-95 pointer-events-none' : ''
+        isCurrentDragged ? 'opacity-25 scale-95' : ''
       } ${
         isReorderTarget ? 'ring-2 ring-purple-400 border-purple-400 shadow-xl shadow-purple-500/30 scale-[1.02]' : ''
       } ${
         isResizing ? 'ring-2 ring-purple-400 shadow-2xl shadow-purple-500/50 scale-[1.01]' : ''
+      } ${
+        isDuring && (layoutMode === 'streamline' || layoutMode === '1-wide')
+          ? '-mt-2 sm:-mt-2.5 rounded-t-none border-t border-dashed border-purple-400/40'
+          : ''
       }`}
     >
       {/* Background Underlayers revealed during swipe */}
@@ -765,7 +779,22 @@ export default function ModalityBlockTile({
                 </div>
                 {/* Meta details row: Dose, Protocol, Category, Synergies */}
                 <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                  {effectiveShowDosing && doseDisplay && (
+                  {timingRel ? (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onOpenDetails()
+                      }}
+                      className={`text-[9px] sm:text-[10px] font-mono font-medium px-2 py-0.5 rounded-full border transition-all cursor-pointer active:scale-95 shadow-sm ${
+                        isDaylight
+                          ? 'bg-slate-100 text-slate-700 border-slate-300 hover:border-slate-400'
+                          : 'bg-zinc-800/90 text-zinc-300 border-zinc-700/80 hover:border-zinc-500 hover:text-white'
+                      }`}
+                      title={timingRel.scientificRationale || timingRel.pillText}
+                    >
+                      {timingRel.pillText}
+                    </span>
+                  ) : effectiveShowDosing && doseDisplay ? (
                     <span
                       className={`text-[10px] sm:text-[11px] font-mono font-bold truncate max-w-[200px] px-2 py-0.5 rounded border ${
                         isDaylight
@@ -778,7 +807,7 @@ export default function ModalityBlockTile({
                     >
                       {doseDisplay}
                     </span>
-                  )}
+                  ) : null}
 
                   {badges.showProtocol && protocolName && (
                     <span
@@ -931,7 +960,22 @@ export default function ModalityBlockTile({
 
                 {/* Badges container: Dose, Category, Synergies */}
                 <div className="flex flex-col items-center gap-1 mt-1 max-w-[95%]">
-                  {effectiveShowDosing && doseDisplay && (
+                  {timingRel ? (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onOpenDetails()
+                      }}
+                      className={`px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono font-medium tracking-tight truncate max-w-full shadow-sm backdrop-blur-sm border transition-all cursor-pointer active:scale-95 ${
+                        isDaylight
+                          ? 'bg-slate-100 text-slate-700 border-slate-300 hover:border-slate-400'
+                          : 'bg-zinc-800/90 text-zinc-300 border-zinc-700/80 hover:border-zinc-500 hover:text-white'
+                      }`}
+                      title={timingRel.scientificRationale || timingRel.pillText}
+                    >
+                      {timingRel.pillText}
+                    </div>
+                  ) : effectiveShowDosing && doseDisplay ? (
                     <div
                       className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold tracking-tight truncate max-w-full shadow-sm backdrop-blur-sm border ${
                         isDaylight
@@ -944,7 +988,7 @@ export default function ModalityBlockTile({
                     >
                       {doseDisplay}
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Optional metadata badges row (Category & Synergy) */}
                   {Boolean(

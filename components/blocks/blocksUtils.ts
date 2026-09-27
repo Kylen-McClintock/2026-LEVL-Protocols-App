@@ -450,25 +450,25 @@ export function harmonizeTimeBlockRowSizings(
   }
 
   // UNIFORM SQUARES & BANNER MODES:
-  // 2-wide squares (default), 3-wide squares (compact), or 1-wide banners (shorter)
-  if (layoutMode === 'uniform' || layoutMode === '2-wide' || layoutMode === '3-wide' || layoutMode === '1-wide') {
+  // 2-wide squares (default), 3-wide squares (compact), or 1-wide/streamline banners (shorter full-width)
+  if (layoutMode === 'uniform' || layoutMode === '2-wide' || layoutMode === '3-wide' || layoutMode === '1-wide' || layoutMode === 'streamline') {
     let totalCols = 0
 
     // Nutrition block if meal slot
     if (isMealSlot) {
-      const nutWidth: BlockWidth = layoutMode === '1-wide' ? 'full' : layoutMode === '3-wide' ? '1/3' : '1/2'
+      const nutWidth: BlockWidth = layoutMode === '1-wide' || layoutMode === 'streamline' ? 'full' : layoutMode === '3-wide' ? '1/3' : '1/2'
       nutritionSizing = { width: nutWidth, height: '1x' }
       totalCols += (nutWidth === 'full' ? 12 : nutWidth === '1/3' ? 4 : 6)
     }
 
     // Stack if present
     if (hasStack) {
-      const stackWidth: BlockWidth = layoutMode === '1-wide' ? 'full' : layoutMode === '3-wide' ? '1/3' : '1/2'
+      const stackWidth: BlockWidth = layoutMode === '1-wide' || layoutMode === 'streamline' ? 'full' : layoutMode === '3-wide' ? '1/3' : '1/2'
       totalCols += (stackWidth === 'full' ? 12 : stackWidth === '1/3' ? 4 : 6)
     }
 
     const defaultWidth: BlockWidth =
-      layoutMode === '3-wide' ? '1/3' : layoutMode === '1-wide' ? 'full' : '1/2'
+      layoutMode === '3-wide' ? '1/3' : layoutMode === '1-wide' || layoutMode === 'streamline' ? 'full' : '1/2'
 
     const finalOrderedTasks: DailyProtocolTask[] = []
     inputTasks.forEach((t) => {
@@ -483,9 +483,9 @@ export function harmonizeTimeBlockRowSizings(
       totalCols += cols
     })
 
-    // Hotkeys in uniform mode: strictly matched to layout mode grid
+    // Hotkeys in uniform/banner mode: strictly matched to layout mode grid
     let remainingSlotHotkeys = [...slotHotkeys]
-    if (layoutMode === '1-wide') {
+    if (layoutMode === '1-wide' || layoutMode === 'streamline') {
       remainingSlotHotkeys.forEach((hk) => {
         hotkeySizings[hk.id] = { width: 'full', height: '1x' }
         totalCols += 12
@@ -775,10 +775,9 @@ export function harmonizeTimeBlockRowSizings(
       pairedIds.add(c1.id)
       pairedIds.add(c2.id)
       finalOrderedTasks.push(c1, c2)
-    } else {
-      // No hotkeys: 4 + 4 = 8 cols, + Add button will take remaining 4 cols (4+4+4=12)!
-      if (!savedOverrides[c1Id]) taskSizings[c1Id] = { width: '1/3', height: '1x' }
-      if (!savedOverrides[c2Id]) taskSizings[c2Id] = { width: '1/3', height: '1x' }
+      // No hotkeys: 2 compacts form a balanced 6 + 6 = 12 column full-width row!
+      if (!savedOverrides[c1Id]) taskSizings[c1Id] = { width: '1/2', height: '1x' }
+      if (!savedOverrides[c2Id]) taskSizings[c2Id] = { width: '1/2', height: '1x' }
       pairedIds.add(c1.id)
       pairedIds.add(c2.id)
       finalOrderedTasks.push(c1, c2)
@@ -800,15 +799,15 @@ export function harmonizeTimeBlockRowSizings(
       pairedIds.add(c.id)
       finalOrderedTasks.push(c)
     } else if (remainingSlotHotkeys.length === 1) {
-      // 1 compact + 1 hotkey -> both at 4 cols (8 cols used), + Add button will take 4 cols (4+4+4=12)!
+      // 1 compact + 1 hotkey -> scale both to 1/2 so 6 + 6 = 12 cols!
       const hk = remainingSlotHotkeys.shift()!
-      if (!savedOverrides[cId]) taskSizings[cId] = { width: '1/3', height: '1x' }
-      hotkeySizings[hk.id] = { width: '1/3', height: '1x' }
+      if (!savedOverrides[cId]) taskSizings[cId] = { width: '1/2', height: '1x' }
+      hotkeySizings[hk.id] = { width: '1/2', height: '1x' }
       pairedIds.add(c.id)
       finalOrderedTasks.push(c)
     } else {
-      // 1 compact + 0 hotkeys: promote to 1/2 so it forms a balanced 6+6 row with the + Add button!
-      if (!savedOverrides[cId]) taskSizings[cId] = { width: '1/2', height: '1x' }
+      // 1 compact + 0 hotkeys: Solitary item expands to 100% full width (12 cols)
+      if (!savedOverrides[cId]) taskSizings[cId] = { width: 'full', height: '1x' }
       pairedIds.add(c.id)
       finalOrderedTasks.push(c)
     }
@@ -827,8 +826,8 @@ export function harmonizeTimeBlockRowSizings(
       pairedIds.add(h.id)
       finalOrderedTasks.push(h)
     } else {
-      // 1 hero + 0 hotkeys: 8 cols used, + Add button takes remaining 4 cols (8+4=12)!
-      if (!savedOverrides[hId]) taskSizings[hId] = { width: '2/3', height: '1x' }
+      // 1 hero + 0 hotkeys: Solitary hero expands to 100% full width (12 cols)
+      if (!savedOverrides[hId]) taskSizings[hId] = { width: 'full', height: '1x' }
       pairedIds.add(h.id)
       finalOrderedTasks.push(h)
     }
@@ -840,29 +839,27 @@ export function harmonizeTimeBlockRowSizings(
     const sId = s.modality_id || s.protocol_step?.modality_id || s.id
 
     if (remainingSlotHotkeys.length >= 1) {
-      // In dynamic mode, hotkeys always remain 1/3 (4 cols). Standard promotes to 2/3 (8 cols) -> 8 + 4 = 12 cols!
+      // Standard promotes to 2/3 (8 cols) + 1/3 hotkey (4 cols) -> 8 + 4 = 12 cols!
       const hk = remainingSlotHotkeys.shift()!
       if (!savedOverrides[sId]) taskSizings[sId] = { width: '2/3', height: '1x' }
       hotkeySizings[hk.id] = { width: '1/3', height: '1x' }
       pairedIds.add(s.id)
       finalOrderedTasks.push(s)
     } else {
-      // 1 standard + 0 hotkeys: 6 cols used, + Add button takes remaining 6 cols (6+6=12)!
-      if (!savedOverrides[sId]) taskSizings[sId] = { width: '1/2', height: '1x' }
+      // 1 standard + 0 hotkeys: Solitary standard expands to 100% full width (12 cols)
+      if (!savedOverrides[sId]) taskSizings[sId] = { width: 'full', height: '1x' }
       pairedIds.add(s.id)
       finalOrderedTasks.push(s)
     }
   }
 
-  // 12. Pack Any Remaining Standalone Hotkeys (Consistently 1/3 width in dynamic mode)
+  // 12. Pack Any Remaining Standalone Hotkeys
   while (remainingSlotHotkeys.length > 0) {
     const hk = remainingSlotHotkeys.shift()!
     hotkeySizings[hk.id] = { width: '1/3', height: '1x' }
   }
 
-  // 13. Exact Cumulative DOM Column Flow & Flush + Add Button Remainder
-  // If user provided a custom drag-and-drop order, honor inputTasks order directly.
-  // Otherwise use finalOrderedTasks derived from dynamic visual hierarchy & synergies.
+  // 13. Determine displayTasks
   const displayTasks = (customOrder && customOrder.length > 0) ? inputTasks : finalOrderedTasks
 
   // Ensure every task in inputTasks has a sizing in taskSizings (fallback to visual tier or 1/2)
@@ -878,6 +875,146 @@ export function harmonizeTimeBlockRowSizings(
     }
   })
 
+  // 14. Strict Full-Row Flush Pass:
+  // Dynamically simulates the exact physical CSS grid rows formed by the items in render order.
+  // Guarantees every single row in the container sums to exactly 12 columns with zero blank holes!
+  const widthToCols = (w?: BlockWidth): number => {
+    switch (w) {
+      case 'full': return 12
+      case '2/3': return 8
+      case '1/2': return 6
+      case '1/3': return 4
+      case '1/4': return 3
+      default: return 6
+    }
+  }
+
+  interface RenderItemRef {
+    type: 'nutrition' | 'stack' | 'task' | 'hotkey'
+    id: string
+    getWidth: () => BlockWidth
+    setWidth: (w: BlockWidth) => void
+  }
+
+  const renderSeq: RenderItemRef[] = []
+
+  if (isMealSlot) {
+    renderSeq.push({
+      type: 'nutrition',
+      id: 'nutrition',
+      getWidth: () => nutritionSizing.width,
+      setWidth: (w) => {
+        nutritionSizing = { ...nutritionSizing, width: w }
+      }
+    })
+  }
+
+  if (hasStack) {
+    renderSeq.push({
+      type: 'stack',
+      id: 'stack',
+      getWidth: () => '1/2',
+      setWidth: () => {}
+    })
+  }
+
+  displayTasks.forEach((t) => {
+    const mId = t.modality_id || t.protocol_step?.modality_id || t.id
+    renderSeq.push({
+      type: 'task',
+      id: mId,
+      getWidth: () => taskSizings[mId]?.width || '1/2',
+      setWidth: (w) => {
+        const existing = taskSizings[mId] || { width: '1/2', height: '1x' }
+        const updated = { ...existing, width: w }
+        taskSizings[mId] = updated
+        if (t.id) taskSizings[t.id] = updated
+        if (t.protocol_step?.modality_id) {
+          taskSizings[t.protocol_step.modality_id] = updated
+        }
+      }
+    })
+  })
+
+  slotHotkeys.forEach((hk) => {
+    renderSeq.push({
+      type: 'hotkey',
+      id: hk.id,
+      getWidth: () => hotkeySizings[hk.id]?.width || '1/3',
+      setWidth: (w) => {
+        const existing = hotkeySizings[hk.id] || { width: '1/3', height: '1x' }
+        hotkeySizings[hk.id] = { ...existing, width: w }
+      }
+    })
+  })
+
+  let activeRow: RenderItemRef[] = []
+  let activeRowCols = 0
+
+  const flushIncompleteRow = (row: RenderItemRef[], cols: number) => {
+    if (row.length === 0 || cols >= 12) return
+
+    // 1 item alone on a row: expand to 100% full width (12 cols)
+    if (row.length === 1) {
+      row[0].setWidth('full')
+      return
+    }
+
+    // 2 items on a row:
+    if (row.length === 2) {
+      const w0 = row[0].getWidth()
+      const w1 = row[1].getWidth()
+
+      // 4 + 4 = 8 cols -> expand both to 6 + 6 = 12 cols!
+      if (w0 === '1/3' && w1 === '1/3') {
+        row[0].setWidth('1/2')
+        row[1].setWidth('1/2')
+        return
+      }
+      // 6 + 4 = 10 cols -> 8 + 4 = 12 cols!
+      if (w0 === '1/2' && w1 === '1/3') {
+        row[0].setWidth('2/3')
+        return
+      }
+      // 4 + 6 = 10 cols -> 4 + 8 = 12 cols!
+      if (w0 === '1/3' && w1 === '1/2') {
+        row[1].setWidth('2/3')
+        return
+      }
+      // Any other 2-item row: make both balanced 1/2
+      row[0].setWidth('1/2')
+      row[1].setWidth('1/2')
+      return
+    }
+
+    // 3 items on a row: expand all to 1/3 (4 + 4 + 4 = 12)!
+    if (row.length === 3) {
+      row[0].setWidth('1/3')
+      row[1].setWidth('1/3')
+      row[2].setWidth('1/3')
+      return
+    }
+  }
+
+  for (const item of renderSeq) {
+    const itemCols = widthToCols(item.getWidth())
+    if (activeRowCols + itemCols > 12) {
+      flushIncompleteRow(activeRow, activeRowCols)
+      activeRow = []
+      activeRowCols = 0
+    }
+    activeRow.push(item)
+    activeRowCols += widthToCols(item.getWidth())
+    if (activeRowCols === 12) {
+      activeRow = []
+      activeRowCols = 0
+    }
+  }
+
+  if (activeRow.length > 0 && activeRowCols < 12) {
+    flushIncompleteRow(activeRow, activeRowCols)
+  }
+
   // Simulates the exact physical columns rendered across the container to guarantee zero gaps
   let totalColsInDOM = 0
   if (isMealSlot) {
@@ -889,13 +1026,11 @@ export function harmonizeTimeBlockRowSizings(
   displayTasks.forEach((t) => {
     const mId = t.modality_id || t.protocol_step?.modality_id || t.id
     const s = taskSizings[mId] || { width: '1/2', height: '1x' }
-    const cols = s.width === 'full' ? 12 : s.width === '2/3' ? 8 : s.width === '1/3' ? 4 : s.width === '1/4' ? 3 : 6
-    totalColsInDOM += cols
+    totalColsInDOM += widthToCols(s.width)
   })
   slotHotkeys.forEach((hk) => {
     const s = hotkeySizings[hk.id] || { width: '1/3', height: '1x' }
-    const cols = s.width === 'full' ? 12 : s.width === '2/3' ? 8 : s.width === '1/3' ? 4 : s.width === '1/4' ? 3 : 6
-    totalColsInDOM += cols
+    totalColsInDOM += widthToCols(s.width)
   })
 
   // Compute exact columns needed by the + Add button to make the bottom row flush
@@ -912,12 +1047,17 @@ export function harmonizeTimeBlockRowSizings(
   } else {
     addBlockSizing = { width: '1/4', height: '1x' }
   }
+
   // Solitary task in a container expands to full width
   if (displayTasks.length === 1 && !isMealSlot && !hasStack && slotHotkeys.length === 0) {
     const only = displayTasks[0]
     const onlyId = only.modality_id || only.protocol_step?.modality_id || only.id
     if (!savedOverrides[onlyId]) {
       taskSizings[onlyId] = { width: 'full', height: '1x' }
+      if (only.id) taskSizings[only.id] = { width: 'full', height: '1x' }
+      if (only.protocol_step?.modality_id) {
+        taskSizings[only.protocol_step.modality_id] = { width: 'full', height: '1x' }
+      }
     }
   }
 
@@ -943,11 +1083,12 @@ export function harmonizeTimeBlockRowSizings(
   }
 }
 
-export type BlocksLayoutMode = 'dynamic' | '2-wide' | '3-wide' | '1-wide' | 'uniform'
+export type BlocksLayoutMode = 'dynamic' | '2-wide' | '3-wide' | '1-wide' | 'streamline' | 'uniform'
 
 const STORAGE_KEY_UNIFORM_SIZING = 'levl_blocks_uniform_sizing_overrides'
 const STORAGE_KEY_LAYOUT_MODE = 'levl_blocks_layout_mode'
 const STORAGE_KEY_SHOW_DOSING = 'levl_blocks_show_dosing'
+const STORAGE_KEY_LINKED_MODALITIES = 'levl_blocks_linked_modalities'
 
 /**
  * Extracts formatted clinical dosage, exposure, duration, or temperature for tile display.
@@ -1045,7 +1186,8 @@ export function reconcileRowSizingsOnDrop(params: {
     layoutMode === 'uniform' ||
     layoutMode === '2-wide' ||
     layoutMode === '3-wide' ||
-    layoutMode === '1-wide'
+    layoutMode === '1-wide' ||
+    layoutMode === 'streamline'
 
   const droppedTask = tasks.find((t) => t.id === droppedId || t.modality_id === droppedId)
   const droppedModId = droppedTask?.modality_id || droppedTask?.protocol_step?.modality_id || droppedId
@@ -1064,7 +1206,7 @@ export function reconcileRowSizingsOnDrop(params: {
         if (layoutMode === '3-wide') {
           saveBlockSizing(targetModId, { width: '1/3', height: '1x' }, layoutMode)
           saveBlockSizing(droppedModId, { width: '1/3', height: '1x' }, layoutMode)
-        } else if (layoutMode === '1-wide') {
+        } else if (layoutMode === '1-wide' || layoutMode === 'streamline') {
           saveBlockSizing(targetModId, { width: 'full', height: '1x' }, layoutMode)
           saveBlockSizing(droppedModId, { width: 'full', height: '1x' }, layoutMode)
         } else {
@@ -1164,7 +1306,7 @@ export function reconcileRowSizingsOnDrop(params: {
  * In dynamic mode: 1/4 -> 1/3 -> 1/2 -> 2/3 -> full -> 1/3
  */
 export function getNextWidth(current: BlockWidth, mode: BlocksLayoutMode = 'dynamic'): BlockWidth {
-  if (mode === 'uniform' || mode === '2-wide' || mode === '3-wide' || mode === '1-wide') {
+  if (mode === 'uniform' || mode === '2-wide' || mode === '3-wide' || mode === '1-wide' || mode === 'streamline') {
     switch (current) {
       case '1/2': return '1/3'
       case '1/3': return 'full'
@@ -1204,6 +1346,13 @@ export function getGridClassesForSizing(
     layoutMode === '2-wide' ||
     layoutMode === '3-wide' ||
     layoutMode === '1-wide'
+
+  if (layoutMode === 'streamline') {
+    return {
+      colSpanClass: 'col-span-12',
+      heightClass: 'min-h-[58px] sm:min-h-[64px] h-[58px] sm:h-[64px]'
+    }
+  }
 
   if (layoutMode === '1-wide') {
     return {
@@ -1600,7 +1749,8 @@ export function getStoredBlocksLayoutMode(): BlocksLayoutMode {
   if (typeof window === 'undefined') return 'dynamic'
   try {
     const val = localStorage.getItem(STORAGE_KEY_LAYOUT_MODE)
-    if (val === 'dynamic' || val === '2-wide' || val === '3-wide' || val === '1-wide' || val === 'uniform') return val
+    if (val === '1-wide') return 'streamline'
+    if (val === 'dynamic' || val === '2-wide' || val === '3-wide' || val === 'streamline' || val === 'uniform') return val
   } catch (e) {}
   return 'dynamic'
 }
@@ -1611,6 +1761,25 @@ export function setStoredBlocksLayoutMode(mode: BlocksLayoutMode): void {
     localStorage.setItem(STORAGE_KEY_LAYOUT_MODE, mode)
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('levl_blocks_layout_mode_change', { detail: { mode } }))
+    }, 0)
+  } catch (e) {}
+}
+
+export function getStoredLinkedModalities(): boolean {
+  if (typeof window === 'undefined') return true
+  try {
+    const val = localStorage.getItem(STORAGE_KEY_LINKED_MODALITIES)
+    if (val !== null) return val === 'true'
+  } catch (e) {}
+  return true
+}
+
+export function setStoredLinkedModalities(enabled: boolean): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(STORAGE_KEY_LINKED_MODALITIES, String(enabled))
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('levl_blocks_linked_modalities_change', { detail: { enabled } }))
     }, 0)
   } catch (e) {}
 }
@@ -1676,5 +1845,36 @@ export function setStoredBlocksCompletedPlacement(placement: BlocksCompletedPlac
     }, 0)
   } catch (e) {}
 }
+
+/**
+ * Detects whether a task represents a supplement, nutraceutical, peptide, or vitamin
+ * that qualifies for bundle grouping into a supplement stack.
+ */
+export function isSupplementTask(
+  task: DailyProtocolTask,
+  allModalities?: Modality[]
+): boolean {
+  const mod =
+    task.protocol_step?.modality ||
+    task.loose_modality ||
+    (allModalities && allModalities.length > 0
+      ? allModalities.find((m) => m.id === (task.modality_id || task.protocol_step?.modality_id))
+      : undefined)
+
+  const cat = (mod?.category || (mod as any)?.modality_type || '').toLowerCase()
+  const name = (mod?.name || mod?.display_name || (task as any).title || (task as any).name || '').toLowerCase()
+
+  return (
+    cat.includes('supplement') ||
+    cat.includes('peptide') ||
+    cat.includes('nutraceutical') ||
+    name.includes('vitamin') ||
+    name.includes('magnesium') ||
+    name.includes('omega') ||
+    name.includes('zinc') ||
+    name.includes('creatine')
+  )
+}
+
 
 

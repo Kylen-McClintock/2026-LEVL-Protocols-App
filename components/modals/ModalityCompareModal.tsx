@@ -7,6 +7,7 @@ import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { createDailyTask, addToBench, removeModalityEntirely } from '@/lib/data'
 import { compareModalitiesOutcomes } from '@/lib/outcomes/modalityOutcomeComparison'
 import { getModalityLongevityScore } from '@/lib/data/longevityKnowledgeBase'
+import { getEvidenceQualityDetail } from '@/lib/utils/evidenceQuality'
 
 type ModalityCompareModalProps = {
   isOpen: boolean
@@ -212,8 +213,8 @@ export default function ModalityCompareModal({
             {/* Evidence Quality */}
             <div className="grid grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)] sm:grid-cols-[130px_minmax(0,1fr)_minmax(0,1fr)] gap-4 p-3.5 border-b border-slate-800/60 text-slate-200 items-center">
               <div className="font-semibold text-slate-400">Evidence Level</div>
-              <div className="font-semibold min-w-0 break-words">{exploringModality.evidence_quality ? `${exploringModality.evidence_quality}/5 (Proven)` : 'High'}</div>
-              <div className="font-semibold min-w-0 break-words">{activeModality.evidence_quality ? `${activeModality.evidence_quality}/5 (Proven)` : 'High'}</div>
+              <div className="font-semibold min-w-0 break-words">{getEvidenceQualityDetail(exploringModality.evidence_quality).displayScore} ({getEvidenceQualityDetail(exploringModality.evidence_quality).shortGrade})</div>
+              <div className="font-semibold min-w-0 break-words">{getEvidenceQualityDetail(activeModality.evidence_quality).displayScore} ({getEvidenceQualityDetail(activeModality.evidence_quality).shortGrade})</div>
             </div>
 
             {/* Mechanism of Action */}

@@ -215,7 +215,7 @@ export default function CompletedBlocksSection({
     const defaultSizing: BlockSizing =
       layoutMode === 'uniform'
         ? { width: '1/2', height: '1x' }
-        : layoutMode === '1-wide'
+        : layoutMode === '1-wide' || layoutMode === 'streamline'
         ? { width: 'full', height: '1x' }
         : layoutMode === '3-wide'
         ? { width: '1/3', height: '1x' }

@@ -35,7 +35,8 @@ import {
   Coffee,
   Syringe,
   CheckCircle2,
-  ArrowDown
+  ArrowDown,
+  Droplets
 } from 'lucide-react'
 import { DedupedTask } from '@/components/cards/ProtocolTaskCard'
 import { Modality, OutcomeDimension, UserProfile, UserBenchItem, DailyWellbeingCheckin } from '@/lib/types'
@@ -75,9 +76,11 @@ import SunlightCircadianExecutionLog from '../execution/SunlightCircadianExecuti
 import SleepHygieneExecutionLog from '../execution/SleepHygieneExecutionLog'
 import CaffeineCutoffExecutionLog from '../execution/CaffeineCutoffExecutionLog'
 import HydrationElectrolyteExecutionLog from '../execution/HydrationElectrolyteExecutionLog'
-import BiometricPhlebotomyExecutionLog from '../execution/BiometricPhlebotomyExecutionLog'
 import PeptideExecutionLog from '../execution/PeptideExecutionLog'
 import CompletedExecutionSummary from '../execution/CompletedExecutionSummary'
+import SupplementExecutionLog from '../execution/SupplementExecutionLog'
+import TopicalSkincareExecutionLog from '../execution/TopicalSkincareExecutionLog'
+import BiometricPhlebotomyExecutionLog from '../execution/BiometricPhlebotomyExecutionLog'
 import { isInjectableSubQPeptide, resolvePeptideTargetDoseMcg } from '@/lib/peptides/reconstitutionEngine'
 
 // Dynamically load interactive applets
@@ -316,6 +319,55 @@ export default function FullScreenModalityModal({
   const isPeptide = isInjectableSubQPeptide(modality, task)
   const isSupplement = archetype === 'supplement'
   const isSport = archetype === 'sport'
+  const isSkincare =
+    archetype === 'skincare' ||
+    (modality?.category || '').toLowerCase().includes('skin') ||
+    (modality?.modality_type || '').toLowerCase().includes('topical') ||
+    /\b(topical|serum|cream|lotion|tretinoin|skincare|cleanser|moisturizer|sunscreen)\b/i.test(
+      `${modality?.id} ${modality?.name} ${modality?.slug}`.toLowerCase()
+    )
+
+  const fullName =
+    task.execution_details?.custom_name ||
+    task.execution_details?.modality_name ||
+    modality?.display_name ||
+    modality?.name ||
+    task.protocol_step?.protocol?.name ||
+    'Protocol Modality'
+  const modLower = fullName.toLowerCase()
+  const has478 = modLower.includes('4-7-8') || modLower.includes('478')
+  const hasCyclicSigh = modLower.includes('cyclic sigh') || modLower.includes('physiological sigh')
+  const hasBoxBreathing = modLower.includes('box breath')
+  const hasHyperventilation = modLower.includes('hyperventilation') || modLower.includes('tummo') || modLower.includes('wim hof')
+  const hasCoherent = modLower.includes('coherent') || modLower.includes('resonance')
+  const hasYogaNidra = modLower.includes('yoga nidra') || modLower.includes('nsdr')
+  const hasRedLight = modLower.includes('red light')
+  const hasColdPlunge = modLower.includes('cold plunge') || modLower.includes('ice bath') || modLower.includes('cold water immersion') || modLower.includes('cryotherapy') || modLower.includes('deliberate cold')
+  const hasGlucoseWalk = modLower.includes('glucose walk') || modLower.includes('post-meal walk') || modLower.includes('postprandial walk') || modLower.includes('post meal walk') || modLower.includes('glucose disposal')
+  const hasSauna = modLower.includes('sauna') || modLower.includes('hyperthermic conditioning')
+  const has4x4HIIT = modLower.includes('4x4') || modLower.includes('vo2 max') || modLower.includes('norwegian') || modLower.includes('hiit') || modLower.includes('sprint intervals')
+  const hasZone2 = (modLower.includes('zone 2') || modLower.includes('zone_2') || modLower.includes('aerobic base') || modLower.includes('steady-state cardio') || modLower.includes('steady state cardio')) && !has4x4HIIT
+
+  // Timed interactive sessions vs instant administration / topical intake
+  const isTimedSession =
+    has478 ||
+    hasCyclicSigh ||
+    hasBoxBreathing ||
+    hasHyperventilation ||
+    hasCoherent ||
+    hasYogaNidra ||
+    hasRedLight ||
+    hasColdPlunge ||
+    hasGlucoseWalk ||
+    hasSauna ||
+    has4x4HIIT ||
+    hasZone2 ||
+    isThermal ||
+    isBreathwork ||
+    isNSDR ||
+    isCardio ||
+    isStrength ||
+    (!isPeptide && !isSkincare && !isSupplement && !isPhlebotomy && !isCGM && !isCaffeineCutoff && !isSleepHygiene && Boolean(modality?.duration && modality.duration.trim() !== ''))
 
   const hasPrecisionLogUI = archetype !== 'general' || isCaffeineCutoff
 
@@ -611,13 +663,6 @@ export default function FullScreenModalityModal({
   const theme = MODALITY_COLOR_THEMES[macroType] || MODALITY_COLOR_THEMES.other
   const hex = theme.colorHex
 
-  const fullName =
-    task.execution_details?.custom_name ||
-    task.execution_details?.modality_name ||
-    modality?.display_name ||
-    modality?.name ||
-    task.protocol_step?.protocol?.name ||
-    'Protocol Modality'
   const simplifiedName = getSimplifiedModalityName(modality, task)
   const protocolName = task.lineages?.[0]?.protocol_name || task.protocol_step?.protocol?.name || 'Standalone Routine'
   const dose =
@@ -626,21 +671,6 @@ export default function FullScreenModalityModal({
     modality?.dose_or_exposure ||
     task.protocol_step?.dose_text ||
     ''
-
-  // Determine interactive breathwork / NSDR / red light launchers
-  const modLower = fullName.toLowerCase()
-  const has478 = modLower.includes('4-7-8') || modLower.includes('478')
-  const hasCyclicSigh = modLower.includes('cyclic sigh') || modLower.includes('physiological sigh')
-  const hasBoxBreathing = modLower.includes('box breath')
-  const hasHyperventilation = modLower.includes('hyperventilation') || modLower.includes('tummo') || modLower.includes('wim hof')
-  const hasCoherent = modLower.includes('coherent') || modLower.includes('resonance')
-  const hasYogaNidra = modLower.includes('yoga nidra') || modLower.includes('nsdr')
-  const hasRedLight = modLower.includes('red light')
-  const hasColdPlunge = modLower.includes('cold plunge') || modLower.includes('ice bath') || modLower.includes('cold water immersion') || modLower.includes('cryotherapy') || modLower.includes('deliberate cold')
-  const hasGlucoseWalk = modLower.includes('glucose walk') || modLower.includes('post-meal walk') || modLower.includes('postprandial walk') || modLower.includes('post meal walk') || modLower.includes('glucose disposal')
-  const hasSauna = modLower.includes('sauna') || modLower.includes('hyperthermic conditioning')
-  const has4x4HIIT = modLower.includes('4x4') || modLower.includes('vo2 max') || modLower.includes('norwegian') || modLower.includes('hiit') || modLower.includes('sprint intervals')
-  const hasZone2 = (modLower.includes('zone 2') || modLower.includes('zone_2') || modLower.includes('aerobic base') || modLower.includes('steady-state cardio') || modLower.includes('steady state cardio')) && !has4x4HIIT
 
   const hasSpecializedApplet = has478 || hasCyclicSigh || hasBoxBreathing || hasHyperventilation || hasCoherent || hasYogaNidra || hasRedLight || hasColdPlunge || hasGlucoseWalk || hasSauna || has4x4HIIT || hasZone2
 
@@ -780,7 +810,7 @@ export default function FullScreenModalityModal({
 
   // Launch Full-Screen Timer Handler
   const handleLaunchTimer = () => {
-    if (isPeptide) return
+    if (isPeptide || !isTimedSession) return
     const totalSec = parseDurationToSeconds(modality?.duration, isThermal ? 180 : 300)
     setTimerTotalDuration(totalSec)
     setTimerSecondsRemaining(totalSec)
@@ -952,28 +982,28 @@ export default function FullScreenModalityModal({
                   {/* Prescription Stack: Dosage & Schedule Vertically Stacked */}
                   <div className="flex flex-col gap-3 py-1">
                     <div>
-                      <div className="text-xs font-semibold text-[#526661] dark:text-slate-400 mb-1">
-                        {isPeptide || isSupplement || dose ? 'Dose / Amount' : 'Duration'}
+                      <div className="text-xs font-semibold text-[#526661] mb-1">
+                        {isPeptide || isSupplement || isSkincare || dose ? 'Dose / Amount' : 'Duration'}
                       </div>
-                      <div className="text-lg sm:text-xl font-bold text-[#475569] dark:text-white flex items-center gap-2 flex-wrap">
+                      <div className="text-lg sm:text-xl font-bold text-[#1e293b] flex items-center gap-2 flex-wrap">
                         <span>{dose || modality?.duration || modality?.dose_or_exposure || '45–60 min'}</span>
                         <button
                           type="button"
                           onClick={() => setIsDosageModalOpen(true)}
-                          className="text-xs font-semibold text-[#6954C8] hover:text-[#5944B6] dark:text-purple-400 dark:hover:text-purple-300 underline ml-1 cursor-pointer shrink-0"
+                          className="text-xs font-semibold text-[#6954C8] hover:text-[#5944B6] underline ml-1 cursor-pointer shrink-0"
                         >
                           Edit
                         </button>
                       </div>
                     </div>
 
-                    <div className="pt-2.5 border-t border-[#E1E8E3] dark:border-white/10">
-                      <div className="text-xs font-semibold text-[#526661] dark:text-slate-400 mb-1">Schedule</div>
+                    <div className="pt-2.5 border-t border-[#E1E8E3]">
+                      <div className="text-xs font-semibold text-[#526661] mb-1">Schedule</div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-base sm:text-lg font-bold text-[#475569] dark:text-white">
+                        <span className="text-base sm:text-lg font-bold text-[#1e293b]">
                           {modality?.frequency || 'Every day'}
                         </span>
-                        <span className="text-xs font-medium text-[#526661] dark:text-slate-300 bg-[#EFF3F0] dark:bg-white/10 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-medium text-[#475569] bg-[#EFF3F0] border border-[#E1E8E3] px-2 py-0.5 rounded-md">
                           {task.timing_slot ? `Window: ${task.timing_slot.replace('_', ' ')}` : 'Before first meal'}
                         </span>
                       </div>
@@ -986,62 +1016,78 @@ export default function FullScreenModalityModal({
                   {/* Action Buttons Row */}
                   <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
                     {/* Primary Action Button */}
-                    {isPeptide ? (
+                    {isTimedSession ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (has478) setActiveApplet('478')
+                            else if (hasCyclicSigh) setActiveApplet('cyclicsigh')
+                            else if (hasBoxBreathing) setActiveApplet('box')
+                            else if (hasHyperventilation) setActiveApplet('hyperventilation')
+                            else if (hasCoherent) setActiveApplet('coherent')
+                            else if (hasYogaNidra) setActiveApplet('yoganidra')
+                            else if (hasRedLight) setActiveApplet('redlight')
+                            else if (hasColdPlunge) setActiveApplet('coldplunge')
+                            else if (hasGlucoseWalk) setActiveApplet('glucosewalk')
+                            else if (hasSauna) setActiveApplet('sauna')
+                            else if (has4x4HIIT) setActiveApplet('hiit4x4')
+                            else if (hasZone2) setActiveApplet('zone2')
+                            else handleLaunchTimer()
+                          }}
+                          className={`w-full sm:flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 ${
+                            isDaylight
+                              ? 'bg-gradient-to-r from-purple-500/25 via-indigo-500/30 to-purple-500/25 hover:from-purple-500/35 hover:to-indigo-500/40 border border-purple-400/60 text-purple-950 shadow-[0_4px_20px_rgba(105,84,200,0.18),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-md'
+                              : 'bg-[#6954C8] hover:bg-[#5944B6] text-white shadow-sm'
+                          }`}
+                        >
+                          <Play size={18} className={isDaylight ? 'fill-purple-950 text-purple-950' : 'fill-white text-white'} />
+                          <span>Start session</span>
+                        </button>
+
+                        <button
+                          onClick={handleToggleComplete}
+                          className={`w-full sm:flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 border transition-all cursor-pointer active:scale-98 ${
+                            isCompleted
+                              ? isDaylight
+                                ? 'bg-gradient-to-r from-emerald-500/20 via-teal-500/25 to-emerald-500/20 text-emerald-950 border-emerald-400/50 shadow-[0_2px_12px_rgba(16,185,129,0.15)] backdrop-blur-md'
+                                : 'bg-[#E6F3EB] text-[#2B725C] border-[#2B725C]/30 shadow-sm'
+                              : isDaylight
+                              ? 'bg-white/80 hover:bg-white text-[#475569] border-[#E1E8E3] shadow-sm backdrop-blur-sm'
+                              : 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                          }`}
+                        >
+                          <Check size={18} strokeWidth={isCompleted ? 3 : 2} className={isCompleted ? (isDaylight ? 'text-emerald-700' : 'text-[#2B725C]') : 'text-[#475569]'} />
+                          <span>{isCompleted ? 'Completed' : 'Mark done'}</span>
+                        </button>
+                      </>
+                    ) : (
+                      /* Non-Timed Action / Intake / Application Button */
                       <button
                         onClick={handleToggleComplete}
-                        className={`w-full sm:flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 ${
-                          isDaylight
+                        className={`w-full py-3.5 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 ${
+                          isCompleted
+                            ? isDaylight
+                              ? 'bg-gradient-to-r from-emerald-500/20 via-teal-500/25 to-emerald-500/20 text-emerald-950 border border-emerald-400/50 shadow-[0_2px_12px_rgba(16,185,129,0.15)] backdrop-blur-md'
+                              : 'bg-[#E6F3EB] text-[#2B725C] border border-[#2B725C]/30 shadow-sm'
+                            : isDaylight
                             ? 'bg-gradient-to-r from-purple-500/25 via-indigo-500/30 to-purple-500/25 hover:from-purple-500/35 hover:to-indigo-500/40 border border-purple-400/60 text-purple-950 shadow-[0_4px_20px_rgba(105,84,200,0.18),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-md'
-                            : 'bg-[#6954C8] hover:bg-[#5944B6] text-white shadow-sm'
+                            : 'bg-gradient-to-r from-[#6954C8] to-[#5944B6] hover:brightness-110 text-white shadow-md'
                         }`}
                       >
                         <Check size={18} strokeWidth={2.5} />
-                        <span>{isCompleted ? 'Completed' : 'Record SubQ Injection'}</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          if (has478) setActiveApplet('478')
-                          else if (hasCyclicSigh) setActiveApplet('cyclicsigh')
-                          else if (hasBoxBreathing) setActiveApplet('box')
-                          else if (hasHyperventilation) setActiveApplet('hyperventilation')
-                          else if (hasCoherent) setActiveApplet('coherent')
-                          else if (hasYogaNidra) setActiveApplet('yoganidra')
-                          else if (hasRedLight) setActiveApplet('redlight')
-                          else if (hasColdPlunge) setActiveApplet('coldplunge')
-                          else if (hasGlucoseWalk) setActiveApplet('glucosewalk')
-                          else if (hasSauna) setActiveApplet('sauna')
-                          else if (has4x4HIIT) setActiveApplet('hiit4x4')
-                          else if (hasZone2) setActiveApplet('zone2')
-                          else handleLaunchTimer()
-                        }}
-                        className={`w-full sm:flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 ${
-                          isDaylight
-                            ? 'bg-gradient-to-r from-purple-500/25 via-indigo-500/30 to-purple-500/25 hover:from-purple-500/35 hover:to-indigo-500/40 border border-purple-400/60 text-purple-950 shadow-[0_4px_20px_rgba(105,84,200,0.18),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-md'
-                            : 'bg-[#6954C8] hover:bg-[#5944B6] text-white shadow-sm'
-                        }`}
-                      >
-                        <Play size={18} className={isDaylight ? 'fill-purple-950 text-purple-950' : 'fill-white text-white'} />
-                        <span>Start session</span>
+                        <span>
+                          {isCompleted
+                            ? 'Completed'
+                            : isPeptide
+                            ? 'Record SubQ Injection'
+                            : isSkincare
+                            ? 'Apply & Mark Done'
+                            : isSupplement
+                            ? 'Log Intake & Mark Complete'
+                            : 'Mark Done'}
+                        </span>
                       </button>
                     )}
-
-                    {/* Secondary Action Button */}
-                    <button
-                      onClick={handleToggleComplete}
-                      className={`w-full sm:flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 border transition-all cursor-pointer active:scale-98 ${
-                        isCompleted
-                          ? isDaylight
-                            ? 'bg-gradient-to-r from-emerald-500/20 via-teal-500/25 to-emerald-500/20 text-emerald-950 border-emerald-400/50 shadow-[0_2px_12px_rgba(16,185,129,0.15)] backdrop-blur-md'
-                            : 'bg-[#E6F3EB] text-[#2B725C] border-[#2B725C]/30 shadow-sm'
-                          : isDaylight
-                          ? 'bg-white/80 hover:bg-white text-[#475569] border-[#E1E8E3] shadow-sm backdrop-blur-sm'
-                          : 'bg-white/5 hover:bg-white/10 text-white border-white/10'
-                      }`}
-                    >
-                      <Check size={18} strokeWidth={isCompleted ? 3 : 2} className={isCompleted ? (isDaylight ? 'text-emerald-700' : 'text-[#2B725C]') : 'text-[#475569]'} />
-                      <span>{isCompleted ? 'Completed' : 'Mark done'}</span>
-                    </button>
                   </div>
                 </div>
               ) : (
@@ -1341,7 +1387,7 @@ export default function FullScreenModalityModal({
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : isTimedSession ? (
                 <div className={`p-5 rounded-3xl ${isDaylight ? 'bg-white border border-[#E1E8E3] shadow-sm' : 'bg-gradient-to-r from-purple-900/40 via-indigo-900/30 to-slate-900 border border-purple-500/30 shadow-xl'} space-y-3`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
@@ -1508,7 +1554,110 @@ export default function FullScreenModalityModal({
                     )}
                   </div>
                 </div>
-              )}
+              ) : isSkincare ? (
+                /* Dedicated Dermal Skincare Application Card */
+                <div className={`p-5 rounded-3xl ${isDaylight ? 'bg-white border border-[#E1E8E3] shadow-sm' : 'bg-gradient-to-r from-purple-950/40 via-slate-900 to-slate-950 border border-purple-500/30 shadow-xl'} space-y-4`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-9 h-9 rounded-xl ${isDaylight ? 'bg-[#F0EDFB] text-[#6954C8] border border-[#6954C8]/20' : 'bg-purple-500/20 text-purple-300 border border-purple-500/40'} flex items-center justify-center`}>
+                        <Droplets size={18} />
+                      </div>
+                      <div>
+                        <h3 className={`text-sm font-bold ${isDaylight ? 'text-[#475569]' : 'text-white'} uppercase tracking-wider`}>
+                          Topical Administration &amp; Dermal Protocol
+                        </h3>
+                        <p className={`text-[11px] ${isDaylight ? 'text-[#526661]' : 'text-purple-200/80'}`}>
+                          Targeted application guide, sequence, and ingredient synergies
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full ${isDaylight ? 'bg-[#F0EDFB] text-[#6954C8] border border-[#6954C8]/30' : 'bg-purple-500/20 text-purple-300 border border-purple-400/30'}`}>
+                      {dose || modality?.dose_or_exposure || '3–4 drops'}
+                    </span>
+                  </div>
+
+                  {isCompleted && !isEditingExecution && executionDetails && Object.keys(executionDetails).length > 0 ? (
+                    <CompletedExecutionSummary
+                      modalityType={modality?.modality_type || modality?.category || 'skincare'}
+                      loggingType="skincare"
+                      details={executionDetails}
+                      onEdit={() => setIsEditingExecution(true)}
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      <TopicalSkincareExecutionLog
+                        value={executionDetails}
+                        onChange={setExecutionDetails}
+                        modality={modality}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleToggleComplete}
+                        className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          isDaylight
+                            ? 'bg-gradient-to-r from-purple-500/25 via-indigo-500/30 to-purple-500/25 hover:from-purple-500/35 hover:to-indigo-500/40 text-purple-950 border border-purple-400/60 shadow-sm'
+                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white shadow-md'
+                        }`}
+                      >
+                        <Check size={16} />
+                        <span>{isCompleted ? 'Update Application Details' : 'Confirm Application & Mark Complete'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : isSupplement ? (
+                /* Dedicated Precision Supplement Card */
+                <div className={`p-5 rounded-3xl ${isDaylight ? 'bg-white border border-[#E1E8E3] shadow-sm' : 'bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-950 border border-emerald-500/30 shadow-xl'} space-y-4`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-9 h-9 rounded-xl ${isDaylight ? 'bg-[#E6F3EB] text-[#2B725C] border border-[#2B725C]/20' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'} flex items-center justify-center`}>
+                        <Check size={18} />
+                      </div>
+                      <div>
+                        <h3 className={`text-sm font-bold ${isDaylight ? 'text-[#475569]' : 'text-white'} uppercase tracking-wider`}>
+                          Precision Supplement Intake
+                        </h3>
+                        <p className={`text-[11px] ${isDaylight ? 'text-[#526661]' : 'text-emerald-200/80'}`}>
+                          Target dose, intake context &amp; nutrient synergy
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full ${isDaylight ? 'bg-[#E6F3EB] text-[#2B725C] border border-[#2B725C]/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'}`}>
+                      {dose || modality?.dose_or_exposure || '1 Serving'}
+                    </span>
+                  </div>
+
+                  {isCompleted && !isEditingExecution && executionDetails && Object.keys(executionDetails).length > 0 ? (
+                    <CompletedExecutionSummary
+                      modalityType={modality?.modality_type || modality?.category || 'supplement'}
+                      loggingType="supplement"
+                      details={executionDetails}
+                      onEdit={() => setIsEditingExecution(true)}
+                    />
+                  ) : (
+                    <div className="space-y-3">
+                      <SupplementExecutionLog
+                        value={executionDetails}
+                        onChange={setExecutionDetails}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleToggleComplete}
+                        className={`w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          isDaylight
+                            ? 'bg-gradient-to-r from-emerald-500/25 via-teal-500/30 to-emerald-500/25 hover:from-emerald-500/35 hover:to-teal-500/35 text-emerald-950 border border-emerald-400/60 shadow-sm'
+                            : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white shadow-md'
+                        }`}
+                      >
+                        <Check size={16} />
+                        <span>{isCompleted ? 'Update Dose Details' : 'Log Intake & Mark Complete'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               {/* Modality Brief Description */}
               {modality?.brief_description && (
@@ -1728,15 +1877,8 @@ export default function FullScreenModalityModal({
                       )}
                       {isHydration && <HydrationElectrolyteExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
                       {isPhlebotomy && <BiometricPhlebotomyExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
-                      {isPeptide && (
-                        <PeptideExecutionLog
-                          value={executionDetails}
-                          onChange={setExecutionDetails}
-                          modality={modality}
-                          modalityKey={(modality?.slug || modality?.id || '').toLowerCase()}
-                          defaultDoseMcg={task.protocol_step?.dose_amount || 250}
-                        />
-                      )}
+                      {isSupplement && <SupplementExecutionLog value={executionDetails} onChange={setExecutionDetails} />}
+                      {isSkincare && <TopicalSkincareExecutionLog value={executionDetails} onChange={setExecutionDetails} modality={modality} />}
                     </div>
                   )}
                 </div>
@@ -3015,7 +3157,7 @@ export default function FullScreenModalityModal({
       </div>
 
       {/* FULL-SCREEN IMMERSIVE COUNTDOWN TIMER MODAL */}
-      {isTimerModalOpen && !isPeptide && (
+      {isTimerModalOpen && isTimedSession && !isPeptide && (
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-between bg-slate-950/98 backdrop-blur-3xl text-white p-6 sm:p-10 animate-in fade-in duration-200">
           {/* Top Bar */}
           <div className="w-full max-w-xl flex items-center justify-between pt-2">

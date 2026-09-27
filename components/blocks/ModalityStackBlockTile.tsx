@@ -18,6 +18,7 @@ interface ModalityStackBlockTileProps {
   isIgnited?: boolean
   layoutMode?: BlocksLayoutMode
   onStatusChange: (taskId: string, status: string) => void
+  onOpenDetails?: (task: DedupedTask) => void
 }
 
 export default function ModalityStackBlockTile({
@@ -28,7 +29,8 @@ export default function ModalityStackBlockTile({
   visualStyle,
   isIgnited = true,
   layoutMode = 'dynamic',
-  onStatusChange
+  onStatusChange,
+  onOpenDetails
 }: ModalityStackBlockTileProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const { theme } = useTheme()
@@ -58,7 +60,7 @@ export default function ModalityStackBlockTile({
     : 'linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 100%)'
   const emeraldGrad = 'linear-gradient(135deg, #05DF72 0%, #10E57A 45%, #6EE7B7 75%, #05DF72 100%)'
 
-  const isOneWide = layoutMode === '1-wide'
+  const isOneWide = layoutMode === '1-wide' || layoutMode === 'streamline'
   const iconSize = isOneWide ? 22 : layoutMode === '3-wide' ? 32 : 42
 
   return (
@@ -120,28 +122,45 @@ export default function ModalityStackBlockTile({
                   <div className={`font-black tracking-tight leading-tight truncate text-sm sm:text-base ${isDaylight ? 'text-[#475569]' : 'text-white'}`}>
                     {stackName}
                   </div>
-                  <div className={`text-[10px] sm:text-[11px] font-mono font-medium truncate ${isDaylight ? 'text-[#64748B]' : 'text-white/80'}`}>
-                    {completedCount}/{totalCount} taken
+                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    <span className={`text-[10px] sm:text-[11px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      isAllCompleted
+                        ? isDaylight
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                          : 'bg-emerald-950/50 text-emerald-300 border-emerald-500/40'
+                        : completedCount > 0
+                        ? isDaylight
+                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                          : 'bg-purple-950/50 text-purple-300 border-purple-500/40'
+                        : isDaylight
+                        ? 'bg-slate-100 text-slate-700 border-slate-300'
+                        : 'bg-white/10 text-slate-200 border-white/20'
+                    }`}>
+                      {completedCount} OF {totalCount} COMPLETE
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-400">
+                      Tap to open stack
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 <div
-                  className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                  className={`text-[11px] font-mono font-bold px-2.5 py-1 rounded-full border shadow-xs ${
                     isDaylight
                       ? isAllCompleted
-                        ? 'bg-[#D1FAE5] border-[#10B981]/30 text-[#10B981]'
-                        : 'bg-[#EFF3F0] border-[#E1E8E3] text-[#64748B]'
+                        ? 'bg-[#D1FAE5] border-[#10B981]/40 text-[#10B981]'
+                        : 'bg-[#EFF3F0] border-[#E1E8E3] text-[#475569]'
                       : isAllCompleted
                       ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                      : 'bg-black/40 border-white/15 text-slate-300'
+                      : 'bg-black/40 border-white/15 text-slate-200'
                   }`}
                 >
                   {completedCount}/{totalCount}
                 </div>
                 <ChevronRight
-                  size={14}
+                  size={15}
                   className={`${isDaylight ? 'text-[#64748B]' : 'text-slate-400'} group-hover:translate-x-0.5 transition-transform`}
                 />
               </div>
@@ -240,7 +259,7 @@ export default function ModalityStackBlockTile({
                   <Pill size={18} className="rotate-45" />
                 </div>
                 <div>
-                  <h3 className={`font-black text-base ${isDaylight ? 'text-[#475569]' : 'text-white'}`}>
+                  <h3 className={`font-black text-base ${isDaylight ? 'text-[#1e293b]' : 'text-white'}`}>
                     {stackName}
                   </h3>
                   <p className={`text-xs ${isDaylight ? 'text-[#526661]' : 'text-slate-400'}`}>
@@ -253,7 +272,7 @@ export default function ModalityStackBlockTile({
                 onClick={() => setIsModalOpen(false)}
                 className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
                   isDaylight
-                    ? 'bg-[#EFF3F0] text-[#526661] hover:text-[#475569]'
+                    ? 'bg-[#EFF3F0] text-[#526661] hover:text-[#1e293b]'
                     : 'bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white'
                 }`}
               >
@@ -279,50 +298,65 @@ export default function ModalityStackBlockTile({
                 return (
                   <div
                     key={task.id}
-                    onClick={() => handleToggleSingle(task)}
-                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer select-none ${
+                    onClick={() => {
+                      if (onOpenDetails) {
+                        onOpenDetails(task)
+                        setIsModalOpen(false)
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    title="Click to view details & science • Tap check to complete"
+                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer select-none group ${
                       isDaylight
                         ? isDone
-                          ? 'bg-[#E6F3EB]/60 border-[#2B725C]/30 text-[#475569]'
-                          : 'bg-[#EFF3F0]/60 border-[#E1E8E3] hover:border-[#765DB4]/40 text-[#475569]'
+                          ? 'bg-[#E6F3EB]/60 border-[#2B725C]/30 hover:border-[#2B725C]/50 text-[#475569]'
+                          : 'bg-[#EFF3F0]/60 border-[#E1E8E3] hover:border-[#6954C8]/50 hover:bg-[#F3EFFE]/40 text-[#475569]'
                         : isDone
-                        ? 'bg-emerald-950/20 border-emerald-500/30'
-                        : 'bg-slate-900/80 border-white/10 hover:border-amber-500/40'
+                        ? 'bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/50'
+                        : 'bg-slate-900/80 border-white/10 hover:border-purple-500/40 hover:bg-slate-900'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-6 h-6 rounded-lg flex items-center justify-center border transition-all ${
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* Checkbox button: Dedicated stopPropagation click */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleToggleSingle(task)
+                        }}
+                        title={isDone ? 'Mark as pending' : 'Mark as complete'}
+                        className={`w-7 h-7 rounded-xl flex items-center justify-center border transition-all cursor-pointer shrink-0 active:scale-90 ${
                           isDone
                             ? isDaylight
                               ? 'bg-[#2B725C] border-[#2B725C] text-white font-black shadow-sm'
                               : 'bg-emerald-500 border-emerald-400 text-slate-950 font-black shadow-sm'
                             : isDaylight
-                            ? 'bg-white border-[#E1E8E3] text-transparent'
-                            : 'bg-white/5 border-white/10 text-transparent'
+                            ? 'bg-white border-slate-300 hover:border-[#2B725C] text-transparent hover:text-slate-300'
+                            : 'bg-white/5 border-white/20 hover:border-emerald-400 text-transparent hover:text-white/30'
                         }`}
                       >
-                        <Check size={14} strokeWidth={3} />
-                      </div>
+                        <Check size={14} strokeWidth={3} className={isDone ? 'opacity-100' : 'opacity-0 hover:opacity-100'} />
+                      </button>
 
                       <div className="min-w-0">
                         <div
-                          className={`text-xs sm:text-sm font-bold truncate ${
+                          className={`text-xs sm:text-sm font-bold truncate transition-colors ${
                             isDone
                               ? isDaylight
                                 ? 'line-through text-[#526661]'
                                 : 'line-through text-slate-400'
                               : isDaylight
-                              ? 'text-[#475569]'
-                              : 'text-white'
+                              ? 'text-[#1e293b] group-hover:text-[#6954C8]'
+                              : 'text-white group-hover:text-purple-300'
                           }`}
                         >
                           {modName}
                         </div>
                         {dose && (
                           <div
-                            className={`text-[10px] font-mono truncate ${
-                              isDaylight ? 'text-[#765DB4]' : 'text-amber-300/80'
+                            className={`text-[11px] font-mono truncate mt-0.5 ${
+                              isDaylight ? 'text-[#6954C8]' : 'text-purple-300/90'
                             }`}
                           >
                             {dose}
@@ -331,12 +365,20 @@ export default function ModalityStackBlockTile({
                       </div>
                     </div>
 
-                    <ModalityIcon
-                      modality={mod}
-                      size={16}
-                      glow={!isDaylight && !isDone}
-                      customColor={isDaylight ? '#765DB4' : undefined}
-                    />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <ModalityIcon
+                        modality={mod}
+                        size={18}
+                        glow={!isDaylight && !isDone}
+                        customColor={isDaylight ? '#6954C8' : undefined}
+                      />
+                      <ChevronRight
+                        size={15}
+                        className={`transition-transform duration-200 group-hover:translate-x-0.5 ${
+                          isDaylight ? 'text-slate-400 group-hover:text-[#6954C8]' : 'text-slate-500 group-hover:text-purple-300'
+                        }`}
+                      />
+                    </div>
                   </div>
                 )
               })}

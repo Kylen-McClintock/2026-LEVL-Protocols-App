@@ -1408,6 +1408,31 @@ export async function getDailyProtocolTasks(
 
 const multiDayTasksMemoryCache = new Map<string, { timestamp: number; data: Record<string, DailyProtocolTask[]> }>()
 
+export function clearMultiDayTasksMemoryCache() {
+  multiDayTasksMemoryCache.clear()
+}
+
+export function clearAllTasksAndScheduleCaches() {
+  multiDayTasksMemoryCache.clear()
+  clearUserHistoryCache()
+  if (typeof window !== 'undefined') {
+    try {
+      const keysToRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (k && (k.startsWith('levl_cached_tasks_') || k.startsWith('levl_cached_multiday_') || k.startsWith('levl_today_tasks_stats'))) {
+          keysToRemove.push(k)
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k))
+    } catch (e) {}
+
+    window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+    window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+    window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+  }
+}
+
 export async function getMultiDayProtocolTasks(
   localUserId: string,
   startDate: string,
@@ -4522,6 +4547,7 @@ export async function updateBenchItemOverride(id: string, customDose?: string, c
     console.error('Error updating bench item override:', error)
     return null
   }
+  clearAllTasksAndScheduleCaches()
   return data
 }
 
@@ -5755,11 +5781,7 @@ export async function reconcileModalityScheduleAndFutureTasks(
     await supabase.from('daily_protocol_tasks').insert(tasksToInsert)
   }
 
-  clearUserHistoryCache()
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
-    window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
-  }
+  clearAllTasksAndScheduleCaches()
   return true
 }
 
@@ -5812,7 +5834,9 @@ export async function updateModalityScheduleConfig(
         execution_details: updatedDetails
       })
       .eq('id', taskId)
-    clearUserHistoryCache()
+    if (!error) {
+      clearAllTasksAndScheduleCaches()
+    }
     return !error
   }
 }
@@ -5828,12 +5852,13 @@ export async function deleteTask(localUserId: string, taskId: string, applyToFut
 
   if (!task) return false
 
+  let success = false
   if (!applyToFuture) {
     const { error } = await supabase
       .from('daily_protocol_tasks')
       .delete()
       .eq('id', taskId)
-    return !error
+    success = !error
   } else {
     const query = supabase
       .from('daily_protocol_tasks')
@@ -5848,8 +5873,13 @@ export async function deleteTask(localUserId: string, taskId: string, applyToFut
     }
 
     const { error } = await query
-    return !error
+    success = !error
   }
+
+  if (success) {
+    clearAllTasksAndScheduleCaches()
+  }
+  return success
 }
 
 export async function updateTaskExecutionDetails(taskId: string, detailsPatch: any) {
@@ -5881,11 +5911,7 @@ export async function updateTaskExecutionDetails(taskId: string, detailsPatch: a
     .eq('id', taskId)
 
   if (!error) {
-    clearUserHistoryCache()
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
-      window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
-    }
+    clearAllTasksAndScheduleCaches()
     return true
   }
   return false

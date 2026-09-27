@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Modality } from '@/lib/types'
 import { X, Calendar, CalendarPlus, Bookmark, Check } from 'lucide-react'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
-import { createDailyTask, addToBench } from '@/lib/data'
+import { createDailyTask, addToBench, clearAllTasksAndScheduleCaches } from '@/lib/data'
 import { format } from 'date-fns'
 import { useTheme } from '@/lib/utils/useTheme'
 
@@ -43,6 +43,9 @@ export default function ScheduleModalityModal({ isOpen, onClose, modality, onSuc
       : createDailyTask(localUserId, dateStr, modality.id)
 
     savePromise
+      .then(() => {
+        clearAllTasksAndScheduleCaches()
+      })
       .catch(err => console.error('Error saving scheduled modality:', err))
       .finally(() => setIsSaving(false))
 

@@ -81,11 +81,11 @@ export default function SchedulePage() {
       <header className="mb-6 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
-              <CalendarIcon size={28} className="text-levl-accent" /> 
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2.5">
+              <CalendarIcon size={28} className="text-purple-600 dark:text-levl-accent" /> 
               <span>Master Biological Schedule &amp; Split Matrix</span>
             </h1>
-            <p className="text-levl-text-secondary text-xs sm:text-sm mt-1">
+            <p className="text-slate-600 dark:text-levl-text-secondary text-xs sm:text-sm mt-1">
               Unified biological timeline: Master protocol pulse, exercise &amp; hypertrophy splits, fasting windows, and peptide cycles.
             </p>
           </div>
@@ -95,35 +95,35 @@ export default function SchedulePage() {
             <button
               type="button"
               onClick={() => setIsStackHealthOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-500/15 hover:bg-amber-100 dark:hover:bg-amber-500/25 border border-amber-300 dark:border-amber-500/40 text-amber-900 dark:text-amber-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
               title="Audit Stack Health & Optimize Conflicts"
             >
-              <Scale size={13} className="text-amber-400" /> Stack Health
+              <Scale size={13} className="text-amber-600 dark:text-amber-400" /> Stack Health
             </button>
             <Link
               href="/guide#schedule"
-              className="px-3 py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-600/50 text-purple-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+              className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/80 border border-purple-300 dark:border-purple-600/50 text-purple-900 dark:text-purple-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
               title="View Fasting & Schedule Guide"
             >
-              <HelpCircle size={13} className="text-purple-400" /> Guide
+              <HelpCircle size={13} className="text-purple-600 dark:text-purple-400" /> Guide
             </Link>
             <Link
               href="/bench"
-              className="px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+              className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-500/10 hover:bg-purple-100 dark:hover:bg-purple-500/20 border border-purple-300 dark:border-purple-500/30 text-purple-900 dark:text-purple-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
             >
-              <Bookmark size={13} /> Bench
+              <Bookmark size={13} className="text-purple-600 dark:text-purple-400" /> Bench
             </Link>
             <Link
               href="/tracking"
-              className="px-3 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+              className="px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100 dark:hover:bg-sky-500/20 border border-sky-300 dark:border-sky-500/30 text-sky-900 dark:text-sky-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
             >
-              <Target size={13} /> Insights
+              <Target size={13} className="text-sky-600 dark:text-sky-400" /> Insights
             </Link>
             <Link
               href="/aging"
-              className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
+              className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/30 text-emerald-900 dark:text-emerald-300 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
             >
-              <Activity size={13} /> Bio-Age
+              <Activity size={13} className="text-emerald-600 dark:text-emerald-400" /> Bio-Age
             </Link>
           </div>
         </div>

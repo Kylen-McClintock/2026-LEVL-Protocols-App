@@ -331,6 +331,16 @@ export default function SettingsPage() {
 
         {profile && <ProfileEditor profile={profile} outcomes={outcomes} />}
 
+        <ThemeAppearanceSettingsCard 
+          profile={profile} 
+          onUpdated={(updated) => setProfile(updated)} 
+        />
+
+        <FontSizeSettingsCard 
+          profile={profile || undefined} 
+          onUpdated={(updated) => setProfile(updated)} 
+        />
+
         {profile && (
           <MedicalHistoryPrescriptionsCard 
             profile={profile} 
@@ -406,16 +416,6 @@ export default function SettingsPage() {
             onUpdated={(updated) => setProfile(updated)} 
           />
         )}
-
-        <ThemeAppearanceSettingsCard 
-          profile={profile} 
-          onUpdated={(updated) => setProfile(updated)} 
-        />
-
-        <FontSizeSettingsCard 
-          profile={profile || undefined} 
-          onUpdated={(updated) => setProfile(updated)} 
-        />
 
         <TemperatureUnitSettingsCard />
 

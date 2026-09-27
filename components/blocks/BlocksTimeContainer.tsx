@@ -23,6 +23,7 @@ import { useTheme } from '@/lib/utils/useTheme'
 import ModalityBlockTile from './ModalityBlockTile'
 import ModalityStackBlockTile from './ModalityStackBlockTile'
 import BlocksNutritionTile from './BlocksNutritionTile'
+import NutritionFastingModal from '@/components/quicklog/NutritionFastingModal'
 import HotkeySquareTile from './HotkeySquareTile'
 import SwipeActionInFeedCard from './SwipeActionInFeedCard'
 import { QuickHotkeyConfig, DailyQuickLogEntry } from '@/lib/types'
@@ -37,8 +38,12 @@ import {
   harmonizeTimeBlockRowSizings,
   getSmartSlotForHotkey,
   getStoredSlotTaskOrder,
-  saveStoredSlotTaskOrder
+  saveStoredSlotTaskOrder,
+  getStoredLinkedModalities,
+  isSupplementTask
 } from './blocksUtils'
+import BlocksNodeRail from './BlocksNodeRail'
+import { resolveSequentialStepLink } from '@/lib/utils/modalityTimingRelationships'
 import { COMPREHENSIVE_SYNERGY_RULES } from '@/lib/synergy/comprehensiveInteractions'
 import { ModalitySynergyInfo } from './BlocksSynergyConnector'
 import { ModalitySequenceInfo } from './BlocksSequenceSpine'
@@ -49,6 +54,7 @@ interface BlocksTimeContainerProps {
   slotTitle: string
   timeWindowLabel: string
   tasks: DedupedTask[]
+  allDayTasks?: DedupedTask[]
   benchItems?: UserBenchItem[]
   userProfile?: UserProfile | null
   allOutcomes?: OutcomeDimension[]
@@ -63,7 +69,13 @@ interface BlocksTimeContainerProps {
   localUserId: string
   activeSwipe?: { task: DedupedTask; type: 'complete' | 'skip_snooze' } | null
   onCloseSwipe?: () => void
-  onInFeedComplete?: (taskId: string, outcomes?: Record<string, number>, customDose?: string) => void
+  onInFeedComplete?: (
+    taskId: string,
+    outcomes?: Record<string, number>,
+    customDose?: string,
+    completedAt?: string,
+    notes?: string
+  ) => void
   onInFeedSkip?: (taskId: string, reason?: string) => void
   onInFeedSnooze?: (taskId: string, snoozeSlotOrMinutes: string | number) => void
   onOpenDetails: (task: DedupedTask) => void
@@ -76,6 +88,8 @@ interface BlocksTimeContainerProps {
   onSelectHotkey?: (hotkey: QuickHotkeyConfig) => void
   onMoveHotkey?: (hotkeyId: string, targetSlotKey: string) => void
   onMoveTask?: (taskId: string, targetSlotKey: string, targetTaskId?: string) => void
+  onMoveToBench?: (modalityId: string) => void
+  onEliminate?: (task: DedupedTask, reason?: string) => void
 }
 
 export default function BlocksTimeContainer({
@@ -83,6 +97,7 @@ export default function BlocksTimeContainer({
   slotTitle,
   timeWindowLabel,
   tasks,
+  allDayTasks,
   benchItems = [],
   userProfile,
   allOutcomes = [],
@@ -109,7 +124,9 @@ export default function BlocksTimeContainer({
   onQuickLog,
   onSelectHotkey,
   onMoveHotkey,
-  onMoveTask
+  onMoveTask,
+  onMoveToBench,
+  onEliminate
 }: BlocksTimeContainerProps) {
   // Blocks that are in the past according to the user's circadian/fasting schedule are collapsed into compact bars (e.g. past morning).
   // Upcoming and active time blocks are open by default.
@@ -128,6 +145,20 @@ export default function BlocksTimeContainer({
   const isTouchHovered = dragCtx?.hoveredSlotKey === slotKey
   const isDropTarget = isDragOver || isTouchHovered
 
+  const isStreamline = layoutMode === 'streamline' || layoutMode === '1-wide'
+  const [isMealModalOpen, setIsMealModalOpen] = useState(false)
+  const [isLinkedModalities, setIsLinkedModalities] = useState<boolean>(() => getStoredLinkedModalities())
+
+  useEffect(() => {
+    const handleLinkedChange = (e: any) => {
+      if (e.detail?.enabled !== undefined) {
+        setIsLinkedModalities(e.detail.enabled)
+      }
+    }
+    window.addEventListener('levl_blocks_linked_modalities_change', handleLinkedChange)
+    return () => window.removeEventListener('levl_blocks_linked_modalities_change', handleLinkedChange)
+  }, [])
+
   useEffect(() => {
     setIsCollapsed(!isTimeBlockInFutureForDay(slotKey, date, userProfile))
   }, [slotKey, date, userProfile])
@@ -137,20 +168,25 @@ export default function BlocksTimeContainer({
 
   // Viewport ignition engine: fully illuminate icons & borders whenever visible in viewport
   useEffect(() => {
-    const checkIgnition = () => {
-      if (!containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      // Active whenever visible anywhere in or near the viewport
-      const ignited = rect.top <= window.innerHeight + 100 && rect.bottom >= -50
-      setIsIgnited(ignited)
+    if (!containerRef.current || typeof IntersectionObserver === 'undefined') {
+      setIsIgnited(true)
+      return
     }
 
-    checkIgnition()
-    window.addEventListener('scroll', checkIgnition, { passive: true })
-    window.addEventListener('resize', checkIgnition, { passive: true })
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsIgnited(entry.isIntersecting)
+      },
+      {
+        rootMargin: '100px 0px 50px 0px',
+        threshold: 0
+      }
+    )
+
+    observer.observe(containerRef.current)
+
     return () => {
-      window.removeEventListener('scroll', checkIgnition)
-      window.removeEventListener('resize', checkIgnition)
+      observer.disconnect()
     }
   }, [isCollapsed])
 
@@ -234,22 +270,11 @@ export default function BlocksTimeContainer({
   const isAllDone = completedCount === totalCount && totalCount > 0
 
   // Identify supplements vs other modalities in this window
-  const supplements = tasks.filter((t) => {
-    const mod = resolveModality(t)
-    const cat = (mod?.category || '').toLowerCase()
-    const name = (mod?.name || '').toLowerCase()
-    return (
-      cat.includes('supplement') ||
-      cat.includes('peptide') ||
-      name.includes('vitamin') ||
-      name.includes('magnesium')
-    )
-  })
-
+  const supplements = tasks.filter((t) => isSupplementTask(t, allModalities))
   const nonSupplements = tasks.filter((t) => !supplements.some((s) => s.id === t.id))
 
-  // Condense supplements into one stack block if 3 or more!
-  const shouldCondenseStack = supplements.length >= 3
+  // Condense supplements into one stack block if 2 or more!
+  const shouldCondenseStack = supplements.length >= 2
 
   // Modalities map for active tasks in this container
   const modalitiesMap = useMemo(() => {
@@ -519,19 +544,12 @@ export default function BlocksTimeContainer({
           }`}>
             {getSlotIcon()}
           </div>
-          <div className="flex items-center gap-2 min-w-0 truncate">
-            <span className={`font-extrabold text-sm sm:text-base tracking-tight truncate transition-colors ${
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`font-extrabold text-sm sm:text-base tracking-tight transition-colors ${
               isDaylight ? 'text-[#475569] group-hover:text-purple-600' : 'text-white group-hover:text-purple-300'
             }`}>
               {slotTitle}
             </span>
-            {timeWindowLabel && (
-              <span className={`text-[10px] sm:text-[11px] font-mono shrink-0 truncate ${
-                isDaylight ? 'text-[#64748B]' : 'text-slate-400'
-              }`}>
-                • {timeWindowLabel}
-              </span>
-            )}
           </div>
         </div>
 
@@ -600,7 +618,7 @@ export default function BlocksTimeContainer({
       className={`w-full transition-all duration-300 animate-in fade-in ${
         isDropTarget && dragCtx?.activeDrag?.sourceSlotKey !== slotKey ? 'ring-4 ring-[#6954C8]/90 bg-[#6954C8]/10 rounded-3xl scale-[1.01]' : ''
       } ${
-        isDaylight
+        isDaylight || isStreamline
           ? 'my-3 bg-transparent border-0 p-0 shadow-none'
           : `rounded-3xl p-4 sm:p-5 my-3.5 border-2 backdrop-blur-xl shadow-xl ${
               visualStyle === 'dark-outline'
@@ -613,75 +631,160 @@ export default function BlocksTimeContainer({
             }`
       }`}
     >
-      {/* Container Header */}
-      <div className={`flex items-center justify-between gap-3 mb-3 ${isDaylight ? 'pb-1 border-0' : 'pb-2 border-b border-white/5'}`}>
-        <div
-          onClick={() => setIsCollapsed(true)}
-          className="flex items-center gap-2.5 cursor-pointer select-none group"
-        >
-          {!isDaylight && (
-            <div
-              className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
-                isAllDone ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-slate-400 group-hover:bg-white/10'
-              }`}
-            >
-              <ChevronUp size={14} />
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-colors duration-500 ${
+      {/* Streamline vs Classic Container Header */}
+      {isStreamline ? (
+        <div className={`w-full h-11 px-3.5 py-1.5 rounded-2xl border backdrop-blur-md flex items-center justify-between gap-3 mb-2.5 shadow-sm transition-all ${
+          isDaylight
+            ? 'bg-slate-200/50 border-slate-300/80 text-slate-800'
+            : 'bg-slate-900/30 border-white/10 text-white'
+        }`}>
+          <div
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="flex items-center gap-2 cursor-pointer select-none group min-w-0"
+          >
+            <div className={`w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 ${
               isDaylight
-                ? 'bg-transparent text-amber-500'
-                : isIgnited ? 'bg-white/5 border border-purple-500/50 text-purple-300' : 'bg-white/5 border border-white/10 text-slate-400'
+                ? 'bg-white/90 border-slate-300 text-slate-600 shadow-xs'
+                : 'bg-white/5 border-white/10 text-slate-300'
             }`}>
-              {getSlotIcon()}
+              {isMealSlot ? <Utensils size={13} className="text-emerald-500" /> : getSlotIcon()}
             </div>
-            <h2 className={`text-base sm:text-lg font-extrabold tracking-tight ${isDaylight ? 'text-[#475569]' : 'text-white group-hover:text-purple-300'} transition-colors flex items-center gap-2`}>
-              <span>{slotTitle}</span>
-              {timeWindowLabel && !isDaylight && (
-                <span className="text-[10px] sm:text-[11px] font-normal text-slate-400 font-mono shrink-0 truncate">
+            <h2 className={`text-xs sm:text-sm font-extrabold tracking-tight transition-colors flex items-center gap-1.5 truncate ${
+              isDaylight ? 'text-slate-800 group-hover:text-purple-700' : 'text-white group-hover:text-purple-300'
+            }`}>
+              <span className="truncate">{slotTitle}</span>
+              {timeWindowLabel && (
+                <span className={`text-[10px] sm:text-[11px] font-normal font-mono shrink-0 ${
+                  isDaylight ? 'text-slate-500' : 'text-slate-400'
+                }`}>
                   • {timeWindowLabel}
                 </span>
               )}
             </h2>
           </div>
-        </div>
 
-        {/* Right Status Badge & Add Button */}
-        <div className="flex items-center gap-2">
-          {isDropTarget && dragCtx?.activeDrag && (
-            <span className="text-[11px] font-mono font-bold text-purple-300 animate-pulse px-2.5 py-0.5 rounded-full bg-purple-500/25 border border-purple-400/50">
-              Drop to move here
-            </span>
-          )}
-          {totalCount > 0 && !isDropTarget && (
-            isDaylight ? (
-              <span className="text-xs text-[#64748B] font-semibold">
-                {completedCount} of {totalCount} complete
+          <div className="flex items-center gap-2 shrink-0">
+            {isMealSlot && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setIsMealModalOpen(true)
+                }}
+                className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-xs ${
+                  isDaylight
+                    ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 border border-emerald-500/30'
+                    : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
+                }`}
+                title="Log meal or macros for this window"
+              >
+                <Plus size={11} />
+                <span>Log Meal</span>
+              </button>
+            )}
+
+            {isDropTarget && dragCtx?.activeDrag && (
+              <span className="text-[10px] font-mono font-bold text-purple-300 animate-pulse px-2 py-0.5 rounded-full bg-purple-500/25 border border-purple-400/50">
+                Drop here
               </span>
-            ) : (
+            )}
+            {totalCount > 0 && !isDropTarget && (
               <span
-                className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
                   isAllDone
                     ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                    : isDaylight
+                    ? 'bg-slate-100 border-slate-300 text-slate-600'
                     : 'bg-black/30 border-white/10 text-slate-400'
                 }`}
               >
                 {completedCount}/{totalCount}
               </span>
-            )
-          )}
-
-          <button
-            onClick={() => onAddActivity(slotKey)}
-            title="Add Activity to this Time Window"
-            className={`w-7 h-7 rounded-xl ${isDaylight ? 'bg-white hover:bg-slate-50 text-slate-500 hover:text-[#475569] border-slate-200 shadow-sm' : 'bg-white/5 hover:bg-purple-600/30 text-slate-300 hover:text-white border-white/10'} border flex items-center justify-center transition-all active:scale-95 cursor-pointer`}
-          >
-            <Plus size={14} />
-          </button>
+            )}
+            <button
+              onClick={() => onAddActivity(slotKey)}
+              title="Add Activity to this Time Window"
+              className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all active:scale-95 cursor-pointer ${
+                isDaylight
+                  ? 'bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border-slate-300 shadow-xs'
+                  : 'bg-white/5 hover:bg-purple-600/30 text-slate-300 hover:text-white border-white/10'
+              }`}
+            >
+              <Plus size={13} />
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* Classic Full Header */
+        <div className={`flex items-center justify-between gap-3 mb-3 ${isDaylight ? 'pb-1 border-0' : 'pb-2 border-b border-white/5'}`}>
+          <div
+            onClick={() => setIsCollapsed(true)}
+            className="flex items-center gap-2.5 cursor-pointer select-none group"
+          >
+            {!isDaylight && (
+              <div
+                className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
+                  isAllDone ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-slate-400 group-hover:bg-white/10'
+                }`}
+              >
+                <ChevronUp size={14} />
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-colors duration-500 ${
+                isDaylight
+                  ? 'bg-transparent text-amber-500'
+                  : isIgnited ? 'bg-white/5 border border-purple-500/50 text-purple-300' : 'bg-white/5 border border-white/10 text-slate-400'
+              }`}>
+                {getSlotIcon()}
+              </div>
+              <h2 className={`text-base sm:text-lg font-extrabold tracking-tight ${isDaylight ? 'text-[#475569]' : 'text-white group-hover:text-purple-300'} transition-colors flex items-center gap-2 min-w-0 flex-wrap`}>
+                <span className="shrink-0">{slotTitle}</span>
+                {timeWindowLabel && (
+                  <span className={`text-[11px] sm:text-xs font-normal font-mono shrink-0 ${isDaylight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    • {timeWindowLabel}
+                  </span>
+                )}
+              </h2>
+            </div>
+          </div>
+
+          {/* Right Status Badge & Add Button */}
+          <div className="flex items-center gap-2">
+            {isDropTarget && dragCtx?.activeDrag && (
+              <span className="text-[11px] font-mono font-bold text-purple-300 animate-pulse px-2.5 py-0.5 rounded-full bg-purple-500/25 border border-purple-400/50">
+                Drop to move here
+              </span>
+            )}
+            {totalCount > 0 && !isDropTarget && (
+              isDaylight ? (
+                <span className="text-xs text-[#64748B] font-semibold">
+                  {completedCount} of {totalCount} complete
+                </span>
+              ) : (
+                <span
+                  className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                    isAllDone
+                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                      : 'bg-black/30 border-white/10 text-slate-400'
+                  }`}
+                >
+                  {completedCount}/{totalCount}
+                </span>
+              )
+            )}
+
+            <button
+              onClick={() => onAddActivity(slotKey)}
+              title="Add Activity to this Time Window"
+              className={`w-7 h-7 rounded-xl ${isDaylight ? 'bg-white hover:bg-slate-50 text-slate-500 hover:text-[#475569] border-slate-200 shadow-sm' : 'bg-white/5 hover:bg-purple-600/30 text-slate-300 hover:text-white border-white/10'} border flex items-center justify-center transition-all active:scale-95 cursor-pointer`}
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Container Body (The Blocks Grid) - Drop enabled across entire surface */}
       <div
@@ -692,8 +795,8 @@ export default function BlocksTimeContainer({
         onDrop={handleContainerDrop}
         className="grid grid-cols-12 gap-2.5 sm:gap-3.5 pt-1"
       >
-        {/* Meal / Nutrition Block if applicable (Placed right at the top for meal windows!) */}
-        {isMealSlot && (
+        {/* Meal / Nutrition Block if applicable (In Streamline mode, suppressed in grid as meal is anchored in header banner!) */}
+        {isMealSlot && !isStreamline && (
           <BlocksNutritionTile
             date={date}
             localUserId={localUserId}
@@ -707,22 +810,23 @@ export default function BlocksTimeContainer({
           />
         )}
 
-        {/* Condensed Supplement Stack (if 3+) */}
+        {/* Condensed Supplement Stack (if 2+) */}
         {shouldCondenseStack && (
           <ModalityStackBlockTile
             stackName={`${slotTitle} Supplements`}
             tasks={supplements}
             benchItems={benchItems}
-            sizing={{ width: '1/2', height: '1x' }}
+            sizing={{ width: isStreamline ? 'full' : '1/2', height: '1x' }}
             visualStyle={visualStyle}
             isIgnited={isIgnited}
             layoutMode={layoutMode}
             onStatusChange={onStatusChange}
+            onOpenDetails={onOpenDetails}
           />
         )}
 
         {/* Individual Modalities (Using orderedDisplayTasks to place pairs flush without gaps!) */}
-        {layout.orderedDisplayTasks.map((task) => {
+        {layout.orderedDisplayTasks.map((task, idx) => {
           const mod = resolveModality(task)
           const mId = mod?.id || task.modality_id || task.protocol_step?.modality_id || ''
           const bench = benchItems.find((b) => b.modality_id === mId)
@@ -743,6 +847,8 @@ export default function BlocksTimeContainer({
                   onComplete={onInFeedComplete || (() => {})}
                   onSkip={onInFeedSkip || (() => {})}
                   onSnooze={onInFeedSnooze || (() => {})}
+                  onMoveToBench={onMoveToBench}
+                  onEliminate={onEliminate}
                 />
               </div>
             )
@@ -754,32 +860,50 @@ export default function BlocksTimeContainer({
             (dragCtx.hoveredTaskId === task.id || dragCtx.hoveredTaskId === mId) &&
             dragCtx.activeDrag.id !== task.id
 
+          const prevTask = idx > 0 ? layout.orderedDisplayTasks[idx - 1] : null
+          const prevMod = prevTask ? resolveModality(prevTask) : null
+          const seqLink =
+            isStreamline && isLinkedModalities && prevTask
+              ? resolveSequentialStepLink(prevTask, task, prevMod, mod)
+              : null
+
+          const isDuringItem = Boolean(seqLink?.isDuring)
+
           return (
-            <ModalityBlockTile
-              key={task.id}
-              task={task}
-              modality={mod}
-              benchItem={bench}
-              sizing={sizing}
-              visualStyle={visualStyle}
-              layoutMode={layoutMode}
-              showDosing={showDosing}
-              currentSlotKey={slotKey}
-              isEditMode={isEditMode}
-              isIgnited={isIgnited}
-              isReorderTarget={Boolean(isDropSlotHere)}
-              synergy={synergiesMap[task.id]}
-              sequence={sequencesMap[task.id]}
-              isPartnerHighlighted={partnerHighlightedId === mId || partnerHighlightedId === task.id}
-              onHighlightPartner={setPartnerHighlightedId}
-              onOpenDetails={() => onOpenDetails(task)}
-              onToggleComplete={() => onStatusChange(task.id, task.status === 'completed' ? 'pending' : 'completed')}
-              onSwipeRight={() => onSwipeRight(task)}
-              onSwipeLeft={() => onSwipeLeft(task)}
-              onResize={(newSizing) => handleResizeTask(task, newSizing)}
-              onLongPress={onLongPress}
-              onMoveTask={onMoveTask}
-            />
+            <React.Fragment key={task.id}>
+              {seqLink && !isDuringItem && (
+                <div className="col-span-12 -my-2.5 sm:-my-3 animate-in fade-in duration-200">
+                  <BlocksNodeRail link={seqLink} isDaylight={isDaylight} />
+                </div>
+              )}
+
+              <ModalityBlockTile
+                task={task}
+                allDayTasks={allDayTasks || tasks}
+                modality={mod}
+                benchItem={bench}
+                sizing={sizing}
+                visualStyle={visualStyle}
+                layoutMode={layoutMode}
+                showDosing={showDosing}
+                currentSlotKey={slotKey}
+                isEditMode={isEditMode}
+                isIgnited={isIgnited}
+                isDuring={isDuringItem}
+                isReorderTarget={Boolean(isDropSlotHere)}
+                synergy={synergiesMap[task.id]}
+                sequence={sequencesMap[task.id]}
+                isPartnerHighlighted={partnerHighlightedId === mId || partnerHighlightedId === task.id}
+                onHighlightPartner={setPartnerHighlightedId}
+                onOpenDetails={() => onOpenDetails(task)}
+                onToggleComplete={() => onStatusChange(task.id, task.status === 'completed' ? 'pending' : 'completed')}
+                onSwipeRight={() => onSwipeRight(task)}
+                onSwipeLeft={() => onSwipeLeft(task)}
+                onResize={(newSizing) => handleResizeTask(task, newSizing)}
+                onLongPress={onLongPress}
+                onMoveTask={onMoveTask}
+              />
+            </React.Fragment>
           )
         })}
 
@@ -810,52 +934,63 @@ export default function BlocksTimeContainer({
             currentSlotKey={slotKey}
             isEditMode={isEditMode}
             isIgnited={isIgnited}
-            sizing={layout.hotkeySizings[hotkey.id] || (layoutMode === '1-wide' || layoutMode === '2-wide' ? { width: '1/2', height: '1x' } : { width: '1/3', height: '1x' })}
+            sizing={layout.hotkeySizings[hotkey.id] || (layoutMode === 'streamline' || layoutMode === '1-wide' ? { width: 'full', height: '1x' } : layoutMode === '2-wide' ? { width: '1/2', height: '1x' } : { width: '1/3', height: '1x' })}
             onQuickLog={onQuickLog || (() => {})}
             onOpenDetails={onSelectHotkey || (() => {})}
             onMoveHotkey={onMoveHotkey}
           />
         ))}
 
-        {/* Harmonized Add Block - Perfectly completes the bottom row (12, 6+6, 8+4, or 4+4+4) */}
-        <div
-          className={`${
-            layout.addBlockColSpan === 6
-              ? 'col-span-6 min-h-[96px] sm:min-h-[110px]'
-              : layout.addBlockColSpan === 4
-              ? 'col-span-4 min-h-[96px] sm:min-h-[110px]'
-              : layout.addBlockColSpan === 8
-              ? 'col-span-8 min-h-[96px] sm:min-h-[110px]'
-              : layout.addBlockColSpan === 3
-              ? 'col-span-3 min-h-[96px] sm:min-h-[110px]'
-              : layout.addBlockColSpan === 9
-              ? 'col-span-9 min-h-[96px] sm:min-h-[110px]'
-              : 'col-span-12 h-12 sm:h-14'
-          }`}
-        >
-          <button
-            onClick={() => onAddActivity(slotKey)}
-            className={`w-full h-full rounded-2xl sm:rounded-3xl border-2 border-dashed ${
-              isDaylight
-                ? 'border-slate-300 hover:border-purple-400 bg-white/60 hover:bg-white text-slate-500 hover:text-[#475569]'
-                : 'border-white/20 hover:border-purple-400/80 bg-white/[0.03] hover:bg-white/[0.06] text-slate-400 hover:text-white'
-            } flex ${
-              layout.addBlockColSpan === 12
-                ? 'flex-row items-center justify-center gap-2'
-                : 'flex-col items-center justify-center gap-1.5'
-            } transition-all cursor-pointer group active:scale-95 select-none`}
+        {/* Harmonized Add Block - Suppressed in Streamline mode where only header + button is kept */}
+        {!isStreamline && (
+          <div
+            className={`${
+              layout.addBlockColSpan === 6
+                ? 'col-span-6 min-h-[96px] sm:min-h-[110px]'
+                : layout.addBlockColSpan === 4
+                ? 'col-span-4 min-h-[96px] sm:min-h-[110px]'
+                : layout.addBlockColSpan === 8
+                ? 'col-span-8 min-h-[96px] sm:min-h-[110px]'
+                : layout.addBlockColSpan === 3
+                ? 'col-span-3 min-h-[96px] sm:min-h-[110px]'
+                : layout.addBlockColSpan === 9
+                ? 'col-span-9 min-h-[96px] sm:min-h-[110px]'
+                : 'col-span-12 h-12 sm:h-14'
+            }`}
           >
-            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl ${
-              isDaylight
-                ? 'bg-slate-100 group-hover:bg-purple-100 text-slate-600 group-hover:text-purple-700'
-                : 'bg-white/5 group-hover:bg-purple-600/30'
-            } flex items-center justify-center transition-colors`}>
-              <Plus size={15} />
-            </div>
-            <span className="text-[11px] sm:text-xs font-bold">Add</span>
-          </button>
-        </div>
+            <button
+              onClick={() => onAddActivity(slotKey)}
+              className={`w-full h-full rounded-2xl sm:rounded-3xl border-2 border-dashed ${
+                isDaylight
+                  ? 'border-slate-300 hover:border-purple-400 bg-white/60 hover:bg-white text-slate-500 hover:text-[#475569]'
+                  : 'border-white/20 hover:border-purple-400/80 bg-white/[0.03] hover:bg-white/[0.06] text-slate-400 hover:text-white'
+              } flex ${
+                layout.addBlockColSpan === 12
+                  ? 'flex-row items-center justify-center gap-2'
+                  : 'flex-col items-center justify-center gap-1.5'
+              } transition-all cursor-pointer group active:scale-95 select-none`}
+            >
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl ${
+                isDaylight
+                  ? 'bg-slate-100 group-hover:bg-purple-100 text-slate-600 group-hover:text-purple-700'
+                  : 'bg-white/5 group-hover:bg-purple-600/30'
+              } flex items-center justify-center transition-colors`}>
+                <Plus size={15} />
+              </div>
+              <span className="text-[11px] sm:text-xs font-bold">Add</span>
+            </button>
+          </div>
+        )}
       </div>
+
+      {isMealModalOpen && (
+        <NutritionFastingModal
+          onClose={() => setIsMealModalOpen(false)}
+          date={date}
+          localUserId={localUserId}
+          userProfile={userProfile}
+        />
+      )}
     </div>
   )
 }

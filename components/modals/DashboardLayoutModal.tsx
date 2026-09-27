@@ -26,7 +26,8 @@ import {
   Eye,
   Check,
   Bookmark,
-  Filter
+  Filter,
+  Layers
 } from 'lucide-react'
 import { useTheme } from '@/lib/utils/useTheme'
 import {
@@ -46,6 +47,8 @@ import {
   setStoredBlocksCompletedPlacement,
   getStoredVisualStyle,
   setStoredVisualStyle,
+  getStoredLinkedModalities,
+  setStoredLinkedModalities,
   BlocksLayoutMode,
   BlocksVisualStyle,
   BlocksCompletedPlacement
@@ -85,6 +88,7 @@ export default function DashboardLayoutModal({
   })
 
   const [blockDensity, setBlockDensity] = useState<BlocksLayoutMode>(() => getStoredBlocksLayoutMode())
+  const [linkedModalities, setLinkedModalitiesState] = useState<boolean>(() => getStoredLinkedModalities())
   const [showDosing, setShowDosingState] = useState<boolean>(() => getStoredBlocksShowDosing())
   const [completedPlacement, setCompletedPlacementState] = useState<BlocksCompletedPlacement>(() =>
     getStoredBlocksCompletedPlacement()
@@ -119,6 +123,7 @@ export default function DashboardLayoutModal({
       // Re-hydrate local values on modal open
       setDisplayModeState(currentDisplayMode || getStoredDisplayMode())
       setBlockDensity(getStoredBlocksLayoutMode())
+      setLinkedModalitiesState(getStoredLinkedModalities())
       setShowDosingState(getStoredBlocksShowDosing())
       setCompletedPlacementState(getStoredBlocksCompletedPlacement())
       setVisualStyleState(getStoredVisualStyle())
@@ -138,6 +143,13 @@ export default function DashboardLayoutModal({
     triggerHaptic('selection')
     setBlockDensity(mode)
     setStoredBlocksLayoutMode(mode)
+  }
+
+  const handleToggleLinkedModalities = () => {
+    triggerHaptic('selection')
+    const next = !linkedModalities
+    setLinkedModalitiesState(next)
+    setStoredLinkedModalities(next)
   }
 
   const handleToggleDosing = () => {
@@ -334,12 +346,12 @@ export default function DashboardLayoutModal({
                 <span className="text-[10px] text-slate-400 font-medium">Card Width</span>
               </div>
 
-              {/* Dynamic, 2-Wide, 3-Wide, 1-Wide Pills */}
+              {/* Dynamic, 2-Wide, 3-Wide, Streamline Pills */}
               <div className="grid grid-cols-4 gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleSelectBlockDensity('dynamic')}
-                  className={`py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
                     blockDensity === 'dynamic'
                       ? 'bg-purple-600 border-purple-400 text-white shadow-sm'
                       : isLight
@@ -354,7 +366,7 @@ export default function DashboardLayoutModal({
                 <button
                   type="button"
                   onClick={() => handleSelectBlockDensity('2-wide')}
-                  className={`py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
                     blockDensity === '2-wide' || blockDensity === 'uniform'
                       ? 'bg-purple-600 border-purple-400 text-white shadow-sm'
                       : isLight
@@ -369,7 +381,7 @@ export default function DashboardLayoutModal({
                 <button
                   type="button"
                   onClick={() => handleSelectBlockDensity('3-wide')}
-                  className={`py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
                     blockDensity === '3-wide'
                       ? 'bg-purple-600 border-purple-400 text-white shadow-sm'
                       : isLight
@@ -383,17 +395,55 @@ export default function DashboardLayoutModal({
 
                 <button
                   type="button"
-                  onClick={() => handleSelectBlockDensity('1-wide')}
-                  className={`py-2 px-1 rounded-xl text-[11px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
-                    blockDensity === '1-wide'
+                  onClick={() => handleSelectBlockDensity('streamline')}
+                  className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                    blockDensity === 'streamline' || blockDensity === '1-wide'
                       ? 'bg-purple-600 border-purple-400 text-white shadow-sm'
                       : isLight
                       ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
                       : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700 text-slate-300'
                   }`}
                 >
-                  <Rows3 size={14} />
-                  <span className="whitespace-nowrap">1-Wide</span>
+                  <Zap size={14} />
+                  <span className="whitespace-nowrap">Streamline</span>
+                </button>
+              </div>
+
+              {/* Linked Modalities Mode Toggle */}
+              <div className="pt-2 border-t border-slate-800/40">
+                <button
+                  type="button"
+                  onClick={handleToggleLinkedModalities}
+                  className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                    linkedModalities
+                      ? isLight
+                        ? 'bg-purple-50 border-purple-300 text-purple-950'
+                        : 'bg-purple-950/40 border-purple-500/50 text-purple-200'
+                      : isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-500'
+                      : 'bg-slate-800/40 border-slate-700/50 text-slate-400'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      linkedModalities ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-700/40 text-slate-500'
+                    }`}>
+                      <Layers size={13} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold">Linked Modalities &amp; Node Rails</div>
+                      <div className="text-[10px] text-slate-400 truncate">Connect sequential &amp; during modalities with interactive nodes</div>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${
+                      linkedModalities
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        : 'bg-slate-800 text-slate-500'
+                    }`}
+                  >
+                    {linkedModalities ? 'ON' : 'OFF'}
+                  </span>
                 </button>
               </div>
 

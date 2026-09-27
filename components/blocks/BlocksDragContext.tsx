@@ -20,7 +20,15 @@ interface BlocksDragContextType {
   hoveredTaskId: string | null
   dragPosition: { x: number; y: number } | null
   startDrag: (item: DraggedItem, startX: number, startY: number) => void
-  bindDraggable: (item: DraggedItem, options?: { onSwipeRight?: () => void; onSwipeLeft?: () => void; onClick?: () => void }) => {
+  bindDraggable: (
+    item: DraggedItem,
+    options?: {
+      onSwipeRight?: () => void
+      onSwipeLeft?: () => void
+      onClick?: () => void
+      isEditMode?: boolean
+    }
+  ) => {
     onMouseDown: (e: React.MouseEvent) => void
     onTouchStart: (e: React.TouchEvent) => void
     onTouchMove: (e: React.TouchEvent) => void
@@ -59,6 +67,8 @@ export function BlocksDragProvider({
   const activeDragRef = useRef<DraggedItem | null>(null)
   activeDragRef.current = activeDrag
 
+  const startPosRef = useRef<{ x: number; y: number } | null>(null)
+
   const dragPosRef = useRef<{ x: number; y: number } | null>(null)
   dragPosRef.current = dragPosition
 
@@ -69,6 +79,11 @@ export function BlocksDragProvider({
   hoveredTaskIdRef.current = hoveredTaskId
 
   const autoScrollFrameRef = useRef<number | null>(null)
+
+  // Centralized pending hold timer and touch start position
+  // Living at the provider level guarantees that tile re-renders will NEVER orphan a running timer!
+  const pendingHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingTouchPosRef = useRef<{ x: number; y: number; time: number } | null>(null)
 
   // Auto-scroll loop: smooth scrolling when holding card near viewport top or bottom
   const startAutoScrollLoop = useCallback(() => {
@@ -81,7 +96,6 @@ export function BlocksDragProvider({
         const bottomEdge = window.innerHeight - 110
 
         if (pos.y < topEdge) {
-          // Closer to edge = faster scroll
           const intensity = Math.max(3, Math.min(24, ((topEdge - pos.y) / topEdge) * 24))
           window.scrollBy({ top: -intensity, behavior: 'instant' as ScrollBehavior })
           detectHoveredSlot(pos.x, pos.y)
@@ -110,106 +124,185 @@ export function BlocksDragProvider({
   }, [])
 
   // Detect time block container currently under the cursor / finger
+  // Uses elementsFromPoint to see through the tile without requiring pointer-events: none!
   const detectHoveredSlot = (clientX: number, clientY: number) => {
     try {
-      const el = document.elementFromPoint(clientX, clientY)
-      const container = el?.closest('[data-slot-key]')
-      const slot = container?.getAttribute('data-slot-key') || null
-      if (slot !== hoveredSlotKeyRef.current) {
-        hoveredSlotKeyRef.current = slot
-        setHoveredSlotKey(slot)
-        if (slot) {
-          triggerHaptic('selection')
+      if (typeof document === 'undefined') return
+      const elements = typeof document.elementsFromPoint === 'function'
+        ? document.elementsFromPoint(clientX, clientY)
+        : [document.elementFromPoint(clientX, clientY)]
+
+      let nextSlot: string | null = null
+      let nextTaskId: string | null = null
+
+      for (const el of elements) {
+        if (!el) continue
+        if (!nextTaskId) {
+          const taskEl = el.closest('[data-task-id]')
+          const tId = taskEl?.getAttribute('data-task-id')
+          if (tId && activeDragRef.current && tId !== activeDragRef.current.id) {
+            nextTaskId = tId
+          }
         }
+        if (!nextSlot) {
+          const container = el.closest('[data-slot-key]')
+          const slot = container?.getAttribute('data-slot-key')
+          if (slot) {
+            nextSlot = slot
+          }
+        }
+        if (nextSlot && nextTaskId) break
       }
 
-      const taskEl = el?.closest('[data-task-id]')
-      const taskId = taskEl?.getAttribute('data-task-id') || null
-      if (taskId !== hoveredTaskIdRef.current) {
-        hoveredTaskIdRef.current = taskId
-        setHoveredTaskId(taskId)
+      if (nextSlot && nextSlot !== hoveredSlotKeyRef.current) {
+        hoveredSlotKeyRef.current = nextSlot
+        setHoveredSlotKey(nextSlot)
+        triggerHaptic('selection')
+      }
+
+      if (nextTaskId !== hoveredTaskIdRef.current) {
+        hoveredTaskIdRef.current = nextTaskId
+        setHoveredTaskId(nextTaskId)
       }
     } catch {
       // Ignored if outside viewport
     }
   }
 
+  // Safe cancellation helper (clean reset without reordering or moving)
+  const cancelDrag = useCallback(() => {
+    stopAutoScrollLoop()
+    if (pendingHoldTimerRef.current) {
+      clearTimeout(pendingHoldTimerRef.current)
+      pendingHoldTimerRef.current = null
+    }
+    pendingTouchPosRef.current = null
+    activeDragRef.current = null
+    dragPosRef.current = null
+    startPosRef.current = null
+    hoveredSlotKeyRef.current = null
+    hoveredTaskIdRef.current = null
+    setActiveDrag(null)
+    setDragPosition(null)
+    setHoveredSlotKey(null)
+    setHoveredTaskId(null)
+    if (typeof document !== 'undefined') {
+      document.body.style.userSelect = ''
+    }
+  }, [stopAutoScrollLoop])
+
+  // Window scroll listener: If the user scrolls natively before a drag is actively underway,
+  // INSTANTLY abort any pending hold timer! Zero chance of accidental grab while scrolling!
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!activeDragRef.current && pendingHoldTimerRef.current) {
+        clearTimeout(pendingHoldTimerRef.current)
+        pendingHoldTimerRef.current = null
+        pendingTouchPosRef.current = null
+      }
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+
   // Start drag manually
   const startDrag = useCallback((item: DraggedItem, startX: number, startY: number) => {
     triggerHaptic('medium')
     activeDragRef.current = item
+    startPosRef.current = { x: startX, y: startY }
     dragPosRef.current = { x: startX, y: startY }
+    hoveredSlotKeyRef.current = item.sourceSlotKey || null
+    hoveredTaskIdRef.current = null
     setActiveDrag(item)
     setDragPosition({ x: startX, y: startY })
+    setHoveredSlotKey(item.sourceSlotKey || null)
+    setHoveredTaskId(null)
     detectHoveredSlot(startX, startY)
     startAutoScrollLoop()
+    if (typeof document !== 'undefined') {
+      document.body.style.userSelect = 'none'
+    }
   }, [startAutoScrollLoop])
 
   // End drag & execute move
   const endDrag = useCallback((releaseX?: number, releaseY?: number) => {
     stopAutoScrollLoop()
     const item = activeDragRef.current
+    if (!item) {
+      cancelDrag()
+      return
+    }
+
+    const startPos = startPosRef.current
     let targetSlot = hoveredSlotKeyRef.current
     let targetTaskId = hoveredTaskIdRef.current
 
-    // If explicit release coordinates are provided (from touchend/pointerup), query directly under finger
+    // If explicit release coordinates are provided, query directly under finger
     if (releaseX !== undefined && releaseY !== undefined && typeof document !== 'undefined') {
       try {
-        const el = document.elementFromPoint(releaseX, releaseY)
-        const container = el?.closest('[data-slot-key]')
-        const slot = container?.getAttribute('data-slot-key')
-        if (slot) {
-          targetSlot = slot
-        }
-        const taskEl = el?.closest('[data-task-id]')
-        const tId = taskEl?.getAttribute('data-task-id')
-        if (tId) {
-          targetTaskId = tId
+        const elements = typeof document.elementsFromPoint === 'function'
+          ? document.elementsFromPoint(releaseX, releaseY)
+          : [document.elementFromPoint(releaseX, releaseY)]
+
+        for (const el of elements) {
+          if (!el) continue
+          if (!targetTaskId) {
+            const taskEl = el.closest('[data-task-id]')
+            const tId = taskEl?.getAttribute('data-task-id')
+            if (tId && tId !== item.id) {
+              targetTaskId = tId
+            }
+          }
+          if (!targetSlot) {
+            const container = el.closest('[data-slot-key]')
+            const slot = container?.getAttribute('data-slot-key')
+            if (slot) {
+              targetSlot = slot
+            }
+          }
+          if (targetSlot && targetTaskId) break
         }
       } catch (err) {
-        console.warn('[BlocksDragContext] elementFromPoint failed:', err)
+        console.warn('[BlocksDragContext] elementsFromPoint failed:', err)
       }
     }
 
-    try {
-      if (item && targetSlot) {
-        const isSlotChange = targetSlot !== item.sourceSlotKey
-        const isReorder = Boolean(targetTaskId && targetTaskId !== item.id)
-        const isSameSlot = targetSlot === item.sourceSlotKey
+    const finalX = releaseX !== undefined ? releaseX : (dragPosRef.current?.x || 0)
+    const finalY = releaseY !== undefined ? releaseY : (dragPosRef.current?.y || 0)
+    const dist = startPos ? Math.hypot(finalX - startPos.x, finalY - startPos.y) : 0
 
-        if (isSlotChange || isReorder || isSameSlot) {
-          triggerHaptic('success')
-          if (item.type === 'task' && onMoveTask) {
-            onMoveTask(item.id, targetSlot, targetTaskId || undefined)
-          } else if (item.type === 'hotkey' && onMoveHotkey) {
-            onMoveHotkey(item.id, targetSlot, targetTaskId || undefined)
-          }
+    const isSlotChange = Boolean(targetSlot && item.sourceSlotKey && targetSlot !== item.sourceSlotKey)
+    const isReorder = Boolean(targetTaskId && targetTaskId !== item.id)
+
+    // STATE OF THE ART SAFEGUARD:
+    // If the user released in place (dist < 22px) OR dropped in the same slot without targeting another task,
+    // IT IS AN INTENTIONAL NO-OP! Do not reorder or alter stored arrays!
+    if (dist < 22 || (!isSlotChange && !isReorder)) {
+      cancelDrag()
+      return
+    }
+
+    try {
+      if (isSlotChange || isReorder) {
+        triggerHaptic('success')
+        if (item.type === 'task' && onMoveTask && targetSlot) {
+          onMoveTask(item.id, targetSlot, targetTaskId || undefined)
+        } else if (item.type === 'hotkey' && onMoveHotkey && targetSlot) {
+          onMoveHotkey(item.id, targetSlot, targetTaskId || undefined)
         }
       }
     } catch (err) {
       console.error('[BlocksDragContext] Error completing drag:', err)
     } finally {
-      // Unconditionally and synchronously clear all drag state
-      activeDragRef.current = null
-      hoveredSlotKeyRef.current = null
-      hoveredTaskIdRef.current = null
-      dragPosRef.current = null
-      setActiveDrag(null)
-      setDragPosition(null)
-      setHoveredSlotKey(null)
-      setHoveredTaskId(null)
+      cancelDrag()
     }
-  }, [onMoveTask, onMoveHotkey, stopAutoScrollLoop])
+  }, [onMoveTask, onMoveHotkey, stopAutoScrollLoop, cancelDrag])
 
   // Active drag listeners for position tracking and auto-scroll (active ONLY during a live drag)
   useEffect(() => {
     if (!activeDrag) return
-
-    const handlePointerMove = (e: PointerEvent | MouseEvent) => {
-      setDragPosition({ x: e.clientX, y: e.clientY })
-      dragPosRef.current = { x: e.clientX, y: e.clientY }
-      detectHoveredSlot(e.clientX, e.clientY)
-    }
 
     const handleTouchMove = (e: TouchEvent) => {
       if (e.cancelable) {
@@ -223,48 +316,52 @@ export function BlocksDragProvider({
       }
     }
 
-    const handleRelease = (e: any) => {
+    const handleTouchEnd = (e: TouchEvent) => {
       let relX: number | undefined
       let relY: number | undefined
       if (e.changedTouches && e.changedTouches[0]) {
         relX = e.changedTouches[0].clientX
         relY = e.changedTouches[0].clientY
-      } else if (typeof e.clientX === 'number') {
-        relX = e.clientX
-        relY = e.clientY
       }
       endDrag(relX, relY)
     }
 
+    const handleTouchCancel = () => {
+      cancelDrag()
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setDragPosition({ x: e.clientX, y: e.clientY })
+      dragPosRef.current = { x: e.clientX, y: e.clientY }
+      detectHoveredSlot(e.clientX, e.clientY)
+    }
+
+    const handleMouseUp = (e: MouseEvent) => {
+      endDrag(e.clientX, e.clientY)
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        stopAutoScrollLoop()
-        endDrag()
+        cancelDrag()
       }
     }
 
-    window.addEventListener('pointermove', handlePointerMove as any, { passive: true })
-    window.addEventListener('mousemove', handlePointerMove as any, { passive: true })
-    window.addEventListener('pointerup', handleRelease, { capture: true })
-    window.addEventListener('mouseup', handleRelease, { capture: true })
     window.addEventListener('touchmove', handleTouchMove, { passive: false })
-    window.addEventListener('touchend', handleRelease, { capture: true })
-    window.addEventListener('touchcancel', handleRelease, { capture: true })
-    window.addEventListener('dragend', handleRelease, { capture: true })
+    window.addEventListener('touchend', handleTouchEnd)
+    window.addEventListener('touchcancel', handleTouchCancel)
+    window.addEventListener('mousemove', handleMouseMove, { passive: true })
+    window.addEventListener('mouseup', handleMouseUp)
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      window.removeEventListener('pointermove', handlePointerMove as any)
-      window.removeEventListener('mousemove', handlePointerMove as any)
-      window.removeEventListener('pointerup', handleRelease, { capture: true })
-      window.removeEventListener('mouseup', handleRelease, { capture: true })
       window.removeEventListener('touchmove', handleTouchMove)
-      window.removeEventListener('touchend', handleRelease, { capture: true })
-      window.removeEventListener('touchcancel', handleRelease, { capture: true })
-      window.removeEventListener('dragend', handleRelease, { capture: true })
+      window.removeEventListener('touchend', handleTouchEnd)
+      window.removeEventListener('touchcancel', handleTouchCancel)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [activeDrag, endDrag, stopAutoScrollLoop])
+  }, [activeDrag, endDrag, cancelDrag])
 
   // Factory function to bind draggable interactions to any card (mouse + mobile touch)
   const bindDraggable = useCallback(
@@ -274,27 +371,26 @@ export function BlocksDragProvider({
         onSwipeRight?: () => void
         onSwipeLeft?: () => void
         onClick?: () => void
+        isEditMode?: boolean
       }
     ) => {
-      let touchStartTime = 0
-      let touchStartX = 0
-      let touchStartY = 0
-      let lastTouchX = 0
-      let lastTouchY = 0
-      let isHoldTriggered = false
-      let holdTimer: any = null
+      const HOLD_DELAY = options?.isEditMode ? 140 : 450
+      const TOLERANCE = 6
 
       return {
-        // Desktop mouse drag: deliberate 16px threshold to prevent accidental grabs on click
+        // Desktop mouse drag: deliberate 14px threshold to prevent accidental grabs on click
         onMouseDown: (e: React.MouseEvent) => {
           if (e.button !== 0) return // Only primary click
+          const target = e.target as HTMLElement
+          if (target.closest('[data-resize-handle]') || target.closest('button')) return
+
           const startX = e.clientX
           const startY = e.clientY
           let isDragging = false
 
           const onMouseMove = (moveEvt: MouseEvent) => {
             const dist = Math.hypot(moveEvt.clientX - startX, moveEvt.clientY - startY)
-            if (!isDragging && dist > 16) {
+            if (!isDragging && dist > (options?.isEditMode ? 6 : 14)) {
               isDragging = true
               window.removeEventListener('mousemove', onMouseMove)
               window.removeEventListener('mouseup', onMouseUp)
@@ -308,9 +404,7 @@ export function BlocksDragProvider({
             if (activeDragRef.current) {
               endDrag(upEvt.clientX, upEvt.clientY)
             } else if (!isDragging) {
-              if (options?.onClick) {
-                options.onClick()
-              }
+              options?.onClick?.()
             }
           }
 
@@ -318,91 +412,65 @@ export function BlocksDragProvider({
           window.addEventListener('mouseup', onMouseUp)
         },
 
-        // Mobile touch drag with intentional press-and-hold (320ms) and smart gesture separation
+        // Mobile touch drag with intentional press-and-hold (450ms) and strict 6px movement tolerance
         onTouchStart: (e: React.TouchEvent) => {
           if (!e.touches || !e.touches[0]) return
           const t = e.touches[0]
-          touchStartTime = Date.now()
-          touchStartX = t.clientX
-          touchStartY = t.clientY
-          lastTouchX = t.clientX
-          lastTouchY = t.clientY
-          isHoldTriggered = false
+          pendingTouchPosRef.current = { x: t.clientX, y: t.clientY, time: Date.now() }
 
-          if (holdTimer) clearTimeout(holdTimer)
-          holdTimer = setTimeout(() => {
-            isHoldTriggered = true
-            triggerHaptic('medium')
-            startDrag(item, lastTouchX, lastTouchY)
-          }, 320)
+          if (pendingHoldTimerRef.current) {
+            clearTimeout(pendingHoldTimerRef.current)
+            pendingHoldTimerRef.current = null
+          }
+
+          pendingHoldTimerRef.current = setTimeout(() => {
+            pendingHoldTimerRef.current = null
+            startDrag(item, t.clientX, t.clientY)
+          }, HOLD_DELAY)
         },
 
         onTouchMove: (e: React.TouchEvent) => {
           if (!e.touches || !e.touches[0]) return
+          if (activeDragRef.current) return // Already dragging; window listener handles tracking
+
           const t = e.touches[0]
-          lastTouchX = t.clientX
-          lastTouchY = t.clientY
+          const startPos = pendingTouchPosRef.current
+          if (!startPos) return
 
-          if (isHoldTriggered) {
-            // Already dragging - global window touch listener handles positioning
-            return
-          }
+          const dist = Math.hypot(t.clientX - startPos.x, t.clientY - startPos.y)
 
-          const diffX = t.clientX - touchStartX
-          const diffY = t.clientY - touchStartY
-          const absX = Math.abs(diffX)
-          const absY = Math.abs(diffY)
-
-          // 1. Detect natural vertical scroll intent:
-          // If vertical movement exceeds 8px and is predominantly vertical, user is scrolling the page.
-          // Instantly cancel hold timer so browser native 120fps scrolling is unhindered.
-          if (absY > 8 && absY > absX * 0.7) {
-            if (holdTimer) {
-              clearTimeout(holdTimer)
-              holdTimer = null
-            }
-            return
-          }
-
-          // 2. Detect horizontal swipe intent (to complete or skip):
-          // If horizontal movement exceeds 12px and is predominantly horizontal, user is swiping.
-          // Cancel hold timer so swipe action triggers cleanly.
-          if (absX > 12 && absX > absY * 1.2) {
-            if (holdTimer) {
-              clearTimeout(holdTimer)
-              holdTimer = null
-            }
-            return
-          }
-
-          // 3. Jitter threshold:
-          if (Math.hypot(diffX, diffY) > 18) {
-            if (holdTimer) {
-              clearTimeout(holdTimer)
-              holdTimer = null
+          // Strict tolerance: Any movement > 6px means the user is scrolling the page or swiping!
+          // Instantly and permanently abort the hold timer so scrolling is 100% natural!
+          if (dist > TOLERANCE) {
+            if (pendingHoldTimerRef.current) {
+              clearTimeout(pendingHoldTimerRef.current)
+              pendingHoldTimerRef.current = null
             }
           }
         },
 
         onTouchEnd: (e: React.TouchEvent) => {
-          if (holdTimer) {
-            clearTimeout(holdTimer)
-            holdTimer = null
+          const hadTimer = Boolean(pendingHoldTimerRef.current)
+          if (pendingHoldTimerRef.current) {
+            clearTimeout(pendingHoldTimerRef.current)
+            pendingHoldTimerRef.current = null
           }
 
-          if (isHoldTriggered || activeDragRef.current) {
-            const touch = e.changedTouches?.[0]
-            endDrag(touch?.clientX, touch?.clientY)
+          if (activeDragRef.current) {
             return
           }
 
-          // Check for swipe or clean tap
-          const duration = Date.now() - touchStartTime
-          if (e.changedTouches && e.changedTouches[0]) {
-            const t = e.changedTouches[0]
-            const diffX = t.clientX - touchStartX
-            const diffY = t.clientY - touchStartY
+          const startPos = pendingTouchPosRef.current
+          pendingTouchPosRef.current = null
 
+          if (e.changedTouches && e.changedTouches[0] && startPos) {
+            const t = e.changedTouches[0]
+            const duration = Date.now() - startPos.time
+            const diffX = t.clientX - startPos.x
+            const diffY = t.clientY - startPos.y
+            const dist = Math.hypot(diffX, diffY)
+
+            // Horizontal Swipe intent
             if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
               if (diffX > 0 && options?.onSwipeRight) {
                 options.onSwipeRight()
@@ -411,22 +479,19 @@ export function BlocksDragProvider({
                 options.onSwipeLeft()
                 return
               }
-            } else if (Math.hypot(diffX, diffY) < 14 && duration < 350 && options?.onClick) {
+            } else if (hadTimer && dist < 10 && duration < 350 && options?.onClick) {
               options.onClick()
               return
             }
           }
         },
 
-        onTouchCancel: (e: React.TouchEvent) => {
-          if (holdTimer) {
-            clearTimeout(holdTimer)
-            holdTimer = null
+        onTouchCancel: () => {
+          if (pendingHoldTimerRef.current) {
+            clearTimeout(pendingHoldTimerRef.current)
+            pendingHoldTimerRef.current = null
           }
-          if (isHoldTriggered || activeDragRef.current) {
-            const touch = e.changedTouches?.[0]
-            endDrag(touch?.clientX, touch?.clientY)
-          }
+          pendingTouchPosRef.current = null
         }
       }
     },

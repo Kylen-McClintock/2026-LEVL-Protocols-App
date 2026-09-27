@@ -55,7 +55,7 @@ export const HUBERMAN_DOAC_MASTER_PROTOCOL: Protocol & { steps: ProtocolStep[] }
         slug: 'baseline-hydration-electrolytes',
         name: 'Baseline Hydration & Mineral Electrolytes',
         display_name: 'Morning Electrolyte Hydration',
-        category: 'nutrition',
+        category: 'hydration',
         modality_type: 'lifestyle',
         status: 'active',
         brief_description: '16–32 oz of clean water with optional mineral electrolytes consumed immediately upon waking to stimulate ascending vagal arousal and trigger the morning cortisol pulse.',

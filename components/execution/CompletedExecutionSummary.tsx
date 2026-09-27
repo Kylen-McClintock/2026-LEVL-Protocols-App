@@ -294,6 +294,35 @@ export default function CompletedExecutionSummary({ modalityType, loggingType, d
     )
   }
 
+  // --- SKINCARE & TOPICAL SUMMARY ---
+  if (loggingType === 'skincare' || (modalityType && (modalityType.toLowerCase().includes('skin') || modalityType.toLowerCase().includes('topical'))) || details.application_areas) {
+    const areas = details.application_areas || []
+    return (
+      <div className="w-full mt-3 p-3 bg-purple-950/20 rounded-xl border border-purple-500/20 relative group">
+        <div className="text-[10px] text-purple-300 uppercase tracking-wider font-bold mb-2 flex items-center justify-between">
+          <span>Dermal Topical Application Summary</span>
+          {onEdit && (
+            <button onClick={onEdit} className="text-purple-300 hover:text-white flex items-center gap-1 transition-colors cursor-pointer text-[10px] font-bold">
+              <Edit2 size={10} /> Edit
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-300 items-center">
+          {areas.length > 0 && (
+            <span className="font-medium text-purple-200">
+              Zones: {areas.map((a: string) => a.charAt(0).toUpperCase() + a.slice(1)).join(', ')}
+            </span>
+          )}
+          {details.sensation && (
+            <span className={details.sensation === 'redness' ? 'text-rose-300' : details.sensation === 'mild_tingling' ? 'text-amber-300' : 'text-emerald-300'}>
+              {details.sensation === 'redness' ? '⚠️ Erythema / Sensitivity' : details.sensation === 'mild_tingling' ? 'Transient Tingling' : '✓ Smooth (Zero Irritation)'}
+            </span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // --- NUTRITION & PROTEIN MACRO SUMMARY ---
   if (details.meal1_protein_g !== undefined || details.total_protein_g !== undefined || details.leucine_threshold_met !== undefined) {
     const meal1 = Number(details.meal1_protein_g) || 0

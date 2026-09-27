@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { DailyProtocolTask, UserProfile, DailyWellbeingCheckin } from '@/lib/types'
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, startOfWeek, endOfWeek, isToday } from 'date-fns'
-import { ChevronLeft, ChevronRight, Activity, CalendarDays, BarChart2, X, Dumbbell, Flame, Dna, Sparkles, Zap, Layers } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Activity, CalendarDays, BarChart2, X, Dumbbell, Flame, Dna, Sparkles, Zap, Layers, Columns, Rows } from 'lucide-react'
 import { BiologicalVector, generateWaveforms, getDailyIntent, getWindowIntent, WaveformEvent, SCIENTIFIC_VECTOR_REGISTRY, calculateDynamicFastedWindow } from '@/lib/calendar/waveformMapper'
+import { useTheme } from '@/lib/utils/useTheme'
 import CadenceTracks from './CadenceTracks'
 import MonthHeatmapView from './MonthHeatmapView'
 import ExerciseSplitView from './ExerciseSplitView'
@@ -12,6 +13,7 @@ import PeptideSplitView from './PeptideSplitView'
 import DailyVerticalPulseView from './DailyVerticalPulseView'
 
 type DomainLens = 'all' | 'exercise' | 'fasting' | 'peptides'
+export type DaysArrangement = 'scroll' | 'columns'
 
 type Props = {
   tasks: DailyProtocolTask[]
@@ -29,8 +31,29 @@ const getPixelOffset = (hour: number) => {
 
 export default function BiologicalRhythmDashboard({ tasks, currentDate, userProfile, wellbeingLogs = [], onNextMonth, onPrevMonth }: Props) {
   const router = useRouter()
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
+
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('weekly')
   const [selectedDate, setSelectedDate] = useState<Date>(currentDate)
+
+  // Initialize daysArrangement from localStorage (defaulting to 'scroll' as requested)
+  const [daysArrangement, setDaysArrangement] = useState<DaysArrangement>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('levl_schedule_days_arrangement') as DaysArrangement
+      if (saved && (saved === 'scroll' || saved === 'columns')) {
+        return saved
+      }
+    }
+    return 'scroll'
+  })
+
+  const handleToggleDaysArrangement = (arr: DaysArrangement) => {
+    setDaysArrangement(arr)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('levl_schedule_days_arrangement', arr)
+    }
+  }
   
   // Initialize activeLens from URL query param (?tab=exercise) or localStorage
   const [activeLens, setActiveLens] = useState<DomainLens>(() => {
@@ -210,16 +233,16 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
   return (
     <div className="flex flex-col gap-6">
       {/* Master Domain Lens Switcher Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-slate-800/80 pt-1">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-slate-200/80 dark:border-slate-800/80 pt-1">
         <button
           onClick={() => handleSelectLens('all')}
           className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border shrink-0 ${
             activeLens === 'all'
-              ? 'bg-levl-accent text-black font-extrabold border-levl-accent shadow-md'
-              : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-white'
+              ? 'bg-purple-100 dark:bg-purple-500/25 border-purple-300 dark:border-purple-400/60 text-purple-950 dark:text-purple-200 font-black shadow-sm ring-1 ring-purple-400/40 dark:shadow-purple-500/20'
+              : 'bg-white dark:bg-slate-900/70 border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white shadow-sm font-semibold'
           }`}
         >
-          <Zap size={14} />
+          <Zap size={14} className={activeLens === 'all' ? 'text-purple-600 dark:text-purple-300' : 'text-slate-500 dark:text-slate-400'} />
           <span>⚡ All Protocols (Master Pulse)</span>
         </button>
 
@@ -227,11 +250,11 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
           onClick={() => handleSelectLens('exercise')}
           className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border shrink-0 ${
             activeLens === 'exercise'
-              ? 'bg-orange-500 text-black font-extrabold border-orange-400 shadow-md'
-              : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-white'
+              ? 'bg-orange-100 dark:bg-orange-500/25 border-orange-300 dark:border-orange-400/60 text-orange-950 dark:text-orange-200 font-black shadow-sm ring-1 ring-orange-400/40 dark:shadow-orange-500/20'
+              : 'bg-white dark:bg-slate-900/70 border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white shadow-sm font-semibold'
           }`}
         >
-          <Dumbbell size={14} />
+          <Dumbbell size={14} className={activeLens === 'exercise' ? 'text-orange-600 dark:text-orange-300' : 'text-slate-500 dark:text-slate-400'} />
           <span>🏋️‍♂️ Exercise &amp; Split</span>
         </button>
 
@@ -239,11 +262,11 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
           onClick={() => handleSelectLens('fasting')}
           className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border shrink-0 ${
             activeLens === 'fasting'
-              ? 'bg-teal-500 text-black font-extrabold border-teal-400 shadow-md'
-              : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-white'
+              ? 'bg-teal-100 dark:bg-teal-500/25 border-teal-300 dark:border-teal-400/60 text-teal-950 dark:text-teal-200 font-black shadow-sm ring-1 ring-teal-400/40 dark:shadow-teal-500/20'
+              : 'bg-white dark:bg-slate-900/70 border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white shadow-sm font-semibold'
           }`}
         >
-          <Flame size={14} />
+          <Flame size={14} className={activeLens === 'fasting' ? 'text-teal-600 dark:text-teal-300' : 'text-slate-500 dark:text-slate-400'} />
           <span>🥗 Nutrition &amp; Fasting</span>
         </button>
 
@@ -251,11 +274,11 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
           onClick={() => handleSelectLens('peptides')}
           className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border shrink-0 ${
             activeLens === 'peptides'
-              ? 'bg-fuchsia-500 text-black font-extrabold border-fuchsia-400 shadow-md'
-              : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-white'
+              ? 'bg-fuchsia-100 dark:bg-fuchsia-500/25 border-fuchsia-300 dark:border-fuchsia-400/60 text-fuchsia-950 dark:text-fuchsia-200 font-black shadow-sm ring-1 ring-fuchsia-400/40 dark:shadow-fuchsia-500/20'
+              : 'bg-white dark:bg-slate-900/70 border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white shadow-sm font-semibold'
           }`}
         >
-          <Dna size={14} />
+          <Dna size={14} className={activeLens === 'peptides' ? 'text-fuchsia-600 dark:text-fuchsia-300' : 'text-slate-500 dark:text-slate-400'} />
           <span>🧬 Peptide Cycles</span>
         </button>
       </div>
@@ -263,47 +286,97 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
       {/* Top Header & Navigation */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={onPrevMonth} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/10">
+          <button 
+            onClick={onPrevMonth} 
+            className="p-2 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-white rounded-lg transition-colors border border-slate-200 dark:border-white/10 shadow-sm cursor-pointer"
+          >
             <ChevronLeft size={16} />
           </button>
-          <div className="flex items-center gap-2 px-4 py-2 bg-black/40 border border-white/10 rounded-lg">
-            <CalendarDays size={16} className="text-levl-accent" />
+          <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-lg text-slate-800 dark:text-white shadow-sm">
+            <CalendarDays size={16} className="text-purple-600 dark:text-levl-accent" />
             <span className="font-bold text-sm">
               {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d, yyyy')}
             </span>
           </div>
-          <button onClick={onNextMonth} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/10">
+          <button 
+            onClick={onNextMonth} 
+            className="p-2 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-white rounded-lg transition-colors border border-slate-200 dark:border-white/10 shadow-sm cursor-pointer"
+          >
             <ChevronRight size={16} />
           </button>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           {activeLens === 'all' && (
-            <div className="text-sm">
-              <span className="text-gray-400 mr-2">Week focus:</span>
+            <div className="text-sm hidden lg:block">
+              <span className="text-slate-500 dark:text-gray-400 mr-2">Week focus:</span>
               <span className={`font-bold px-3 py-1 rounded-full text-xs border ${getIntentColor(weekIntent)}`}>
                 {weekIntent}
               </span>
             </div>
           )}
+
+          {/* Days of the Week Arrangement Toggle: Sequential Scroll vs Next to Each Other */}
+          <div className="flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 shadow-sm shrink-0">
+            <button
+              type="button"
+              onClick={() => handleToggleDaysArrangement('scroll')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                daysArrangement === 'scroll'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Sequential Scroll (Vertical Stream)"
+            >
+              <Rows size={13} />
+              <span className="hidden sm:inline">Sequential Scroll</span>
+              <span className="sm:hidden">Scroll</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleDaysArrangement('columns')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                daysArrangement === 'columns'
+                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Next to Each Other (7-Day Side-by-Side)"
+            >
+              <Columns size={13} />
+              <span className="hidden sm:inline">Next to Each Other</span>
+              <span className="sm:hidden">Side-by-Side</span>
+            </button>
+          </div>
           
           {activeLens === 'all' && (
-            <div className="flex bg-black/40 rounded-lg p-1 border border-white/10">
+            <div className="flex bg-slate-100 dark:bg-black/40 rounded-lg p-0.5 border border-slate-200 dark:border-white/10">
               <button 
                 onClick={() => setViewMode('daily')}
-                className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer ${viewMode === 'daily' ? 'bg-levl-surface-highlight text-white shadow font-bold' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                  viewMode === 'daily' 
+                    ? 'bg-white dark:bg-levl-surface-highlight text-slate-900 dark:text-white shadow font-bold' 
+                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
               >
                 Daily Pulse
               </button>
               <button 
                 onClick={() => setViewMode('weekly')}
-                className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer ${viewMode === 'weekly' ? 'bg-levl-surface-highlight text-white shadow font-bold' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                  viewMode === 'weekly' 
+                    ? 'bg-white dark:bg-levl-surface-highlight text-slate-900 dark:text-white shadow font-bold' 
+                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
               >
                 Weekly Rhythm
               </button>
               <button 
                 onClick={() => setViewMode('monthly')}
-                className={`px-3.5 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer ${viewMode === 'monthly' ? 'bg-levl-surface-highlight text-white shadow font-bold' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                  viewMode === 'monthly' 
+                    ? 'bg-white dark:bg-levl-surface-highlight text-slate-900 dark:text-white shadow font-bold' 
+                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
               >
                 Monthly Heatmap
               </button>
@@ -342,28 +415,154 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
           onSelectDate={(d) => setSelectedDate(d)}
         />
       ) : viewMode === 'weekly' ? (
-        <div className="glass-card rounded-xl border border-white/10 overflow-hidden bg-black/20">
-          {/* Main Grid: Days of Week */}
-          <div className="grid grid-cols-[120px_repeat(7,1fr)] border-b border-white/10">
-            {/* Corner */}
-            <div className="p-4 border-r border-white/10 bg-black/40">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Biological Vectors</span>
+        daysArrangement === 'scroll' ? (
+          <div className="space-y-4">
+            {/* Sequential Scroll View for Master Biological Pulse */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Activity size={14} className="text-purple-600 dark:text-levl-accent" />
+                <span>Weekly Master Biological Pulse • Sequential Day Feed</span>
+              </span>
+              <span className="text-[11px] text-slate-500 font-medium">
+                {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d, yyyy')}
+              </span>
             </div>
-            {/* Days Header */}
-            {weekDays.map(day => (
-              <div 
-                key={day.toISOString()} 
-                onClick={() => {
-                  setSelectedDate(day)
-                  setViewMode('daily')
-                }}
-                className={`p-4 text-center border-r border-white/10 cursor-pointer hover:bg-white/5 transition-colors ${isToday(day) ? 'bg-levl-accent/10' : ''}`}
-              >
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{format(day, 'EEE')}</div>
-                <div className={`text-sm font-bold ${isToday(day) ? 'text-levl-accent' : 'text-white'}`}>{format(day, 'd')}</div>
-              </div>
-            ))}
+
+            <div className="space-y-3.5">
+              {weekDays.map(day => {
+                const dayStr = format(day, 'yyyy-MM-dd')
+                const dayTasks = tasksByDay.get(dayStr) || []
+                const intent = getDailyIntent(dayTasks)
+                const fastedCalc = calculateDynamicFastedWindow(dayTasks)
+                const isCurrentToday = isToday(day)
+
+                return (
+                  <div
+                    key={dayStr}
+                    className={`glass-card p-4 sm:p-5 rounded-2xl border transition-all ${
+                      isCurrentToday
+                        ? 'border-purple-400 dark:border-purple-500/80 bg-purple-50/70 dark:bg-gradient-to-b dark:from-purple-950/20 dark:via-slate-900/90 dark:to-slate-900/80 shadow-md shadow-purple-500/10 dark:shadow-purple-950/30 ring-1 ring-purple-400/40'
+                        : 'border-slate-200 dark:border-white/10 bg-white dark:bg-black/30 hover:border-slate-300 dark:hover:border-white/20 shadow-sm'
+                    }`}
+                  >
+                    {/* Day Row Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-white/10 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className={`text-base font-black tracking-tight ${isCurrentToday ? 'text-purple-700 dark:text-purple-300' : 'text-slate-900 dark:text-white'}`}>
+                          {format(day, 'EEEE, MMMM d')}
+                        </span>
+                        {isCurrentToday && (
+                          <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-[10px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                            <span>Today</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Daily Intent Badge */}
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${getIntentColor(intent)}`}>
+                          {intent}
+                        </span>
+
+                        {/* Fasting Badge */}
+                        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/25 text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                          <span>🟢 Fasted: {Math.floor(fastedCalc.fastedStartHour > 12 ? fastedCalc.fastedStartHour - 12 : fastedCalc.fastedStartHour)}:00 PM – {Math.floor(fastedCalc.fastedEndHour)}:00 AM</span>
+                        </span>
+
+                        {/* Quick Jump Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDate(day)
+                            setViewMode('daily')
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Inspect Pulse</span>
+                          <ChevronRight size={12} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Day Scheduled Tasks / Modalities */}
+                    <div className="pt-3">
+                      {dayTasks.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                          {dayTasks.map((t, idx) => {
+                            const mod = t.loose_modality || t.protocol_step?.modality
+                            const modName = mod?.name || t.protocol_step?.modality?.name || 'Protocol Task'
+                            const timing = t.custom_timing || t.protocol_step?.timing_slot || t.timing_slot || 'Anytime'
+                            const dose = t.custom_dose || t.protocol_step?.dose_text || (t.protocol_step?.dose_amount ? `${t.protocol_step.dose_amount} ${t.protocol_step.dose_unit || ''}`.trim() : '')
+
+                            return (
+                              <div
+                                key={t.id || idx}
+                                className="p-3 rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50/80 dark:bg-white/[0.02] flex items-center justify-between gap-2 text-xs"
+                              >
+                                <div className="min-w-0">
+                                  <h4 className="font-bold text-slate-900 dark:text-white truncate">
+                                    {modName}
+                                  </h4>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                                    <span className="capitalize">{timing}</span>
+                                    {dose && <span>• {dose}</span>}
+                                  </div>
+                                </div>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                  t.status === 'completed'
+                                    ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30'
+                                    : 'bg-slate-200/80 dark:bg-white/5 text-slate-700 dark:text-slate-400'
+                                }`}>
+                                  {t.status === 'completed' ? '✓ Done' : 'Scheduled'}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 italic py-1">
+                          No active modalities scheduled for this day • Parasympathetic rest window
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Cadence Tracks */}
+            <CadenceTracks 
+              tasks={tasks}
+              startDate={weekStart}
+              endDate={weekEnd}
+            />
           </div>
+        ) : (
+          <div className="glass-card rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/60 dark:bg-black/20 shadow-sm">
+            <div className="overflow-x-auto pb-2 -mx-1 px-1 custom-scrollbar">
+              <div className="min-w-[860px]">
+                {/* Main Grid: Days of Week (Next to each other side-by-side) */}
+                <div className="grid grid-cols-[120px_repeat(7,1fr)] border-b border-slate-200 dark:border-white/10">
+                  {/* Corner */}
+                  <div className="p-4 border-r border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-black/40">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Biological Vectors</span>
+                  </div>
+                  {/* Days Header */}
+                  {weekDays.map(day => (
+                    <div 
+                      key={day.toISOString()} 
+                      onClick={() => {
+                        setSelectedDate(day)
+                        setViewMode('daily')
+                      }}
+                      className={`p-4 text-center border-r border-slate-200 dark:border-white/10 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-colors ${isToday(day) ? 'bg-purple-500/10 dark:bg-levl-accent/10' : ''}`}
+                    >
+                      <div className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">{format(day, 'EEE')}</div>
+                      <div className={`text-sm font-bold ${isToday(day) ? 'text-purple-600 dark:text-levl-accent' : 'text-slate-900 dark:text-white'}`}>{format(day, 'd')}</div>
+                    </div>
+                  ))}
+                </div>
 
           {/* Daily Intent Row */}
           <div className="grid grid-cols-[120px_repeat(7,1fr)] border-b border-white/10">
@@ -839,17 +1038,20 @@ export default function BiologicalRhythmDashboard({ tasks, currentDate, userProf
               </div>
             </div>
           </div>
-
-          {/* Cadence Tracks */}
-          <CadenceTracks 
-            tasks={tasks}
-            startDate={weekStart}
-            endDate={weekEnd}
-          />
         </div>
-      ) : (
-        <MonthHeatmapView tasks={tasks} currentDate={currentDate} />
-      )}
+      </div>
+
+      {/* Cadence Tracks */}
+      <CadenceTracks 
+        tasks={tasks}
+        startDate={weekStart}
+        endDate={weekEnd}
+      />
+    </div>
+  )
+) : (
+  <MonthHeatmapView tasks={tasks} currentDate={currentDate} />
+)}
 
       {/* Interactive Vector Modal */}
       {selectedVectorData && (
