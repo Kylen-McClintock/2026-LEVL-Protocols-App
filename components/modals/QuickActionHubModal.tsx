@@ -181,7 +181,7 @@ export default function QuickActionHubModal({
                       </span>
                     </div>
                     <div className="text-xs text-slate-400">
-                      Snap or upload a Supplement Facts label to auto-extract dosing, timing & ingredients
+                      Scan or upload a bottle label to add it to your stack.
                     </div>
                   </div>
                 </div>

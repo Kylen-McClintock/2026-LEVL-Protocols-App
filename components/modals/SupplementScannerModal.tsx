@@ -157,16 +157,11 @@ export default function SupplementScannerModal({
               <Camera size={20} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
-                  AI Supplement Facts Scanner
-                </h2>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  Gemini Vision
-                </span>
-              </div>
+              <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
+                Supplement Label Scanner
+              </h2>
               <p className="text-xs text-slate-400">
-                Snap or upload any supplement label for instant dosage &amp; ingredient breakdown.
+                Take a photo or upload a label to add supplements and match your dosages.
               </p>
             </div>
           </div>
@@ -246,16 +241,9 @@ export default function SupplementScannerModal({
               </div>
 
               {/* Best Results Guidance */}
-              <div className="p-4 rounded-2xl bg-black/40 border border-white/5 max-w-md mx-auto text-left space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  <ShieldCheck size={14} className="text-emerald-400" />
-                  <span>How to get 100% accurate scans</span>
-                </div>
-                <ul className="text-[11px] text-slate-400 space-y-1.5 list-disc list-inside">
-                  <li>Hold bottle steady with good lighting on the <strong>Supplement Facts</strong> panel.</li>
-                  <li>Single-ingredient products (e.g. Creatine, Magnesium) auto-adjust your dosage.</li>
-                  <li>Multi-ingredient complexes (e.g. Sleep Stacks, Multivitamins) create a composite modality with ingredients broken out like DeepCell.</li>
-                </ul>
+              <div className="p-3.5 rounded-2xl bg-black/40 border border-white/5 max-w-md mx-auto text-left flex items-start gap-2.5 text-xs text-slate-400">
+                <ShieldCheck size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                <span>Make sure the <strong>Supplement Facts</strong> panel and amounts are clearly readable.</span>
               </div>
             </div>
           )}
@@ -271,9 +259,9 @@ export default function SupplementScannerModal({
               </div>
 
               <div className="space-y-1.5">
-                <h3 className="text-base font-extrabold text-white">Analyzing Supplement Facts...</h3>
+                <h3 className="text-base font-extrabold text-white">Reading Supplement Facts...</h3>
                 <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                  Extracting active ingredients, exact milligram dosages, elemental yields, and circadian timing with Gemini Vision.
+                  Detecting active ingredients, dosages, and serving size.
                 </p>
               </div>
             </div>
@@ -312,8 +300,8 @@ export default function SupplementScannerModal({
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
                     {isCombination 
-                      ? 'Creates a custom composite modality with broken-out sub-ingredients table (identical to LIFESPAN+ DeepCell).'
-                      : `Matched to catalog modality. Will update your personalized dosage override.`}
+                      ? 'Multiple ingredients detected. All items will be tracked together in your protocol.'
+                      : 'Matched to your catalog. Your personalized dosage will be updated.'}
                   </p>
                 </div>
               </div>

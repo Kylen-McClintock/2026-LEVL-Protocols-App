@@ -676,14 +676,11 @@ export default function CreateCustomModalityModal({
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-black text-white uppercase tracking-wider">
-                            Auto-Translate from Picture
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
-                            <Sparkles size={11} /> Gemini Vision
+                            Scan Label Photo
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">
-                          Snap a photo of the Supplement Facts bottle label to auto-populate ingredients, dosage, and optimal circadian timing.
+                          Take a photo of the label to automatically fill in ingredients and dosage.
                         </p>
                       </div>
                     </div>
@@ -699,7 +696,7 @@ export default function CreateCustomModalityModal({
                         {isScanningLabel ? (
                           <>
                             <RefreshCw size={14} className="animate-spin" />
-                            <span>Analyzing Label...</span>
+                            <span>Reading Label...</span>
                           </>
                         ) : (
                           <>
@@ -727,8 +724,8 @@ export default function CreateCustomModalityModal({
                     <div className="p-3 bg-amber-950/50 border border-amber-500/30 rounded-xl flex items-center gap-3 animate-pulse">
                       <RefreshCw size={16} className="text-amber-400 animate-spin shrink-0" />
                       <div className="text-xs text-amber-200">
-                        <span className="font-bold block">Analyzing Supplement Facts Label with Gemini Vision...</span>
-                        <span className="text-[11px] text-amber-300/80">Extracting chemical forms, elemental amounts, serving size, and circadian timing.</span>
+                        <span className="font-bold block">Reading Supplement Facts Label...</span>
+                        <span className="text-[11px] text-amber-300/80">Detecting ingredients, dosage amounts, and serving size.</span>
                       </div>
                     </div>
                   )}

@@ -674,7 +674,7 @@ export default function GuidePage() {
                   5. Quick-Log Hotkeys: 1-Tap Logging &amp; Custom Creation
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Left vertical gradient progress bars, custom hotkey builder, and Gemini Vision AI meal plate scans.
+                  Left vertical gradient progress bars, custom hotkey builder, and AI meal plate scans.
                 </p>
               </div>
             </div>
@@ -765,9 +765,9 @@ export default function GuidePage() {
             <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/30 text-xs flex items-start gap-3">
               <Camera size={18} className="text-purple-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <strong className="text-purple-200">Gemini Vision AI Meal Plate Scanner:</strong>
+                <strong className="text-purple-200">AI Meal Plate Scanner:</strong>
                 <p className="text-slate-300 leading-relaxed">
-                  Tap the first hotkey button (<span className="text-emerald-300 font-bold">Meal / Fast Break</span>) to photograph your plate. Multimodal Vision AI instantly extracts calories, protein, carbs, prebiotic fiber, healthy fats, botanical plant diversity count, and lets you add or remove specific constituent ingredients.
+                  Tap the first hotkey button (<span className="text-emerald-300 font-bold">Meal / Fast Break</span>) to photograph your plate. Multimodal AI instantly extracts calories, protein, carbs, prebiotic fiber, healthy fats, botanical plant diversity count, and lets you add or remove specific constituent ingredients.
                 </p>
               </div>
             </div>

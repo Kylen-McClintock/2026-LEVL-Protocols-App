@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { CloudSun, Sun, Check, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react'
+import { CloudSun, Sun, Check, Sparkles } from 'lucide-react'
 import { UserProfile } from '@/lib/types'
 import { useWeatherTracking } from '@/lib/utils/useWeatherTracking'
 
@@ -18,15 +18,16 @@ export default function WeatherTrackingProfileCard({
 }: WeatherTrackingProfileCardProps) {
   const { isEnabled, currentWeather, isUpdating, setTracking } = useWeatherTracking(profile, localUserId)
 
-  const handleOptIn = async () => {
-    await setTracking(true)
+  const handleToggle = async () => {
+    const nextState = !isEnabled
+    await setTracking(nextState)
     if (profile && onUpdated) {
       onUpdated({
         ...profile,
-        weather_tracking_enabled: true,
+        weather_tracking_enabled: nextState,
         outcome_preference_scores: {
           ...profile.outcome_preference_scores,
-          weather_tracking_enabled: true
+          weather_tracking_enabled: nextState
         }
       })
     }
@@ -53,9 +54,9 @@ export default function WeatherTrackingProfileCard({
               <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
                 isEnabled
                   ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  : 'bg-slate-800/80 text-slate-400 border-slate-700/60'
               }`}>
-                {isEnabled ? '✓ Opted In' : 'Optional'}
+                {isEnabled ? '✓ Enabled' : 'Disabled'}
               </span>
             </div>
 
@@ -84,27 +85,38 @@ export default function WeatherTrackingProfileCard({
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="shrink-0 self-start sm:self-center">
-          {isEnabled ? (
-            <a
-              href="#weather-settings"
-              className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer"
-            >
-              <span>Manage in Settings</span>
-              <ArrowRight size={12} />
-            </a>
-          ) : (
-            <button
-              type="button"
-              onClick={handleOptIn}
-              disabled={isUpdating}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-cyan-500 hover:from-amber-400 hover:to-cyan-400 active:scale-95 text-slate-950 font-black text-xs transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <Sun size={14} className="fill-current" />
-              <span>{isUpdating ? 'Activating...' : 'Opt In to Weather Tracking'}</span>
-            </button>
-          )}
+        {/* Direct 1-Click Toggle Switch & Action Button */}
+        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
+          <button
+            type="button"
+            onClick={handleToggle}
+            disabled={isUpdating}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              isEnabled ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-slate-700'
+            }`}
+            role="switch"
+            aria-checked={isEnabled}
+            title={isEnabled ? 'Click to turn off weather tracking' : 'Click to turn on weather tracking'}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                isEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleToggle}
+            disabled={isUpdating}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border select-none ${
+              isEnabled
+                ? 'bg-slate-800/80 text-slate-300 border-slate-700/80 hover:bg-rose-950/40 hover:text-rose-300 hover:border-rose-500/40'
+                : 'bg-gradient-to-r from-amber-500 to-cyan-500 hover:from-amber-400 hover:to-cyan-400 text-slate-950 font-black shadow-md'
+            }`}
+          >
+            {isUpdating ? 'Updating...' : isEnabled ? 'Turn Off' : 'Turn On'}
+          </button>
         </div>
       </div>
     </div>

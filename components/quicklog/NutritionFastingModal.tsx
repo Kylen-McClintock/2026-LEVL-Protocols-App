@@ -532,7 +532,7 @@ export default function NutritionFastingModal({
                 </div>
               </div>
               <div className="space-y-1">
-                <h4 className="text-sm font-extrabold text-white">Analyzing Plate with Gemini Vision...</h4>
+                <h4 className="text-sm font-extrabold text-white">Analyzing Meal Plate...</h4>
                 <p className="text-xs text-slate-400 max-w-xs mx-auto">
                   Calculating portion sizes, protein density, net carbs, prebiotic fiber, and fruit/veggie servings.
                 </p>

@@ -21,7 +21,6 @@ import NegativeLongevityFactorsCard from '@/components/profile/NegativeLongevity
 import MedicalHistoryPrescriptionsCard from '@/components/profile/MedicalHistoryPrescriptionsCard'
 import ThemeAppearanceSettingsCard from '@/components/profile/ThemeAppearanceSettingsCard'
 import TemperatureUnitSettingsCard from '@/components/profile/TemperatureUnitSettingsCard'
-import WeatherTrackingSettingsCard from '@/components/profile/WeatherTrackingSettingsCard'
 import WeatherTrackingProfileCard from '@/components/profile/WeatherTrackingProfileCard'
 import FontSizeSettingsCard from '@/components/profile/FontSizeSettingsCard'
 import DataSovereigntyCard from '@/components/profile/DataSovereigntyCard'
@@ -296,7 +295,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* AI Supplement Facts Scanner Banner Card */}
+        {/* Supplement Label Scanner Banner Card */}
         <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-purple-950/40 via-slate-900 to-indigo-950/30 border border-purple-500/30 shadow-xl space-y-4 backdrop-blur-md">
           <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
             <div className="flex items-center gap-3.5 min-w-0">
@@ -304,16 +303,11 @@ export default function SettingsPage() {
                 <Camera size={20} />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-white tracking-tight">
-                    AI Supplement Label Scanner
-                  </h3>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                    Gemini Vision
-                  </span>
-                </div>
+                <h3 className="text-sm font-bold text-white tracking-tight">
+                  Supplement Label Scanner
+                </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Snap any supplement bottle facts to auto-match modalities, calibrate exact dosages, or generate complex blends.
+                  Scan a bottle label to automatically add supplements and match your dosages.
                 </p>
               </div>
             </div>
@@ -324,7 +318,7 @@ export default function SettingsPage() {
               className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-95 text-white font-extrabold text-xs transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer shrink-0"
             >
               <Camera size={14} />
-              <span>Scan Supplement</span>
+              <span>Scan Label</span>
             </button>
           </div>
         </div>
@@ -418,12 +412,6 @@ export default function SettingsPage() {
         )}
 
         <TemperatureUnitSettingsCard />
-
-        <WeatherTrackingSettingsCard 
-          profile={profile} 
-          localUserId={authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()}
-          onUpdated={(updated) => setProfile(updated)} 
-        />
 
         <DataSovereigntyCard 
           localUserId={authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()} 

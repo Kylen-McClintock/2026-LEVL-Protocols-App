@@ -588,7 +588,7 @@ export const ProactiveDiagnosticCard: React.FC<ProactiveDiagnosticCardProps> = (
                       <Sparkles className="w-4 h-4 text-amber-400 animate-spin" />
                       Analyzing {uploadedFileName}...
                     </span>
-                    <span className="font-mono text-[11px] text-amber-400">Gemini Vision AI</span>
+                    <span className="font-mono text-[11px] text-amber-400">AI Analysis</span>
                   </div>
 
                   <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-amber-500/30">

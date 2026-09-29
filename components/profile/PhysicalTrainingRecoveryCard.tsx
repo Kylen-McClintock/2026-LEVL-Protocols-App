@@ -154,14 +154,16 @@ export default function PhysicalTrainingRecoveryCard({ profile, onUpdated }: Phy
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 mt-0.5"
-          >
-            <span>{isExpanded ? 'Collapse' : 'Configure'}</span>
-            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+          {isExpanded && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 mt-0.5"
+            >
+              <span>Collapse</span>
+              <ChevronUp size={14} />
+            </button>
+          )}
         </div>
       </div>
 
