@@ -493,10 +493,12 @@ export function calculateOutcomeDialedInScore(
 
 /**
  * Calculates the 0-100 Effort, Time, and Financial Friction Score
+ * Derived from modality operational burden, setup time, and user's personalized equipment access & constraints.
  */
 export function calculateOutcomeEffortScore(
   outcomeId: string,
-  activeModalities: Modality[]
+  activeModalities: Modality[],
+  userProfile?: UserProfile | null
 ): number {
   const normOutcomeId = normalizeOutcomeKey(outcomeId)
   const relevantMods = activeModalities.filter(m => isModalityMatchingOutcome(m, normOutcomeId))
@@ -504,16 +506,33 @@ export function calculateOutcomeEffortScore(
   if (relevantMods.length === 0) return 0
 
   let effortPoints = 0
+  const userHardware: string[] = userProfile?.hardware_access || 
+    (userProfile?.outcome_preference_scores as any)?.hardware_access || 
+    ['cold_plunge', 'sauna', 'wearable', 'gym', 'mouth_tape']
 
   relevantMods.forEach(m => {
     const mType = (m.modality_type || m.category || '').toLowerCase()
     const desc = ((m.dose_or_exposure || '') + ' ' + (m.timing_summary || '')).toLowerCase()
+    const nameLower = (m.name || '').toLowerCase()
 
     // Base friction by modality type
     if (mType.includes('resistance') || mType.includes('exercise') || mType.includes('fitness')) {
-      effortPoints += 24 // high time burden (45-60m)
+      effortPoints += 22 // physical workout commitment
+      // If user lacks gym access, equipment barrier increases friction
+      if (!userHardware.includes('gym') && (nameLower.includes('weight') || nameLower.includes('resistance') || nameLower.includes('lift') || nameLower.includes('hypertrophy') || nameLower.includes('strength'))) {
+        effortPoints += 14 // Travel or equipment limitation friction
+      }
     } else if (mType.includes('device') || mType.includes('mask') || mType.includes('sauna') || mType.includes('cold')) {
-      effortPoints += 16 // 10-20m physical setup
+      effortPoints += 14 // physical session
+      if (nameLower.includes('sauna') && !userHardware.includes('sauna')) {
+        effortPoints += 18 // Facility travel required
+      }
+      if ((nameLower.includes('cold') || nameLower.includes('plunge') || nameLower.includes('ice')) && !userHardware.includes('cold_plunge')) {
+        effortPoints += 18 // Ice bag preparation or facility immersion
+      }
+      if (nameLower.includes('red light') && !userHardware.includes('red_light')) {
+        effortPoints += 14 // Off-site clinic visit
+      }
     } else if (mType.includes('peptide') || mType.includes('inject')) {
       effortPoints += 14 // reconstitution, hygiene, sterile needles
     } else if (mType.includes('skincare') || mType.includes('topical') || mType.includes('cream')) {
@@ -531,6 +550,16 @@ export function calculateOutcomeEffortScore(
       effortPoints += 4
     }
   })
+
+  // Scale according to user's personalized complexity tolerance constraint
+  const constraints = (userProfile?.outcome_preference_scores as any)?._calibration_constraints
+  if (constraints?.complexityEffort) {
+    if (constraints.complexityEffort <= 2) {
+      effortPoints *= 1.15 // High sensitivity to friction
+    } else if (constraints.complexityEffort >= 4) {
+      effortPoints *= 0.88 // High tolerance for complex protocols
+    }
+  }
 
   return Math.min(100, Math.round(effortPoints))
 }
@@ -674,7 +703,7 @@ export function getOutcomeOptimizationSummary(
   return outcomeDimensions.map(dim => {
     const targetConfig = resolveUserTargetConfig(dim.id, userProfile)
     const dialedIn = calculateOutcomeDialedInScore(dim.id, activeModalities, allClashes)
-    const effortScore = calculateOutcomeEffortScore(dim.id, activeModalities)
+    const effortScore = calculateOutcomeEffortScore(dim.id, activeModalities, userProfile)
     const clashesForDim = allClashes.filter(c => c.outcomeId.toLowerCase() === dim.id.toLowerCase())
     const statusEval = evaluateOutcomeStatus(dialedIn.score, effortScore, targetConfig, clashesForDim)
 

@@ -96,10 +96,10 @@ export const LONGEVITY_VECTOR_AXES: VectorAxisMeta[] = [
   },
   {
     id: 'testosterone',
-    label: 'Endocrine Vitality & Anabolic Tone',
-    shortLabel: 'Endocrine Vitality',
-    description: 'Testosterone:cortisol ratio, Leydig steroidogenesis, and nocturnal GH pulsatility.',
-    primaryBiomarkers: ['Total Testosterone', 'Free Testosterone', 'Morning Cortisol']
+    label: 'Hormone Balance & Endocrine Health',
+    shortLabel: 'Hormone Balance',
+    description: 'Physiological hormone balance, free androgens/estrogens, DHEA, and endocrine vitality.',
+    primaryBiomarkers: ['Total Testosterone', 'Free Testosterone', 'Morning Cortisol', 'DHEA-S']
   },
   {
     id: 'chronic_inflammation',

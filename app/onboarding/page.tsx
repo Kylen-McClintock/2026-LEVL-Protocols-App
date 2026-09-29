@@ -33,6 +33,8 @@ export interface ModalityOption {
   evidenceTier: number // 1 (Gold RCT), 2 (Mechanistic), 3 (Emerging)
   sideEffectRisk: number // 1 (zero), 2 (moderate), 3 (high)
   isFoundational80_20?: boolean
+  category?: string
+  isPeptide?: boolean
   explainRationale: string
   targetPathways: string[]
   synergies: string[]
@@ -457,6 +459,7 @@ function OnboardingContent() {
   const [monthlyBudget, setMonthlyBudget] = useState<number>(2) // 1 ($0 free) to 4 (unconstrained)
   const [opennessToEmergingScience, setOpennessToEmergingScience] = useState<number>(2) // 1 (RCTs) to 3 (frontier)
   const [sideEffectTolerance, setSideEffectTolerance] = useState<number>(2) // 1 (zero risk) to 3 (hormetic)
+  const [peptidePreference, setPeptidePreference] = useState<'opt_in' | 'neutral' | 'opt_out'>('neutral')
 
   // Step 5: Starter Stack Selection & 3-Way Calibration Mode
   const [coverageMode, setCoverageMode] = useState<'simplify' | 'calibrated' | 'coverage'>('calibrated')
@@ -533,6 +536,7 @@ function OnboardingContent() {
               if (constraints.opennessToEmergingScience) setOpennessToEmergingScience(constraints.opennessToEmergingScience)
               if (constraints.sideEffectTolerance) setSideEffectTolerance(constraints.sideEffectTolerance)
               if (constraints.coverageMode) setCoverageMode(constraints.coverageMode)
+              if (constraints.peptidePreference) setPeptidePreference(constraints.peptidePreference)
             }
           }
         }
@@ -742,8 +746,11 @@ function OnboardingContent() {
     nextBestActions,
     targetCount
   } = useMemo(() => {
-    // 1. Filter out modalities where required hardware or budget is strictly missing
+    // 1. Filter out modalities where required hardware or budget is strictly missing, or if peptide preference is opt_out
     const available = STARTER_CATALOG.filter(mod => {
+      const isPeptide = mod.category === 'peptides' || mod.id.includes('peptide') || (mod as any).isPeptide || mod.name.toLowerCase().includes('peptide') || mod.name.toLowerCase().includes('bpc-157') || mod.name.toLowerCase().includes('epithalon') || mod.name.toLowerCase().includes('ghk-cu')
+      if (peptidePreference === 'opt_out' && isPeptide) return false
+
       const hasHardware = !mod.requiredHardware || selectedEquipment.includes(mod.requiredHardware)
       const budgetOk = monthlyBudget >= mod.costTier || mod.costTier === 1
       return hasHardware && budgetOk
@@ -752,6 +759,10 @@ function OnboardingContent() {
     // 2. Score each modality based on goal matches, foundational status, time & effort match
     const scored = available.map(mod => {
       let score = 0
+      const isPeptide = mod.category === 'peptides' || mod.id.includes('peptide') || (mod as any).isPeptide || mod.name.toLowerCase().includes('peptide')
+      if (peptidePreference === 'opt_in' && isPeptide) {
+        score += 16 // Priority boost for peptides
+      }
       // Goal alignment
       if (selectedGoals.includes(mod.goalKey)) score += 14
       // Foundational 80/20 status bonus
@@ -816,7 +827,8 @@ function OnboardingContent() {
     }
   }, [
     selectedEquipment, monthlyBudget, selectedGoals, dailyTimeBudget, 
-    complexityEffort, opennessToEmergingScience, sideEffectTolerance, coverageMode
+    complexityEffort, opennessToEmergingScience, sideEffectTolerance, coverageMode,
+    peptidePreference
   ])
 
   const toggleDay = (day: string) => {
@@ -898,8 +910,10 @@ function OnboardingContent() {
         monthlyBudget,
         opennessToEmergingScience,
         sideEffectTolerance,
-        coverageMode
+        coverageMode,
+        peptidePreference
       }
+      outcomeScores.peptide_preference = peptidePreference
 
       const totalHeightInches = (parseInt(heightFeet || '0', 10) * 12) + parseInt(heightInches || '0', 10)
 
@@ -2361,6 +2375,75 @@ function OnboardingContent() {
                       {sideEffectTolerance === 3 && 'Level 3 — Moderate Hormetic Conditioning: Deliberate thermal or physical stress demanding dedicated somatic effort and adaptation (174°F+ Finnish dry sauna, 50°F cold plunge, structured progressive resistance).'}
                       {sideEffectTolerance === 4 && 'Level 4 — Intense Physical & Metabolic Strain: High physiological demands (prolonged intermittent fasting, near-failure hypertrophy, intensive hot/cold contrast, high-dose senolytic pulses).'}
                       {sideEffectTolerance === 5 && 'Level 5 — Peak Tolerable Hormetic Load: Extreme cardiovascular, thermal, or metabolic load; requires dedicated recovery monitoring and high athletic/metabolic resilience.'}
+                    </div>
+                  </div>
+
+                  {/* 6. Injectable Peptides & Hormone Modalities 3-Way Preference */}
+                  <div className="space-y-2 pt-3 border-t border-white/5">
+                    <div className="flex items-center justify-between text-xs">
+                      <label className="font-bold text-slate-200 flex items-center gap-1.5">
+                        <Pill size={13} className="text-purple-400" />
+                        <span>Injectable Peptides &amp; Hormone Modalities</span>
+                      </label>
+                      <span className="font-mono font-bold text-purple-300 bg-purple-500/10 px-2.5 py-0.5 rounded-lg border border-purple-500/20 text-xs">
+                        {peptidePreference === 'opt_in' ? 'Opt-In (Prioritized)' : peptidePreference === 'opt_out' ? 'Opt-Out (Excluded)' : 'Neutral (Standard)'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPeptidePreference('opt_in')}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          peptidePreference === 'opt_in'
+                            ? 'bg-purple-950/60 border-purple-400 text-white shadow-md'
+                            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs block text-purple-300">💉 Opt-In</span>
+                          {peptidePreference === 'opt_in' && <Check size={12} className="text-purple-400 stroke-[3]" />}
+                        </div>
+                        <span className="text-[10px] text-slate-400 block mt-1 leading-snug">
+                          Show more &amp; prioritize therapeutic peptides in recommendations
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPeptidePreference('neutral')}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          peptidePreference === 'neutral'
+                            ? 'bg-slate-800/80 border-slate-500 text-white shadow-md'
+                            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs block text-slate-200">⚖️ Neutral</span>
+                          {peptidePreference === 'neutral' && <Check size={12} className="text-slate-300 stroke-[3]" />}
+                        </div>
+                        <span className="text-[10px] text-slate-400 block mt-1 leading-snug">
+                          Standard evidence-based recommendation rules (default)
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPeptidePreference('opt_out')}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          peptidePreference === 'opt_out'
+                            ? 'bg-rose-950/60 border-rose-400 text-white shadow-md'
+                            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs block text-rose-300">🚫 Opt-Out</span>
+                          {peptidePreference === 'opt_out' && <Check size={12} className="text-rose-400 stroke-[3]" />}
+                        </div>
+                        <span className="text-[10px] text-slate-400 block mt-1 leading-snug">
+                          Strictly exclude needles and injectable peptides entirely
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </div>

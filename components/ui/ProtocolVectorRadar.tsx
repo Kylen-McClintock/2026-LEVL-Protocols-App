@@ -3,6 +3,8 @@
 import React, { useState, useMemo } from 'react'
 import {
   ProtocolFingerprint,
+  ProtocolVectorScores,
+  ProtocolHallmarkScores,
   LONGEVITY_VECTOR_AXES,
   HALLMARK_OF_AGING_AXES
 } from '@/lib/data/protocolFingerprints'
@@ -10,12 +12,13 @@ import { RadarMode } from '@/lib/synergy/protocolStackEngine'
 
 export interface ProtocolVectorRadarProps {
   protocols: ProtocolFingerprint[]
-  stackedScores?: Record<string, number>
+  stackedScores?: Record<string, number> | ProtocolVectorScores | ProtocolHallmarkScores
   mode?: RadarMode
   variant?: 'full' | 'thumbnail'
   size?: number // used for thumbnail or custom dimensions
   highlightAxisId?: string | null
   onHoverAxis?: (axisId: string | null) => void
+  onSelectAxis?: (axisId: string) => void
   showLegend?: boolean
 }
 
@@ -36,6 +39,7 @@ export const ProtocolVectorRadar: React.FC<ProtocolVectorRadarProps> = ({
   size = 460,
   highlightAxisId = null,
   onHoverAxis,
+  onSelectAxis,
   showLegend = true
 }) => {
   const [hoveredAxis, setHoveredAxis] = useState<string | null>(null)
@@ -85,10 +89,10 @@ export const ProtocolVectorRadar: React.FC<ProtocolVectorRadarProps> = ({
   }, [axes, numSpokes, centerX, centerY, radius, isThumb])
 
   // Compute SVG polygon points for an arbitrary score map
-  const getPolygonPoints = (scoresMap: Record<string, number>): string => {
+  const getPolygonPoints = (scoresMap: Record<string, number> | ProtocolVectorScores | ProtocolHallmarkScores): string => {
     return spokeGeometry
       .map(spoke => {
-        const score = Math.max(8, Math.min(100, scoresMap[spoke.axis.id] || 10))
+        const score = Math.max(8, Math.min(100, (scoresMap as any)[spoke.axis.id] || 10))
         const rRatio = score / 100
         const x = centerX + (radius * rRatio) * spoke.cos
         const y = centerY + (radius * rRatio) * spoke.sin
@@ -129,7 +133,7 @@ export const ProtocolVectorRadar: React.FC<ProtocolVectorRadarProps> = ({
     const foundSpoke = spokeGeometry.find(s => s.axis.id === activeHoverAxis)
     if (!foundSpoke) return null
 
-    const stackedVal = stackedScores ? stackedScores[activeHoverAxis] : undefined
+    const stackedVal = stackedScores ? (stackedScores as any)[activeHoverAxis] : undefined
     const protoBreakdown = protocols.map((fp, idx) => {
       const val = mode === 'vectors'
         ? (fp.vectors as any)[activeHoverAxis] || 0
@@ -299,7 +303,7 @@ export const ProtocolVectorRadar: React.FC<ProtocolVectorRadarProps> = ({
           {/* 3. INTERACTIVE VERTEX ANCHOR NODES & HOVER ZONES */}
           {spokeGeometry.map(spoke => {
             const isHovered = activeHoverAxis === spoke.axis.id
-            const stackedScore = stackedScores ? (stackedScores[spoke.axis.id] || 0) : 0
+            const stackedScore = stackedScores ? ((stackedScores as any)[spoke.axis.id] || 0) : 0
             const nodeRadiusRatio = Math.max(0.08, stackedScore / 100)
             const nodeX = centerX + (radius * nodeRadiusRatio) * spoke.cos
             const nodeY = centerY + (radius * nodeRadiusRatio) * spoke.sin
@@ -308,20 +312,23 @@ export const ProtocolVectorRadar: React.FC<ProtocolVectorRadarProps> = ({
               <g
                 key={`node_${spoke.axis.id}`}
                 className="cursor-pointer group"
+                onClick={() => {
+                  if (onSelectAxis) onSelectAxis(String(spoke.axis.id))
+                }}
                 onMouseEnter={() => {
-                  setHoveredAxis(spoke.axis.id)
-                  if (onHoverAxis) onHoverAxis(spoke.axis.id)
+                  setHoveredAxis(String(spoke.axis.id))
+                  if (onHoverAxis) onHoverAxis(String(spoke.axis.id))
                 }}
                 onMouseLeave={() => {
                   setHoveredAxis(null)
                   if (onHoverAxis) onHoverAxis(null)
                 }}
               >
-                {/* Invisible large hit area */}
+                {/* Invisible large hit area for touch and mouse */}
                 <circle
                   cx={spoke.xOuter}
                   cy={spoke.yOuter}
-                  r="24"
+                  r="26"
                   fill="transparent"
                 />
 
@@ -338,7 +345,7 @@ export const ProtocolVectorRadar: React.FC<ProtocolVectorRadarProps> = ({
                   />
                 )}
 
-                {/* Outer Axis Label */}
+                {/* Outer Axis Label with Score */}
                 <text
                   x={spoke.xLabel}
                   y={spoke.yLabel}
@@ -346,13 +353,18 @@ export const ProtocolVectorRadar: React.FC<ProtocolVectorRadarProps> = ({
                     Math.abs(spoke.cos) < 0.15 ? 'middle' : spoke.cos > 0 ? 'start' : 'end'
                   }
                   dominantBaseline="central"
-                  className={`text-[11px] font-extrabold transition-all duration-150 ${
+                  className={`text-[11px] font-extrabold transition-all duration-150 select-none ${
                     isHovered
                       ? 'fill-amber-300 font-mono scale-105'
                       : 'fill-slate-300 hover:fill-white'
                   }`}
                 >
                   {spoke.axis.shortLabel || spoke.axis.label}
+                  {stackedScores && (stackedScores as any)[spoke.axis.id] !== undefined && (
+                    <tspan className="font-mono text-[9px] fill-emerald-400 font-bold">
+                      {` ${Math.round((stackedScores as any)[spoke.axis.id])}%`}
+                    </tspan>
+                  )}
                 </text>
               </g>
             )

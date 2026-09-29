@@ -10,7 +10,7 @@ interface HardwareAccessCardProps {
   onUpdated?: (updated: UserProfile) => void
 }
 
-const HARDWARE_ITEMS = [
+export const HARDWARE_ITEMS = [
   {
     id: 'cold_plunge',
     label: 'Cold Plunge / Ice Tub',

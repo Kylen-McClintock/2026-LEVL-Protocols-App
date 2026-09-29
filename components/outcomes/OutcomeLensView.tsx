@@ -38,6 +38,9 @@ import { BiomarkerMeasurementRecord } from '@/lib/aging-models/bioAgeTypes'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
 import { Activity } from 'lucide-react'
 import { OutcomeFilterDropdown } from '@/components/ui/OutcomeFilterDropdown'
+import { ProtocolVectorRadar } from '@/components/ui/ProtocolVectorRadar'
+import { auditRoutineStackHealth } from '@/lib/synergy/routineStackHealthEngine'
+import { ALL_SCHEMA_CHECKIN_OUTCOMES, getOutcomeEmoji } from '@/components/ui/ViewSelectorHeader'
 
 interface OutcomeLensViewProps {
   tasks: DailyProtocolTask[]
@@ -110,6 +113,7 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
   }
 
   const [expandedOutcomes, setExpandedOutcomes] = useState<Record<string, boolean>>({})
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Record<string, boolean>>({})
   const [showEmptyDimensions, setShowEmptyDimensions] = useState(false)
   const [selectedAnalysisOutcome, setSelectedAnalysisOutcome] = useState<OutcomeOptimizationState | null>(null)
   const [biomarkers, setBiomarkers] = useState<BiomarkerMeasurementRecord[]>([])
@@ -229,6 +233,78 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
     })
   }, [outcomeSummaries, tasksByOutcome, activeSelectedOutcomes, showEmptyDimensions])
 
+  // Set of the 8 canonical biological longevity vectors
+  const LONGEVITY_VECTOR_KEYS = useMemo(() => new Set([
+    'heart_health',
+    'brain_longevity',
+    'metabolic_health',
+    'cancer_defense',
+    'testosterone',
+    'chronic_inflammation',
+    'bone_density',
+    'cellular_longevity'
+  ]), [])
+
+  // Live Stack Health Audit for the 8 Biological Longevity Vectors Radar
+  const stackHealthReport = useMemo(() => {
+    return auditRoutineStackHealth(tasks, activeModalities, userProfile, wellbeingCheckin)
+  }, [tasks, activeModalities, userProfile, wellbeingCheckin])
+
+  // Partition displayed summaries into Longevity Vectors & Prioritized Functional Outcomes
+  const { longevitySummaries, functionalSummaries } = useMemo(() => {
+    const longevity: OutcomeOptimizationState[] = []
+    const functional: OutcomeOptimizationState[] = []
+
+    displayedSummaries.forEach(s => {
+      const norm = s.outcomeId.toLowerCase().replace(/\s+/g, '_').trim()
+      if (LONGEVITY_VECTOR_KEYS.has(norm)) {
+        longevity.push(s)
+      } else {
+        functional.push(s)
+      }
+    })
+
+    // Sort functional summaries: user priority goals first, ties broken by foundational human importance
+    const userPrefs = userProfile?.outcome_preference_scores || {}
+    const primaryGoals = userProfile?.primary_goals || []
+
+    functional.sort((a, b) => {
+      const aNorm = a.outcomeId.toLowerCase().replace(/\s+/g, '_').trim()
+      const bNorm = b.outcomeId.toLowerCase().replace(/\s+/g, '_').trim()
+
+      const aUserScore = typeof userPrefs[a.outcomeId] === 'number' 
+        ? userPrefs[a.outcomeId] 
+        : typeof userPrefs[aNorm] === 'number' 
+        ? userPrefs[aNorm] 
+        : (primaryGoals.includes(a.outcomeId) || primaryGoals.includes(aNorm) ? 8 : 0)
+
+      const bUserScore = typeof userPrefs[b.outcomeId] === 'number' 
+        ? userPrefs[b.outcomeId] 
+        : typeof userPrefs[bNorm] === 'number' 
+        ? userPrefs[bNorm] 
+        : (primaryGoals.includes(b.outcomeId) || primaryGoals.includes(bNorm) ? 8 : 0)
+
+      if (bUserScore !== aUserScore) {
+        return bUserScore - aUserScore // Higher user priority first
+      }
+
+      // Foundational human hierarchy rank from ALL_SCHEMA_CHECKIN_OUTCOMES
+      const aMeta = ALL_SCHEMA_CHECKIN_OUTCOMES.find(o => o.id === aNorm || o.id === a.outcomeId)
+      const bMeta = ALL_SCHEMA_CHECKIN_OUTCOMES.find(o => o.id === bNorm || o.id === b.outcomeId)
+
+      const aRank = aMeta ? aMeta.defaultRank : 99
+      const bRank = bMeta ? bMeta.defaultRank : 99
+
+      if (aRank !== bRank) {
+        return aRank - bRank
+      }
+
+      return b.dialedInScore - a.dialedInScore
+    })
+
+    return { longevitySummaries: longevity, functionalSummaries: functional }
+  }, [displayedSummaries, userProfile, LONGEVITY_VECTOR_KEYS])
+
   // Stats
   const targetGreenCount = outcomeSummaries.filter(s => s.status === 'green').length
   const targetYellowCount = outcomeSummaries.filter(s => s.status === 'yellow').length
@@ -326,55 +402,395 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
         </div>
       </div>
 
-      {/* 3. Outcome Vectors List */}
-      <div className="space-y-6">
-        {displayedSummaries.length === 0 ? (
-          <div className="text-center p-8 bg-slate-950/60 border border-white/10 rounded-2xl text-gray-400 text-sm space-y-2">
-            <p className="font-bold text-white">No active modalities for this outcome.</p>
-            <p className="text-xs text-slate-400">Add modalities targeting this dimension from the Explore page or tap another filter.</p>
+      {/* 3. The 8 Biological Longevity Vectors Radar Hero Card */}
+      <div className="bg-gradient-to-b from-slate-900/90 to-slate-950/90 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-md space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <Activity size={18} />
+              </span>
+              <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                The 8 Biological Longevity Vectors
+              </h3>
+              <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 font-bold">
+                Clinical Coverage
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+              Evidence-based clinical evaluation across all 8 canonical biological systems. Tap any spoke label to highlight that vector.
+            </p>
           </div>
-        ) : (
-          displayedSummaries.map(summary => {
-            const normId = summary.outcomeId.toLowerCase().trim()
-            const tasksInOutcome = tasksByOutcome.get(normId) || []
-            const isExpanded = expandedOutcomes[summary.outcomeId] !== false // default true
 
-            return (
-              <div 
-                key={summary.outcomeId}
-                className="rounded-3xl border border-slate-800 bg-slate-950/80 overflow-hidden shadow-xl transition-all duration-300 hover:border-slate-700/80"
-              >
-                {/* Outcome Dimension Header Bar */}
-                <div className="p-4 sm:p-5 bg-slate-900/60 border-b border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  {/* Left: Outcome Identity */}
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10 shrink-0 mt-0.5">
-                      <Sparkles size={18} className="text-purple-400" />
-                    </div>
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
-                          {summary.outcomeName}
-                        </h3>
-                        <span className={`px-2.5 py-0.5 rounded-full border text-[11px] font-bold font-mono ${summary.badgeBg} ${summary.badgeBorder} ${summary.badgeText}`}>
-                          {summary.statusLabel}
-                        </span>
+          {stackHealthReport.conflicts.length > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/60 border border-rose-500/30 text-rose-300 text-xs font-mono font-bold shrink-0">
+              <AlertTriangle size={13} className="text-rose-400" />
+              <span>{stackHealthReport.conflicts.length} Timing Conflicts</span>
+            </div>
+          )}
+        </div>
+
+        {/* The Overlaid Interactive Vector Radar */}
+        <div className="flex justify-center py-2 overflow-hidden">
+          <ProtocolVectorRadar
+            protocols={
+              stackHealthReport.conflicts.length > 0
+                ? [stackHealthReport.currentRadarFingerprint, stackHealthReport.optimizedRadarFingerprint]
+                : [stackHealthReport.currentRadarFingerprint]
+            }
+            stackedScores={stackHealthReport.currentRadarFingerprint.vectors}
+            variant="full"
+            size={460}
+            showLegend={true}
+            onSelectAxis={(axisId) => {
+              handleToggleOutcome(axisId)
+            }}
+          />
+        </div>
+      </div>
+
+      {/* 4. Biological Longevity Vector Cards */}
+      {longevitySummaries.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pt-2">
+            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+              <Sparkles size={14} className="text-purple-400" />
+              <span>Longevity Vector Profiles ({longevitySummaries.length})</span>
+            </h3>
+            <span className="text-[11px] font-mono text-slate-500">
+              Tap scores to inspect calculus &amp; constraints
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            {longevitySummaries.map(summary => {
+              const normId = summary.outcomeId.toLowerCase().trim()
+              const tasksInOutcome = tasksByOutcome.get(normId) || []
+              const isExpanded = expandedOutcomes[summary.outcomeId] !== false // default true
+              const isDescExpanded = expandedDescriptions[summary.outcomeId] || false
+
+              return (
+                <div 
+                  key={summary.outcomeId}
+                  className="rounded-3xl border border-slate-800 bg-slate-950/80 overflow-hidden shadow-xl transition-all duration-300 hover:border-slate-700/80"
+                >
+                  {/* Outcome Dimension Header Bar */}
+                  <div className="p-4 sm:p-5 bg-slate-900/60 border-b border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    {/* Left: Outcome Identity */}
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10 shrink-0 mt-0.5">
+                        <Sparkles size={18} className="text-purple-400" />
                       </div>
-                      <p className="text-xs text-slate-400 truncate max-w-md">
-                        {summary.statusDescription}
-                      </p>
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
+                            {summary.outcomeName}
+                          </h3>
+                          <span className={`px-2.5 py-0.5 rounded-full border text-[11px] font-bold font-mono ${summary.badgeBg} ${summary.badgeBorder} ${summary.badgeText}`}>
+                            {summary.statusLabel}
+                          </span>
+                        </div>
+                        {/* Expandable Status Description - Never Clipped */}
+                        <div className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                          <span className={isDescExpanded ? '' : 'line-clamp-2'}>
+                            {summary.statusDescription}
+                          </span>
+                          {summary.statusDescription && summary.statusDescription.length > 80 && (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedDescriptions(prev => ({ ...prev, [summary.outcomeId]: !isDescExpanded }))}
+                              className="ml-1 text-[11px] text-purple-400 hover:text-purple-300 font-medium underline underline-offset-2 cursor-pointer"
+                            >
+                              {isDescExpanded ? 'Show less ▴' : 'Show more ▾'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Scores & Tuning CTA */}
+                    <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap justify-between md:justify-end">
+                      {/* Dialed-In Score - Clickable to open clinical analysis */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAnalysisOutcome(summary)}
+                        className="text-right p-1.5 -m-1.5 rounded-xl hover:bg-slate-800/80 border border-transparent hover:border-purple-500/40 transition-all cursor-pointer group"
+                        title="Click to view scoring calculus & evidence"
+                      >
+                        <div className="text-[10px] font-mono uppercase text-slate-400 tracking-wider flex items-center justify-end gap-1">
+                          <span>Dialed-In Score</span>
+                          <Info size={10} className="text-purple-400 group-hover:text-purple-300" />
+                        </div>
+                        <div className="flex items-baseline gap-1 justify-end">
+                          <span className={`text-xl font-black font-mono ${
+                            summary.dialedInScore >= summary.targetConfig.targetDialedIn 
+                              ? 'text-emerald-400' 
+                              : summary.dialedInScore >= summary.targetConfig.targetDialedIn - 15 
+                              ? 'text-amber-400' 
+                              : 'text-rose-400'
+                          }`}>
+                            {summary.dialedInScore}
+                          </span>
+                          <span className="text-xs font-mono text-slate-500">/ 100</span>
+                          <span className="text-[10px] text-slate-400 font-medium ml-1">
+                            ({summary.percentileRank}th %ile)
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Effort Score - Clickable to open tuning and equipment dials */}
+                      <button
+                        type="button"
+                        onClick={() => onInspectOutcome(summary)}
+                        className="text-right border-l border-white/10 pl-3 sm:pl-4 p-1.5 -my-1.5 rounded-r-xl hover:bg-slate-800/80 border border-transparent hover:border-amber-500/40 transition-all cursor-pointer group"
+                        title="Click to tune target ambition & equipment constraints"
+                      >
+                        <div className="text-[10px] font-mono uppercase text-slate-400 tracking-wider flex items-center gap-1 justify-end">
+                          <Zap size={10} className="text-amber-400" />
+                          <span>Effort &amp; Cost</span>
+                          <Sliders size={10} className="text-amber-400 group-hover:text-amber-300" />
+                        </div>
+                        <div className="flex items-baseline gap-1 justify-end">
+                          <span className="text-xl font-black font-mono text-amber-300">
+                            {summary.effortScore}
+                          </span>
+                          <span className="text-xs font-mono text-slate-500">/ 100</span>
+                        </div>
+                      </button>
+
+                      {/* Action Controls */}
+                      <div className="flex items-center gap-2 border-l border-white/10 pl-3 sm:pl-4">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAnalysisOutcome(summary)}
+                          className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-cyan-400 hover:text-cyan-300 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center cursor-pointer active:scale-95"
+                          title="View Clinical Analysis & Scoring Calculus"
+                        >
+                          <Info size={14} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onInspectOutcome(summary)}
+                          className="px-3 py-1.5 bg-purple-950/70 hover:bg-purple-900/80 border border-purple-500/40 text-purple-200 hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+                          title="Tune Target Ambition & Effort Allowance"
+                        >
+                          <Sliders size={13} className="text-purple-300" />
+                          <span>Tune</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleOutcomeExpansion(summary.outcomeId)}
+                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all cursor-pointer"
+                          aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                        >
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Right: Scores & Tuning CTA */}
-                  <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap justify-between md:justify-end">
-                    {/* Dialed-In Score */}
-                    <div className="text-right">
-                      <div className="text-[10px] font-mono uppercase text-slate-400 tracking-wider">
-                        Dialed-In Score
+                  {/* Real-World Biomarker Feedback Strip */}
+                  {(() => {
+                    const fb = getBiomarkerFeedbackForOutcome(summary.outcomeId, summary.dialedInScore, biomarkers)
+                    return (
+                      <div className="px-4 py-2 bg-slate-950/70 border-b border-slate-800/70 flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Activity size={12} className="text-cyan-400 shrink-0" />
+                          <span className="text-slate-400 font-mono text-[11px] truncate">
+                            {fb.primaryBiomarker.name}: <strong className="text-white">{fb.primaryBiomarker.currentValue !== null ? `${fb.primaryBiomarker.currentValue} ${fb.primaryBiomarker.unit}` : 'None logged'}</strong> (Target: <span className="text-cyan-300 font-bold">{fb.primaryBiomarker.clinicalTargetDisplay}</span>)
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDrawerMarkerId(fb.primaryBiomarker.biomarkerId)
+                            setIsBiomarkerDrawerOpen(true)
+                          }}
+                          className="text-[10px] font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 shrink-0 cursor-pointer"
+                        >
+                          <span>{fb.primaryBiomarker.currentValue !== null ? 'Calibrate Labs' : '+ Sync Labs'}</span>
+                        </button>
                       </div>
-                      <div className="flex items-baseline gap-1 justify-end">
-                        <span className={`text-xl font-black font-mono ${
+                    )
+                  })()}
+
+                  {/* Clashes Alert Banner for this Outcome */}
+                  {summary.clashes.length > 0 && (
+                    <div className="p-4 bg-rose-950/30 border-b border-rose-500/20 space-y-3">
+                      {summary.clashes.map(clash => (
+                        <div 
+                          key={clash.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-rose-950/60 border border-rose-500/40 rounded-2xl text-xs text-rose-200"
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <AlertTriangle size={16} className="text-rose-400 shrink-0 mt-0.5" />
+                            <div className="space-y-0.5">
+                              <span className="font-bold text-rose-300 block">{clash.title}</span>
+                              <p className="text-rose-200/90 leading-relaxed">{clash.biologicalMechanism}</p>
+                              <span className="text-rose-300/80 text-[11px] block mt-1">
+                                <strong>Recommended Fix:</strong> {clash.recommendedFix}
+                              </span>
+                            </div>
+                          </div>
+
+                          {clash.canAutoFixSchedule && onAutoFixClash && (
+                            <button
+                              type="button"
+                              onClick={() => onAutoFixClash(clash)}
+                              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold text-xs shrink-0 self-start sm:self-center transition-all cursor-pointer shadow-sm active:scale-95"
+                            >
+                              Auto-Fix Schedule
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Expanded Tasks & Modality Coverage Body */}
+                  {isExpanded && (
+                    <div className="p-4 sm:p-5 space-y-4">
+                      {/* Active Today Tasks */}
+                      {tasksInOutcome.length > 0 ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-white/10 pb-2">
+                            <span className="flex items-center gap-1.5">
+                              <Clock size={13} className="text-purple-400" />
+                              <span>Today&apos;s Modalities Contributing to {summary.outcomeName} ({tasksInOutcome.length})</span>
+                            </span>
+                          </div>
+
+                          <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
+                            {tasksInOutcome.map(task => {
+                              const mId = task.modality_id || task.protocol_step?.modality_id || ''
+                              const benchItem = benchItems.find(b => b.modality_id === mId)
+                              return (
+                                <ProtocolTaskCard 
+                                  key={task.id} 
+                                  task={task} 
+                                  onStatusChange={onStatusChange} 
+                                  onTrackOutcomes={onTrackOutcomes}
+                                  initialBenchItem={benchItem}
+                                  recentTasks={tasks}
+                                  allOutcomes={allOutcomes}
+                                  userProfile={userProfile}
+                                  wellbeingCheckin={wellbeingCheckin}
+                                  onSaveCustomOutcomes={onSaveCustomOutcomes}
+                                  onOutcomesSaved={onOutcomesSaved}
+                                  onOpenRescheduleModal={onOpenRescheduleModal}
+                                  outcomesRefreshKey={outcomesRefreshKey}
+                                  completionMode={completionMode}
+                                  isIgnited={true}
+                                />
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-black/40 border border-dashed border-white/10 rounded-2xl text-center text-xs text-slate-400">
+                          <span>No specific modality for this outcome is scheduled for today.</span>
+                        </div>
+                      )}
+
+                      {/* Tier Breakdown Badges */}
+                      <div className="pt-2 border-t border-white/10 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                        <span className="font-mono text-[11px] text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                          <Layers size={12} /> Modality Hierarchy:
+                        </span>
+                        {summary.tierBreakdown.foundational.map(item => (
+                          <span key={item.modality.id} className="px-2 py-0.5 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-[11px] font-medium">
+                            ★ {item.modality.name} (Pillar)
+                          </span>
+                        ))}
+                        {summary.tierBreakdown.synergistic.map(item => (
+                          <span key={item.modality.id} className="px-2 py-0.5 rounded-lg bg-purple-950/60 border border-purple-500/30 text-purple-300 text-[11px] font-medium">
+                            ✦ {item.modality.name} (Synergy)
+                          </span>
+                        ))}
+                        {summary.tierBreakdown.marginal.map(item => (
+                          <span key={item.modality.id} className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-[11px] font-medium">
+                            + {item.modality.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 5. Prioritized Daily Wellbeing & Functional Outcomes (1-Line-at-a-Time List) */}
+      {functionalSummaries.length > 0 && (
+        <div className="space-y-3 pt-6 border-t border-slate-800/80">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="space-y-0.5">
+              <h3 className="text-base font-black text-white flex items-center gap-2">
+                <Sparkles size={16} className="text-purple-400" />
+                <span>Functional Wellbeing &amp; Performance Outcomes ({functionalSummaries.length})</span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Ordered by your prioritized goals, with ties structured by foundational biological importance.
+              </p>
+            </div>
+            <span className="text-[11px] font-mono text-slate-500 self-start sm:self-auto">
+              1-Line Scannable Index
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {functionalSummaries.map((summary) => {
+              const normId = summary.outcomeId.toLowerCase().trim()
+              const tasksInOutcome = tasksByOutcome.get(normId) || []
+              const isRowExpanded = expandedOutcomes[summary.outcomeId] === true // default collapsed for scannability
+              const isDescExpanded = expandedDescriptions[summary.outcomeId] || false
+              const emoji = getOutcomeEmoji(summary.outcomeId, summary.outcomeName)
+              const userPrefs = userProfile?.outcome_preference_scores || {}
+              const primaryGoals = userProfile?.primary_goals || []
+              const isUserPrioritized = (typeof userPrefs[summary.outcomeId] === 'number' && (userPrefs[summary.outcomeId] as number) >= 7) || primaryGoals.includes(summary.outcomeId) || primaryGoals.includes(normId)
+
+              return (
+                <div
+                  key={summary.outcomeId}
+                  className="rounded-2xl border border-slate-800/90 bg-slate-950/70 hover:border-slate-700/80 transition-all overflow-hidden shadow-md"
+                >
+                  {/* The Scannable One-Line Row */}
+                  <div className="p-3 sm:px-4 flex items-center justify-between gap-3 text-xs">
+                    {/* Left: Icon, Name, Goal Badge, Status Tag */}
+                    <div 
+                      className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer select-none"
+                      onClick={() => toggleOutcomeExpansion(summary.outcomeId)}
+                    >
+                      <span className="text-base shrink-0">{emoji}</span>
+                      <span className="font-extrabold text-white truncate max-w-[170px] sm:max-w-xs text-xs sm:text-sm">
+                        {summary.outcomeName}
+                      </span>
+                      {isUserPrioritized && (
+                        <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] font-mono font-bold shrink-0">
+                          Priority Goal
+                        </span>
+                      )}
+                      <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold font-mono shrink-0 ${summary.badgeBg} ${summary.badgeBorder} ${summary.badgeText}`}>
+                        {summary.statusLabel}
+                      </span>
+                    </div>
+
+                    {/* Right: Dialed-In Score & Effort Score & Tune */}
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                      {/* Dialed-In Pill */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAnalysisOutcome(summary)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700/80 hover:border-purple-500/40 text-slate-300 hover:text-white transition-all cursor-pointer"
+                        title="Click to view scoring calculus & evidence"
+                      >
+                        <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">Score:</span>
+                        <span className={`font-mono font-black ${
                           summary.dialedInScore >= summary.targetConfig.targetDialedIn 
                             ? 'text-emerald-400' 
                             : summary.dialedInScore >= summary.targetConfig.targetDialedIn - 15 
@@ -383,192 +799,137 @@ export const OutcomeLensView: React.FC<OutcomeLensViewProps> = ({
                         }`}>
                           {summary.dialedInScore}
                         </span>
-                        <span className="text-xs font-mono text-slate-500">/ 100</span>
-                        <span className="text-[10px] text-slate-400 font-medium ml-1">
-                          ({summary.percentileRank}th %ile)
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Effort Score */}
-                    <div className="text-right border-l border-white/10 pl-3 sm:pl-4">
-                      <div className="text-[10px] font-mono uppercase text-slate-400 tracking-wider flex items-center gap-1 justify-end">
-                        <Zap size={10} className="text-amber-400" />
-                        <span>Effort & Cost</span>
-                      </div>
-                      <div className="flex items-baseline gap-1 justify-end">
-                        <span className="text-xl font-black font-mono text-amber-300">
-                          {summary.effortScore}
-                        </span>
-                        <span className="text-xs font-mono text-slate-500">/ 100</span>
-                      </div>
-                    </div>
-
-                    {/* Action Controls */}
-                    <div className="flex items-center gap-2 border-l border-white/10 pl-3 sm:pl-4">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedAnalysisOutcome(summary)}
-                        className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-cyan-400 hover:text-cyan-300 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center cursor-pointer active:scale-95"
-                        title="View Clinical Analysis & Scoring Calculus"
-                      >
-                        <Info size={14} />
+                        <span className="text-[10px] text-slate-500 font-mono">/100</span>
                       </button>
 
+                      {/* Effort Pill */}
                       <button
                         type="button"
                         onClick={() => onInspectOutcome(summary)}
-                        className="px-3 py-1.5 bg-purple-950/70 hover:bg-purple-900/80 border border-purple-500/40 text-purple-200 hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
-                        title="Tune Target Ambition & Effort Allowance"
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700/80 hover:border-amber-500/40 text-amber-300 hover:text-amber-200 transition-all cursor-pointer"
+                        title="Click to tune effort budget & equipment constraints"
                       >
-                        <Sliders size={13} className="text-purple-300" />
-                        <span>Tune</span>
+                        <Zap size={10} className="text-amber-400" />
+                        <span className="font-mono font-black">{summary.effortScore}</span>
                       </button>
 
+                      {/* Tune Button */}
+                      <button
+                        type="button"
+                        onClick={() => onInspectOutcome(summary)}
+                        className="p-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/30 text-purple-300 hover:text-white transition-all cursor-pointer"
+                        title="Tune Target & Constraints"
+                      >
+                        <Sliders size={13} />
+                      </button>
+
+                      {/* Expand / Collapse Row */}
                       <button
                         type="button"
                         onClick={() => toggleOutcomeExpansion(summary.outcomeId)}
-                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all cursor-pointer"
-                        aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                        className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
+                        aria-label={isRowExpanded ? 'Collapse row' : 'Expand row'}
                       >
-                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        {isRowExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </button>
                     </div>
                   </div>
-                </div>
 
-                {/* Real-World Biomarker Feedback Strip */}
-                {(() => {
-                  const fb = getBiomarkerFeedbackForOutcome(summary.outcomeId, summary.dialedInScore, biomarkers)
-                  return (
-                    <div className="px-4 py-2 bg-slate-950/70 border-b border-slate-800/70 flex items-center justify-between gap-3 text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Activity size={12} className="text-cyan-400 shrink-0" />
-                        <span className="text-slate-400 font-mono text-[11px] truncate">
-                          {fb.primaryBiomarker.name}: <strong className="text-white">{fb.primaryBiomarker.currentValue !== null ? `${fb.primaryBiomarker.currentValue} ${fb.primaryBiomarker.unit}` : 'None logged'}</strong> (Target: <span className="text-cyan-300 font-bold">{fb.primaryBiomarker.clinicalTargetDisplay}</span>)
+                  {/* Expanded Row Detail */}
+                  {isRowExpanded && (
+                    <div className="p-3 sm:p-4 bg-slate-900/40 border-t border-slate-800/80 space-y-3 animate-in fade-in">
+                      {/* Description */}
+                      <div className="text-xs text-slate-300 leading-relaxed">
+                        <span className={isDescExpanded ? '' : 'line-clamp-2'}>
+                          {summary.statusDescription}
                         </span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveDrawerMarkerId(fb.primaryBiomarker.biomarkerId)
-                          setIsBiomarkerDrawerOpen(true)
-                        }}
-                        className="text-[10px] font-mono font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 shrink-0 cursor-pointer"
-                      >
-                        <span>{fb.primaryBiomarker.currentValue !== null ? 'Calibrate Labs' : '+ Sync Labs'}</span>
-                      </button>
-                    </div>
-                  )
-                })()}
-
-                {/* Clashes Alert Banner for this Outcome */}
-                {summary.clashes.length > 0 && (
-                  <div className="p-4 bg-rose-950/30 border-b border-rose-500/20 space-y-3">
-                    {summary.clashes.map(clash => (
-                      <div 
-                        key={clash.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-rose-950/60 border border-rose-500/40 rounded-2xl text-xs text-rose-200"
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <AlertTriangle size={16} className="text-rose-400 shrink-0 mt-0.5" />
-                          <div className="space-y-0.5">
-                            <span className="font-bold text-rose-300 block">{clash.title}</span>
-                            <p className="text-rose-200/90 leading-relaxed">{clash.biologicalMechanism}</p>
-                            <span className="text-rose-300/80 text-[11px] block mt-1">
-                              <strong>Recommended Fix:</strong> {clash.recommendedFix}
-                            </span>
-                          </div>
-                        </div>
-
-                        {clash.canAutoFixSchedule && onAutoFixClash && (
+                        {summary.statusDescription && summary.statusDescription.length > 80 && (
                           <button
                             type="button"
-                            onClick={() => onAutoFixClash(clash)}
-                            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold text-xs shrink-0 self-start sm:self-center transition-all cursor-pointer shadow-sm active:scale-95"
+                            onClick={() => setExpandedDescriptions(prev => ({ ...prev, [summary.outcomeId]: !isDescExpanded }))}
+                            className="ml-1 text-[11px] text-purple-400 hover:text-purple-300 font-medium underline underline-offset-2 cursor-pointer"
                           >
-                            Auto-Fix Schedule
+                            {isDescExpanded ? 'Show less ▴' : 'Show more ▾'}
                           </button>
                         )}
                       </div>
-                    ))}
-                  </div>
-                )}
 
-                {/* Expanded Tasks & Modality Coverage Body */}
-                {isExpanded && (
-                  <div className="p-4 sm:p-5 space-y-4">
-                    {/* Active Today Tasks */}
-                    {tasksInOutcome.length > 0 ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-white/10 pb-2">
-                          <span className="flex items-center gap-1.5">
-                            <Clock size={13} className="text-purple-400" />
+                      {/* Active Today Tasks */}
+                      {tasksInOutcome.length > 0 ? (
+                        <div className="space-y-2 pt-1 border-t border-white/5">
+                          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Clock size={12} className="text-purple-400" />
                             <span>Today&apos;s Modalities Contributing to {summary.outcomeName} ({tasksInOutcome.length})</span>
+                          </div>
+                          <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-2.5"}>
+                            {tasksInOutcome.map(task => {
+                              const mId = task.modality_id || task.protocol_step?.modality_id || ''
+                              const benchItem = benchItems.find(b => b.modality_id === mId)
+                              return (
+                                <ProtocolTaskCard 
+                                  key={task.id} 
+                                  task={task} 
+                                  onStatusChange={onStatusChange} 
+                                  onTrackOutcomes={onTrackOutcomes}
+                                  initialBenchItem={benchItem}
+                                  recentTasks={tasks}
+                                  allOutcomes={allOutcomes}
+                                  userProfile={userProfile}
+                                  wellbeingCheckin={wellbeingCheckin}
+                                  onSaveCustomOutcomes={onSaveCustomOutcomes}
+                                  onOutcomesSaved={onOutcomesSaved}
+                                  onOpenRescheduleModal={onOpenRescheduleModal}
+                                  outcomesRefreshKey={outcomesRefreshKey}
+                                  completionMode={completionMode}
+                                  isIgnited={true}
+                                />
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2.5 bg-black/40 border border-dashed border-white/10 rounded-xl text-center text-xs text-slate-400">
+                          No specific modality for this outcome is scheduled for today.
+                        </div>
+                      )}
+
+                      {/* Hierarchy Badges */}
+                      <div className="pt-2 border-t border-white/5 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                        <span className="font-mono text-[10px] text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                          <Layers size={11} /> Modalities:
+                        </span>
+                        {summary.tierBreakdown.foundational.map(item => (
+                          <span key={item.modality.id} className="px-2 py-0.5 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-[10px] font-medium">
+                            ★ {item.modality.name}
                           </span>
-                        </div>
-
-                        <div className={completionMode === 'fast' ? "space-y-1.5" : "space-y-3"}>
-                          {tasksInOutcome.map(task => {
-                            const mId = task.modality_id || task.protocol_step?.modality_id || ''
-                            const benchItem = benchItems.find(b => b.modality_id === mId)
-                            return (
-                              <ProtocolTaskCard 
-                                key={task.id} 
-                                task={task} 
-                                onStatusChange={onStatusChange} 
-                                onTrackOutcomes={onTrackOutcomes}
-                                initialBenchItem={benchItem}
-                                recentTasks={tasks}
-                                allOutcomes={allOutcomes}
-                                userProfile={userProfile}
-                                wellbeingCheckin={wellbeingCheckin}
-                                onSaveCustomOutcomes={onSaveCustomOutcomes}
-                                onOutcomesSaved={onOutcomesSaved}
-                                onOpenRescheduleModal={onOpenRescheduleModal}
-                                outcomesRefreshKey={outcomesRefreshKey}
-                                completionMode={completionMode}
-                                isIgnited={true}
-                              />
-                            )
-                          })}
-                        </div>
+                        ))}
+                        {summary.tierBreakdown.synergistic.map(item => (
+                          <span key={item.modality.id} className="px-2 py-0.5 rounded-lg bg-purple-950/60 border border-purple-500/30 text-purple-300 text-[10px] font-medium">
+                            ✦ {item.modality.name}
+                          </span>
+                        ))}
+                        {summary.tierBreakdown.marginal.map(item => (
+                          <span key={item.modality.id} className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-[10px] font-medium">
+                            + {item.modality.name}
+                          </span>
+                        ))}
                       </div>
-                    ) : (
-                      <div className="p-3 bg-black/40 border border-dashed border-white/10 rounded-2xl text-center text-xs text-slate-400">
-                        <span>No specific modality for this outcome is scheduled for today.</span>
-                      </div>
-                    )}
-
-                    {/* Tier Breakdown Badges */}
-                    <div className="pt-2 border-t border-white/10 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                      <span className="font-mono text-[11px] text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                        <Layers size={12} /> Modality Hierarchy:
-                      </span>
-                      {summary.tierBreakdown.foundational.map(item => (
-                        <span key={item.modality.id} className="px-2 py-0.5 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-[11px] font-medium">
-                          ★ {item.modality.name} (Pillar)
-                        </span>
-                      ))}
-                      {summary.tierBreakdown.synergistic.map(item => (
-                        <span key={item.modality.id} className="px-2 py-0.5 rounded-lg bg-purple-950/60 border border-purple-500/30 text-purple-300 text-[11px] font-medium">
-                          ✦ {item.modality.name} (Synergy)
-                        </span>
-                      ))}
-                      {summary.tierBreakdown.marginal.map(item => (
-                        <span key={item.modality.id} className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 text-[11px] font-medium">
-                          + {item.modality.name}
-                        </span>
-                      ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            )
-          })
-        )}
-      </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State fallback if both arrays are empty */}
+      {displayedSummaries.length === 0 && (
+        <div className="text-center p-8 bg-slate-950/60 border border-white/10 rounded-2xl text-gray-400 text-sm space-y-2">
+          <p className="font-bold text-white">No active modalities found for this filter.</p>
+          <p className="text-xs text-slate-400">Add modalities targeting this dimension from the Explore page or tap another filter.</p>
+        </div>
+      )}
 
       {/* Interactive Clinical Analysis & Methodology Modal */}
       {selectedAnalysisOutcome && (

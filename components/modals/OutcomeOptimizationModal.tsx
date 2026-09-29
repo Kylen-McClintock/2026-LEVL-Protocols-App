@@ -20,10 +20,14 @@ import {
 import { 
   OutcomeOptimizationState, 
   OutcomeTargetConfig,
-  evaluateOutcomeStatus
+  evaluateOutcomeStatus,
+  calculateOutcomeEffortScore
 } from '@/lib/outcomes/outcomeOptimizationEngine'
 import { UserProfile, DailyProtocolTask } from '@/lib/types'
 import { LongevityAnalysisModal } from '@/components/modals/LongevityAnalysisModal'
+import { HARDWARE_ITEMS } from '@/components/profile/HardwareAccessCard'
+import { updateUserProfile } from '@/lib/data'
+import { Dumbbell, ChevronDown, ChevronUp, Check } from 'lucide-react'
 
 interface OutcomeOptimizationModalProps {
   isOpen: boolean
@@ -49,6 +53,49 @@ export const OutcomeOptimizationModal: React.FC<OutcomeOptimizationModalProps> =
   const [localMaxEffort, setLocalMaxEffort] = useState<number>(outcomeState?.targetConfig?.maxEffortAllowance ?? 60)
   const [isSavingTarget, setIsSavingTarget] = useState(false)
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false)
+
+  // Hardware & facility constraints state
+  const [hardware, setHardware] = useState<string[]>(
+    userProfile?.hardware_access || (userProfile?.outcome_preference_scores as any)?.hardware_access || [
+      'cold_plunge', 'sauna', 'wearable', 'gym', 'mouth_tape'
+    ]
+  )
+  const [showHardwareSection, setShowHardwareSection] = useState(false)
+  const [isSavingHardware, setIsSavingHardware] = useState(false)
+  const [hardwareSavedNotice, setHardwareSavedNotice] = useState(false)
+
+  // Recalculate dynamic effort score if hardware changes
+  const dynamicEffortScore = React.useMemo(() => {
+    if (!outcomeState) return 0
+    const mockProfile = {
+      ...(userProfile || {}),
+      hardware_access: hardware
+    } as UserProfile
+    return calculateOutcomeEffortScore(outcomeState.outcomeId, outcomeState.activeModalities, mockProfile)
+  }, [outcomeState, hardware, userProfile])
+
+  const toggleHardware = async (itemId: string) => {
+    const next = hardware.includes(itemId)
+      ? hardware.filter(id => id !== itemId)
+      : [...hardware, itemId]
+    setHardware(next)
+
+    if (userProfile?.local_user_id) {
+      setIsSavingHardware(true)
+      const updatedPrefs = {
+        ...(userProfile.outcome_preference_scores || {}),
+        hardware_access: next
+      }
+      await updateUserProfile(userProfile.local_user_id, {
+        hardware_access: next,
+        outcome_preference_scores: updatedPrefs
+      })
+      setIsSavingHardware(false)
+      setHardwareSavedNotice(true)
+      setTimeout(() => setHardwareSavedNotice(false), 2000)
+      window.dispatchEvent(new CustomEvent('levl_profile_updated'))
+    }
+  }
 
   // Keep local states synced if outcomeState changes
   useEffect(() => {
@@ -174,18 +221,18 @@ export const OutcomeOptimizationModal: React.FC<OutcomeOptimizationModalProps> =
               </div>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-3xl sm:text-4xl font-black text-teal-300 tracking-tight">
-                  {outcomeState.effortScore}
+                  {dynamicEffortScore}
                 </span>
                 <span className="text-xs text-slate-500 font-mono font-bold">/ 100</span>
               </div>
               <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-teal-400 transition-all duration-500"
-                  style={{ width: `${outcomeState.effortScore}%` }}
+                  style={{ width: `${dynamicEffortScore}%` }}
                 />
               </div>
               <p className="text-[10px] text-slate-400 font-mono">
-                {outcomeState.effortScore > 65 ? 'High Time/Cost Routine' : outcomeState.effortScore > 35 ? 'Moderate Maintenance' : 'Low Friction Lifestyle'}
+                {dynamicEffortScore > 65 ? 'High Time/Cost Routine' : dynamicEffortScore > 35 ? 'Moderate Maintenance' : 'Low Friction Lifestyle'}
               </p>
             </div>
           </div>
@@ -355,6 +402,72 @@ export const OutcomeOptimizationModal: React.FC<OutcomeOptimizationModalProps> =
                 {isSavingTarget ? 'Saved!' : 'Save Target Settings'}
               </button>
             </div>
+          </div>
+
+          {/* User Constraints & Hardware Access Dial */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Dumbbell size={16} className="text-teal-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Equipment &amp; Facility Constraints
+                </h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-300 border border-teal-500/30">
+                  {hardware.length}/{HARDWARE_ITEMS.length} Available
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHardwareSection(!showHardwareSection)}
+                className="text-xs text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <span>{showHardwareSection ? 'Hide Dials' : 'Adjust Equipment'}</span>
+                {showHardwareSection ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Having direct access to equipment (e.g. sauna, gym, cold plunge) lowers daily friction points. If equipment must be visited off-site or purchased, friction automatically increases.
+            </p>
+
+            {hardwareSavedNotice && (
+              <div className="text-[11px] text-emerald-400 font-mono font-bold flex items-center gap-1.5 animate-in fade-in">
+                <Check size={13} />
+                <span>Equipment constraints updated &amp; friction recalibrated!</span>
+              </div>
+            )}
+
+            {showHardwareSection && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 animate-in fade-in">
+                {HARDWARE_ITEMS.map(item => {
+                  const isAvailable = hardware.includes(item.id)
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => toggleHardware(item.id)}
+                      disabled={isSavingHardware}
+                      className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
+                        isAvailable
+                          ? 'bg-teal-950/40 border-teal-500/40 text-teal-200'
+                          : 'bg-slate-950/60 border-slate-800/80 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <span className="text-base shrink-0 mt-0.5">{item.emoji}</span>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-bold block text-white truncate">{item.label}</span>
+                        <span className="text-[10px] text-slate-400 block line-clamp-1">{item.desc}</span>
+                      </div>
+                      <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 border mt-0.5 ${
+                        isAvailable ? 'bg-teal-500 border-teal-400 text-slate-950' : 'border-slate-700 bg-slate-900'
+                      }`}>
+                        {isAvailable && <Check size={10} className="stroke-[3]" />}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Active Modalities Hierarchy Breakdown */}
