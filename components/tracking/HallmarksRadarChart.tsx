@@ -6,7 +6,8 @@ import {
   HallmarkCoverageItem,
   BenchmarkProfile,
   BENCHMARK_PROFILES,
-  HallmarkTier
+  HallmarkTier,
+  HallmarkMeta
 } from '@/lib/tracking/hallmarkCoverageEngine'
 import { HallmarkOfAgingIcon } from '@/components/icons'
 import {
@@ -41,6 +42,25 @@ interface HallmarksRadarChartProps {
   showBiomarkersPanel?: boolean
   onToggleBiomarkersPanel?: () => void
   biomarkerHighRiskCount?: number
+}
+
+// Concise, highly-readable canonical hallmark labels optimized for radar spoke pills
+const getRadarHallmarkLabel = (meta: HallmarkMeta): string => {
+  switch (meta.id) {
+    case 'genomic_instability': return 'Genomic'
+    case 'telomere_attrition': return 'Telomeres'
+    case 'epigenetic_alterations': return 'Epigenetics'
+    case 'loss_of_proteostasis': return 'Proteostasis'
+    case 'disabled_macroautophagy': return 'Autophagy'
+    case 'deregulated_nutrient_sensing': return 'Nutrient Sens.'
+    case 'mitochondrial_dysfunction': return 'Mitochondria'
+    case 'cellular_senescence': return 'Senescence'
+    case 'stem_cell_exhaustion': return 'Stem Cells'
+    case 'altered_intercellular_communication': return 'Intercellular'
+    case 'chronic_inflammation': return 'Inflammation'
+    case 'dysbiosis': return 'Microbiome'
+    default: return meta.shortName.split(' ')[0]
+  }
 }
 
 export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
@@ -78,35 +98,53 @@ export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
     return coverageReport.hallmarkMap[activeHallmarkId] || null
   }, [activeHallmarkId, coverageReport])
 
+  const handleSelectHallmark = (hallmarkId: string) => {
+    if (onSelectHallmark) {
+      onSelectHallmark(hallmarkId)
+    }
+    // On mobile screens, smoothly ensure the inspection card is scrolled into view
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      const el = document.getElementById('hallmark-inspection-card')
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }
+  }
+
   const selectedBenchmark = useMemo(() => {
     return BENCHMARK_PROFILES.find(b => b.id === selectedBenchmarkId) || BENCHMARK_PROFILES[0]
   }, [selectedBenchmarkId])
 
   const hasSimulationActive = (coverageReport.simulatedDelta || 0) > 0 || simulatedCount > 0
 
-  // Ultra-responsive SVG geometric dimensions with generous label margins
-  const viewBoxWidth = 740
-  const viewBoxHeight = 480
-  const centerX = viewBoxWidth / 2 // 370
-  const centerY = viewBoxHeight / 2 // 240
-  const radius = 135
+  // Ultra-responsive square SVG geometric dimensions with close-in mobile zoom
+  const viewBoxWidth = 540
+  const viewBoxHeight = 540
+  const centerX = viewBoxWidth / 2 // 270
+  const centerY = viewBoxHeight / 2 // 270
+  const radius = 150
   const items = coverageReport.hallmarkItems
   const numSpokes = items.length // 12
 
-  // Compute angles for each of the 12 spokes
+  // Compute angles and coordinates for each of the 12 spokes
   const spokeData = useMemo(() => {
     return items.map((item, index) => {
       const angle = (index * (2 * Math.PI / numSpokes)) - (Math.PI / 2)
       const cos = Math.cos(angle)
       const sin = Math.sin(angle)
 
-      // Outer spoke point (100%)
+      // Outer spoke point (100% boundary)
       const xOuter = centerX + radius * cos
       const yOuter = centerY + radius * sin
 
-      // Label point (radius + 28px)
-      const xLabel = centerX + (radius + 28) * cos
-      const yLabel = centerY + (radius + 28) * sin
+      // Label badge anchor point (radius + 55px = 205px from center)
+      const labelRadius = 205
+      const xLabel = centerX + labelRadius * cos
+      const yLabel = centerY + labelRadius * sin
+
+      // Connector line endpoint (at inner edge of badge pill)
+      const xConnector = centerX + 188 * cos
+      const yConnector = centerY + 188 * sin
 
       // Active user point
       const userRadiusRatio = Math.max(0.08, item.score / 100)
@@ -135,6 +173,8 @@ export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
         yOuter,
         xLabel,
         yLabel,
+        xConnector,
+        yConnector,
         xUser,
         yUser,
         xSim,
@@ -331,7 +371,7 @@ export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
               <button
                 key={hItem.meta.id}
                 type="button"
-                onClick={() => onSelectHallmark && onSelectHallmark(hItem.meta.id)}
+                onClick={() => handleSelectHallmark(hItem.meta.id)}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer border ${
                   isSelected
                     ? 'bg-purple-600 text-white border-purple-400 shadow-md scale-105 ring-2 ring-purple-400/30'
@@ -442,10 +482,10 @@ export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
       {/* Main Radar Layout: Side-by-Side 2-Column Split on Desktop (lg:grid-cols-12) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch pt-1 w-full min-w-0">
         {/* SVG Radar Geometric Canvas (lg:col-span-7) */}
-        <div className="lg:col-span-7 flex items-center justify-center p-2 sm:p-3 bg-slate-950/80 rounded-2xl border border-white/5 shadow-inner w-full min-w-0 overflow-hidden min-h-[460px]">
+        <div className="lg:col-span-7 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 rounded-2xl border border-white/5 shadow-inner w-full min-w-0 overflow-hidden">
           <svg
             viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-            className="w-full max-w-[540px] h-auto select-none overflow-visible"
+            className="w-full max-w-[480px] aspect-square select-none overflow-visible"
           >
             <defs>
               <linearGradient id="userRadarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -497,19 +537,53 @@ export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
               )
             })}
 
-            {/* 2. Spoke Axis Lines */}
+            {/* 2. Spoke Axis Lines & Outer Anchor Points */}
             {spokeData.map(s => {
+              const isSelected = activeHallmarkId === s.item.meta.id
               const isDimmed = selectedTierFilter !== 'all' && s.item.meta.tier !== selectedTierFilter
               return (
-                <line
-                  key={s.item.meta.id}
-                  x1={centerX}
-                  y1={centerY}
-                  x2={s.xOuter}
-                  y2={s.yOuter}
-                  stroke={isDimmed ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.12)'}
-                  strokeWidth="1"
-                />
+                <g
+                  key={`spoke-axis-${s.item.meta.id}`}
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleSelectHallmark(s.item.meta.id)
+                  }}
+                >
+                  {/* Axis line from center to 100% boundary */}
+                  <line
+                    x1={centerX}
+                    y1={centerY}
+                    x2={s.xOuter}
+                    y2={s.yOuter}
+                    stroke={isSelected ? '#C084FC' : isDimmed ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.14)'}
+                    strokeWidth={isSelected ? '1.5' : '1'}
+                  />
+                  {/* Subtle connector dashed line extending outward to badge */}
+                  <line
+                    x1={s.xOuter}
+                    y1={s.yOuter}
+                    x2={s.xConnector}
+                    y2={s.yConnector}
+                    stroke={isSelected ? '#C084FC' : 'rgba(255, 255, 255, 0.18)'}
+                    strokeWidth={isSelected ? '1.5' : '1'}
+                    strokeDasharray={isSelected ? undefined : '2 3'}
+                  />
+                  {/* Outer anchor spoke point */}
+                  <circle
+                    cx={s.xOuter}
+                    cy={s.yOuter}
+                    r={isSelected ? '3.5' : '2'}
+                    fill={isSelected ? '#C084FC' : 'rgba(255, 255, 255, 0.35)'}
+                  />
+                  {/* Outer spoke touch hit area */}
+                  <circle
+                    cx={s.xOuter}
+                    cy={s.yOuter}
+                    r="18"
+                    fill="transparent"
+                  />
+                </g>
               )
             })}
 
@@ -585,12 +659,16 @@ export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
                   className="cursor-pointer"
                   onMouseEnter={() => setHoveredHallmarkId(s.item.meta.id)}
                   onMouseLeave={() => setHoveredHallmarkId(null)}
-                  onClick={() => onSelectHallmark && onSelectHallmark(s.item.meta.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleSelectHallmark(s.item.meta.id)
+                  }}
                 >
+                  {/* Generous touch circle */}
                   <circle
                     cx={s.xUser}
                     cy={s.yUser}
-                    r="14"
+                    r="24"
                     fill="transparent"
                   />
 
@@ -598,18 +676,18 @@ export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
                     <circle
                       cx={s.xUser}
                       cy={s.yUser}
-                      r="9"
+                      r="10"
                       fill="none"
-                      stroke={isGap ? '#EF4444' : '#10B981'}
-                      strokeWidth="2"
-                      opacity="0.8"
+                      stroke={isGap ? '#EF4444' : '#C084FC'}
+                      strokeWidth="2.5"
+                      opacity="0.9"
                     />
                   )}
 
                   <circle
                     cx={s.xUser}
                     cy={s.yUser}
-                    r={isSelected ? '5.5' : isGap ? '4.5' : '4'}
+                    r={isSelected ? '6' : isGap ? '4.5' : '4'}
                     fill={isGap ? '#EF4444' : s.item.isCovered ? '#10B981' : '#F59E0B'}
                     stroke="#FFFFFF"
                     strokeWidth={isSelected ? '2' : '1'}
@@ -619,55 +697,96 @@ export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
               )
             })}
 
-            {/* 7. Spoke Outer Labels with Safe Horizontal Anchoring */}
+            {/* 7. Spoke Outer Interactive Badges */}
             {spokeData.map(s => {
               const isSelected = activeHallmarkId === s.item.meta.id
               const isDimmed = selectedTierFilter !== 'all' && s.item.meta.tier !== selectedTierFilter
               const isGap = s.item.isGap
-
-              let textAnchor: 'middle' | 'start' | 'end' = 'middle'
-              let labelOffsetX = 0
-              if (s.cos > 0.2) {
-                textAnchor = 'start'
-                labelOffsetX = 4
-              } else if (s.cos < -0.2) {
-                textAnchor = 'end'
-                labelOffsetX = -4
-              }
+              const displayName = getRadarHallmarkLabel(s.item.meta)
 
               return (
                 <g
                   key={`label-${s.item.meta.id}`}
-                  className="cursor-pointer"
-                  opacity={isDimmed ? 0.3 : 1}
+                  className="cursor-pointer transition-all duration-200"
+                  opacity={isDimmed ? 0.35 : 1}
                   onMouseEnter={() => setHoveredHallmarkId(s.item.meta.id)}
                   onMouseLeave={() => setHoveredHallmarkId(null)}
-                  onClick={() => onSelectHallmark && onSelectHallmark(s.item.meta.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleSelectHallmark(s.item.meta.id)
+                  }}
                 >
+                  {/* 1. Large invisible hit target (ensuring >=44px mobile touch target) */}
+                  <rect
+                    x={s.xLabel - 44}
+                    y={s.yLabel - 20}
+                    width="88"
+                    height="40"
+                    fill="transparent"
+                    className="cursor-pointer"
+                  />
+
+                  {/* 2. Sleek Glassmorphic / Solid Pill Badge */}
+                  <rect
+                    x={s.xLabel - 39}
+                    y={s.yLabel - 15}
+                    width="78"
+                    height="30"
+                    rx="8"
+                    ry="8"
+                    fill={
+                      isSelected
+                        ? '#581C87'
+                        : 'rgba(15, 23, 42, 0.94)'
+                    }
+                    stroke={
+                      isSelected
+                        ? '#C084FC'
+                        : isGap
+                        ? 'rgba(239, 68, 68, 0.5)'
+                        : s.item.isCovered
+                        ? 'rgba(16, 185, 129, 0.45)'
+                        : 'rgba(245, 158, 11, 0.45)'
+                    }
+                    strokeWidth={isSelected ? '2' : '1'}
+                    filter={isSelected ? 'url(#radarGlow)' : undefined}
+                  />
+
+                  {/* 3. Hallmark Label */}
                   <text
-                    x={s.xLabel + labelOffsetX}
-                    y={s.yLabel - 1}
-                    textAnchor={textAnchor}
-                    fill={isSelected ? '#FFFFFF' : isGap ? '#FCA5A5' : '#CBD5E1'}
+                    x={s.xLabel}
+                    y={s.yLabel - 2}
+                    textAnchor="middle"
+                    fill={isSelected ? '#FFFFFF' : isGap ? '#FCA5A5' : '#E2E8F0'}
                     fontSize="10"
-                    fontWeight={isSelected ? '800' : '600'}
-                    className="select-none pointer-events-none"
+                    fontWeight={isSelected ? '800' : '700'}
+                    className="select-none tracking-tight font-sans"
                   >
-                    {s.item.meta.shortName}
+                    {displayName}
                   </text>
+
+                  {/* 4. Score % and Simulated Delta */}
                   <text
-                    x={s.xLabel + labelOffsetX}
-                    y={s.yLabel + 11}
-                    textAnchor={textAnchor}
-                    fill={isGap ? '#EF4444' : s.item.isCovered ? '#34D399' : '#FBBF24'}
+                    x={s.xLabel}
+                    y={s.yLabel + 10}
+                    textAnchor="middle"
+                    fill={
+                      isSelected
+                        ? '#E9D5FF'
+                        : isGap
+                        ? '#EF4444'
+                        : s.item.isCovered
+                        ? '#34D399'
+                        : '#FBBF24'
+                    }
                     fontSize="9.5"
                     fontFamily="monospace"
                     fontWeight="bold"
-                    className="select-none pointer-events-none"
+                    className="select-none"
                   >
                     {s.item.score}%
                     {hasSimulationActive && s.simScore > s.item.score && (
-                      <tspan fill="#06B6D4"> → {s.simScore}%</tspan>
+                      <tspan fill="#22D3EE"> → {s.simScore}%</tspan>
                     )}
                   </text>
                 </g>
@@ -677,7 +796,7 @@ export const HallmarksRadarChart: React.FC<HallmarksRadarChartProps> = ({
         </div>
 
         {/* Spoke Detail Inspection Panel (lg:col-span-5) */}
-        <div className="lg:col-span-5 w-full min-w-0 max-w-full flex flex-col justify-between">
+        <div id="hallmark-inspection-card" className="lg:col-span-5 w-full min-w-0 max-w-full flex flex-col justify-between">
           <div className="flex-1 overflow-y-auto max-h-[460px] pr-1 scrollbar-thin space-y-3.5 min-w-0">
             {activeHallmarkItem ? (
               <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/95 border border-purple-500/30 shadow-xl space-y-4 min-w-0">
