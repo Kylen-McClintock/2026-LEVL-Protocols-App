@@ -46,7 +46,6 @@ import {
 import ModalityBlockTile from './ModalityBlockTile'
 import BlocksTimeContainer from './BlocksTimeContainer'
 import BlocksProtocolContainer from './BlocksProtocolContainer'
-import QuickHotkeyGrid from '@/components/quicklog/QuickHotkeyGrid'
 import BlocksFloatingWaterDock from './BlocksFloatingWaterDock'
 import FullScreenModalityModal from './FullScreenModalityModal'
 import CompletedBlocksSection from './CompletedBlocksSection'
@@ -147,7 +146,6 @@ export default function BlocksViewContainer({
   const { widgets: homeWidgets } = useHomeWidgets(userProfile || undefined)
   const { rules: focusRules } = useFocusRules(userProfile || undefined)
   const { badges: cardBadges } = useCardBadges(userProfile || undefined)
-  const showHotkeys = isFocusMode ? focusRules.keepHotkeys : homeWidgets.quickHotkeys
 
   // Sub-view toggle: 'time' vs 'protocol'
   const [subView, setSubView] = useState<'time' | 'protocol'>('time')
@@ -841,16 +839,6 @@ export default function BlocksViewContainer({
 
       {/* MAIN CONTENT: BY TIME OR BY PROTOCOL */}
       <BlocksDragProvider onMoveTask={handleMoveTask} onMoveHotkey={handleMoveHotkey}>
-        {/* Daily Quick-Log Hotkeys */}
-        {showHotkeys && (
-          <QuickHotkeyGrid
-            date={date}
-            localUserId={localUserId}
-            userProfile={userProfile}
-            defaultCollapsed={false}
-            showInfradian={isFocusMode ? focusRules.keepInfradian : homeWidgets.infradian}
-          />
-        )}
 
         {subView === 'time' ? (
           <div className="space-y-4">

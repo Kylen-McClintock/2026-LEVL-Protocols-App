@@ -2481,16 +2481,6 @@ function TodayPageContent() {
     return Array.from(map.values())
   }, [tasks, benchItems, viewMode, profile, benchedOrEliminatedModalityIds])
 
-  // Stable memoized task array for BlocksViewContainer to prevent thousands of unnecessary child re-renders
-  const blocksViewTasks = useMemo(() => {
-    return dedupedTasks.map(task => {
-      const resolvedMod = resolveTaskModality(task)
-      return {
-        ...task,
-        loose_modality: task.loose_modality || resolvedMod
-      }
-    })
-  }, [dedupedTasks, resolveTaskModality])
 
   const isTaskMatchingCategoryFilter = (task: DedupedTask): boolean => {
     if (selectedMainCategories.includes('all') || selectedMainCategories.length === 0) return true
@@ -2596,6 +2586,46 @@ function TodayPageContent() {
     }
     return isTaskMatchingCategoryFilter(task)
   }
+
+  // Stable memoized task array for BlocksViewContainer to prevent thousands of unnecessary child re-renders
+  // Applies active Category, Outcomes, and Protocol filters so Blocks view fully respects CategoryFiltersBar
+  const blocksViewTasks = useMemo(() => {
+    return dedupedTasks
+      .filter(task => {
+        if (selectedProtocolFilter && selectedProtocolFilter !== 'all') {
+          const target = selectedProtocolFilter.toLowerCase()
+          const matchesProtocol = 
+            (task.lineages || []).some(l => 
+              (l.protocol_id && l.protocol_id.toLowerCase() === target) ||
+              (l.protocol_name && l.protocol_name.toLowerCase() === target) ||
+              (l.protocol_name && l.protocol_name.toLowerCase().includes(target))
+            ) ||
+            (task.protocol_step?.protocol_id && task.protocol_step.protocol_id.toLowerCase() === target) ||
+            (task.protocol_step?.protocol?.id && task.protocol_step.protocol.id.toLowerCase() === target) ||
+            (task.protocol_step?.protocol?.name && task.protocol_step.protocol.name.toLowerCase().includes(target)) ||
+            ((task as any).user_protocol_instance?.protocol_id && (task as any).user_protocol_instance.protocol_id.toLowerCase() === target) ||
+            ((task as any).user_protocol_instance?.protocol?.name && (task as any).user_protocol_instance.protocol.name.toLowerCase().includes(target))
+
+          if (!matchesProtocol) return false
+        }
+        return isTaskMatchingActiveFilter(task)
+      })
+      .map(task => {
+        const resolvedMod = resolveTaskModality(task)
+        return {
+          ...task,
+          loose_modality: task.loose_modality || resolvedMod
+        }
+      })
+  }, [
+    dedupedTasks,
+    resolveTaskModality,
+    selectedProtocolFilter,
+    filterLens,
+    selectedOutcomes,
+    selectedMainCategories,
+    selectedSubCategories
+  ])
 
   const filteredMultiDayTasks = useMemo(() => {
     const result: Record<string, DailyProtocolTask[]> = {}
@@ -4802,47 +4832,8 @@ function TodayPageContent() {
           </div>
         )}
 
-        {/* BLOCKS MODE RENDERING */}
-        {calendarViewMode === 'today' && displayMode === 'blocks' && (
-          <div className="mb-8">
-            <BlocksViewContainer
-              tasks={blocksViewTasks}
-              benchItems={benchItems}
-              userProfile={profile}
-              isFocusMode={isFocusMode}
-              allOutcomes={allOutcomes}
-              allModalities={allModalities}
-              wellbeingCheckin={wellbeingCheckin}
-              date={dateStr}
-              localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
-              onStatusChange={handleStatusChange}
-              onOpenRescheduleModal={handleOpenRescheduleModal}
-              onMoveToBench={async (modalityId) => {
-                await handleMoveToBench(modalityId)
-              }}
-              onEliminate={async (task, reason) => {
-                await handleEliminateEntirely(task, reason)
-              }}
-              onSaveCustomOutcomes={handleSaveCustomOutcomes}
-              onAddActivity={(slotKey) => {
-                setAsNeededSlot(slotKey)
-                setAsNeededModalityId(undefined)
-                setIsAdHocModalOpen(true)
-              }}
-              onMoveTaskToSlot={handleMoveTaskToSlot}
-              onAddToToday={async (modalityId: string) => {
-                if (profile) {
-                  await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
-                  await refreshTodayTasks()
-                }
-              }}
-              streakDays={0}
-            />
-          </div>
-        )}
-
         {/* 3-Wide Daily Quick-Log Hotkeys Bar */}
-        {calendarViewMode === 'today' && displayMode !== 'blocks' && (isFocusMode ? focusRules.keepHotkeys : homeWidgets.quickHotkeys) && (
+        {calendarViewMode === 'today' && (isFocusMode ? focusRules.keepHotkeys : homeWidgets.quickHotkeys) && (
           <QuickHotkeyGrid
             date={dateStr}
             localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
@@ -4852,7 +4843,7 @@ function TodayPageContent() {
         )}
 
         {/* As Needed Quick-Tap Strip (Single Row: "As Needed: + Log" and "Search") */}
-        {calendarViewMode === 'today' && displayMode !== 'blocks' && !isFocusMode && homeWidgets.asNeeded && (
+        {calendarViewMode === 'today' && !isFocusMode && homeWidgets.asNeeded && (
           <div className="mb-4 -mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-none py-1 px-1">
             <div className="flex items-center gap-1.5 shrink-0 text-amber-400 font-extrabold text-[11px] uppercase tracking-wider pl-0.5">
               <Zap size={13} className="text-amber-400" />
@@ -4892,7 +4883,6 @@ function TodayPageContent() {
 
         {/* Infradian & Menstrual Cycle Adaptive Protocol Banner (Strictly for Female Users < 52 who opted in) */}
         {calendarViewMode === 'today' &&
-          displayMode !== 'blocks' &&
           profile?.biological_sex?.toLowerCase() === 'female' &&
           Boolean(profile?.age && profile.age < 52) &&
           Boolean(profile?.infradian_cycle_enabled) &&
@@ -5072,7 +5062,7 @@ function TodayPageContent() {
         )}
 
         {/* Primary Timeline & Today Section */}
-        {calendarViewMode === 'today' && displayMode !== 'blocks' && (
+        {calendarViewMode === 'today' && (
           <>
             {/* Late-Night Window Notification Banner */}
             {isViewingYesterdayLateNight && (
@@ -5235,7 +5225,45 @@ function TodayPageContent() {
               </div>
             )}
 
-            {/* Completed, Snoozed, & Skipped Modalities Group (Zero Space Between Them) */}
+            {displayMode === 'blocks' ? (
+              <div className="mb-8">
+                <BlocksViewContainer
+                  tasks={blocksViewTasks}
+                  benchItems={benchItems}
+                  userProfile={profile}
+                  isFocusMode={isFocusMode}
+                  allOutcomes={allOutcomes}
+                  allModalities={allModalities}
+                  wellbeingCheckin={wellbeingCheckin}
+                  date={dateStr}
+                  localUserId={authUserId || profile?.local_user_id || getLocalUserId()}
+                  onStatusChange={handleStatusChange}
+                  onOpenRescheduleModal={handleOpenRescheduleModal}
+                  onMoveToBench={async (modalityId) => {
+                    await handleMoveToBench(modalityId)
+                  }}
+                  onEliminate={async (task, reason) => {
+                    await handleEliminateEntirely(task, reason)
+                  }}
+                  onSaveCustomOutcomes={handleSaveCustomOutcomes}
+                  onAddActivity={(slotKey) => {
+                    setAsNeededSlot(slotKey)
+                    setAsNeededModalityId(undefined)
+                    setIsAdHocModalOpen(true)
+                  }}
+                  onMoveTaskToSlot={handleMoveTaskToSlot}
+                  onAddToToday={async (modalityId: string) => {
+                    if (profile) {
+                      await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
+                      await refreshTodayTasks()
+                    }
+                  }}
+                  streakDays={0}
+                />
+              </div>
+            ) : (
+              <>
+                {/* Completed, Snoozed, & Skipped Modalities Group (Zero Space Between Them) */}
             {(() => {
               if (isFocusMode) {
                 if (allCompletedTasks.length === 0 && allSkippedTasks.length === 0) return null
@@ -5924,6 +5952,8 @@ function TodayPageContent() {
                   </div>
                 )}
               </div>
+            )}
+              </>
             )}
           </>
         )}
