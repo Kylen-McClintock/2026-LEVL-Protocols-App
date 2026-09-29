@@ -211,21 +211,9 @@ export default function BlocksProtocolContainer({
     <div
       ref={containerRef}
       data-slot-key={`protocol_${protocolName}`}
-      className={`w-full rounded-3xl p-4 sm:p-5 my-3.5 border-2 backdrop-blur-xl shadow-xl transition-all duration-300 ${
+      className={`w-full transition-all duration-300 my-3 bg-transparent border-0 p-0 shadow-none ${
         isDropTarget ? 'ring-4 ring-[#6954C8]/90 bg-[#6954C8]/10 rounded-3xl scale-[1.01]' : ''
-      } ${
-      isDaylight
-        ? 'bg-white border-[#E1E8E3] text-[#475569] shadow-sm'
-        : visualStyle === 'light-glass'
-        ? 'bg-white/[0.06] border-white/15 backdrop-blur-xl text-white shadow-xl'
-        : visualStyle === 'dark-outline'
-        ? isIgnited
-          ? 'bg-slate-950/95 border-[2.5px] border-purple-500/60 shadow-2xl shadow-purple-950/40 text-white'
-          : 'bg-slate-950/95 border-[2.5px] border-white/20 hover:border-purple-500/50 text-white'
-        : isIgnited
-        ? 'bg-gradient-to-b from-slate-950/90 via-slate-950/92 to-slate-900/90 border-purple-500/40 shadow-2xl shadow-purple-950/30 text-white'
-        : 'bg-gradient-to-b from-slate-950/85 via-slate-950/90 to-slate-900/90 border-white/15 text-white'
-    }`}>
+      }`}>
       {/* Protocol Header */}
       <div className="flex items-center justify-between gap-3 mb-3">
         <div

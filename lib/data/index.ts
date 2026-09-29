@@ -5559,6 +5559,7 @@ export async function reconcileModalityScheduleAndFutureTasks(
   options: {
     customDose?: string
     customTiming?: string
+    timingSlot?: string
     notes?: string
     scheduleConfig?: ModalityScheduleConfig
     fromDate?: string
@@ -5568,16 +5569,16 @@ export async function reconcileModalityScheduleAndFutureTasks(
   if (!supabase || !localUserId || !modalityId) return false
   
   const fromDateStr = options.fromDate || format(new Date(), 'yyyy-MM-dd')
-  const { customDose, customTiming, notes, scheduleConfig } = options
+  const { customDose, customTiming, timingSlot, notes, scheduleConfig } = options
 
   // 1. Update/Upsert user_bench_items so the user's personalization is saved permanently
   if (customDose !== undefined || customTiming !== undefined || notes !== undefined) {
     await upsertBenchItemOverride(localUserId, modalityId, customDose || '', customTiming || '', notes)
   }
 
-  // 2. Resolve primary timing slot from customTiming (if split multi-dose, anchor to the first dose slot)
-  let resolvedSlot = scheduleConfig?.timing_slot || 'anytime'
-  if (customTiming) {
+  // 2. Resolve primary timing slot from timingSlot or customTiming (if split multi-dose, anchor to the first dose slot)
+  let resolvedSlot = timingSlot || scheduleConfig?.timing_slot || 'anytime'
+  if (!timingSlot && customTiming) {
     const multiSlots = parseMultiDoseTimingSlots(customTiming)
     if (multiSlots.length >= 1) {
       resolvedSlot = multiSlots[0].slot
@@ -5896,13 +5897,15 @@ export async function updateTaskExecutionDetails(taskId: string, detailsPatch: a
   const updatedDetails = { ...(task.execution_details || {}), ...detailsPatch }
   const updatePayload: any = { execution_details: updatedDetails }
 
-  if (detailsPatch.custom_timing) {
+  if (detailsPatch.timing_slot) {
+    updatePayload.timing_slot = detailsPatch.timing_slot
+  } else if (detailsPatch.schedule_config?.timing_slot) {
+    updatePayload.timing_slot = detailsPatch.schedule_config.timing_slot
+  } else if (detailsPatch.custom_timing) {
     const slot = resolveSlotFromTimingString(detailsPatch.custom_timing)
     if (slot && slot !== 'anytime') {
       updatePayload.timing_slot = slot
     }
-  } else if (detailsPatch.schedule_config?.timing_slot) {
-    updatePayload.timing_slot = detailsPatch.schedule_config.timing_slot
   }
 
   const { error } = await supabase

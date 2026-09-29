@@ -25,6 +25,7 @@ import {
   Utensils
 } from 'lucide-react'
 import { useTheme } from '@/lib/utils/useTheme'
+import { resolveSlotFromTimingString } from '@/lib/data/resolveOptimalTiming'
 import { DedupedTask } from '@/components/cards/ProtocolTaskCard'
 import {
   Modality,
@@ -705,7 +706,11 @@ export default function BlocksViewContainer({
     }
 
     tasks.forEach((t) => {
-      const rawSlot = t.timing_slot || t.protocol_step?.timing_slot || t.loose_modality?.default_timing_slot
+      const customTiming = t.execution_details?.custom_timing
+      const customSlot = customTiming ? resolveSlotFromTimingString(customTiming) : ''
+      const rawSlot = (customSlot && customSlot !== 'anytime')
+        ? customSlot
+        : (t.timing_slot || t.protocol_step?.timing_slot || t.loose_modality?.default_timing_slot)
       const slot = canonicalizeTimingSlot(rawSlot)
       const isSupp = isSupplementTask(t, allModalities)
       // If a slot has 2 or more supplements scheduled for today, they form a permanent supplement stack for the day

@@ -4,6 +4,9 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { DailyProtocolTask, Modality } from '@/lib/types'
 import { X, Calendar, FastForward, ArrowRightLeft, Clock, SkipForward, Sparkles, Check, Archive, Trash2, Sliders } from 'lucide-react'
 import { DosageDetailModal } from '@/components/modals/DosageDetailModal'
+import { reconcileModalityScheduleAndFutureTasks } from '@/lib/data'
+import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
+import { format } from 'date-fns'
 
 export type RescheduleActionType = 
   | 'slide_forward'        // Push session to next day (slides entire sequence)
@@ -588,15 +591,27 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
           onClose={() => setIsDosageModalOpen(false)}
           modality={modality}
           task={task}
+          currentSlotKey={currentSlot}
           onSelectDose={() => {
             setIsDosageModalOpen(false)
             onClose()
           }}
-          onSavePersonalization={() => {
+          onSavePersonalization={async (customDose, customTiming, notes) => {
+            const effUserId = getLocalUserId()
+            const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+            await reconcileModalityScheduleAndFutureTasks(effUserId, modality.id, {
+              customDose,
+              customTiming,
+              notes,
+              fromDate,
+              protocolStepId: task?.protocol_step_id || undefined,
+              scheduleConfig: task?.execution_details?.schedule_config
+            })
             setIsDosageModalOpen(false)
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
               window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+              window.dispatchEvent(new CustomEvent('levl_bench_updated'))
             }
             onClose()
           }}

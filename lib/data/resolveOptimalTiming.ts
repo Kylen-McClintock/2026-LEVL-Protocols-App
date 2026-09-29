@@ -84,12 +84,20 @@ export function resolveSlotFromTimingString(timingStr?: string, isSupplement: bo
     return isSupplement ? 'midday_stack' : 'midday'
   }
 
-  // Morning / Breakfast / Waking / Fasted AM
+  // Waking / Upon Waking / Dawn / Early Morning
   if (
-    clean.includes('waking') || clean.includes('wake') || clean.includes('morning') || 
-    clean.includes('breakfast') || clean.includes('6:00 am') || clean.includes('7:00 am') || 
-    clean.includes('8:00 am') || clean.includes('9:00 am') || clean.includes('10:00 am') ||
-    clean.includes('fasted am') || clean.includes('upon waking')
+    clean.includes('upon waking') || clean.includes('waking') || 
+    (clean.includes('wake') && !clean.includes('workout')) ||
+    clean.includes('early morning') || clean.includes('fasted am') || clean.includes('fasted morning') ||
+    clean.includes('dawn') || clean.includes('sunrise')
+  ) {
+    return 'waking'
+  }
+
+  // Morning / Breakfast
+  if (
+    clean.includes('morning') || clean.includes('breakfast') || 
+    clean.includes('8:00 am') || clean.includes('9:00 am') || clean.includes('10:00 am')
   ) {
     return isSupplement ? 'morning_supplement_stack' : 'morning'
   }

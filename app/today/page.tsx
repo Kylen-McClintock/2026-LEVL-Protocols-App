@@ -2127,7 +2127,7 @@ function TodayPageContent() {
                 })
                 .eq('local_user_id', localUserId)
                 .eq('modality_id', modalityId)
-                .gte('task_date', dateStr)
+                .gte('scheduled_date', dateStr)
             }
           } catch {
             // Ignore future-day bulk update error
@@ -2367,7 +2367,10 @@ function TodayPageContent() {
         const protoKey = `${pId}_${modalityKey}_split_${splitNumber}`
         const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
         const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id && b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
-        const resolvedSlot = task.timing_slot || (customTimingStr ? resolveSlotFromTimingString(customTimingStr) : '') || resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
+        const customSlot = customTimingStr ? resolveSlotFromTimingString(customTimingStr) : ''
+        const resolvedSlot = (customSlot && customSlot !== 'anytime')
+          ? customSlot
+          : (task.timing_slot || resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr))
         
         if (!protoMap.has(protoKey)) {
           protoMap.set(protoKey, {
@@ -2406,7 +2409,10 @@ function TodayPageContent() {
       const dedupeKey = splitNumber > 0 ? `${baseKey}-split-${splitNumber}` : baseKey
       const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
       const customTimingStr = task.execution_details?.custom_timing || (modalityId ? benchItems.find(b => b.modality_id && b.modality_id.toLowerCase() === modalityId)?.custom_timing : undefined)
-      const resolvedSlot = task.timing_slot || (customTimingStr ? resolveSlotFromTimingString(customTimingStr) : '') || resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr)
+      const customSlot = customTimingStr ? resolveSlotFromTimingString(customTimingStr) : ''
+      const resolvedSlot = (customSlot && customSlot !== 'anytime')
+        ? customSlot
+        : (task.timing_slot || resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, customTimingStr))
 
       if (!map.has(dedupeKey)) {
         const initialLineages: Array<{ protocol_id?: string; protocol_name: string; color_hex?: string; protocol_type?: string }> = []
@@ -2816,11 +2822,14 @@ function TodayPageContent() {
       } else {
         const modality = resolveTaskModality(task)
         const isSplitTask = Boolean(task.execution_details?.split_dose_number || task.id.includes('-split-'))
+        const customSlot = task.execution_details?.custom_timing ? resolveSlotFromTimingString(task.execution_details.custom_timing) : ''
         const rawGroupKey = (isSplitTask && task.timing_slot && task.timing_slot !== 'anytime')
           ? task.timing_slot
-          : (task.timing_slot && task.timing_slot !== 'anytime'
-            ? task.timing_slot
-            : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot))
+          : (customSlot && customSlot !== 'anytime'
+            ? customSlot
+            : (task.timing_slot && task.timing_slot !== 'anytime'
+              ? task.timing_slot
+              : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, task.execution_details?.custom_timing)))
         groupKey = normalizeChronologicalTimeBlock(rawGroupKey)
       }
       if (!groups[groupKey]) groups[groupKey] = []
@@ -2879,11 +2888,14 @@ function TodayPageContent() {
       
       // If task is a split task, or already has a concrete assigned timing_slot, RESPECT IT!
       // Do NOT recalculate and override it into an arbitrary block!
+      const customSlot = task.execution_details?.custom_timing ? resolveSlotFromTimingString(task.execution_details.custom_timing) : ''
       const rawSlot = (isSplitTask && task.timing_slot && task.timing_slot !== 'anytime')
         ? task.timing_slot
-        : (task.timing_slot && task.timing_slot !== 'anytime'
-          ? task.timing_slot
-          : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, task.execution_details?.custom_timing))
+        : (customSlot && customSlot !== 'anytime'
+          ? customSlot
+          : (task.timing_slot && task.timing_slot !== 'anytime'
+            ? task.timing_slot
+            : resolveOptimalTimingSlot(modality, task.protocol_step, task.timing_slot, profile, task.execution_details?.custom_timing)))
 
       const slot = normalizeChronologicalTimeBlock(rawSlot)
 

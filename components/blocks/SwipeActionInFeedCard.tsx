@@ -35,8 +35,9 @@ import {
   resolvePeptideTargetDoseMcg,
   saveInjectionSiteLog
 } from '@/lib/peptides/reconstitutionEngine'
-import { addToBench, eliminateModality, getTaskOutcomeObservations, saveBatchOutcomeObservations } from '@/lib/data'
+import { addToBench, eliminateModality, getTaskOutcomeObservations, saveBatchOutcomeObservations, reconcileModalityScheduleAndFutureTasks } from '@/lib/data'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
+import { format } from 'date-fns'
 
 // Precision execution log components
 import StrengthExecutionLog from '../execution/StrengthExecutionLog'
@@ -1243,16 +1244,28 @@ export default function SwipeActionInFeedCard({
           userProfile={userProfile}
           task={task}
           benchItem={benchItem}
+          currentSlotKey={task?.timing_slot}
           onSelectDose={(newDoseText) => {
             setDoseInput(newDoseText)
             setIsDosageModalOpen(false)
           }}
-          onSavePersonalization={(customDose) => {
+          onSavePersonalization={async (customDose, customTiming, notes) => {
             setDoseInput(customDose)
+            const effUserId = getLocalUserId()
+            const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+            await reconcileModalityScheduleAndFutureTasks(effUserId, modality.id, {
+              customDose,
+              customTiming,
+              notes,
+              fromDate,
+              protocolStepId: task?.protocol_step_id || undefined,
+              scheduleConfig: task?.execution_details?.schedule_config
+            })
             setIsDosageModalOpen(false)
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
               window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+              window.dispatchEvent(new CustomEvent('levl_bench_updated'))
             }
           }}
         />

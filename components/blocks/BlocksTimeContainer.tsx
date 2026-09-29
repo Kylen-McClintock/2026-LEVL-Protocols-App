@@ -528,11 +528,7 @@ export default function BlocksTimeContainer({
         } ${
           isDaylight
             ? 'bg-white border-[#E1E8E3] hover:bg-[#EFF3F0]/60 text-[#475569]'
-            : visualStyle === 'dark-outline'
-            ? isIgnited
-              ? 'bg-slate-950/95 border-[2.5px] border-purple-500/60 shadow-xl shadow-purple-950/30 text-white'
-              : 'bg-slate-950/95 border-[2.5px] border-white/20 hover:border-purple-500/50 text-white'
-            : 'bg-gradient-to-r from-slate-950/95 via-slate-900/90 to-slate-950/95 border-white/20 hover:border-purple-500/50 text-white'
+            : 'bg-slate-900/40 border-white/10 hover:border-white/20 text-white'
         }`}
       >
         {/* Left: Icon + Title + Time Window */}
@@ -617,19 +613,7 @@ export default function BlocksTimeContainer({
       onDrop={handleContainerDrop}
       className={`w-full transition-all duration-300 animate-in fade-in ${
         isDropTarget && dragCtx?.activeDrag?.sourceSlotKey !== slotKey ? 'ring-4 ring-[#6954C8]/90 bg-[#6954C8]/10 rounded-3xl scale-[1.01]' : ''
-      } ${
-        isDaylight || isStreamline
-          ? 'my-3 bg-transparent border-0 p-0 shadow-none'
-          : `rounded-3xl p-4 sm:p-5 my-3.5 border-2 backdrop-blur-xl shadow-xl ${
-              visualStyle === 'dark-outline'
-                ? isIgnited
-                  ? 'bg-slate-950/95 border-[2.5px] border-purple-500/60 shadow-2xl shadow-purple-950/40 text-white'
-                  : 'bg-slate-950/95 border-[2.5px] border-white/20 hover:border-purple-500/50 text-white'
-                : isIgnited
-                ? 'bg-gradient-to-b from-slate-950/90 via-slate-950/92 to-slate-900/90 border-purple-500/40 shadow-2xl shadow-purple-950/30 text-white'
-                : 'bg-gradient-to-b from-slate-950/85 via-slate-950/90 to-slate-900/90 border-white/15 text-white'
-            }`
-      }`}
+      } my-3 bg-transparent border-0 p-0 shadow-none`}
     >
       {/* Streamline vs Classic Container Header */}
       {isStreamline ? (

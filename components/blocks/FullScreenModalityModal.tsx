@@ -51,7 +51,9 @@ import PreFlightSpacingNudgeBanner from '@/components/cards/PreFlightSpacingNudg
 import MedicalDisclaimerBanner from '@/components/ui/MedicalDisclaimerBanner'
 import { LONGEVITY_VECTORS_METADATA } from '@/lib/data/longevityKnowledgeBase'
 
-import { saveOutcomeObservation, getCachedModalitiesSync, updateTaskExecutionDetails, getTaskOutcomeObservations } from '@/lib/data'
+import { saveOutcomeObservation, getCachedModalitiesSync, updateTaskExecutionDetails, getTaskOutcomeObservations, reconcileModalityScheduleAndFutureTasks } from '@/lib/data'
+import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
+import { format } from 'date-fns'
 import { triggerHaptic } from '@/lib/utils/haptics'
 import { getOutcomeColorConfig, getNeutralOutcomeColorConfig } from '@/lib/utils/outcomeColors'
 import { isPreLoggableOutcome } from '@/lib/utils/outcomePhaseRules'
@@ -3323,11 +3325,23 @@ export default function FullScreenModalityModal({
           task={task}
           benchItem={benchItem}
           userProfile={userProfile}
-          onSavePersonalization={async () => {
+          currentSlotKey={task?.timing_slot}
+          onSavePersonalization={async (customDose, customTiming, notes) => {
+            const effUserId = localUserId || getLocalUserId()
+            const fromDate = task?.scheduled_date || date || format(new Date(), 'yyyy-MM-dd')
+            await reconcileModalityScheduleAndFutureTasks(effUserId, modality.id, {
+              customDose,
+              customTiming,
+              notes,
+              fromDate,
+              protocolStepId: task?.protocol_step_id || undefined,
+              scheduleConfig: task?.execution_details?.schedule_config
+            })
             setIsDosageModalOpen(false)
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
               window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+              window.dispatchEvent(new CustomEvent('levl_bench_updated'))
             }
           }}
         />

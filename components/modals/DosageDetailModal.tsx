@@ -9,7 +9,11 @@ import {
   BookOpen, Clock, Sliders, Bot, AlertTriangle, ChevronDown, ChevronUp, FileText, Edit3, CheckSquare, Square,
   Microscope, Dna
 } from 'lucide-react'
-import { assessSafetyWithAI } from '../../lib/data'
+import { reconcileModalityScheduleAndFutureTasks, assessSafetyWithAI } from '../../lib/data'
+import { supabase } from '../../lib/supabase/client'
+import { getLocalUserId } from '../../lib/local-user/getLocalUserId'
+import { resolveOptimalTimingSlot, resolveSlotFromTimingString } from '../../lib/data/resolveOptimalTiming'
+import { format } from 'date-fns'
 import { getCircadianTipForModality } from '../../lib/utils/circadianTimingTips'
 import { ModalityAICoachBar } from '../ai/ModalityAICoachBar'
 import GeekMode from '../cards/GeekMode'
@@ -37,25 +41,25 @@ export function matchDefaultTimingPreset(timingText?: string): { presetValue: st
     return { presetValue: exactMatch.value, isCustom: false, customText: '' }
   }
 
-  if (lower.includes('bed') || lower.includes('sleep') || lower.includes('night') || lower.includes('9:00 pm') || lower.includes('10:00 pm') || lower.includes('11:00 pm')) {
+  if (lower.includes('bed') || lower.includes('sleep') || lower.includes('night') || lower.includes('9:00 pm') || lower.includes('10:00 pm') || lower.includes('11:00 pm') || lower.includes('pre_bed') || lower.includes('pre-bed') || lower.includes('wind_down')) {
     return { presetValue: 'Pre-Bed / Night (9:00 PM – 11:00 PM)', isCustom: false, customText: '' }
   }
   if (lower.includes('post-meal') || lower.includes('dinner') || lower.includes('evening') || lower.includes('6:00 pm') || lower.includes('7:00 pm') || lower.includes('8:00 pm')) {
     return { presetValue: 'Evening / Post-Meal (6:00 PM – 8:00 PM)', isCustom: false, customText: '' }
   }
-  if (lower.includes('waking') || lower.includes('6:00 am') || lower.includes('7:00 am') || lower.includes('fasted morning')) {
+  if (lower.includes('upon waking') || lower.includes('waking') || (lower.includes('wake') && !lower.includes('workout')) || lower.includes('6:00 am') || lower.includes('7:00 am') || lower.includes('fasted morning') || lower.includes('fasted am')) {
     return { presetValue: 'Upon Waking (6:00 AM – 8:00 AM)', isCustom: false, customText: '' }
   }
-  if (lower.includes('morning') || lower.includes('breakfast') || lower.includes('8:00 am') || lower.includes('9:00 am') || lower.includes('10:00 am')) {
+  if (lower.includes('morning') || lower.includes('breakfast') || lower.includes('first_meal') || lower.includes('8:00 am') || lower.includes('9:00 am') || lower.includes('10:00 am')) {
     return { presetValue: 'Morning / With Breakfast (8:00 AM – 10:00 AM)', isCustom: false, customText: '' }
   }
-  if (lower.includes('mid-day') || lower.includes('lunch') || lower.includes('12:00 pm') || lower.includes('1:00 pm') || lower.includes('2:00 pm')) {
+  if (lower.includes('mid-day') || lower.includes('midday') || lower.includes('lunch') || lower.includes('12:00 pm') || lower.includes('1:00 pm') || lower.includes('2:00 pm')) {
     return { presetValue: 'Mid-Day / Lunch (12:00 PM – 2:00 PM)', isCustom: false, customText: '' }
   }
-  if (lower.includes('afternoon') || lower.includes('4:00 pm') || lower.includes('5:00 pm')) {
+  if (lower.includes('afternoon') || lower.includes('4:00 pm') || lower.includes('5:00 pm') || lower.includes('workout') || lower.includes('training')) {
     return { presetValue: 'Late Afternoon (4:00 PM – 6:00 PM)', isCustom: false, customText: '' }
   }
-  if (lower.includes('fasting') || lower.includes('flexible') || lower.includes('as needed') || lower.includes('daily as needed') || lower.includes('daily or as needed') || lower.includes('daily')) {
+  if (lower.includes('fasting') || lower.includes('flexible') || lower.includes('as needed') || lower.includes('daily as needed') || lower.includes('daily or as needed')) {
     return { presetValue: 'Fasting Window / Flexible', isCustom: false, customText: '' }
   }
 
@@ -121,6 +125,123 @@ export function parseTimingState(timingText?: string) {
   }
 }
 
+/**
+ * Resolves the modality's actual current time block preset with 100% fidelity.
+ * Prioritizes:
+ * 1. Explicit multi-dose or specific user customization strings
+ * 2. Active time slot (currentSlotKey, task.timing_slot, step.timing_slot, benchItem.timing_slot)
+ * 3. Algorithmic circadian resolution (resolveOptimalTimingSlot)
+ */
+export function resolveCurrentTimingPreset(
+  existingTiming?: string,
+  task?: any,
+  benchItem?: any,
+  modality?: Modality | null,
+  currentSlotKey?: string,
+  userProfile?: UserProfile | null
+): {
+  dosesPerDay: number
+  dose1Timing: string
+  dose2Timing: string
+  dose3Timing: string
+  isCustom: boolean
+  customText: string
+  weeklyFrequency: string
+} {
+  const customStr = existingTiming || task?.execution_details?.custom_timing || benchItem?.custom_timing || ''
+  
+  // 1. If explicit custom multi-dose timing string exists (e.g. "2x Daily: Dose 1 (...) + Dose 2 (...)")
+  if (customStr && (customStr.includes('+ Dose') || customStr.includes(' + ') || customStr.includes('2x Daily') || customStr.includes('3x Daily'))) {
+    const parsed = parseTimingState(customStr)
+    let freq = 'Daily'
+    if (customStr.includes('3–4x') || customStr.includes('3-4x')) freq = '3–4x per week'
+    else if (customStr.includes('1–2x') || customStr.includes('1-2x')) freq = '1–2x per week'
+    else if (customStr.includes('Weekly') || customStr.includes('1x_week') || customStr.includes('1x week')) freq = '1x Weekly'
+    return {
+      dosesPerDay: parsed.dosesPerDay,
+      dose1Timing: parsed.dose1Timing,
+      dose2Timing: parsed.dose2Timing,
+      dose3Timing: parsed.dose3Timing,
+      isCustom: parsed.isCustom,
+      customText: parsed.customText,
+      weeklyFrequency: freq
+    }
+  }
+
+  // 2. If single custom timing exists that is NOT a generic "daily" or "as needed" string
+  if (customStr && customStr.trim()) {
+    const lower = customStr.toLowerCase().trim()
+    const isGenericDaily = lower === 'daily' || lower === 'daily as needed' || lower === 'as needed' || lower === 'daily or as needed' || lower === '1x daily'
+    if (!isGenericDaily) {
+      const match = matchDefaultTimingPreset(customStr)
+      let freq = 'Daily'
+      if (customStr.includes('3–4x') || customStr.includes('3-4x')) freq = '3–4x per week'
+      else if (customStr.includes('1–2x') || customStr.includes('1-2x')) freq = '1–2x per week'
+      else if (customStr.includes('Weekly') || customStr.includes('1x_week') || customStr.includes('1x week')) freq = '1x Weekly'
+      return {
+        dosesPerDay: 1,
+        dose1Timing: match.presetValue,
+        dose2Timing: 'Pre-Bed / Night (9:00 PM – 11:00 PM)',
+        dose3Timing: 'Evening / Post-Meal (6:00 PM – 8:00 PM)',
+        isCustom: match.isCustom,
+        customText: match.customText,
+        weeklyFrequency: freq
+      }
+    }
+  }
+
+  // 3. Fall back to current time slot of the modality/task!
+  // Checks: currentSlotKey -> task.timing_slot -> task.protocol_step.timing_slot -> benchItem.timing_slot -> modality.default_timing_slot -> resolveOptimalTimingSlot
+  const rawSlotCandidate = (
+    currentSlotKey || 
+    task?.timing_slot || 
+    task?.protocol_step?.timing_slot || 
+    benchItem?.timing_slot || 
+    modality?.default_timing_slot || 
+    ''
+  ).toLowerCase().trim()
+
+  const effectiveSlot = (rawSlotCandidate && rawSlotCandidate !== 'anytime') 
+    ? rawSlotCandidate 
+    : (resolveOptimalTimingSlot(modality, task?.protocol_step, task?.timing_slot, userProfile) || 'morning').toLowerCase()
+
+  let presetVal = CHRONOLOGICAL_TIMING_PRESETS[1].value // Default: Morning with Breakfast
+  if (effectiveSlot.includes('waking') || effectiveSlot.includes('wake') || effectiveSlot.includes('dawn') || effectiveSlot.includes('sunrise') || effectiveSlot.includes('early')) {
+    presetVal = 'Upon Waking (6:00 AM – 8:00 AM)'
+  } else if (effectiveSlot.includes('morning') || effectiveSlot.includes('breakfast') || effectiveSlot.includes('first_meal') || effectiveSlot.includes('am')) {
+    presetVal = 'Morning / With Breakfast (8:00 AM – 10:00 AM)'
+  } else if (effectiveSlot.includes('midday') || effectiveSlot.includes('lunch') || effectiveSlot.includes('noon')) {
+    presetVal = 'Mid-Day / Lunch (12:00 PM – 2:00 PM)'
+  } else if (effectiveSlot.includes('afternoon') || effectiveSlot.includes('workout') || effectiveSlot.includes('training')) {
+    presetVal = 'Late Afternoon (4:00 PM – 6:00 PM)'
+  } else if (effectiveSlot.includes('evening') || effectiveSlot.includes('dinner') || effectiveSlot.includes('post_meal') || effectiveSlot.includes('sunset')) {
+    presetVal = 'Evening / Post-Meal (6:00 PM – 8:00 PM)'
+  } else if (effectiveSlot.includes('bed') || effectiveSlot.includes('sleep') || effectiveSlot.includes('night') || effectiveSlot.includes('pre_bed') || effectiveSlot.includes('wind_down')) {
+    presetVal = 'Pre-Bed / Night (9:00 PM – 11:00 PM)'
+  } else if (effectiveSlot === 'anytime' || effectiveSlot === 'flexible') {
+    presetVal = 'Fasting Window / Flexible'
+  }
+
+  // Derive weekly cadence from modality frequency or protocol step notes
+  const freqSource = modality?.frequency || task?.execution_details?.custom_timing || ''
+  let weeklyFreq = 'Daily'
+  if (freqSource.includes('3–4x') || freqSource.includes('3-4x')) weeklyFreq = '3–4x per week'
+  else if (freqSource.includes('1–2x') || freqSource.includes('1-2x')) weeklyFreq = '1–2x per week'
+  else if (freqSource.includes('Weekly') || freqSource.includes('1x_week') || freqSource.includes('1x week')) weeklyFreq = '1x Weekly'
+  else if (freqSource.includes('2x_month') || freqSource.includes('2x per month') || freqSource.includes('biweekly')) weeklyFreq = '2x per month'
+  else if (freqSource.includes('Monthly') || freqSource.includes('1x_month') || freqSource.includes('30')) weeklyFreq = '1x Monthly'
+
+  return {
+    dosesPerDay: 1,
+    dose1Timing: presetVal,
+    dose2Timing: 'Pre-Bed / Night (9:00 PM – 11:00 PM)',
+    dose3Timing: 'Evening / Post-Meal (6:00 PM – 8:00 PM)',
+    isCustom: false,
+    customText: '',
+    weeklyFrequency: weeklyFreq
+  }
+}
+
 interface DosageDetailModalProps {
   isOpen: boolean
   onClose: () => void
@@ -130,9 +251,10 @@ interface DosageDetailModalProps {
   task?: any
   benchItem?: any
   existingTiming?: string
+  currentSlotKey?: string
   onSelectDose?: (newDoseText: string, value: number) => void
   onOpenCustomizeOutcomes?: () => void
-  onSavePersonalization?: (customDose: string, customTiming: string, notes?: string) => void
+  onSavePersonalization?: (customDose: string, customTiming: string, notes?: string) => Promise<void> | void
   initialShowGeekMode?: boolean
   initialShowLongevityDrawer?: boolean
 }
@@ -146,6 +268,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   task,
   benchItem,
   existingTiming,
+  currentSlotKey,
   onSelectDose,
   onOpenCustomizeOutcomes,
   onSavePersonalization,
@@ -163,23 +286,30 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   // Custom dose text override option
   const [customDoseInput, setCustomDoseInput] = useState<string>('')
 
-  // Multi-dose frequency per day (1x, 2x, 3x daily)
-  const [dosesPerDay, setDosesPerDay] = useState<number>(1)
-
   // Collapsed by default accordion state for Timing section
   const [isTimingSectionExpanded, setIsTimingSectionExpanded] = useState<boolean>(false)
 
-  // Smart timing matching based on modality & active protocol
-  const initialTimingText = modality?.frequency || resolved.activeProtocolPreset?.notes || 'Daily as needed'
-  const timingMatch = matchDefaultTimingPreset(initialTimingText)
+  // Smart timing matching based on modality, active protocol & current slot
+  const initialTimingState = resolveCurrentTimingPreset(
+    existingTiming,
+    task,
+    benchItem,
+    modality,
+    currentSlotKey,
+    userProfile
+  )
+
+  // Multi-dose frequency per day (1x, 2x, 3x daily)
+  const [dosesPerDay, setDosesPerDay] = useState<number>(initialTimingState.dosesPerDay)
   
   // Separate time windows for 1x, 2x, and 3x daily doses
-  const [dose1Timing, setDose1Timing] = useState<string>(timingMatch.presetValue)
-  const [dose2Timing, setDose2Timing] = useState<string>('Pre-Bed / Night (9:00 PM – 11:00 PM)')
-  const [dose3Timing, setDose3Timing] = useState<string>('Evening / Post-Meal (6:00 PM – 8:00 PM)')
+  const [dose1Timing, setDose1Timing] = useState<string>(initialTimingState.dose1Timing)
+  const [dose2Timing, setDose2Timing] = useState<string>(initialTimingState.dose2Timing)
+  const [dose3Timing, setDose3Timing] = useState<string>(initialTimingState.dose3Timing)
 
-  const [customTimingText, setCustomTimingText] = useState<string>(timingMatch.customText)
-  const [isCustomTimingSelected, setIsCustomTimingSelected] = useState<boolean>(timingMatch.isCustom)
+  const [customTimingText, setCustomTimingText] = useState<string>(initialTimingState.customText)
+  const [isCustomTimingSelected, setIsCustomTimingSelected] = useState<boolean>(initialTimingState.isCustom)
+  const [weeklyFrequency, setWeeklyFrequency] = useState<string>(initialTimingState.weeklyFrequency)
 
   // Unique Modality AI Circadian Tip
   const circadianTip = getCircadianTipForModality(modality?.name || '', modality?.category)
@@ -194,7 +324,6 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
 
   // Secondary Parameter State (e.g. Temperature for Sauna/Cold, Intensity/Zone for HIIT/Cardio)
   const [secondaryParam, setSecondaryParam] = useState<string>('')
-  const [weeklyFrequency, setWeeklyFrequency] = useState<string>('Daily')
 
   // Archetype-driven parameter & synergy configuration
   const doseConfig = getArchetypeDoseConfig(modality)
@@ -203,23 +332,22 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   const secondaryPresets = doseConfig.secondaryPresets
 
   useEffect(() => {
-    // 1. Timing State
-    const initialText = existingTiming || task?.execution_details?.custom_timing || benchItem?.custom_timing || modality.frequency || resolved.activeProtocolPreset?.notes || ''
-    const parsed = parseTimingState(initialText)
-    setDosesPerDay(parsed.dosesPerDay)
-    setDose1Timing(parsed.dose1Timing)
-    setDose2Timing(parsed.dose2Timing)
-    setDose3Timing(parsed.dose3Timing)
-    setIsCustomTimingSelected(parsed.isCustom)
-    setCustomTimingText(parsed.customText)
-
-    // Parse execution frequency (Default to Daily)
-    if (initialText.includes('3-4x') || initialText.includes('3–4x')) setWeeklyFrequency('3–4x per week')
-    else if (initialText.includes('1-2x') || initialText.includes('1–2x')) setWeeklyFrequency('1–2x per week')
-    else if (initialText.includes('Weekly') || initialText.includes('1x_week') || initialText.includes('1x week')) setWeeklyFrequency('1x Weekly')
-    else if (initialText.includes('2x_month') || initialText.includes('2x per month') || initialText.includes('biweekly')) setWeeklyFrequency('2x per month')
-    else if (initialText.includes('Monthly') || initialText.includes('1x_month') || initialText.includes('30')) setWeeklyFrequency('1x Monthly')
-    else setWeeklyFrequency('Daily')
+    // 1. Timing State - always initialize to modality's current time window
+    const timingState = resolveCurrentTimingPreset(
+      existingTiming,
+      task,
+      benchItem,
+      modality,
+      currentSlotKey,
+      userProfile
+    )
+    setDosesPerDay(timingState.dosesPerDay)
+    setDose1Timing(timingState.dose1Timing)
+    setDose2Timing(timingState.dose2Timing)
+    setDose3Timing(timingState.dose3Timing)
+    setIsCustomTimingSelected(timingState.isCustom)
+    setCustomTimingText(timingState.customText)
+    setWeeklyFrequency(timingState.weeklyFrequency)
 
     // 2. Saved Dosage Target & Secondary Parameter
     const savedDose = task?.execution_details?.custom_dose || benchItem?.custom_dose || ''
@@ -268,7 +396,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
     if (savedNotes) {
       setPersonalNotes(savedNotes)
     }
-  }, [modality?.id, existingTiming, task?.id, benchItem?.id])
+  }, [modality?.id, existingTiming, currentSlotKey, task?.id, task?.timing_slot, benchItem?.id])
 
   const lit = resolved.literatureRange || { min: 0, max: resolved.recommendedValue * 2, unit: resolved.unit || 'mg' }
   const unit = resolved.unit || 'mg'
@@ -1185,11 +1313,74 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
             Cancel
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               const effectiveTiming = getEffectiveTimingString()
               const finalDose = getFormattedDoseOutput()
               if (onSelectDose) onSelectDose(finalDose, customValue)
-              if (onSavePersonalization) onSavePersonalization(finalDose, effectiveTiming, personalNotes)
+
+              const localUserId = getLocalUserId()
+              const fromDate = task?.scheduled_date || format(new Date(), 'yyyy-MM-dd')
+              const protocolStepId = task?.protocol_step_id || undefined
+              const scheduleConfig = task?.execution_details?.schedule_config
+              const targetSlot = resolveSlotFromTimingString(effectiveTiming)
+
+              // 1. Direct active task row update in Supabase (updates both timing_slot column & execution_details JSONB)
+              if (task?.id && supabase) {
+                try {
+                  const mergedDetails = {
+                    ...(task.execution_details || {}),
+                    custom_dose: finalDose,
+                    custom_timing: effectiveTiming,
+                    notes: personalNotes || task.execution_details?.notes || undefined
+                  }
+                  const taskPayload: any = {
+                    execution_details: mergedDetails
+                  }
+                  if (targetSlot && targetSlot !== 'anytime') {
+                    taskPayload.timing_slot = targetSlot
+                  }
+                  await supabase
+                    .from('daily_protocol_tasks')
+                    .update(taskPayload)
+                    .eq('id', task.id)
+                } catch (err) {
+                  console.error('Failed to update active task row in DosageDetailModal:', err)
+                }
+              }
+
+              // 2. Reconcile user_bench_items and future tasks across Supabase
+              if (modality?.id) {
+                try {
+                  await reconcileModalityScheduleAndFutureTasks(localUserId, modality.id, {
+                    customDose: finalDose,
+                    customTiming: effectiveTiming,
+                    timingSlot: targetSlot && targetSlot !== 'anytime' ? targetSlot : undefined,
+                    notes: personalNotes,
+                    fromDate,
+                    protocolStepId,
+                    scheduleConfig
+                  })
+                } catch (err) {
+                  console.error('Failed to reconcile schedule and future tasks in DosageDetailModal:', err)
+                }
+              }
+
+              // 3. Invoke caller-provided personalization handler
+              if (onSavePersonalization) {
+                try {
+                  await onSavePersonalization(finalDose, effectiveTiming, personalNotes)
+                } catch (err) {
+                  console.error('Error in onSavePersonalization:', err)
+                }
+              }
+
+              // 4. Dispatch global refresh events
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
+                window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
+                window.dispatchEvent(new CustomEvent('levl_bench_updated'))
+              }
+
               onClose()
             }}
             className="px-6 py-3 rounded-xl text-xs sm:text-sm font-bold bg-teal-500 hover:bg-teal-400 text-slate-950 transition-colors shadow-lg active:scale-95 cursor-pointer"

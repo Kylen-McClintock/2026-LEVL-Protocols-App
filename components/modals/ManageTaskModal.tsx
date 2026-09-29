@@ -449,6 +449,8 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
       ? 'As Needed'
       : `${daysToSave.length}x/wk • ${timingFormatted}`
 
+    const effectiveSlot = dosesPerDay > 1 ? dose1Timing : selectedSlot
+
     const config: ModalityScheduleConfig = {
       schedule_mode: scheduleMode,
       days_of_week: daysToSave,
@@ -460,7 +462,7 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
       anchor_date: task?.scheduled_date || new Date().toISOString(),
       is_rolling_rotation: isRollingRotation,
       skip_policy: skipPolicy,
-      timing_slot: dosesPerDay > 1 ? dose1Timing : selectedSlot
+      timing_slot: effectiveSlot
     }
 
     const finalFormattedDose = getEffectiveFormattedDose()
@@ -471,6 +473,7 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
       await reconcileModalityScheduleAndFutureTasks(localUserId, effectiveModalityId, {
         customDose: finalFormattedDose,
         customTiming: customTimingString,
+        timingSlot: effectiveSlot,
         notes: personalNotes,
         scheduleConfig: config,
         fromDate,
@@ -486,6 +489,7 @@ export default function ManageTaskModal({ isOpen, onClose, task, modality: direc
         await updateTaskExecutionDetails(realId, {
           custom_dose: finalFormattedDose,
           custom_timing: customTimingString,
+          timing_slot: effectiveSlot,
           notes: personalNotes,
           schedule_config: config
         })
