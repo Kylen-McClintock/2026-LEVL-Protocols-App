@@ -190,141 +190,130 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
   }
 
   return (
-    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-indigo-950/40 border border-slate-700/60 shadow-2xl backdrop-blur-md space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.25)] shrink-0">
-            <Database size={20} />
+    <div className="glass-card p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-indigo-950/40 border border-slate-700/60 shadow-2xl backdrop-blur-md space-y-5">
+      {/* Header - Full Width */}
+      <div className="flex items-start gap-3 w-full">
+        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-500/15 border border-purple-300 dark:border-purple-500/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.15)] shrink-0 mt-0.5">
+          <Database size={20} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+              Data Sovereignty &amp; Protocol Vault
+            </h3>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30">
+              Zero Lock-In
+            </span>
           </div>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+            100% portable protocols, dosing formulas, and clinical logs. Export anytime as AI context, raw JSON, or spreadsheet tables.
+          </p>
+        </div>
+      </div>
+
+      {/* Live Inventory Counter Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-100/70 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80">
+        <div className="flex items-center gap-2.5">
+          <Bookmark size={15} className="text-purple-600 dark:text-purple-400 shrink-0" />
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base font-bold text-white tracking-tight">
-                Data Sovereignty &amp; Protocol Vault
-              </h3>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                Zero Lock-In
-              </span>
+            <div className="text-xs font-bold text-slate-900 dark:text-white">
+              {loadingStats ? '—' : stats.modalitiesCount}
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              100% portable protocols, dosing formulas, and clinical logs. Export anytime as AI context, raw JSON, or spreadsheet tables.
-            </p>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Saved Modalities</div>
           </div>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <Layers size={15} className="text-sky-600 dark:text-sky-400 shrink-0" />
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-900 dark:text-white">
+              {loadingStats ? '—' : stats.protocolsCount}
+            </div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Active Protocols</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <Activity size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-900 dark:text-white">
+              {loadingStats ? '—' : stats.tasksCount}
+            </div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Logged Tasks</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <Calendar size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-900 dark:text-white">
+              {loadingStats ? '—' : stats.checkinsCount}
+            </div>
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Check-in Days</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions Strip & Expandable Options Trigger */}
+      <div className="p-3 rounded-xl bg-slate-100/90 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800/90 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold shrink-0">
+            Quick Export:
+          </span>
+          <button
+            type="button"
+            onClick={() => handleExport('markdown')}
+            disabled={activeExport !== null}
+            className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200/90 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 border border-purple-300 dark:border-purple-500/40 text-purple-950 dark:text-purple-100 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+          >
+            <Sparkles size={12} className="text-purple-700 dark:text-purple-300 shrink-0" />
+            <span>AI Dossier (.md)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleExport('json')}
+            disabled={activeExport !== null}
+            className="px-2.5 py-1 rounded-lg bg-sky-100 hover:bg-sky-200/90 dark:bg-sky-950/60 dark:hover:bg-sky-900/60 border border-sky-300 dark:border-sky-500/40 text-sky-950 dark:text-sky-100 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+          >
+            <Database size={12} className="text-sky-700 dark:text-sky-300 shrink-0" />
+            <span>Full Vault (.json)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleExport('csv_tasks')}
+            disabled={activeExport !== null}
+            className="px-2.5 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200/90 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-500/40 text-emerald-950 dark:text-emerald-100 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+          >
+            <Table size={12} className="text-emerald-700 dark:text-emerald-300 shrink-0" />
+            <span>Tasks (.csv)</span>
+          </button>
         </div>
 
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 mt-0.5"
+          className="px-3 py-1.5 rounded-xl bg-slate-200/80 hover:bg-slate-300/80 dark:bg-slate-800/90 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-slate-700/80 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ml-auto shrink-0 shadow-xs"
         >
           <span>{isExpanded ? 'Collapse' : 'Options'}</span>
           {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
       </div>
 
-      {/* Live Inventory Counter Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-        <div className="flex items-center gap-2.5">
-          <Bookmark size={15} className="text-purple-400 shrink-0" />
-          <div className="min-w-0">
-            <div className="text-xs font-bold text-white">
-              {loadingStats ? '—' : stats.modalitiesCount}
-            </div>
-            <div className="text-[10px] text-slate-400 truncate">Saved Modalities</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <Layers size={15} className="text-sky-400 shrink-0" />
-          <div className="min-w-0">
-            <div className="text-xs font-bold text-white">
-              {loadingStats ? '—' : stats.protocolsCount}
-            </div>
-            <div className="text-[10px] text-slate-400 truncate">Active Protocols</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <Activity size={15} className="text-emerald-400 shrink-0" />
-          <div className="min-w-0">
-            <div className="text-xs font-bold text-white">
-              {loadingStats ? '—' : stats.tasksCount}
-            </div>
-            <div className="text-[10px] text-slate-400 truncate">Logged Tasks</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <Calendar size={15} className="text-amber-400 shrink-0" />
-          <div className="min-w-0">
-            <div className="text-xs font-bold text-white">
-              {loadingStats ? '—' : stats.checkinsCount}
-            </div>
-            <div className="text-[10px] text-slate-400 truncate">Check-in Days</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Collapsed Quick Actions Strip */}
-      {!isExpanded && (
-        <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/90 flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">Quick Export:</span>
-            <button
-              type="button"
-              onClick={() => handleExport('markdown')}
-              disabled={activeExport !== null}
-              className="px-2.5 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Sparkles size={12} className="text-purple-400" />
-              <span>AI Dossier (.md)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleExport('json')}
-              disabled={activeExport !== null}
-              className="px-2.5 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/40 text-sky-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Database size={12} className="text-sky-400" />
-              <span>Full Vault (.json)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleExport('csv_tasks')}
-              disabled={activeExport !== null}
-              className="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Table size={12} className="text-emerald-400" />
-              <span>Tasks (.csv)</span>
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsExpanded(true)}
-            className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition-colors ml-auto cursor-pointer"
-          >
-            <span>View All Formats</span>
-            <ChevronDown size={13} />
-          </button>
-        </div>
-      )}
-
       {/* Export Format Cards (Expanded View) */}
       {isExpanded && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-in fade-in duration-200">
         {/* 1. AI-Ready Markdown Dossier */}
-        <div className="p-4 rounded-xl bg-gradient-to-b from-purple-950/40 via-slate-900/60 to-slate-950 border border-purple-500/30 flex flex-col justify-between hover:border-purple-500/60 transition-all group">
+        <div className="p-4 rounded-xl bg-slate-100/60 dark:bg-gradient-to-b dark:from-purple-950/40 dark:via-slate-900/60 dark:to-slate-950 border border-purple-200 dark:border-purple-500/30 flex flex-col justify-between hover:border-purple-400 dark:hover:border-purple-500/60 transition-all group shadow-xs">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 flex items-center justify-center">
                 <Sparkles size={16} />
               </div>
-              <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
+              <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-500/20 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-500/40">
                 Claude / GPT
               </span>
             </div>
-            <h4 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-colors">
               AI Context Dossier
             </h4>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
               Pre-prompted clinical protocol briefing with circadian dosing matrix, biometrics, PubMed papers, and safety guardrails for instant LLM intake.
             </p>
           </div>
@@ -334,7 +323,7 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
               type="button"
               onClick={() => handleExport('markdown')}
               disabled={activeExport !== null}
-              className="col-span-3 py-2 px-2.5 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 text-purple-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              className="col-span-3 py-2 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
             >
               {activeExport === 'markdown' ? (
                 <>
@@ -343,8 +332,8 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
                 </>
               ) : downloadSuccess === 'markdown' ? (
                 <>
-                  <Check size={13} className="text-emerald-400" />
-                  <span className="text-emerald-300">Saved!</span>
+                  <Check size={13} className="text-white" />
+                  <span>Saved!</span>
                 </>
               ) : (
                 <>
@@ -358,29 +347,29 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
               onClick={() => handleQuickView('markdown')}
               disabled={activeExport !== null}
               title="Quick view & open in app"
-              className="col-span-2 py-2 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+              className="col-span-2 py-2 px-2 rounded-lg bg-slate-200/80 hover:bg-slate-300/80 dark:bg-slate-800/80 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-50"
             >
-              <Eye size={13} className="text-purple-400" />
+              <Eye size={13} className="text-purple-600 dark:text-purple-400" />
               <span>View</span>
             </button>
           </div>
         </div>
 
         {/* 2. Lossless System Backup JSON */}
-        <div className="p-4 rounded-xl bg-gradient-to-b from-sky-950/40 via-slate-900/60 to-slate-950 border border-sky-500/30 flex flex-col justify-between hover:border-sky-500/60 transition-all group">
+        <div className="p-4 rounded-xl bg-slate-100/60 dark:bg-gradient-to-b dark:from-sky-950/40 dark:via-slate-900/60 dark:to-slate-950 border border-sky-200 dark:border-sky-500/30 flex flex-col justify-between hover:border-sky-400 dark:hover:border-sky-500/60 transition-all group shadow-xs">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-300 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 flex items-center justify-center">
                 <Database size={16} />
               </div>
-              <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">
+              <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-500/20 text-sky-900 dark:text-sky-300 border border-sky-300 dark:border-sky-500/40">
                 Lossless Backup
               </span>
             </div>
-            <h4 className="text-sm font-bold text-white group-hover:text-sky-300 transition-colors">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-300 transition-colors">
               Full Protocol Vault
             </h4>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
               Complete raw JSON dump of your entire database: custom dosage overrides, active stacks, biomarkers, check-ins, and user profile parameters.
             </p>
           </div>
@@ -390,7 +379,7 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
               type="button"
               onClick={() => handleExport('json')}
               disabled={activeExport !== null}
-              className="col-span-3 py-2 px-2.5 rounded-lg bg-sky-600/30 hover:bg-sky-600/50 border border-sky-500/50 text-sky-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              className="col-span-3 py-2 px-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
             >
               {activeExport === 'json' ? (
                 <>
@@ -399,8 +388,8 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
                 </>
               ) : downloadSuccess === 'json' ? (
                 <>
-                  <Check size={13} className="text-emerald-400" />
-                  <span className="text-emerald-300">Saved!</span>
+                  <Check size={13} className="text-white" />
+                  <span>Saved!</span>
                 </>
               ) : (
                 <>
@@ -414,29 +403,29 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
               onClick={() => handleQuickView('json')}
               disabled={activeExport !== null}
               title="Quick view & open in app"
-              className="col-span-2 py-2 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+              className="col-span-2 py-2 px-2 rounded-lg bg-slate-200/80 hover:bg-slate-300/80 dark:bg-slate-800/80 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-50"
             >
-              <Eye size={13} className="text-sky-400" />
+              <Eye size={13} className="text-sky-600 dark:text-sky-400" />
               <span>View</span>
             </button>
           </div>
         </div>
 
         {/* 3. Tabular Spreadsheets (CSV) */}
-        <div className="p-4 rounded-xl bg-gradient-to-b from-amber-950/40 via-slate-900/60 to-slate-950 border border-amber-500/30 flex flex-col justify-between hover:border-amber-500/60 transition-all group">
+        <div className="p-4 rounded-xl bg-slate-100/60 dark:bg-gradient-to-b dark:from-amber-950/40 dark:via-slate-900/60 dark:to-slate-950 border border-amber-200 dark:border-amber-500/30 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-500/60 transition-all group shadow-xs">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center">
                 <Table size={16} />
               </div>
-              <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40">
                 Excel / Sheets
               </span>
             </div>
-            <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-colors">
               Tabular Spreadsheets
             </h4>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
               Clean flat tabular CSV logs with exact timestamps, adherence statuses, notes, and well-being ratings. Ready for spreadsheet analysis.
             </p>
           </div>
@@ -447,12 +436,12 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
                 type="button"
                 onClick={() => handleExport('csv_tasks')}
                 disabled={activeExport !== null}
-                className="col-span-3 py-1.5 px-2 rounded-lg bg-amber-600/25 hover:bg-amber-600/40 border border-amber-500/40 text-amber-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 truncate"
+                className="col-span-3 py-1.5 px-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 truncate shadow-xs"
               >
                 {activeExport === 'csv_tasks' ? (
                   <Loader2 size={12} className="animate-spin" />
                 ) : downloadSuccess === 'csv_tasks' ? (
-                  <Check size={12} className="text-emerald-400" />
+                  <Check size={12} className="text-white" />
                 ) : (
                   <Download size={12} />
                 )}
@@ -463,9 +452,9 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
                 onClick={() => handleQuickView('csv_tasks')}
                 disabled={activeExport !== null}
                 title="View tasks table spreadsheet & open in app"
-                className="col-span-2 py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                className="col-span-2 py-1.5 px-2 rounded-lg bg-slate-200/80 hover:bg-slate-300/80 dark:bg-slate-800/80 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-50"
               >
-                <Eye size={12} className="text-amber-400" />
+                <Eye size={12} className="text-amber-600 dark:text-amber-400" />
                 <span>Table</span>
               </button>
             </div>
@@ -475,12 +464,12 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
                 type="button"
                 onClick={() => handleExport('csv_checkins')}
                 disabled={activeExport !== null}
-                className="col-span-3 py-1.5 px-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 truncate"
+                className="col-span-3 py-1.5 px-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 truncate shadow-xs"
               >
                 {activeExport === 'csv_checkins' ? (
                   <Loader2 size={11} className="animate-spin" />
                 ) : downloadSuccess === 'csv_checkins' ? (
-                  <Check size={11} className="text-emerald-400" />
+                  <Check size={11} className="text-white" />
                 ) : (
                   <Download size={11} />
                 )}
@@ -491,9 +480,9 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
                 onClick={() => handleQuickView('csv_checkins')}
                 disabled={activeExport !== null}
                 title="View check-ins spreadsheet & open in app"
-                className="col-span-2 py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                className="col-span-2 py-1.5 px-2 rounded-lg bg-slate-200/80 hover:bg-slate-300/80 dark:bg-slate-800/80 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-[11px] font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-50"
               >
-                <Eye size={11} className="text-amber-400" />
+                <Eye size={11} className="text-amber-600 dark:text-amber-400" />
                 <span>Table</span>
               </button>
             </div>
@@ -580,13 +569,15 @@ export default function DataSovereigntyCard({ localUserId }: DataSovereigntyCard
         </div>
       )}
 
-      {/* Security Guarantee Footer */}
-      <div className="flex items-center gap-2.5 text-[11px] text-slate-400 bg-slate-950/40 px-3.5 py-2.5 rounded-xl border border-slate-800/60">
-        <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
-        <span>
-          <strong className="text-slate-300">Client-Side Sovereign Assembly:</strong> Your export files are assembled directly within your browser from your encrypted Supabase instance. LEVL never monetizes, rents, or shares your biological data.
-        </span>
-      </div>
+      {/* Security Guarantee Footer - Only visible when expanded */}
+      {isExpanded && (
+        <div className="flex items-center gap-2.5 text-[11px] text-slate-600 dark:text-slate-400 bg-slate-100/70 dark:bg-slate-950/40 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800/60 animate-in fade-in duration-200">
+          <ShieldCheck size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span>
+            <strong className="text-slate-900 dark:text-slate-200 font-semibold">Client-Side Sovereign Assembly:</strong> Your export files are assembled directly within your browser from your encrypted Supabase instance. LEVL never monetizes, rents, or shares your biological data.
+          </span>
+        </div>
+      )}
 
       {/* Modal Inspector */}
       <DataExportViewerModal
