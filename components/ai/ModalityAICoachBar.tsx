@@ -126,14 +126,6 @@ export const ModalityAICoachBar: React.FC<ModalityAICoachBarProps> = ({
     weeklyFrequency?: string
   }>({})
 
-  const quickPrompts = [
-    { label: 'Circadian Timing', prompt: `What is the ideal circadian timing window for ${modalityName} given my active stack?` },
-    { label: 'Split Doses (AM/PM)', prompt: `Can I split ${modalityName} into 2x daily or 3x daily doses across morning and evening?` },
-    { label: 'Optimal Cadence & Rest', prompt: `What is the best weekly rest cadence and adaptation schedule for ${modalityName}?` },
-    { label: 'Personalized Dosing', prompt: `Based on my biological profile and clinical literature, what target dose should I take for ${modalityName}?` },
-    { label: 'Stack Synergy & Bioavailability', prompt: `Should ${modalityName} be taken with dietary fats, fasting, or with food for maximum bioavailability?` }
-  ]
-
   const handleAsk = async (questionText?: string) => {
     const textToSend = questionText || query
     if (!textToSend.trim() || isLoading) return
@@ -229,17 +221,17 @@ export const ModalityAICoachBar: React.FC<ModalityAICoachBarProps> = ({
   const anyApplied = appliedDose || appliedMultiDose || appliedTiming || appliedCadence || appliedNotes
 
   return (
-    <div className="w-full bg-gradient-to-br from-purple-950/40 via-slate-900/90 to-cyan-950/30 border border-purple-500/30 hover:border-purple-500/50 rounded-2xl p-4 shadow-xl transition-all space-y-3">
+    <div className="w-full bg-gradient-to-br from-purple-950/40 via-slate-900/90 to-cyan-950/30 border border-purple-500/30 hover:border-purple-500/50 rounded-2xl p-3 sm:p-3.5 shadow-xl transition-all space-y-2.5">
       {/* Header Row */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center font-bold shrink-0 shadow-[0_0_10px_rgba(168,85,247,0.25)]">
-            <Sparkles size={13} className="text-purple-400" />
+          <div className="w-5 h-5 rounded-md bg-purple-500/20 border border-purple-500/40 text-purple-300 flex items-center justify-center font-bold shrink-0 shadow-[0_0_8px_rgba(168,85,247,0.25)]">
+            <Sparkles size={11} className="text-purple-400" />
           </div>
-          <span className="text-xs font-black text-white uppercase tracking-wider">
+          <span className="text-[11px] sm:text-xs font-black text-white uppercase tracking-wider">
             AI Protocol &amp; Synergy Coach
           </span>
-          <span className="text-[10px] bg-purple-950/80 border border-purple-800/60 text-purple-300 px-2 py-0.5 rounded-full font-mono font-bold hidden sm:inline-block">
+          <span className="text-[9px] bg-purple-950/80 border border-purple-800/60 text-purple-300 px-2 py-0.5 rounded-full font-mono font-bold hidden sm:inline-block">
             Personalized to Your Profile
           </span>
         </div>
@@ -256,59 +248,44 @@ export const ModalityAICoachBar: React.FC<ModalityAICoachBarProps> = ({
         )}
       </div>
 
-      {/* Input Field with Search Icon & Submit */}
+      {/* Compact 2-Row Textarea with Comma-Separated Prompt Ideas & Submit */}
       <form
         onSubmit={(e) => {
           e.preventDefault()
           handleAsk()
         }}
-        className="relative flex items-center gap-2"
+        className="relative"
       >
-        <div className="relative flex-1">
-          <input
-            type="text"
+        <div className="relative">
+          <textarea
+            rows={2}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Ask AI Coach to adjust dosing, split morning/evening times, optimize rest days, or evaluate synergy...`}
-            className="w-full bg-slate-950/90 border border-slate-700/80 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-slate-400 outline-none transition-all pr-10 shadow-inner"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleAsk()
+              }
+            }}
+            placeholder="Ask AI Coach: circadian timing, split AM/PM doses, cadence & rest days, target dosing, stack synergy..."
+            className="w-full bg-slate-950/90 border border-slate-700/80 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400/90 outline-none transition-all pr-11 resize-none leading-relaxed shadow-inner"
           />
           {isLoading ? (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-400">
-              <Loader2 size={16} className="animate-spin" />
+            <div className="absolute right-2.5 bottom-2.5 text-purple-400 p-1">
+              <Loader2 size={15} className="animate-spin" />
             </div>
           ) : (
             <button
               type="submit"
               disabled={!query.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:hover:bg-purple-600 text-white transition-all cursor-pointer disabled:cursor-not-allowed"
+              className="absolute right-2.5 bottom-2.5 p-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-30 disabled:hover:bg-purple-600 text-white transition-all cursor-pointer disabled:cursor-not-allowed shadow-sm active:scale-95"
               title="Ask AI Coach"
             >
-              <Send size={13} />
+              <Send size={12} />
             </button>
           )}
         </div>
       </form>
-
-      {/* Quick Prompt Chips */}
-      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 hidden sm:inline">
-          Quick Ask:
-        </span>
-        {quickPrompts.map((qp, idx) => (
-          <button
-            key={idx}
-            type="button"
-            onClick={() => {
-              setQuery(qp.prompt)
-              handleAsk(qp.prompt)
-            }}
-            disabled={isLoading}
-            className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-slate-950/80 hover:bg-purple-950/60 border border-slate-800 hover:border-purple-500/40 text-purple-300 hover:text-purple-200 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-          >
-            ⚡ {qp.label}
-          </button>
-        ))}
-      </div>
 
       {/* AI Coach Response Display */}
       {response && isExpanded && (

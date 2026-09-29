@@ -20,6 +20,7 @@ export type ModalityArchetype =
   | 'sport'
   | 'caffeine_cutoff'
   | 'skincare'
+  | 'diagnostic'
   | 'general'
 
 export interface SpecializedTraits {
@@ -361,14 +362,39 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     modType === 'supplement' || 
     cat.includes('supplement') || 
     cat.includes('nutraceutical') ||
+    cat.includes('botanical') ||
     name.includes('apigenin') ||
     name.includes('magnesium') ||
     name.includes('gaba') ||
     name.includes('theanine') ||
     name.includes('melatonin') ||
     name.includes('glycine') ||
-    name.includes('inositol')
+    name.includes('inositol') ||
+    name.includes('saffron') ||
+    name.includes('valerian') ||
+    name.includes('tart-cherry') ||
+    name.includes('cherry') ||
+    name.includes('kiwifruit') ||
+    name.includes('cbd') ||
+    name.includes('deepcell') ||
+    name.includes('extract') ||
+    name.includes('powder') ||
+    Boolean(modality.dose_or_exposure && (/\bmg\b/i.test(modality.dose_or_exposure) || modality.dose_or_exposure.includes('g / serving') || /\bcapsule/i.test(modality.dose_or_exposure)))
   )
+
+  const isNapOrDaytimeRest = (
+    name.includes('nap') ||
+    name.includes('eyes-closed') ||
+    name.includes('waking rest')
+  )
+
+  if (isNapOrDaytimeRest) {
+    return {
+      archetype: 'nsdr',
+      isSpecialized: true,
+      specializedTraits
+    }
+  }
 
   if (
     !isOralSleepSupp && (
@@ -602,6 +628,32 @@ export function getModalityArchetype(modality: Modality | any): ModalityArchetyp
     return {
       archetype: 'sport',
       isSpecialized: false,
+      specializedTraits
+    }
+  }
+
+  // 16. DIAGNOSTICS & TRACKING (Imaging Scans, Blood Panels, Clocks, Wearables)
+  const isDiagnosticMatch = (
+    logType === 'diagnostic' ||
+    logType === 'diagnostic_test' ||
+    cat.includes('diagnostic') ||
+    cat.includes('tracking') ||
+    cat.includes('screening') ||
+    name.includes('scan') ||
+    name.includes('mri') ||
+    name.includes('dexa') ||
+    name.includes('cac') ||
+    name.includes('panel') ||
+    name.includes('clock') ||
+    name.includes('dunedin') ||
+    name.includes('cpet') ||
+    name.includes('biomarker')
+  ) && !name.includes('cgm') && !name.includes('glucose')
+
+  if (isDiagnosticMatch) {
+    return {
+      archetype: 'diagnostic',
+      isSpecialized: true,
       specializedTraits
     }
   }

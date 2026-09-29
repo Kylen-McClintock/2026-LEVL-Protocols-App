@@ -171,7 +171,10 @@ export function calculateStackAdherence(
             scheduled += 1
             completed += 0.5
           } else if (task.status === 'skipped' || task.status === 'missed' || (task.status === 'pending' && dStr < todayStr)) {
-            scheduled += 1
+            // "Not Needed Today" is situational/conditional and does not penalize scheduled habit adherence
+            if (task.status_reason !== 'Not Needed Today') {
+              scheduled += 1
+            }
           }
         }
       }

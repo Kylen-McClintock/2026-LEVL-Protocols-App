@@ -585,10 +585,22 @@ export default function BlocksViewContainer({
     outcomes?: Record<string, number>,
     customDose?: string,
     completedAt?: string,
-    notes?: string
+    notes?: string,
+    executionDetails?: Record<string, any>,
+    preOutcomes?: Record<string, number>
   ) => {
     const targetTask = tasks.find((t) => t.id === taskId)
     if (targetTask) triggerUndo(targetTask, targetTask.status, 'completed', 'Undo')
+
+    if (preOutcomes && Object.keys(preOutcomes).length > 0 && localUserId) {
+      for (const [outcomeId, score] of Object.entries(preOutcomes)) {
+        try {
+          await saveOutcomeObservation(localUserId, outcomeId, 'pre', score, date, taskId, undefined, notes)
+        } catch (e) {
+          console.error('Error saving in-feed pre-outcome rating:', e)
+        }
+      }
+    }
 
     if (outcomes && Object.keys(outcomes).length > 0 && localUserId) {
       for (const [outcomeId, score] of Object.entries(outcomes)) {
@@ -600,16 +612,24 @@ export default function BlocksViewContainer({
       }
     }
 
-    const execDetails = (customDose || outcomes || notes)
+    const execDetails = (customDose || outcomes || notes || executionDetails)
       ? {
           ...(targetTask?.execution_details || {}),
+          ...(executionDetails || {}),
           ...(customDose ? { custom_dose: customDose } : {}),
           ...(outcomes ? { outcome_ratings: outcomes } : {}),
           ...(notes ? { notes } : {})
         }
       : undefined
 
-    onStatusChange(taskId, 'completed', undefined, completedAt, undefined, execDetails)
+    let metrics: any = undefined
+    if (execDetails?.duration || execDetails?.distance) {
+      metrics = {}
+      if (execDetails.duration) metrics.duration_mins = parseFloat(execDetails.duration)
+      if (execDetails.distance) metrics.distance = parseFloat(execDetails.distance)
+    }
+
+    onStatusChange(taskId, 'completed', undefined, completedAt, metrics, execDetails)
     setActiveSwipe(null)
   }
 

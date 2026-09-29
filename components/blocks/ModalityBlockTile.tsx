@@ -182,9 +182,25 @@ export default function ModalityBlockTile({
     return isResizing ? { ...sizing, width: previewWidth } : sizing
   }, [isResizing, sizing, previewWidth])
 
-  const { colSpanClass, heightClass } = getGridClassesForSizing(activeSizing, layoutMode)
+  const doseDisplay = useMemo(() => {
+    return getModalityDoseDisplay(task, modality, benchItem)
+  }, [task, modality, benchItem])
+
+  const hasProtocolAttribution = Boolean(badges.showProtocol && protocolName)
+  const activeBadgeCount = useMemo(() => {
+    let count = 0
+    if (effectiveShowDosing && doseDisplay) count++
+    if (badges.showCategory && categoryName) count++
+    if (badges.showSynergies && hasSynergy) count++
+    return count
+  }, [effectiveShowDosing, doseDisplay, badges.showCategory, categoryName, badges.showSynergies, hasSynergy])
+
+  const { colSpanClass, heightClass } = getGridClassesForSizing(activeSizing, layoutMode, {
+    hasProtocolAttribution,
+    activeBadgeCount
+  })
   const styles = getBlockVisualStyles(modality, visualStyle, isCompleted, isSnoozed, isSkipped, isIgnited)
-  const isOneWideSquare = layoutMode === '1-wide' || layoutMode === 'streamline'
+  const isOneWideSquare = layoutMode === '1-wide' || layoutMode === 'streamline' || activeSizing.width === 'full'
 
   // Large centered icon size tailored for each layout mode
   const iconSize = isOneWideSquare
@@ -407,10 +423,6 @@ export default function ModalityBlockTile({
   }
 
 
-
-  const doseDisplay = useMemo(() => {
-    return getModalityDoseDisplay(task, modality, benchItem)
-  }, [task, modality, benchItem])
 
   const timingRel = useMemo(() => {
     return resolveModalityTimingRelationship(task, modality, allDayTasks)
@@ -690,23 +702,26 @@ export default function ModalityBlockTile({
         </div>
       )}
 
-      {/* Right Edge Resize Handle (Tap to cycle, drag outward for full width) */}
-      <div
-        data-resize-handle="right"
-        onMouseDown={(e) => handleEdgeMouseDown(e, 'right')}
-        onTouchStart={(e) => handleEdgeTouchStart(e, 'right')}
-        className="absolute right-0 top-0 bottom-0 w-8 cursor-ew-resize select-none touch-none z-30 bg-transparent"
-        title="Tap or drag edge to resize (Full, 1/2, 1/3)"
-      />
+      {/* Right and Left Edge Resize Handles (Only for multi-column grid modes, hidden in 1-wide / streamline) */}
+      {!isOneWideSquare && (
+        <>
+          <div
+            data-resize-handle="right"
+            onMouseDown={(e) => handleEdgeMouseDown(e, 'right')}
+            onTouchStart={(e) => handleEdgeTouchStart(e, 'right')}
+            className="absolute right-0 top-0 bottom-0 w-8 cursor-ew-resize select-none touch-none z-30 bg-transparent"
+            title="Tap or drag edge to resize (Full, 1/2, 1/3)"
+          />
 
-      {/* Left Edge Resize Handle (Tap to cycle, drag outward for full width) */}
-      <div
-        data-resize-handle="left"
-        onMouseDown={(e) => handleEdgeMouseDown(e, 'left')}
-        onTouchStart={(e) => handleEdgeTouchStart(e, 'left')}
-        className="absolute left-0 top-0 bottom-0 w-8 cursor-ew-resize select-none touch-none z-30 bg-transparent"
-        title="Tap or drag edge to resize (Full, 1/2, 1/3)"
-      />
+          <div
+            data-resize-handle="left"
+            onMouseDown={(e) => handleEdgeMouseDown(e, 'left')}
+            onTouchStart={(e) => handleEdgeTouchStart(e, 'left')}
+            className="absolute left-0 top-0 bottom-0 w-8 cursor-ew-resize select-none touch-none z-30 bg-transparent"
+            title="Tap or drag edge to resize (Full, 1/2, 1/3)"
+          />
+        </>
+      )}
 
       {/* Main Rounded Block Tile */}
       <div
@@ -727,8 +742,12 @@ export default function ModalityBlockTile({
           transform: `translateX(${swipeOffset}px)`,
           transition: isSwiping ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
         }}
-        className={`w-full h-full rounded-2xl sm:rounded-3xl ${
-          isOneWideSquare ? 'p-3 sm:p-4 flex flex-row items-center justify-between' : 'p-0 flex flex-col justify-between'
+        className={`w-full min-h-[inherit] rounded-2xl sm:rounded-3xl ${
+          isOneWideSquare
+            ? hasProtocolAttribution
+              ? 'p-0 flex flex-col justify-between h-full'
+              : 'px-3 sm:px-4 py-2 sm:py-2.5 flex flex-row items-center justify-between h-full'
+            : 'p-0 flex flex-col justify-between h-full'
         } cursor-pointer relative overflow-hidden group transition-colors duration-500 z-10 ${
           styles.cardClassName
         } ${isEditMode ? 'ring-2 ring-purple-500/70 animate-pulse' : ''} ${
@@ -752,142 +771,163 @@ export default function ModalityBlockTile({
         )}
         {isOneWideSquare ? (
           /* 1-Wide Vertically Shorter Horizontal Banner Layout */
-          <div className="flex-1 flex flex-row items-center justify-between gap-3 px-1 my-auto w-full">
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  isDaylight ? '' : 'bg-white/5 border border-white/10'
-                }`}
-                style={isDaylight ? { backgroundColor: daylightCategory.bgHex, color: daylightCategory.textHex } : undefined}
-              >
-                <ModalityIcon
-                  modality={modality}
-                  size={22}
-                  glow={!isDaylight && isIgnited && !isCompleted}
-                  isIgnited={isIgnited}
-                  customColor={isDaylight ? daylightCategory.textHex : visualStyle === 'full-gradient' ? '#FFFFFF' : undefined}
-                />
-              </div>
-              <div className="flex flex-col text-left min-w-0">
+          <>
+            <div className={`flex-1 flex flex-row items-center justify-between gap-2.5 sm:gap-3 my-auto w-full min-w-0 ${
+              hasProtocolAttribution ? 'px-3 sm:px-4 py-2 sm:py-2.5' : ''
+            }`}>
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                 <div
-                  className={`font-black tracking-tight leading-tight truncate text-sm sm:text-base ${
-                    isCompleted ? 'line-through opacity-70' : ''
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    isDaylight ? '' : 'bg-white/5 border border-white/10'
                   }`}
-                  style={{ color: styles.textColor }}
+                  style={isDaylight ? { backgroundColor: daylightCategory.bgHex, color: daylightCategory.textHex } : undefined}
                 >
-                  {simplifiedName}
+                  <ModalityIcon
+                    modality={modality}
+                    size={22}
+                    glow={!isDaylight && isIgnited && !isCompleted}
+                    isIgnited={isIgnited}
+                    customColor={isDaylight ? daylightCategory.textHex : visualStyle === 'full-gradient' ? '#FFFFFF' : undefined}
+                  />
                 </div>
-                {/* Meta details row: Dose, Protocol, Category, Synergies */}
-                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                  {timingRel ? (
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onOpenDetails()
-                      }}
-                      className={`text-[9px] sm:text-[10px] font-mono font-medium px-2 py-0.5 rounded-full border transition-all cursor-pointer active:scale-95 shadow-sm ${
-                        isDaylight
-                          ? 'bg-slate-100 text-slate-700 border-slate-300 hover:border-slate-400'
-                          : 'bg-zinc-800/90 text-zinc-300 border-zinc-700/80 hover:border-zinc-500 hover:text-white'
-                      }`}
-                      title={timingRel.scientificRationale || timingRel.pillText}
-                    >
-                      {timingRel.pillText}
-                    </span>
-                  ) : effectiveShowDosing && doseDisplay ? (
-                    <span
-                      className={`text-[10px] sm:text-[11px] font-mono font-bold truncate max-w-[200px] px-2 py-0.5 rounded border ${
-                        isDaylight
-                          ? 'bg-slate-100 text-slate-800 border-slate-300'
-                          : visualStyle === 'full-gradient'
-                          ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
-                          : 'bg-white/10 text-slate-200 border-white/20'
-                      }`}
-                      title={doseDisplay}
-                    >
-                      {doseDisplay}
-                    </span>
-                  ) : null}
+                <div className="flex flex-col text-left min-w-0 flex-1">
+                  <div
+                    className={`font-black tracking-tight leading-tight truncate text-sm sm:text-base ${
+                      isCompleted ? 'line-through opacity-70' : ''
+                    }`}
+                    style={{ color: styles.textColor }}
+                  >
+                    {simplifiedName}
+                  </div>
+                  {/* Meta details row: Dose, Category, Synergies */}
+                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    {timingRel ? (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onOpenDetails()
+                        }}
+                        className={`text-[9px] sm:text-[10px] font-mono font-medium px-2 py-0.5 rounded-full border transition-all cursor-pointer active:scale-95 shadow-sm ${
+                          isDaylight
+                            ? 'bg-slate-100 text-slate-700 border-slate-300 hover:border-slate-400'
+                            : 'bg-zinc-800/90 text-zinc-300 border-zinc-700/80 hover:border-zinc-500 hover:text-white'
+                        }`}
+                        title={timingRel.scientificRationale || timingRel.pillText}
+                      >
+                        {timingRel.pillText}
+                      </span>
+                    ) : effectiveShowDosing && doseDisplay ? (
+                      <span
+                        className={`text-[10px] sm:text-[11px] font-mono font-bold truncate max-w-[200px] px-2 py-0.5 rounded border ${
+                          isDaylight
+                            ? 'bg-slate-100 text-slate-800 border-slate-300'
+                            : visualStyle === 'full-gradient'
+                            ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
+                            : 'bg-white/10 text-slate-200 border-white/20'
+                        }`}
+                        title={doseDisplay}
+                      >
+                        {doseDisplay}
+                      </span>
+                    ) : null}
 
-                  {badges.showProtocol && protocolName && (
-                    <span
-                      className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border truncate max-w-[140px] shadow-sm ${
-                        isDaylight
-                          ? 'bg-purple-100 text-purple-800 border-purple-300'
-                          : visualStyle === 'full-gradient'
-                          ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
-                          : 'bg-purple-500/25 text-purple-200 border-purple-400/40'
-                      }`}
-                      title={protocolName}
-                    >
-                      {protocolName}
-                    </span>
-                  )}
+                    {/* Only show inline chip if protocol attribution bottom bar is NOT active */}
+                    {!hasProtocolAttribution && badges.showProtocol && protocolName && (
+                      <span
+                        className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border truncate max-w-[140px] shadow-sm ${
+                          isDaylight
+                            ? 'bg-purple-100 text-purple-800 border-purple-300'
+                            : visualStyle === 'full-gradient'
+                            ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
+                            : 'bg-purple-500/25 text-purple-200 border-purple-400/40'
+                        }`}
+                        title={protocolName}
+                      >
+                        {protocolName}
+                      </span>
+                    )}
 
-                  {badges.showCategory && categoryName && (
-                    <span
-                      className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border truncate max-w-[120px] shadow-sm ${
-                        isDaylight
-                          ? 'bg-slate-100 text-slate-700 border-slate-300'
-                          : visualStyle === 'full-gradient'
-                          ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
-                          : 'bg-slate-800/80 text-slate-200 border-slate-700/60'
-                      }`}
-                      title={categoryName}
-                    >
-                      {categoryName}
-                    </span>
-                  )}
+                    {badges.showCategory && categoryName && (
+                      <span
+                        className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border truncate max-w-[120px] shadow-sm ${
+                          isDaylight
+                            ? 'bg-slate-100 text-slate-700 border-slate-300'
+                            : visualStyle === 'full-gradient'
+                            ? 'bg-black/30 text-white border-white/35 backdrop-blur-sm'
+                            : 'bg-slate-800/80 text-slate-200 border-slate-700/60'
+                        }`}
+                        title={categoryName}
+                      >
+                        {categoryName}
+                      </span>
+                    )}
 
-                  {badges.showSynergies && hasSynergy && (
-                    <span
-                      className={`text-[9px] font-extrabold px-2 py-0.5 rounded border flex items-center gap-1 shadow-sm ${
-                        isDaylight
-                          ? 'bg-amber-100 text-amber-900 border-amber-300'
-                          : visualStyle === 'full-gradient'
-                          ? 'bg-black/30 text-amber-300 border-amber-400/40 backdrop-blur-sm'
-                          : 'bg-amber-500/20 text-amber-300 border-amber-400/40'
-                      }`}
-                    >
-                      <Sparkles size={9} className={isDaylight ? 'text-amber-800' : 'text-amber-300'} />
-                      <span>Synergy</span>
-                    </span>
-                  )}
+                    {badges.showSynergies && hasSynergy && (
+                      <span
+                        className={`text-[9px] font-extrabold px-2 py-0.5 rounded border flex items-center gap-1 shadow-sm ${
+                          isDaylight
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : visualStyle === 'full-gradient'
+                            ? 'bg-black/30 text-amber-300 border-amber-400/40 backdrop-blur-sm'
+                            : 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                        }`}
+                      >
+                        <Sparkles size={9} className={isDaylight ? 'text-amber-800' : 'text-amber-300'} />
+                        <span>Synergy</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
+              </div>
+
+              {/* Right Status Badge */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {isCompleted ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      triggerHaptic('light')
+                      onToggleComplete?.()
+                    }}
+                    title="Completed — Click to undo / mark pending"
+                    className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shadow-sm cursor-pointer transition-all active:scale-90 group/undo ${
+                      isDaylight
+                        ? 'bg-[#D1FAE5] border border-[#10B981]/40 text-[#10B981] hover:bg-[#D1FAE5]/80'
+                        : 'bg-emerald-500/30 hover:bg-emerald-500/50 border border-emerald-400 hover:border-emerald-300 text-emerald-400 hover:text-emerald-200'
+                    }`}
+                  >
+                    <Check size={12} strokeWidth={3} className="group-hover/undo:hidden" />
+                    <RotateCcw size={11} strokeWidth={2.5} className="hidden group-hover/undo:block" />
+                  </button>
+                ) : isSnoozed ? (
+                  <div className="w-5 h-5 rounded-full bg-amber-500/30 border border-amber-400 text-amber-400 flex items-center justify-center shadow-sm">
+                    <Clock size={11} strokeWidth={2.5} />
+                  </div>
+                ) : isSkipped ? (
+                  <div className="w-5 h-5 rounded-full bg-slate-500/30 border border-slate-400 text-slate-400 flex items-center justify-center">
+                    <SkipForward size={11} />
+                  </div>
+                ) : null}
               </div>
             </div>
 
-            {/* Right Status Badge */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              {isCompleted ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    triggerHaptic('light')
-                    onToggleComplete?.()
-                  }}
-                  title="Completed — Click to undo / mark pending"
-                  className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shadow-sm cursor-pointer transition-all active:scale-90 group/undo ${
-                    isDaylight
-                      ? 'bg-[#D1FAE5] border border-[#10B981]/40 text-[#10B981] hover:bg-[#D1FAE5]/80'
-                      : 'bg-emerald-500/30 hover:bg-emerald-500/50 border border-emerald-400 hover:border-emerald-300 text-emerald-400 hover:text-emerald-200'
-                  }`}
-                >
-                  <Check size={12} strokeWidth={3} className="group-hover/undo:hidden" />
-                  <RotateCcw size={11} strokeWidth={2.5} className="hidden group-hover/undo:block" />
-                </button>
-              ) : isSnoozed ? (
-                <div className="w-5 h-5 rounded-full bg-amber-500/30 border border-amber-400 text-amber-400 flex items-center justify-center shadow-sm">
-                  <Clock size={11} strokeWidth={2.5} />
-                </div>
-              ) : isSkipped ? (
-                <div className="w-5 h-5 rounded-full bg-slate-500/30 border border-slate-400 text-slate-400 flex items-center justify-center">
-                  <SkipForward size={11} />
-                </div>
-              ) : null}
-            </div>
-          </div>
+            {/* Protocol Full-Width Bottom Bar on 1-Wide Cards */}
+            {hasProtocolAttribution && (
+              <div
+                className={`w-full py-1 sm:py-1.5 px-3 text-center border-t text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider truncate shrink-0 transition-colors ${
+                  isDaylight
+                    ? 'bg-purple-100/90 border-purple-200/80 text-purple-900 shadow-inner'
+                    : visualStyle === 'full-gradient'
+                    ? 'bg-black/40 border-white/20 text-white/95 backdrop-blur-md'
+                    : 'bg-purple-950/50 border-purple-500/30 text-purple-200 backdrop-blur-sm'
+                }`}
+                title={protocolName}
+              >
+                {protocolName}
+              </div>
+            )}
+          </>
         ) : (
           /* Standard Square (2-Wide, 3-Wide) or Dynamic Centered Card Layout */
           <>

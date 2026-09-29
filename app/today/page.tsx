@@ -1895,6 +1895,9 @@ function TodayPageContent() {
       updatedStatus = 'pending'
       updatedReason = `Moved to ${cleanSlotName}`
       updatedSlot = slotToUse
+    } else if (action === 'not_needed_today') {
+      updatedStatus = 'skipped'
+      updatedReason = 'Not Needed Today'
     } else if (action === 'skip_session') {
       updatedStatus = 'skipped'
       updatedReason = 'Skipped'
@@ -1963,6 +1966,8 @@ function TodayPageContent() {
             window.dispatchEvent(new CustomEvent('levl_schedule_updated'))
             window.dispatchEvent(new CustomEvent('levl_tasks_updated'))
           }
+        } else if (action === 'not_needed_today') {
+          await updateDailyTaskStatus(targetTaskId, 'skipped', 'Not Needed Today')
         } else if (action === 'skip_session') {
           await updateDailyTaskStatus(targetTaskId, 'skipped', 'Skipped')
         } else if (action === 'slide_forward') {

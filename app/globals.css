@@ -190,6 +190,18 @@ html.light, [data-theme="light"] {
     button[class*="bg-gradient"],
     button[class*="bg-levl-accent"],
     button[class*="bg-levl-purple"],
+    button[class*="bg-slate-7"],
+    button[class*="bg-slate-8"],
+    button[class*="bg-slate-9"],
+    button[class*="bg-zinc-7"],
+    button[class*="bg-zinc-8"],
+    button[class*="bg-zinc-9"],
+    button[class*="bg-gray-7"],
+    button[class*="bg-gray-8"],
+    button[class*="bg-gray-9"],
+    button[class*="bg-neutral-7"],
+    button[class*="bg-neutral-8"],
+    button[class*="bg-neutral-9"],
     a[class*="bg-purple"], 
     a[class*="bg-emerald"], 
     a[class*="bg-blue"], 
@@ -220,6 +232,17 @@ html.light, [data-theme="light"] {
     [class*="bg-indigo-500"],
     [class*="bg-indigo-600"],
     [class*="bg-amber-600"],
+    [class*="bg-slate-700"],
+    [class*="bg-slate-800"],
+    [class*="bg-slate-900"],
+    [class*="bg-slate-950"],
+    [class*="bg-zinc-700"],
+    [class*="bg-zinc-800"],
+    [class*="bg-zinc-900"],
+    [class*="bg-zinc-950"],
+    [class*="bg-gray-700"],
+    [class*="bg-gray-800"],
+    [class*="bg-gray-900"],
     [class*="bg-levl-accent"],
     [class*="bg-levl-purple"],
     .keep-dark-bg,
@@ -231,22 +254,22 @@ html.light, [data-theme="light"] {
   }
 
   /* 3. Light Grays -> Soft Slate #475569 / Secondary Text for high readability */
-  html.light .text-slate-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-slate-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-slate-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-gray-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-gray-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-gray-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-zinc-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-zinc-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-zinc-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white) {
+  html.light .text-slate-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white),
+  html.light .text-slate-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white),
+  html.light .text-slate-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white),
+  html.light .text-gray-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white),
+  html.light .text-gray-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white),
+  html.light .text-gray-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white),
+  html.light .text-zinc-100:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white),
+  html.light .text-zinc-200:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white),
+  html.light .text-zinc-300:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white) {
     color: #475569 !important; /* Soft slate text */
   }
 
   /* 4. Muted Text: Slate 400 / Gray 400 -> Secondary Text #64748B (Crisp neutral slate) */
-  html.light .text-slate-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-gray-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white),
-  html.light .text-zinc-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not(.keep-white) {
+  html.light .text-slate-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white),
+  html.light .text-gray-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white),
+  html.light .text-zinc-400:not([class*="bg-purple"]):not([class*="bg-emerald"]):not([class*="bg-blue"]):not([class*="bg-action"]):not([class*="bg-slate"]):not([class*="bg-zinc"]):not([class*="bg-gray"]):not([class*="bg-black"]):not(.keep-white) {
     color: #64748b !important; /* Secondary neutral slate text */
   }
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Modality, UserProfile } from '../../lib/types'
 import { resolveRecommendedDose, ProtocolDoseContext, getProtocolColorBadge } from '../../lib/utils/resolveRecommendedDose'
+import { getArchetypeDoseConfig, cleanTextForNumericDose } from '../../lib/utils/modalityDosageEngine'
 import { 
   ShieldCheck, Info, Sparkles, CheckCircle2, ChevronRight, X, Layers, Scale, ExternalLink, 
   BookOpen, Clock, Sliders, Bot, AlertTriangle, ChevronDown, ChevronUp, FileText, Edit3, CheckSquare, Square,
@@ -195,43 +196,11 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   const [secondaryParam, setSecondaryParam] = useState<string>('')
   const [weeklyFrequency, setWeeklyFrequency] = useState<string>('Daily')
 
-  // Modality category detection for multi-parameter dosage inputs
-  const modalityNameCat = `${modality?.name || ''} ${modality?.category || ''}`.toLowerCase()
-  const isSauna = modalityNameCat.includes('sauna') || modalityNameCat.includes('heat')
-  const isCold = modalityNameCat.includes('cold') || modalityNameCat.includes('plunge') || modalityNameCat.includes('ice')
-  const isCardio = modalityNameCat.includes('fitness') || modalityNameCat.includes('cardio') || modalityNameCat.includes('exercise') || modalityNameCat.includes('hiit') || modalityNameCat.includes('vo2') || modalityNameCat.includes('zone') || modalityNameCat.includes('run') || modalityNameCat.includes('walk')
-
-  let secondaryLabel = 'Synergy / Admin Vehicle'
-  let secondaryPlaceholder = 'e.g. with 1 tbsp EVOO / Fat Meal'
-  let secondaryPresets: string[] = ['With Fat Meal', 'Fasted AM', 'With EVOO']
-
-  const isHoursBeforeBed = 
-    modalityNameCat.includes('blue light') ||
-    modalityNameCat.includes('glasses') ||
-    modalityNameCat.includes('screen cutoff') ||
-    modalityNameCat.includes('digital sunset') ||
-    modalityNameCat.includes('dim light') ||
-    modalityNameCat.includes('evening darkness') ||
-    modalityNameCat.includes('food cutoff') ||
-    modalityNameCat.includes('caffeine cutoff')
-
-  if (isSauna) {
-    secondaryLabel = 'Target Temperature'
-    secondaryPlaceholder = 'e.g. 174°F+ / 80°C+'
-    secondaryPresets = ['174°F+ (80°C+)', '185°F (85°C)', '195°F (90°C)', '160°F (71°C)']
-  } else if (isCold) {
-    secondaryLabel = 'Target Water Temp'
-    secondaryPlaceholder = 'e.g. 50°F–55°F / 10°C–13°C'
-    secondaryPresets = ['50°F–55°F (10°C–13°C)', '45°F–50°F (7°C–10°C)', '38°F–42°F (3°C–5°C)']
-  } else if (isCardio) {
-    secondaryLabel = 'Target Intensity / HR Zone'
-    secondaryPlaceholder = 'e.g. Zone 2 (60-70% HRmax) or Zone 5 (4x4 Intervals)'
-    secondaryPresets = ['Zone 2 (60-70% HRmax)', 'Zone 5 (4x4 Intervals)', 'RPE 7-8/10 (Vigorous)', 'Zone 3-4 (Tempo)']
-  } else if (isHoursBeforeBed) {
-    secondaryLabel = 'Bedtime Timing Target'
-    secondaryPlaceholder = 'e.g. 2 Hours Prior to Bedtime'
-    secondaryPresets = ['2 Hours Before Bed', '3 Hours Before Bed', '1.5 Hours Before Bed', '1 Hour Before Bed']
-  }
+  // Archetype-driven parameter & synergy configuration
+  const doseConfig = getArchetypeDoseConfig(modality)
+  const secondaryLabel = doseConfig.secondaryLabel
+  const secondaryPlaceholder = doseConfig.secondaryPlaceholder
+  const secondaryPresets = doseConfig.secondaryPresets
 
   useEffect(() => {
     // 1. Timing State
@@ -253,26 +222,45 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
     else setWeeklyFrequency('Daily')
 
     // 2. Saved Dosage Target & Secondary Parameter
-    const savedDose = task?.execution_details?.custom_dose || benchItem?.custom_dose || modality?.dose_or_exposure || ''
+    const savedDose = task?.execution_details?.custom_dose || benchItem?.custom_dose || ''
     if (savedDose && savedDose.trim()) {
       if (savedDose.includes('@')) {
         const parts = savedDose.split('@')
         const mainDose = parts[0].trim()
         const secDose = parts.slice(1).join('@').trim()
-        setCustomDoseInput(mainDose.replace(/[^\d.]/g, ''))
+        const cleanMainNum = mainDose.replace(/[^\d.]/g, '')
+        setCustomDoseInput(cleanMainNum)
         setSecondaryParam(secDose)
+        const num = parseFloat(cleanMainNum)
+        if (!isNaN(num) && num > 0) {
+          setCustomValue(num)
+        }
       } else {
-        setCustomDoseInput(savedDose)
-      }
-      const num = parseFloat(savedDose)
-      if (!isNaN(num) && num > 0) {
-        setCustomValue(num)
+        const numMatch = savedDose.match(/\d+(?:\.\d+)?/)
+        if (numMatch) {
+          const num = parseFloat(numMatch[0])
+          setCustomDoseInput(num.toString())
+          setCustomValue(num)
+        } else {
+          setCustomDoseInput(savedDose)
+        }
       }
       setSelectedSource('Personal Target')
+    } else {
+      setCustomDoseInput(resolved.recommendedValue.toString())
+      setCustomValue(resolved.recommendedValue)
     }
-    if (!secondaryParam && modality?.dose_or_exposure && modality.dose_or_exposure.includes('@')) {
-      const sec = modality.dose_or_exposure.split('@')[1].trim()
-      setSecondaryParam(sec)
+
+    if (!secondaryParam) {
+      const { extractedTemperature } = cleanTextForNumericDose(modality?.dose_or_exposure || '')
+      if (extractedTemperature) {
+        setSecondaryParam(extractedTemperature)
+      } else if (modality?.temperature) {
+        setSecondaryParam(modality.temperature)
+      } else if (modality?.dose_or_exposure && modality.dose_or_exposure.includes('@')) {
+        const sec = modality.dose_or_exposure.split('@')[1].trim()
+        setSecondaryParam(sec)
+      }
     }
 
     // 3. Saved Personal Notes
@@ -308,13 +296,21 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
   }
 
   const getFormattedDoseOutput = () => {
+    const isCustomText = customDoseInput && /[a-zA-Z]/.test(customDoseInput)
+    if (isCustomText) {
+      if (secondaryParam && secondaryParam.trim() && !customDoseInput.includes('@')) {
+        return `${customDoseInput.trim()} @ ${secondaryParam.trim()}`
+      }
+      return customDoseInput.trim()
+    }
+
     const totalDose = customDoseInput ? parseFloat(customDoseInput) || customValue : customValue
     let baseStr = `${totalDose} ${unit}`
     if (dosesPerDay > 1) {
       const perDose = Math.round((totalDose / dosesPerDay) * 10) / 10
       baseStr = `${totalDose} ${unit} total (${dosesPerDay}x daily split: ${perDose} ${unit} / dose)`
     }
-    if (secondaryParam && secondaryParam.trim()) {
+    if (secondaryParam && secondaryParam.trim() && !baseStr.includes('@')) {
       return `${baseStr} @ ${secondaryParam.trim()}`
     }
     return baseStr
@@ -511,7 +507,13 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
               <div className="space-y-0.5">
                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Context Recommendation</span>
                 <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-baseline gap-2">
-                  <span>{customDoseInput ? customDoseInput : customValue} {unit}</span>
+                  <span>
+                    {customDoseInput
+                      ? (/[a-zA-Z]/.test(customDoseInput)
+                          ? customDoseInput
+                          : `${customDoseInput} ${unit}`)
+                      : `${customValue} ${unit}`}
+                  </span>
                   <span className="text-xs sm:text-sm font-normal text-slate-400">/ day</span>
                 </div>
               </div>
@@ -703,7 +705,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
                 {/* Field 1: Primary Value (Minutes / mg / IU) */}
                 <div className="space-y-1">
                   <label className="block text-[11px] font-semibold text-slate-300">
-                    Primary Exposure / Dose ({unit}):
+                    {doseConfig.primaryLabel || 'Primary Exposure / Dose'} ({unit}):
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -1192,7 +1194,7 @@ export const DosageDetailModal: React.FC<DosageDetailModalProps> = ({
             }}
             className="px-6 py-3 rounded-xl text-xs sm:text-sm font-bold bg-teal-500 hover:bg-teal-400 text-slate-950 transition-colors shadow-lg active:scale-95 cursor-pointer"
           >
-            Save & Apply ({getFormattedDoseOutput()})
+            Save & Apply ({getFormattedDoseOutput().length > 30 ? `${getFormattedDoseOutput().slice(0, 28)}...` : getFormattedDoseOutput()})
           </button>
         </div>
       </div>

@@ -55,11 +55,24 @@ export async function saveQuickLogEntry(entry: DailyQuickLogEntry): Promise<bool
 
   // 2. Instant LocalStorage fallback + UI event dispatch
   if (typeof window !== 'undefined') {
-    const key = `levl_quicklog_${entry.date}`
-    const existing: DailyQuickLogEntry[] = JSON.parse(localStorage.getItem(key) || '[]')
-    const filtered = existing.filter(e => e.id !== entry.id)
-    filtered.push(entry)
-    localStorage.setItem(key, JSON.stringify(filtered))
+    const effectiveUserId = entry.local_user_id || 'default'
+    const userKey = `levl_quicklog_${effectiveUserId}_${entry.date}`
+    const fallbackKey = `levl_quicklog_${entry.date}`
+
+    try {
+      const existingUser: DailyQuickLogEntry[] = JSON.parse(localStorage.getItem(userKey) || '[]')
+      const filteredUser = existingUser.filter(e => e.id !== entry.id)
+      filteredUser.push(entry)
+      localStorage.setItem(userKey, JSON.stringify(filteredUser))
+    } catch (e) {}
+
+    try {
+      const existingFallback: DailyQuickLogEntry[] = JSON.parse(localStorage.getItem(fallbackKey) || '[]')
+      const filteredFallback = existingFallback.filter(e => e.id !== entry.id)
+      filteredFallback.push(entry)
+      localStorage.setItem(fallbackKey, JSON.stringify(filteredFallback))
+    } catch (e) {}
+
     window.dispatchEvent(new CustomEvent('levl_quicklog_updated', { detail: entry }))
   }
 
@@ -202,16 +215,27 @@ export async function deleteQuickLogEntry(
   } catch (err) {}
 
   // 2. Delete from LocalStorage + dispatch event
+  const effectiveUserId = localUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || 'default'
   if (typeof window !== 'undefined') {
-    const key = `levl_quicklog_${date}`
-    const existing: DailyQuickLogEntry[] = JSON.parse(localStorage.getItem(key) || '[]')
-    const filtered = existing.filter(e => e.id !== id)
-    localStorage.setItem(key, JSON.stringify(filtered))
+    const userKey = `levl_quicklog_${effectiveUserId}_${date}`
+    const fallbackKey = `levl_quicklog_${date}`
+
+    try {
+      const existingUser: DailyQuickLogEntry[] = JSON.parse(localStorage.getItem(userKey) || '[]')
+      const filteredUser = existingUser.filter(e => e.id !== id)
+      localStorage.setItem(userKey, JSON.stringify(filteredUser))
+    } catch (e) {}
+
+    try {
+      const existingFallback: DailyQuickLogEntry[] = JSON.parse(localStorage.getItem(fallbackKey) || '[]')
+      const filteredFallback = existingFallback.filter(e => e.id !== id)
+      localStorage.setItem(fallbackKey, JSON.stringify(filteredFallback))
+    } catch (e) {}
+
     window.dispatchEvent(new CustomEvent('levl_quicklog_updated', { detail: { id, deleted: true, date } }))
   }
 
   // 3. Delete from Supabase Cloud
-  const effectiveUserId = localUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '')
   if (supabase && effectiveUserId && effectiveUserId !== 'default') {
     try {
       const { data: profile } = await supabase

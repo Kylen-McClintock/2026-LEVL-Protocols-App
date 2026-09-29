@@ -1334,9 +1334,15 @@ export function getNextWidth(current: BlockWidth, mode: BlocksLayoutMode = 'dyna
  * On desktop:
  * - The number of squares scales dynamically with screen width (3 on sm, 4 on md, 6 on xl)!
  */
+export interface GridSizingOptions {
+  hasProtocolAttribution?: boolean
+  activeBadgeCount?: number
+}
+
 export function getGridClassesForSizing(
   sizing: BlockSizing,
-  layoutMode: BlocksLayoutMode = 'dynamic'
+  layoutMode: BlocksLayoutMode = 'dynamic',
+  options?: GridSizingOptions
 ): {
   colSpanClass: string
   heightClass: string
@@ -1347,31 +1353,58 @@ export function getGridClassesForSizing(
     layoutMode === '3-wide' ||
     layoutMode === '1-wide'
 
+  const hasProtocol = Boolean(options?.hasProtocolAttribution)
+  const badgeCount = options?.activeBadgeCount || 0
+
   if (layoutMode === 'streamline') {
+    let heightClass = 'min-h-[60px] sm:min-h-[66px] h-auto'
+    if (hasProtocol && badgeCount >= 2) {
+      heightClass = 'min-h-[92px] sm:min-h-[98px] h-auto'
+    } else if (hasProtocol) {
+      heightClass = 'min-h-[82px] sm:min-h-[88px] h-auto'
+    } else if (badgeCount >= 2) {
+      heightClass = 'min-h-[72px] sm:min-h-[78px] h-auto'
+    }
     return {
       colSpanClass: 'col-span-12',
-      heightClass: 'min-h-[58px] sm:min-h-[64px] h-[58px] sm:h-[64px]'
+      heightClass
     }
   }
 
   if (layoutMode === '1-wide') {
+    let heightClass = 'min-h-[64px] sm:min-h-[72px] h-auto'
+    if (hasProtocol && badgeCount >= 2) {
+      heightClass = 'min-h-[94px] sm:min-h-[102px] h-auto'
+    } else if (hasProtocol) {
+      heightClass = 'min-h-[84px] sm:min-h-[92px] h-auto'
+    } else if (badgeCount >= 2) {
+      heightClass = 'min-h-[76px] sm:min-h-[84px] h-auto'
+    }
     return {
       colSpanClass: 'col-span-12 md:col-span-6',
-      heightClass: 'min-h-[64px] sm:min-h-[72px] h-[64px] sm:h-[72px]'
+      heightClass
     }
   }
 
   if (layoutMode === '3-wide') {
+    let heightClass = 'aspect-square min-h-[105px] sm:min-h-[120px]'
+    if (hasProtocol || badgeCount >= 2) {
+      heightClass = 'min-h-[122px] sm:min-h-[136px] h-auto'
+    }
     return {
       colSpanClass: 'col-span-4 sm:col-span-3 md:col-span-2',
-      heightClass: 'aspect-square min-h-[105px] sm:min-h-[120px]'
+      heightClass
     }
   }
 
   if (layoutMode === '2-wide' || layoutMode === 'uniform') {
+    let heightClass = 'aspect-square min-h-[135px] sm:min-h-[155px]'
+    if (hasProtocol || badgeCount >= 2) {
+      heightClass = 'min-h-[148px] sm:min-h-[168px] h-auto'
+    }
     return {
       colSpanClass: 'col-span-6 sm:col-span-4 md:col-span-3 xl:col-span-2',
-      heightClass: 'aspect-square min-h-[135px] sm:min-h-[155px]'
+      heightClass
     }
   }
 
@@ -1399,6 +1432,18 @@ export function getGridClassesForSizing(
   let heightClass = sizing.height === '2x' 
     ? 'min-h-[180px] sm:min-h-[220px]' 
     : 'min-h-[135px] sm:min-h-[150px]'
+
+  if (sizing.width === 'full') {
+    if (hasProtocol && badgeCount >= 2) {
+      heightClass = 'min-h-[94px] sm:min-h-[102px] h-auto'
+    } else if (hasProtocol) {
+      heightClass = 'min-h-[84px] sm:min-h-[92px] h-auto'
+    } else if (badgeCount >= 2) {
+      heightClass = 'min-h-[76px] sm:min-h-[84px] h-auto'
+    } else {
+      heightClass = 'min-h-[64px] sm:min-h-[72px] h-auto'
+    }
+  }
 
   return { colSpanClass, heightClass }
 }

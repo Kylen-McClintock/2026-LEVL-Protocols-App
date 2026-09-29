@@ -10,6 +10,7 @@ export type RescheduleActionType =
   | 'swap_rest_day'        // Swap session with a designated rest/recovery day
   | 'snooze_later_today'   // Move task to a later timing slot today (evening/pre-bed)
   | 'skip_session'         // Mark session skipped (stay on calendar schedule)
+  | 'not_needed_today'     // Mark session skipped without breaking streaks (conditional/situational)
   | 'custom_date'          // Pick a custom future date on calendar
   | 'move_to_bench'        // Move modality to bench (deactivate from routine)
   | 'eliminate_entirely'   // Permanently eliminate modality from stack
@@ -286,6 +287,7 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
             {/* Quick Reason Chips */}
             <div className="flex flex-wrap gap-1.5 pt-1">
               {[
+                { id: 'Not needed today', label: 'Not needed today', icon: '☀️' },
                 { id: 'Too busy', label: 'Too busy', icon: '⚡' },
                 { id: 'Too frequent', label: 'Too frequent', icon: '🔄' },
                 { id: 'Not helpful', label: 'Not helpful', icon: '📉' },
@@ -301,8 +303,8 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
                     onClick={() => setSelectedSkipReason(isSelected ? null : reason.id)}
                     className={`px-2.5 py-1 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
                       isSelected
-                        ? 'bg-white text-slate-950 border-white shadow-md'
-                        : 'bg-white/5 hover:bg-white/10 text-slate-300 border-white/10'
+                        ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-950 dark:border-white shadow-md font-bold'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-300 dark:border-white/10'
                     }`}
                   >
                     <span>{reason.icon}</span>
@@ -311,6 +313,41 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
                 )
               })}
             </div>
+
+            {/* ADAPTIVE ACTION TRAY FOR 'Not needed today' */}
+            {selectedSkipReason === 'Not needed today' && (
+              <div className="p-3 rounded-xl border bg-emerald-950/30 border-emerald-500/40 text-emerald-200 space-y-2 animate-in fade-in slide-in-from-top-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                    ☀️ Situational / Not Needed Today
+                  </span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold">
+                    Streak Protected
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Staying indoors, resting, or conditional protocol? Mark this session as not needed today without penalizing your adherence score or breaking routine streaks.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => onExecuteReschedule('not_needed_today')}
+                    className="px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all bg-emerald-500 hover:bg-emerald-400 text-slate-950 border-emerald-400 active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Check size={13} strokeWidth={3} className="text-slate-950" />
+                    <span>Confirm: Not Needed Today</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsDosageModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700 active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Sliders size={13} className="text-slate-400" />
+                    <span>Adjust Cadence / Schedule</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* ADAPTIVE ACTION TRAY FOR 'Too busy' */}
             {selectedSkipReason === 'Too busy' && (
@@ -444,15 +481,15 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
             )}
 
             {/* Standard Skip Button if no adaptive reason selected */}
-            {!['Too busy', 'Too frequent', 'Not helpful'].includes(selectedSkipReason || '') && (
+            {!['Not needed today', 'Too busy', 'Too frequent', 'Not helpful'].includes(selectedSkipReason || '') && (
               <div className="pt-1 flex justify-end">
                 <button
                   type="button"
                   onClick={() => onExecuteReschedule('skip_session')}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white keep-white font-bold text-xs rounded-xl border border-slate-700/80 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-sm"
                 >
-                  <SkipForward size={13} />
-                  <span>Confirm Skip</span>
+                  <SkipForward size={13} className="text-white" />
+                  <span className="text-white">Confirm Skip</span>
                 </button>
               </div>
             )}
@@ -474,7 +511,7 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
               <button
                 disabled={!selectedCustomDate}
                 onClick={() => onExecuteReschedule('custom_date', selectedCustomDate)}
-                className="px-4 py-2.5 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 disabled:hover:bg-cyan-500 text-slate-950 text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 cursor-pointer disabled:cursor-not-allowed"
+                className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:hover:bg-cyan-600 text-white keep-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 cursor-pointer disabled:cursor-not-allowed"
               >
                 Set Date
               </button>
@@ -537,7 +574,7 @@ export const SmartRescheduleModal: React.FC<SmartRescheduleModalProps> = ({
         <div className="p-4 border-t border-slate-800 bg-slate-950/90 flex justify-end shrink-0">
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+            className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-200/90 hover:bg-slate-300 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
           >
             Cancel
           </button>

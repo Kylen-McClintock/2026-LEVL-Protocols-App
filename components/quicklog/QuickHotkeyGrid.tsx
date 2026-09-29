@@ -481,8 +481,16 @@ export default function QuickHotkeyGrid({
     }
   }, [date, localUserId])
 
-  const handleQuickTapIncrement = (e: React.MouseEvent, hotkey: QuickHotkeyConfig) => {
-    e.stopPropagation()
+  const lastTapRef = React.useRef<{ id: string; time: number }>({ id: '', time: 0 })
+
+  const handleQuickTapIncrement = (e: React.SyntheticEvent | null | undefined, hotkey: QuickHotkeyConfig) => {
+    e?.stopPropagation?.()
+    const now = Date.now()
+    if (lastTapRef.current.id === hotkey.id && now - lastTapRef.current.time < 300) {
+      return
+    }
+    lastTapRef.current = { id: hotkey.id, time: now }
+
     if (hotkey.id === 'nutrition_macros') {
       setIsNutritionModalOpen(true)
       return
@@ -657,7 +665,7 @@ export default function QuickHotkeyGrid({
                   onTouchEnd={dragHandlers?.onTouchEnd}
                   onTouchCancel={dragHandlers?.onTouchCancel}
                   onClick={(e) => {
-                    if (!dragHandlers) handleQuickTapIncrement(e, hotkey)
+                    handleQuickTapIncrement(e, hotkey)
                   }}
                   className={`h-[110px] sm:h-[116px] rounded-2xl border transition-all flex flex-col justify-between p-2.5 sm:p-3 overflow-hidden relative select-none cursor-pointer active:scale-[0.97] group/card ${
                     isCurrentDragged

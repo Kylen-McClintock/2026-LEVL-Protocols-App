@@ -1,5 +1,6 @@
-import { Modality, UserProfile } from '../types'
+import { Modality, UserProfile } from '@/lib/types'
 import { getSafeEfficacyStats } from './efficacyStats'
+import { getArchetypeDoseConfig, parseArchetypeDose } from './modalityDosageEngine'
 
 export interface ProtocolDosePreset {
   protocolId?: string
@@ -184,67 +185,17 @@ export function getProtocolSourceDetails(protoName?: string, modality?: Modality
   }
 }
 
-function parseDoseFromText(text: string, isPeptideOrHighRisk: boolean = false, modalityCategory: string = '') {
+function parseDoseFromText(modality: Modality, text: string, isPeptideOrHighRisk: boolean = false) {
   if (!text) return null
-
-  // Strip non-dosage illuminance (lux), wavelength (nm), angles (°), temperatures (°F, °C), percentages (%) so they aren't parsed as duration/dose
-  const cleanedText = text
-    .replace(/[<>]?\s*\d+([.,]\d+)?\s*(lux|lx)\b/gi, '')
-    .replace(/\d+([.,]\d+)?\s*(nm|nanometer|nanometre)\b/gi, '')
-    .replace(/\d+([.,]\d+)?\s*(°|deg|degrees)\s*[fc]?\b/gi, '')
-    .replace(/\d+([.,]\d+)?\s*%/g, '')
-
-  const numbers = (cleanedText.match(/\d+([.,]\d+)?/g) || []).map(n => parseFloat(n.replace(',', '.')))
-  if (numbers.length === 0) return null
-
-  let unit = 'mg'
-  const textLower = text.toLowerCase()
-  if (/bowl/i.test(textLower)) unit = 'bowl'
-  else if (/serving/i.test(textLower)) unit = 'servings'
-  else if (/meal/i.test(textLower)) unit = 'meals'
-  else if (/cup/i.test(textLower)) unit = 'cups'
-  else if (/tbsp|tablespoon/i.test(textLower)) unit = 'tbsp'
-  else if (/tsp|teaspoon/i.test(textLower)) unit = 'tsp'
-  else if (/drop/i.test(textLower)) unit = 'drops'
-  else if (/capsule|cap\b/i.test(textLower)) unit = 'caps'
-  else if (/tablet|tab\b/i.test(textLower)) unit = 'tabs'
-  else if (/spray/i.test(textLower)) unit = 'sprays'
-  else if (/set/i.test(textLower)) unit = 'sets'
-  else if (/rep/i.test(textLower)) unit = 'reps'
-  else if (/mcg/i.test(textLower)) unit = 'mcg'
-  else if (/iu/i.test(textLower)) unit = 'IU'
-  else if (/ml/i.test(textLower)) unit = 'mL'
-  else if (/\bg\b/i.test(textLower) && !/mg/i.test(textLower)) unit = 'g'
-  else if (/min|minute/i.test(textLower)) unit = 'mins'
-  else if (/hr|hour/i.test(textLower)) unit = 'hours'
-  else if (/session|cycle|round/i.test(textLower)) unit = 'sessions'
-  else if (modalityCategory.toLowerCase().includes('nutrition') || modalityCategory.toLowerCase().includes('diet') || modalityCategory.toLowerCase().includes('food')) {
-    unit = 'serving'
-  }
-
-  if (numbers.length >= 2) {
-    const min = Math.min(numbers[0], numbers[1])
-    const max = Math.max(numbers[0], numbers[1])
-    // For peptides, pharmaceuticals, and high-risk modalities, ALWAYS use the conservative lower bound as the target
-    const target = isPeptideOrHighRisk ? min : Math.round((min + max) / 2)
-    return {
-      unit,
-      starter: { value: min, unit, notes: `${min} ${unit}` },
-      target: { value: target, unit, notes: `${target} ${unit}` },
-      blueprint: { value: max, unit, notes: `${max} ${unit}` },
-      litRange: { min, max, unit }
-    }
-  } else {
-    const val = numbers[0]
-    const min = isPeptideOrHighRisk ? val : (Math.round(val * 0.5) || 1)
-    const max = Math.round(val * 1.5) || val
-    return {
-      unit,
-      starter: { value: min, unit, notes: `${min} ${unit}` },
-      target: { value: val, unit, notes: `${val} ${unit}` },
-      blueprint: { value: max, unit, notes: `${val} ${unit}` },
-      litRange: { min: min > 0 ? min : 1, max, unit }
-    }
+  const parsed = parseArchetypeDose(modality, text, isPeptideOrHighRisk)
+  const unit = parsed.unit
+  return {
+    unit,
+    starter: { value: parsed.starterValue, unit, notes: `${parsed.starterValue} ${unit}` },
+    target: { value: parsed.targetValue, unit, notes: `${parsed.targetValue} ${unit}` },
+    blueprint: { value: parsed.blueprintValue, unit, notes: `${parsed.blueprintValue} ${unit}` },
+    litRange: { min: parsed.minLit, max: parsed.maxLit, unit },
+    extractedSecondaryParam: parsed.extractedSecondaryParam
   }
 }
 
@@ -286,7 +237,7 @@ export function resolveRecommendedDose(
     nameLower.includes('acarbose')
 
   const profile = (modality.relationships?.dosage_profile || (modality as any).dosages) || null
-  const parsedFallback = !profile ? parseDoseFromText(modality.dose_or_exposure || '', isPeptideOrHighRisk, modality.category || '') : null
+  const parsedFallback = !profile ? parseDoseFromText(modality, modality.dose_or_exposure || '', isPeptideOrHighRisk) : null
   const defaultText = modality.dose_or_exposure || 'Standard dose'
 
   const activeProtocolsList: ProtocolDoseContext[] = protocolContext
@@ -294,6 +245,8 @@ export function resolveRecommendedDose(
       ? protocolContext
       : [protocolContext]
     : []
+
+  const archetypeConfig = getArchetypeDoseConfig(modality)
 
   // Safety unit override for physical, calisthenics, breathwork, thermal, sleep & diagnostic modalities
   const isExerciseOrPhysical = catLower.includes('fitness') || catLower.includes('physical') || catLower.includes('cardio') || catLower.includes('strength') || typeLower.includes('exercise') || typeLower.includes('physical') || nameLower.includes('handstand') || (/\bwalk(?:ing)?\b/i.test(nameLower) && !nameLower.includes('walker')) || nameLower.includes('push-up') || nameLower.includes('sprint') || nameLower.includes('squat')
@@ -317,18 +270,16 @@ export function resolveRecommendedDose(
     nameLower.includes('metabolic & alcohol')
 
   let unit = profile?.unit || parsedFallback?.unit
-  if (isHoursBeforeBed) {
+  if (isHoursBeforeBed || archetypeConfig.archetype === 'blue_light_dimming') {
     unit = 'hours before bed'
-  } else if (!unit || unit === 'undefined' || unit === 'exposure') {
+  } else if (!unit || unit === 'undefined' || unit === 'exposure' || !archetypeConfig.allowedUnits.includes(unit)) {
     if (nameLower.includes('nut_pudding') || nameLower.includes('nut pudding') || nameLower.includes('bowl')) unit = 'bowl'
     else if (nameLower.includes('super_veggie') || nameLower.includes('super veggie') || catLower.includes('nutrition') || catLower.includes('diet') || typeLower.includes('nutrition') || typeLower.includes('diet')) unit = 'serving'
     else if (nameLower.includes('handstand')) unit = 'seconds'
     else if (isExerciseOrPhysical || isBreathOrMind || isThermal) unit = 'mins'
     else if (isSleepOrFasting) unit = 'hours'
     else if (isDiagnostic) unit = 'sessions'
-    else if (typeLower.includes('habit') || typeLower.includes('lifestyle') || typeLower.includes('environmental') || typeLower.includes('behavioral') || catLower.includes('hygiene') || catLower.includes('airway') || catLower.includes('habit') || nameLower.includes('floss') || nameLower.includes('gargl')) unit = 'session'
-    else if (isPeptideOrHighRisk || catLower.includes('supplement') || catLower.includes('nutraceutical') || catLower.includes('nootropic') || catLower.includes('biochemistry') || typeLower.includes('supplement')) unit = 'mg'
-    else unit = 'session'
+    else unit = archetypeConfig.defaultUnit
   }
 
   let starter = profile?.starter_dose ? { value: profile.starter_dose, unit, notes: profile.starter_notes } : parsedFallback?.starter
@@ -336,7 +287,22 @@ export function resolveRecommendedDose(
   let blueprint = profile?.blueprint_dose ? { value: profile.blueprint_dose, unit, notes: profile.blueprint_notes } : parsedFallback?.blueprint
   let litRange = profile?.literature_range ? { ...profile.literature_range, unit } : parsedFallback?.litRange
 
-  if (isHoursBeforeBed) {
+  // Archetype-specific bounds & sanity normalization
+  if (archetypeConfig.archetype === 'sleep') {
+    unit = 'hours'
+    if (!target || target.value > 14 || target.value < 4) {
+      target = { value: 8.5, unit: 'hours', notes: '8.5 hours optimal nocturnal sleep opportunity.' }
+    }
+    if (!starter || starter.value > 14 || starter.value < 4) {
+      starter = { value: 8, unit: 'hours', notes: '8 hours baseline sleep opportunity.' }
+    }
+    if (!blueprint || blueprint.value > 14 || blueprint.value < 4) {
+      blueprint = { value: 8.5, unit: 'hours', notes: '8.5 hours Blueprint sleep architecture target.' }
+    }
+    if (!litRange || litRange.max > 14) {
+      litRange = { min: 7.5, max: 9, unit: 'hours' }
+    }
+  } else if (isHoursBeforeBed || archetypeConfig.archetype === 'blue_light_dimming') {
     if (!starter || starter.value === 0 || starter.value > 8) starter = { value: 1, unit: 'hours before bed', notes: '1 hour prior to sleep lead time.' }
     if (!target || target.value === 0 || target.value > 8) target = { value: 2, unit: 'hours before bed', notes: '2 hours prior to sleep for natural melatonin secretion.' }
     if (!blueprint || blueprint.value === 0 || blueprint.value > 8) blueprint = { value: 2, unit: 'hours before bed', notes: '2 hours prior to sleep.' }
@@ -347,6 +313,9 @@ export function resolveRecommendedDose(
   const activeContextPresets: ProtocolDosePreset[] = activeProtocolsList.map((proto, idx) => {
     let val = proto.doseAmount || target?.value || (isHoursBeforeBed ? 2 : 1)
     let u = proto.doseUnit || unit
+    if (u && !archetypeConfig.allowedUnits.includes(u)) {
+      u = archetypeConfig.defaultUnit
+    }
     let text = proto.doseText || modality.dose_or_exposure || `${val} ${u}`.trim()
 
     if (isHoursBeforeBed && (text.toLowerCase().includes('exposure') || !proto.doseAmount)) {
@@ -474,17 +443,21 @@ export function resolveRecommendedDose(
         ? modality.dose_or_exposure
         : defaultText
 
+    const protoUnit = (primaryProto.doseUnit && archetypeConfig.allowedUnits.includes(primaryProto.doseUnit))
+      ? primaryProto.doseUnit
+      : unit
+
     return {
       recommendedDoseText: effectivePresetDoseText,
       recommendedValue: primaryProto.doseAmount,
-      unit: primaryProto.doseUnit || unit,
+      unit: protoUnit,
       source: 'protocol_preset',
       sourceLabel: `${primaryProto.protocolName}`,
       badgeColor: primaryProto.colorBadge,
       starterDose: starter,
       personalizedTargetDose: safeTarget,
       blueprintDose: blueprint,
-      protocolDose: { value: primaryProto.doseAmount, unit: primaryProto.doseUnit || unit },
+      protocolDose: { value: primaryProto.doseAmount, unit: protoUnit },
       activeProtocolPreset: primaryProto,
       allProtocolPresets,
       literatureRange: litRange,

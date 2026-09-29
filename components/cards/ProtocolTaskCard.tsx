@@ -1973,7 +1973,7 @@ export default function ProtocolTaskCard({
         </div>
       ) : (
         /* PENDING & OTHER STATUSES HEADER */
-        <div className={`${isSupplement ? 'p-3 sm:px-4 sm:py-3 gap-1.5' : 'p-4 sm:p-5 gap-3'} flex flex-col relative cursor-pointer`} onClick={() => setExpanded(!expanded)}>
+        <div className={`${isSupplement ? 'p-3 sm:px-4 sm:py-3 gap-1.5' : ((badges.showProtocol && displayLineages.length > 0 ? 1 : 0) + (badges.showCategory ? 1 : 0) >= 2) ? 'p-4 sm:p-5 gap-3.5' : 'p-4 sm:p-5 gap-3'} flex flex-col relative cursor-pointer`} onClick={() => setExpanded(!expanded)}>
         
         {/* Under Protocol View: Show Time Block instead of redundant parent protocol. In Chronological view: Show Lineage Badges & Category */}
         {(isProtocolGroupView || (badges.showProtocol && displayLineages.length > 0) || (badges.showCategory && (modality?.category || modality?.modality_type))) && (
@@ -1997,12 +1997,17 @@ export default function ProtocolTaskCard({
             {/* Other lineages (if any exist that are not the current umbrella protocol) */}
             {badges.showProtocol && displayLineages.map((lineage, idx) => {
               const protoTargetId = (lineage as any).protocol_id || task.protocol_step?.protocol_id || lineage.protocol_name
+              const isOnlyAttribution = displayLineages.length === 1 && !badges.showCategory && !isProtocolGroupView
               return (
                 <Link 
                   key={idx}
                   href={`/protocols/${encodeURIComponent(protoTargetId)}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border hover:brightness-125 hover:scale-105 transition-all cursor-pointer flex items-center gap-1 group"
+                  className={`uppercase font-bold tracking-wider rounded border hover:brightness-125 hover:scale-[1.01] transition-all cursor-pointer flex items-center group shadow-sm ${
+                    isOnlyAttribution
+                      ? 'w-full justify-between px-2.5 py-1 text-[10px]'
+                      : 'px-2 py-0.5 text-[9px] gap-1'
+                  }`}
                   style={{
                     backgroundColor: `${lineage.color_hex}1A`, // 10% opacity
                     color: lineage.color_hex,
@@ -2010,8 +2015,8 @@ export default function ProtocolTaskCard({
                   }}
                   title={`View full ${lineage.protocol_name} protocol focus view`}
                 >
-                  <span>{lineage.protocol_name}</span>
-                  <ExternalLink size={9} className="opacity-70 group-hover:opacity-100" />
+                  <span className="truncate">{lineage.protocol_name}</span>
+                  <ExternalLink size={isOnlyAttribution ? 11 : 9} className="opacity-70 group-hover:opacity-100 shrink-0" />
                 </Link>
               )
             })}

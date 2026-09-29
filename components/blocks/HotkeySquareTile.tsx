@@ -128,7 +128,7 @@ export default function HotkeySquareTile({
   }), [hotkey.id, hotkey.name, currentSlotKey])
 
   const dragHandlers = React.useMemo(() => {
-    if (!dragCtx) return null
+    if (!dragCtx || !isEditMode) return null
     return dragCtx.bindDraggable(dragItem, {
       isEditMode,
       onClick: () => {

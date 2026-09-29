@@ -872,7 +872,7 @@ export default function BlocksTimeContainer({
           return (
             <React.Fragment key={task.id}>
               {seqLink && !isDuringItem && (
-                <div className="col-span-12 -my-2.5 sm:-my-3 animate-in fade-in duration-200">
+                <div className="col-span-12 -my-1 sm:-my-1.5 animate-in fade-in duration-200">
                   <BlocksNodeRail link={seqLink} isDaylight={isDaylight} />
                 </div>
               )}
