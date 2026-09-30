@@ -27,7 +27,12 @@ import {
   Check,
   Bookmark,
   Filter,
-  Layers
+  Layers,
+  ShieldCheck,
+  Flame,
+  Clock,
+  Maximize2,
+  Target
 } from 'lucide-react'
 import { useTheme } from '@/lib/utils/useTheme'
 import {
@@ -57,10 +62,17 @@ import {
   useHomeWidgets,
   useFocusRules,
   useCardBadges,
+  useLayoutPreset,
+  useTimeBlockHorizon,
+  useNBAConfig,
+  LayoutPreset,
+  TimeBlockHorizonMode,
+  NBAConfig,
   HomeWidgetsConfig,
   FocusRulesConfig,
   CardBadgesConfig
 } from '@/lib/utils/layoutSettings'
+import { DailyBandwidthMode } from '@/lib/adaptive/dailyBandwidthEngine'
 import { triggerHaptic } from '@/lib/utils/haptics'
 import { UserProfile } from '@/lib/types'
 
@@ -70,6 +82,9 @@ interface DashboardLayoutModalProps {
   userProfile?: UserProfile
   currentDisplayMode?: 'classic' | 'blocks'
   onDisplayModeChange?: (mode: 'classic' | 'blocks') => void
+  currentDate?: string
+  isFocusMode?: boolean
+  onToggleFocusMode?: () => void
 }
 
 export default function DashboardLayoutModal({
@@ -77,7 +92,10 @@ export default function DashboardLayoutModal({
   onClose,
   userProfile,
   currentDisplayMode,
-  onDisplayModeChange
+  onDisplayModeChange,
+  currentDate,
+  isFocusMode = false,
+  onToggleFocusMode
 }: DashboardLayoutModalProps) {
   const [mounted, setMounted] = useState(false)
   const { theme, toggleTheme } = useTheme()
@@ -99,6 +117,63 @@ export default function DashboardLayoutModal({
   const { widgets, toggleWidget } = useHomeWidgets(userProfile)
   const { rules, toggleRule } = useFocusRules(userProfile)
   const { badges, toggleBadge } = useCardBadges(userProfile)
+
+  // Information Density Presets, Time Block Horizon & NBA Config
+  const { preset, selectPreset } = useLayoutPreset(userProfile)
+  const { horizon, updateHorizon } = useTimeBlockHorizon(isFocusMode, userProfile)
+  const { nbaConfig, updateNBAConfig, toggleNBAEnabled } = useNBAConfig(userProfile)
+
+  // Modality Capacity (Allostatic Load / Bandwidth Mode)
+  const activeDateStr = currentDate || new Date().toISOString().slice(0, 10)
+  const [bandwidthMode, setBandwidthMode] = useState<DailyBandwidthMode>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`levl_bandwidth_mode_${activeDateStr}`) as DailyBandwidthMode
+      if (saved === 'survival_80_20' || saved === 'peak_surge') return saved
+      if (localStorage.getItem(`levl_8020_protected_${activeDateStr}`) === 'true') return 'survival_80_20'
+    }
+    return 'standard'
+  })
+
+  useEffect(() => {
+    const handleBandwidthChange = (e: any) => {
+      if (e.detail?.date === activeDateStr || !e.detail?.date) {
+        const mode = e.detail?.mode || (localStorage.getItem(`levl_bandwidth_mode_${activeDateStr}`) as DailyBandwidthMode) || 'standard'
+        setBandwidthMode(mode)
+      }
+    }
+    window.addEventListener('levl_bandwidth_mode_changed', handleBandwidthChange)
+    return () => window.removeEventListener('levl_bandwidth_mode_changed', handleBandwidthChange)
+  }, [activeDateStr])
+
+  const handleSelectBandwidthMode = (mode: DailyBandwidthMode) => {
+    triggerHaptic('selection')
+    setBandwidthMode(mode)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`levl_bandwidth_mode_${activeDateStr}`, mode)
+      if (mode === 'survival_80_20') {
+        localStorage.setItem(`levl_8020_protected_${activeDateStr}`, 'true')
+        window.dispatchEvent(new CustomEvent('levl_adherence_shield_activated', { detail: { date: activeDateStr } }))
+      } else {
+        localStorage.setItem(`levl_8020_protected_${activeDateStr}`, 'false')
+        window.dispatchEvent(new CustomEvent('levl_adherence_shield_deactivated', { detail: { date: activeDateStr } }))
+      }
+      window.dispatchEvent(new CustomEvent('levl_bandwidth_mode_changed', { detail: { date: activeDateStr, mode } }))
+    }
+  }
+
+  const handleSelectPreset = (p: LayoutPreset) => {
+    triggerHaptic('selection')
+    selectPreset(p)
+    if (p === 'focus') {
+      if (!isFocusMode && onToggleFocusMode) {
+        onToggleFocusMode()
+      }
+    } else {
+      if (isFocusMode && onToggleFocusMode) {
+        onToggleFocusMode()
+      }
+    }
+  }
 
   // Infradian & Period Cycle tracking option strictly shows for females under 52
   const isFemaleEligible =
@@ -237,7 +312,371 @@ export default function DashboardLayoutModal({
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
-          {/* 1. Theme & Core Display Mode */}
+          {/* 1. Information Density & Layout Presets */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                <Target size={13} />
+                <span>Information Density Presets</span>
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">Layout Profile</span>
+            </div>
+
+            {/* 3-Stop Preset Switcher */}
+            <div
+              className={`p-1.5 rounded-2xl border flex items-center gap-1.5 ${
+                isLight ? 'bg-slate-200/80 border-slate-300' : 'bg-slate-900 border-slate-800'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('focus')}
+                className={`flex-1 py-2 px-1 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  preset === 'focus'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Zap size={13} className={preset === 'focus' ? 'text-amber-300 fill-amber-300' : ''} />
+                <span>Focus Mode</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('daily')}
+                className={`flex-1 py-2 px-1 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  preset === 'daily'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Sun size={13} className={preset === 'daily' ? 'text-amber-300' : ''} />
+                <span>Daily Mode</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('biohacker')}
+                className={`flex-1 py-2 px-1 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  preset === 'biohacker'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : isLight
+                    ? 'text-slate-600 hover:text-slate-900'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Sparkles size={13} className={preset === 'biohacker' ? 'text-cyan-300' : ''} />
+                <span>Biohacker Mode</span>
+              </button>
+            </div>
+
+            {/* Dynamic 1-line explanation */}
+            <div
+              className={`p-2.5 rounded-xl border text-[11px] leading-relaxed transition-all ${
+                preset === 'focus'
+                  ? isLight
+                    ? 'bg-amber-50 border-amber-300/80 text-amber-950'
+                    : 'bg-amber-950/30 border-amber-500/40 text-amber-200'
+                  : preset === 'daily'
+                  ? isLight
+                    ? 'bg-purple-50 border-purple-200 text-purple-950'
+                    : 'bg-purple-950/30 border-purple-500/40 text-purple-200'
+                  : isLight
+                  ? 'bg-cyan-50 border-cyan-300/80 text-cyan-950'
+                  : 'bg-cyan-950/30 border-cyan-500/40 text-cyan-200'
+              }`}
+            >
+              <p>
+                <span className="font-bold">
+                  {preset === 'focus' ? 'Focus Mode: ' : preset === 'daily' ? 'Daily Mode: ' : 'Biohacker Mode: '}
+                </span>
+                {preset === 'focus'
+                  ? 'Customizing layout appearance and information density for Focus mode: single active time block, essential telemetry & zero clutter.'
+                  : preset === 'daily'
+                  ? 'Customizing layout appearance and information density for Daily mode: balanced circadian rhythm, standard badges & daily widgets.'
+                  : 'Customizing layout appearance and information density for Biohacker mode: maximum data density, full clinical telemetry & all widgets.'}
+              </p>
+            </div>
+          </div>
+
+          {/* 2. Modality Capacity & Strain (Allostatic Load) */}
+          <div
+            className={`p-3.5 rounded-2xl border space-y-3 ${
+              isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900/60 border-slate-800/80'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                  <Activity size={13} />
+                  <span>Modality Capacity (Allostatic Load)</span>
+                </span>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Protocol strain level calibrated by morning check-in &amp; manual toggle
+                </p>
+              </div>
+            </div>
+
+            {/* 3-Stop Toggle: Survival | Daily | Peak */}
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleSelectBandwidthMode('survival_80_20')}
+                className={`py-2 px-1.5 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  bandwidthMode === 'survival_80_20'
+                    ? 'bg-amber-600 border-amber-400 text-white shadow-md'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                    : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700 text-slate-300'
+                }`}
+              >
+                <ShieldCheck size={14} className={bandwidthMode === 'survival_80_20' ? 'text-amber-200' : 'text-amber-500'} />
+                <span>Survival Mode</span>
+                <span className={`text-[9px] font-mono ${bandwidthMode === 'survival_80_20' ? 'text-amber-100' : 'text-slate-400'}`}>80/20 Cuts</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectBandwidthMode('standard')}
+                className={`py-2 px-1.5 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  bandwidthMode === 'standard'
+                    ? 'bg-purple-600 border-purple-400 text-white shadow-md'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                    : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700 text-slate-300'
+                }`}
+              >
+                <Activity size={14} className={bandwidthMode === 'standard' ? 'text-purple-200' : 'text-purple-400'} />
+                <span>Daily Mode</span>
+                <span className={`text-[9px] font-mono ${bandwidthMode === 'standard' ? 'text-purple-100' : 'text-slate-400'}`}>Standard Stack</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectBandwidthMode('peak_surge')}
+                className={`py-2 px-1.5 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  bandwidthMode === 'peak_surge'
+                    ? 'bg-rose-600 border-rose-400 text-white shadow-md'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                    : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700 text-slate-300'
+                }`}
+              >
+                <Flame size={14} className={bandwidthMode === 'peak_surge' ? 'text-rose-200' : 'text-rose-500'} />
+                <span>Peak Mode</span>
+                <span className={`text-[9px] font-mono ${bandwidthMode === 'peak_surge' ? 'text-rose-100' : 'text-slate-400'}`}>Adaptation Surge</span>
+              </button>
+            </div>
+
+            {/* Capacity Mode Explanation */}
+            <div
+              className={`p-2.5 rounded-xl border text-[11px] leading-relaxed transition-all ${
+                bandwidthMode === 'survival_80_20'
+                  ? isLight
+                    ? 'bg-amber-50 border-amber-300 text-amber-950'
+                    : 'bg-amber-950/40 border-amber-500/40 text-amber-200'
+                  : bandwidthMode === 'peak_surge'
+                  ? isLight
+                    ? 'bg-rose-50 border-rose-300 text-rose-950'
+                    : 'bg-rose-950/40 border-rose-500/40 text-rose-200'
+                  : isLight
+                  ? 'bg-slate-100 border-slate-200 text-slate-700'
+                  : 'bg-slate-800/40 border-slate-700 text-slate-300'
+              }`}
+            >
+              <p>
+                {bandwidthMode === 'survival_80_20' && (
+                  <span><strong>Survival Mode (80/20):</strong> Compresses daily stack to minimum effective dose. High-strain resistance training and cold plunges are paused while essential anchors remain protected.</span>
+                )}
+                {bandwidthMode === 'standard' && (
+                  <span><strong>Daily Mode:</strong> Baseline standard scheduled protocol stack calibrated for sustainable longevity.</span>
+                )}
+                {bandwidthMode === 'peak_surge' && (
+                  <span><strong>Peak Mode:</strong> Maximum adaptation surge enabled for high-readiness days. High-capacity training and progressive overload modalities unlocked.</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* 3. Circadian Time Block Horizon */}
+          <div
+            className={`p-3.5 rounded-2xl border space-y-3 ${
+              isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900/60 border-slate-800/80'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                  <Clock size={13} />
+                  <span>Circadian Time Block Horizon</span>
+                </span>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Controls which time blocks stay open vs collapsed across the day
+                </p>
+              </div>
+            </div>
+
+            {/* 3-Stop Switcher: Current Only | Collapse Past | Fully Open */}
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  updateHorizon('current_only')
+                }}
+                className={`py-2 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  horizon === 'current_only'
+                    ? 'bg-purple-600 border-purple-400 text-white shadow-md'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                    : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700 text-slate-300'
+                }`}
+              >
+                <Clock size={14} />
+                <span>Current Only</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  updateHorizon('collapse_past')
+                }}
+                className={`py-2 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  horizon === 'collapse_past'
+                    ? 'bg-purple-600 border-purple-400 text-white shadow-md'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                    : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700 text-slate-300'
+                }`}
+              >
+                <Rows3 size={14} />
+                <span>Collapse Past</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  updateHorizon('fully_open')
+                }}
+                className={`py-2 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer border ${
+                  horizon === 'fully_open'
+                    ? 'bg-purple-600 border-purple-400 text-white shadow-md'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                    : 'bg-slate-800/70 hover:bg-slate-800 border-slate-700 text-slate-300'
+                }`}
+              >
+                <Maximize2 size={14} />
+                <span>Fully Open</span>
+              </button>
+            </div>
+
+            <p className="text-[10px] text-slate-400">
+              {horizon === 'current_only' && 'Only your currently active time block is expanded; past and upcoming blocks are collapsed.'}
+              {horizon === 'collapse_past' && 'Default: past blocks are grouped in the catch-up drawer, while current and future blocks remain open.'}
+              {horizon === 'fully_open' && 'All 24-hour time blocks remain fully expanded simultaneously with all modalities visible.'}
+            </p>
+          </div>
+
+          {/* 4. Next Best Action (NBA) Settings */}
+          <div
+            className={`p-3.5 rounded-2xl border space-y-3 ${
+              isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900/60 border-slate-800/80'
+            }`}
+          >
+            {/* Header with iOS Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="pr-2">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                  <Sparkles size={13} />
+                  <span>Next Best Action (NBA)</span>
+                </span>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Adaptive 80/20 recommendations docked at the bottom of your protocol
+                </p>
+              </div>
+
+              {/* Toggle Switch */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={nbaConfig.enabled}
+                aria-label="Toggle Next Best Action"
+                onClick={() => {
+                  triggerHaptic('selection')
+                  toggleNBAEnabled()
+                }}
+                className={`w-12 h-7 rounded-full p-1 transition-colors cursor-pointer relative flex items-center shadow-inner shrink-0 ${
+                  nbaConfig.enabled ? 'bg-purple-600 hover:bg-purple-500 shadow-[0_0_12px_rgba(147,51,234,0.4)]' : 'bg-slate-700 hover:bg-slate-600'
+                }`}
+              >
+                <span
+                  className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 flex items-center justify-center ${
+                    nbaConfig.enabled ? 'translate-x-5 text-purple-600' : 'translate-x-0 text-slate-400'
+                  }`}
+                >
+                  {nbaConfig.enabled ? <Check size={11} strokeWidth={3} /> : <X size={11} />}
+                </span>
+              </button>
+            </div>
+
+            {/* 4-Stop Appearance Frequency Slider (Visible strictly when ON) */}
+            {nbaConfig.enabled && (
+              <div className="pt-2 border-t border-slate-800/40 space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                    Appearance Threshold
+                  </span>
+                  <span className="text-[10px] text-purple-400 font-mono font-bold">
+                    {nbaConfig.threshold === 0 ? 'Always Visible' : `At ≥${nbaConfig.threshold}% Complete`}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([
+                    { val: 0, label: 'Always' },
+                    { val: 50, label: '50% Done' },
+                    { val: 75, label: '75% Done' },
+                    { val: 100, label: '100% Done' }
+                  ] as const).map(stop => {
+                    const isSelected = nbaConfig.threshold === stop.val
+                    return (
+                      <button
+                        key={stop.val}
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic('selection')
+                          updateNBAConfig({ threshold: stop.val })
+                        }}
+                        className={`py-2 px-1 rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer border ${
+                          isSelected
+                            ? 'bg-purple-600 border-purple-400 text-white shadow-md'
+                            : isLight
+                            ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                            : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-400'
+                        }`}
+                      >
+                        <div>{stop.label}</div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <p className="text-[10px] text-slate-400">
+                  {nbaConfig.threshold === 0 && 'Docked NBA recommendation banner is always visible at the bottom of the feed.'}
+                  {nbaConfig.threshold === 50 && 'NBA banner unlocks once halfway through today’s protocol stack.'}
+                  {nbaConfig.threshold === 75 && 'Default: NBA banner unlocks once you have completed 75% of your scheduled protocol.'}
+                  {nbaConfig.threshold === 100 && 'NBA banner only appears as a congratulatory wrap-up once all tasks are completed.'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* 5. Theme & Core Display Mode */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">

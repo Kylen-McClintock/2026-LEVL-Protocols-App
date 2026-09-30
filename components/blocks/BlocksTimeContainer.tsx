@@ -27,6 +27,7 @@ import NutritionFastingModal from '@/components/quicklog/NutritionFastingModal'
 import HotkeySquareTile from './HotkeySquareTile'
 import SwipeActionInFeedCard from './SwipeActionInFeedCard'
 import { QuickHotkeyConfig, DailyQuickLogEntry } from '@/lib/types'
+import { TimeBlockHorizonMode } from '@/lib/utils/layoutSettings'
 import {
   BlockSizing,
   BlocksVisualStyle,
@@ -40,7 +41,8 @@ import {
   getStoredSlotTaskOrder,
   saveStoredSlotTaskOrder,
   getStoredLinkedModalities,
-  isSupplementTask
+  isSupplementTask,
+  getCurrentTimeBlockSlotKey
 } from './blocksUtils'
 import BlocksNodeRail from './BlocksNodeRail'
 import { resolveSequentialStepLink } from '@/lib/utils/modalityTimingRelationships'
@@ -64,6 +66,7 @@ interface BlocksTimeContainerProps {
   visualStyle: BlocksVisualStyle
   layoutMode?: BlocksLayoutMode
   showDosing?: boolean
+  timeBlockHorizon?: TimeBlockHorizonMode
   isEditMode: boolean
   date: string
   localUserId: string
@@ -124,14 +127,32 @@ export default function BlocksTimeContainer({
   onQuickLog,
   onSelectHotkey,
   onMoveHotkey,
+  timeBlockHorizon,
   onMoveTask,
   onMoveToBench,
   onEliminate
 }: BlocksTimeContainerProps) {
-  // Blocks that are in the past according to the user's circadian/fasting schedule are collapsed into compact bars (e.g. past morning).
-  // Upcoming and active time blocks are open by default.
+  // Circadian Time Block Horizon:
+  // - 'current_only': only the active circadian time block is open; past and upcoming are collapsed.
+  // - 'collapse_past' (default): past time blocks are collapsed; current and future are open.
+  // - 'fully_open': all time blocks are open.
   const isFuture = useMemo(() => isTimeBlockInFutureForDay(slotKey, date, userProfile), [slotKey, date, userProfile])
-  const [isCollapsed, setIsCollapsed] = useState(!isFuture)
+  const isCurrentSlot = useMemo(() => {
+    return getCurrentTimeBlockSlotKey(date).toLowerCase() === slotKey.toLowerCase()
+  }, [slotKey, date])
+
+  const initialCollapsed = useMemo(() => {
+    if (timeBlockHorizon === 'current_only') {
+      return !isCurrentSlot
+    }
+    if (timeBlockHorizon === 'fully_open') {
+      return false
+    }
+    // 'collapse_past' (default)
+    return !isFuture && !isCurrentSlot
+  }, [timeBlockHorizon, isCurrentSlot, isFuture])
+
+  const [isCollapsed, setIsCollapsed] = useState(initialCollapsed)
   const [isDragOver, setIsDragOver] = useState(false)
   const { theme } = useTheme()
   const isDaylight = theme === 'light'
@@ -160,8 +181,8 @@ export default function BlocksTimeContainer({
   }, [])
 
   useEffect(() => {
-    setIsCollapsed(!isTimeBlockInFutureForDay(slotKey, date, userProfile))
-  }, [slotKey, date, userProfile])
+    setIsCollapsed(initialCollapsed)
+  }, [initialCollapsed])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [isIgnited, setIsIgnited] = useState(true)

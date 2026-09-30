@@ -78,7 +78,7 @@ import { triggerHaptic } from '@/lib/utils/haptics'
 import { saveOutcomeObservation, getCachedModalitiesSync } from '@/lib/data'
 import { getUserCircadianTimeWindows } from '@/lib/utils/circadianConfig'
 
-import { useHomeWidgets, useFocusRules, useCardBadges } from '@/lib/utils/layoutSettings'
+import { useHomeWidgets, useFocusRules, useCardBadges, useTimeBlockHorizon, useNBAConfig } from '@/lib/utils/layoutSettings'
 
 interface BlocksViewContainerProps {
   tasks: DedupedTask[]
@@ -146,6 +146,8 @@ export default function BlocksViewContainer({
   const { widgets: homeWidgets } = useHomeWidgets(userProfile || undefined)
   const { rules: focusRules } = useFocusRules(userProfile || undefined)
   const { badges: cardBadges } = useCardBadges(userProfile || undefined)
+  const { horizon: timeBlockHorizon } = useTimeBlockHorizon(isFocusMode, userProfile || undefined)
+  const { nbaConfig } = useNBAConfig(userProfile || undefined)
 
   // Sub-view toggle: 'time' vs 'protocol'
   const [subView, setSubView] = useState<'time' | 'protocol'>('time')
@@ -874,6 +876,7 @@ export default function BlocksViewContainer({
                   visualStyle={visualStyle}
                   layoutMode={layoutMode}
                   showDosing={effectiveShowDosing}
+                  timeBlockHorizon={timeBlockHorizon}
                   isEditMode={isEditMode}
                   date={date}
                   localUserId={localUserId}
@@ -899,19 +902,28 @@ export default function BlocksViewContainer({
             })}
 
             {/* Dedicated Next Best Action & 80/20 Stack Progression Section */}
-            {tasks.length > 0 && !isFocusMode && (
-              <BlocksNextBestActionSection
-                tasks={tasks}
-                allModalities={allModalities}
-                userProfile={userProfile}
-                benchItems={benchItems}
-                streakDays={streakDays}
-                visualStyle={visualStyle}
-                date={date}
-                onAddToToday={onAddToToday}
-                onMoveToBench={onMoveToBench}
-              />
-            )}
+            {(() => {
+              const totalBlocksTasks = tasks.length
+              const completedBlocksTasks = tasks.filter(t => t.status === 'completed').length
+              const blocksAdherencePct = totalBlocksTasks > 0 ? Math.round((completedBlocksTasks / totalBlocksTasks) * 100) : 0
+              const isNBAMeetsThreshold = nbaConfig.enabled && (nbaConfig.threshold === 0 || blocksAdherencePct >= nbaConfig.threshold)
+
+              if (!tasks.length || isFocusMode || !isNBAMeetsThreshold) return null
+
+              return (
+                <BlocksNextBestActionSection
+                  tasks={tasks}
+                  allModalities={allModalities}
+                  userProfile={userProfile}
+                  benchItems={benchItems}
+                  streakDays={streakDays}
+                  visualStyle={visualStyle}
+                  date={date}
+                  onAddToToday={onAddToToday}
+                  onMoveToBench={onMoveToBench}
+                />
+              )
+            })()}
 
             {/* Dedicated Completed Modalities Section (Rendered whenever completed tasks exist) */}
             {completedTasks.length > 0 && (
@@ -965,19 +977,28 @@ export default function BlocksViewContainer({
             ))}
 
             {/* Dedicated Next Best Action & 80/20 Stack Progression Section */}
-            {tasks.length > 0 && !isFocusMode && (
-              <BlocksNextBestActionSection
-                tasks={tasks}
-                allModalities={allModalities}
-                userProfile={userProfile}
-                benchItems={benchItems}
-                streakDays={streakDays}
-                visualStyle={visualStyle}
-                date={date}
-                onAddToToday={onAddToToday}
-                onMoveToBench={onMoveToBench}
-              />
-            )}
+            {(() => {
+              const totalBlocksTasks = tasks.length
+              const completedBlocksTasks = tasks.filter(t => t.status === 'completed').length
+              const blocksAdherencePct = totalBlocksTasks > 0 ? Math.round((completedBlocksTasks / totalBlocksTasks) * 100) : 0
+              const isNBAMeetsThreshold = nbaConfig.enabled && (nbaConfig.threshold === 0 || blocksAdherencePct >= nbaConfig.threshold)
+
+              if (!tasks.length || isFocusMode || !isNBAMeetsThreshold) return null
+
+              return (
+                <BlocksNextBestActionSection
+                  tasks={tasks}
+                  allModalities={allModalities}
+                  userProfile={userProfile}
+                  benchItems={benchItems}
+                  streakDays={streakDays}
+                  visualStyle={visualStyle}
+                  date={date}
+                  onAddToToday={onAddToToday}
+                  onMoveToBench={onMoveToBench}
+                />
+              )
+            })()}
 
             {/* Dedicated Completed Modalities Section (Rendered whenever completed tasks exist) */}
             {completedTasks.length > 0 && (

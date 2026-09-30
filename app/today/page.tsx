@@ -41,7 +41,7 @@ import {
 
 import dynamic from 'next/dynamic'
 import { evaluateDailyBandwidth, DailyBandwidthMode, BandwidthEvaluation } from '@/lib/adaptive/dailyBandwidthEngine'
-import { useHomeWidgets, useFocusRules, useCardBadges } from '@/lib/utils/layoutSettings'
+import { useHomeWidgets, useFocusRules, useCardBadges, useTimeBlockHorizon, useNBAConfig } from '@/lib/utils/layoutSettings'
 
 import ProtocolTaskCard, { DedupedTask } from '@/components/cards/ProtocolTaskCard'
 import ProtocolAvatar from '@/components/ui/ProtocolAvatar'
@@ -611,6 +611,8 @@ function TodayPageContent() {
   const { widgets: homeWidgets } = useHomeWidgets(profile || undefined)
   const { rules: focusRules } = useFocusRules(profile || undefined)
   const { badges: cardBadges } = useCardBadges(profile || undefined)
+  const { horizon: timeBlockHorizon } = useTimeBlockHorizon(isFocusMode, profile || undefined)
+  const { nbaConfig } = useNBAConfig(profile || undefined)
 
   // Daily Bandwidth & Adaptive Routine Governor State
   const [dailyBandwidthMode, setDailyBandwidthMode] = useState<DailyBandwidthMode>(() => {
@@ -3073,6 +3075,13 @@ function TodayPageContent() {
       }
     }
 
+    if (timeBlockHorizon === 'fully_open') {
+      return { 
+        pastGroups: [] as [string, DedupedTask[]][], 
+        activeTimelineGroups: sortedChronologicalGroups 
+      }
+    }
+
     const past: [string, DedupedTask[]][] = []
     const active: [string, DedupedTask[]][] = []
 
@@ -3095,7 +3104,7 @@ function TodayPageContent() {
     })
 
     return { pastGroups: past, activeTimelineGroups: active }
-  }, [viewMode, isCurrentDay, sortedChronologicalGroups, userActualWakeTime, profile?.ideal_wake_time])
+  }, [viewMode, isCurrentDay, sortedChronologicalGroups, userActualWakeTime, profile?.ideal_wake_time, timeBlockHorizon])
 
   const [isAllPastExpanded, setIsAllPastExpanded] = useState(false)
   const [expandedPastBlocks, setExpandedPastBlocks] = useState<Record<string, boolean>>({})
@@ -3693,8 +3702,18 @@ function TodayPageContent() {
     }
 
     // In Chronological View on the current day:
-    // Auto-collapse time blocks that have passed by >= 1.5 hours so the user is not intimidated by earlier missed tasks
     if (isCurrentDay && viewMode === 'chronological') {
+      if (timeBlockHorizon === 'current_only') {
+        const isNow = isCurrentCircadianSlot(groupName)
+        if (!isNow) return true
+        return false
+      }
+
+      if (timeBlockHorizon === 'fully_open') {
+        return false
+      }
+
+      // 'collapse_past' (default)
       const isPast = isCircadianSlotPast(
         groupName,
         new Date(),
@@ -5924,35 +5943,44 @@ function TodayPageContent() {
             </div>
 
             {/* Bottom 80/20 Stack Simplification & Adaptive Recommendation Banner (Deferred Lazy Mount) */}
-            {tasks.length > 0 && !isPastDate && !loading && !isDateSwitching && (
-              <div ref={nbaSentinelRef} className="mt-8 pt-6 border-t border-white/10">
-                {shouldMountNBA && allModalities.length > 0 ? (
-                  <AdaptiveRecommendationBanner
-                    tasks={tasks}
-                    allModalities={allModalities}
-                    userProfile={profile}
-                    streakDays={0}
-                    benchItems={benchItems}
-                    onAddToToday={async (modalityId: string) => {
-                      if (profile) {
-                        await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
-                        await refreshTodayTasks()
-                      }
-                    }}
-                    onMoveToBench={async (modalityId: string) => {
-                      await handleMoveToBench(modalityId)
-                    }}
-                  />
-                ) : (
-                  <div className="py-6 flex items-center justify-center text-xs text-slate-500 font-mono">
-                    <span className="flex items-center gap-1.5 opacity-60">
-                      <Sparkles size={12} className="text-purple-400" />
-                      <span>Scroll to view Next Best Action &amp; Stack Insights</span>
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
+            {tasks.length > 0 && !isPastDate && !loading && !isDateSwitching && (() => {
+              const totalTasksCount = tasks.length
+              const completedTasksCount = tasks.filter(t => t.status === 'completed').length
+              const adherencePct = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0
+              const isNBAMeetsThreshold = nbaConfig.enabled && (nbaConfig.threshold === 0 || adherencePct >= nbaConfig.threshold)
+
+              if (!isNBAMeetsThreshold) return null
+
+              return (
+                <div ref={nbaSentinelRef} className="mt-8 pt-6 border-t border-white/10">
+                  {shouldMountNBA && allModalities.length > 0 ? (
+                    <AdaptiveRecommendationBanner
+                      tasks={tasks}
+                      allModalities={allModalities}
+                      userProfile={profile}
+                      streakDays={0}
+                      benchItems={benchItems}
+                      onAddToToday={async (modalityId: string) => {
+                        if (profile) {
+                          await addModalityOrProtocolToToday(profile.local_user_id, dateStr, modalityId)
+                          await refreshTodayTasks()
+                        }
+                      }}
+                      onMoveToBench={async (modalityId: string) => {
+                        await handleMoveToBench(modalityId)
+                      }}
+                    />
+                  ) : (
+                    <div className="py-6 flex items-center justify-center text-xs text-slate-500 font-mono">
+                      <span className="flex items-center gap-1.5 opacity-60">
+                        <Sparkles size={12} className="text-purple-400" />
+                        <span>Scroll to view Next Best Action &amp; Stack Insights</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
               </>
             )}
           </>
@@ -6093,6 +6121,9 @@ function TodayPageContent() {
         userProfile={profile || undefined}
         currentDisplayMode={displayMode}
         onDisplayModeChange={setDisplayMode}
+        currentDate={dateStr}
+        isFocusMode={isFocusMode}
+        onToggleFocusMode={toggleFocusMode}
       />
     </div>
   )
