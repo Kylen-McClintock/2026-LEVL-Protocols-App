@@ -6336,8 +6336,9 @@ export async function getUserModalityHabits(localUserId: string): Promise<UserMo
     }
 
     if (habits.length === 0 && typeof window !== 'undefined') {
-      const defaultHabitSlugs = ['morning_sunlight', 'creatine_monohydrate', 'interdental-cleaning-flossing']
-      const matchedMods = allMods.filter(m => defaultHabitSlugs.includes(m.slug) || defaultHabitSlugs.some(s => m.name.toLowerCase().includes(s.replace('_', ' '))))
+      // Do NOT seed hardcoded dummy habits (like flossing). Only seed habits if the user has actually completed tasks for them.
+      const completedModIds = Object.keys(completedDatesMap)
+      const matchedMods = allMods.filter(m => completedModIds.includes(m.id) || (m.slug && completedModIds.includes(m.slug)))
       
       habits = matchedMods.map(mod => {
         const completedDates = completedDatesMap[mod.id] || (mod.slug ? completedDatesMap[mod.slug] : null)
@@ -6359,10 +6360,27 @@ export async function getUserModalityHabits(localUserId: string): Promise<UserMo
           graduated_at: isAutomated ? new Date().toISOString() : undefined
         }
       })
-      safeSetLocalStorage(storageKey, serializeHabitsForStorage(habits))
+      if (habits.length > 0) {
+        safeSetLocalStorage(storageKey, serializeHabitsForStorage(habits))
+      }
     } else {
       let needsSave = false
       const existingModIds = new Set<string>()
+
+      // Filter out legacy phantom habits (e.g. unselected flossing with 0 streak and no completions)
+      habits = habits.filter(h => {
+        const mod = h.modality || modMap.get(h.modality_id) || allMods.find(m => m.id === h.modality_id || m.slug === h.modality_id)
+        const isFlossing = (mod?.name || '').toLowerCase().includes('floss') || (mod?.slug || '').includes('floss') || (h.modality_id || '').includes('floss')
+        const hasDbCompletions = !!(completedDatesMap[h.modality_id] || (mod?.id && completedDatesMap[mod.id]))
+        const streak = h.streak_days ?? 0
+
+        // If it's a legacy phantom flossing habit that was never completed or scheduled, drop it!
+        if (isFlossing && !hasDbCompletions && streak === 0 && !h.is_automated) {
+          needsSave = true
+          return false
+        }
+        return true
+      })
 
       habits = habits.map(h => {
         const mod = h.modality || modMap.get(h.modality_id) || allMods.find(m => m.id === h.modality_id || m.slug === h.modality_id)

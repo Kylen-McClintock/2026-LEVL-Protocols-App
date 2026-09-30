@@ -9,6 +9,7 @@ import {
   getDailyProtocolTasks,
   getProtocolTasksHistory,
   getDailyWellbeingHistory,
+  getCachedModalitiesSync,
   getModalities,
   addToBench,
   getUserModalityHabits,
@@ -78,6 +79,7 @@ import { OutcomeLensView } from '@/components/outcomes/OutcomeLensView'
 import { OutcomeOptimizationModal } from '@/components/modals/OutcomeOptimizationModal'
 import { OutcomeOptimizationState, AntagonisticClash } from '@/lib/outcomes/outcomeOptimizationEngine'
 import { ALL_SCHEMA_CHECKIN_OUTCOMES } from '@/components/ui/ViewSelectorHeader'
+import { resolveOutcomeDisplayMeta } from '@/lib/outcomes/outcomeDisplayMeta'
 
 type FilterTab = 'all' | 'priority' | 'leaks' | 'momentum'
 type ViewSection = 'adherence_roi' | 'pareto_80_20' | 'hallmarks_radar'
@@ -89,6 +91,19 @@ interface ExtendedOutcomeSummary extends OutcomeAdherenceSummary {
     synergies?: ActiveSynergyPair[]
     isSynergized?: boolean
   })[]
+}
+
+interface CachedInsightsData {
+  overallAdherencePct: number
+  totalRealizedRoi: number
+  totalPotentialPoints: number
+  totalRealizedPoints: number
+  totalSynergyBonusPoints: number
+  activeSynergyPairsList: ActiveSynergyPair[]
+  outcomeDataList: ExtendedOutcomeSummary[]
+  activeModalityIds: string[]
+  habits: UserModalityHabit[]
+  cachedAt: number
 }
 
 export default function TrackingPage() {
@@ -199,24 +214,90 @@ export default function TrackingPage() {
     })
   }
 
+  // Attempt instant hydration from local cache on mount (0ms paint)
+  useEffect(() => {
+    try {
+      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+      const cachedStr = typeof window !== 'undefined' ? localStorage.getItem(`levl_insights_cache_${localUserId}`) : null
+      if (cachedStr) {
+        const cached = JSON.parse(cachedStr) as CachedInsightsData
+        if (cached && Array.isArray(cached.outcomeDataList) && cached.outcomeDataList.length > 0) {
+          setOverallAdherencePct(cached.overallAdherencePct || 0)
+          setTotalRealizedRoi(cached.totalRealizedRoi || 0)
+          setTotalPotentialPoints(cached.totalPotentialPoints || 0)
+          setTotalRealizedPoints(cached.totalRealizedPoints || 0)
+          setTotalSynergyBonusPoints(cached.totalSynergyBonusPoints || 0)
+          setActiveSynergyPairsList(cached.activeSynergyPairsList || [])
+          setOutcomeDataList(cached.outcomeDataList || [])
+          if (cached.activeModalityIds) {
+            setActiveModalityIds(new Set(cached.activeModalityIds))
+          }
+          if (cached.habits) {
+            setHabits(cached.habits)
+          }
+          setLoading(false)
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load insights cache:', e)
+    }
+  }, [authUserId])
+
+  // Lazy-load Pareto 80/20 data only when user switches to that tab
+  useEffect(() => {
+    if (activeViewSection === 'pareto_80_20' && benchItemsList.length === 0) {
+      const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
+      Promise.all([getBenchItems(localUserId), getOutcomeDimensions()]).then(([bItems, dbOutcomes]) => {
+        setBenchItemsList(bItems || [])
+        if (Array.isArray(dbOutcomes) && dbOutcomes.length > 0) {
+          const allOutcomesDimMap = new Map<string, OutcomeDimension>()
+          ALL_SCHEMA_CHECKIN_OUTCOMES.forEach(o => {
+            allOutcomesDimMap.set(o.id.toLowerCase(), {
+              ...o,
+              is_default_wellbeing: true,
+              is_contextual: false
+            })
+          })
+          dbOutcomes.forEach(o => {
+            const key = o.id.toLowerCase()
+            if (!allOutcomesDimMap.has(key)) {
+              allOutcomesDimMap.set(key, o)
+            }
+          })
+          setAllOutcomesList(Array.from(allOutcomesDimMap.values()))
+        }
+      }).catch(console.error)
+    }
+  }, [activeViewSection, authUserId, benchItemsList.length])
+
   useEffect(() => {
     async function load() {
       window.dispatchEvent(new CustomEvent('levl_sync_start'))
       const localUserId = authUserId || (typeof window !== 'undefined' ? localStorage.getItem('levl_local_user_id') : '') || getLocalUserId()
       const today = new Date().toISOString().split('T')[0]
-      const thirtyDaysAgoDate = new Date()
-      thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 30)
-      const thirtyDaysAgo = thirtyDaysAgoDate.toISOString().split('T')[0]
+      const fourteenDaysAgoDate = new Date()
+      fourteenDaysAgoDate.setDate(fourteenDaysAgoDate.getDate() - 14)
+      const fourteenDaysAgo = fourteenDaysAgoDate.toISOString().split('T')[0]
 
-      const [fetchedProfile, userHabits, todaysTasks, history, allModalities, wellbeingHistory, benchItems, dbOutcomes] = await Promise.all([
+      // 1. Instant cached modalities catalog (0ms)
+      const cachedMods = getCachedModalitiesSync()
+      let allModalities = cachedMods
+      if (!allModalities || allModalities.length === 0) {
+        allModalities = await getModalities()
+      } else {
+        // Background refresh without blocking initial paint
+        getModalities().then(mods => {
+          if (mods && mods.length > 0) setAllModalitiesList(mods)
+        }).catch(console.error)
+      }
+
+      // 2. Fetch only what is critical for initial Insights pulse (rolling 14 days)
+      const [fetchedProfile, userHabits, todaysTasks, history, wellbeingHistory] = await Promise.all([
         getOrCreateUserProfile(localUserId),
         getUserModalityHabits(localUserId),
         getDailyProtocolTasks(localUserId, today),
-        getProtocolTasksHistory(localUserId, thirtyDaysAgo, today),
-        getModalities(),
-        getDailyWellbeingHistory(localUserId, thirtyDaysAgo, today),
-        getBenchItems(localUserId),
-        getOutcomeDimensions()
+        getProtocolTasksHistory(localUserId, fourteenDaysAgo, today),
+        getDailyWellbeingHistory(localUserId, fourteenDaysAgo, today)
       ])
 
       setProfile(fetchedProfile)
@@ -224,26 +305,6 @@ export default function TrackingPage() {
       setWellbeingLogs(wellbeingHistory)
       setAllModalitiesList(allModalities)
       setTodaysTasksList(todaysTasks)
-      setBenchItemsList(benchItems || [])
-
-      // Combine ALL_SCHEMA_CHECKIN_OUTCOMES with dbOutcomes
-      const allOutcomesDimMap = new Map<string, OutcomeDimension>()
-      ALL_SCHEMA_CHECKIN_OUTCOMES.forEach(o => {
-        allOutcomesDimMap.set(o.id.toLowerCase(), {
-          ...o,
-          is_default_wellbeing: true,
-          is_contextual: false
-        })
-      })
-      if (Array.isArray(dbOutcomes)) {
-        dbOutcomes.forEach(o => {
-          const key = o.id.toLowerCase()
-          if (!allOutcomesDimMap.has(key)) {
-            allOutcomesDimMap.set(key, o)
-          }
-        })
-      }
-      setAllOutcomesList(Array.from(allOutcomesDimMap.values()))
 
       const activeModalitiesMap = new Map<string, Modality>()
       todaysTasks.forEach(task => {
@@ -273,7 +334,7 @@ export default function TrackingPage() {
       const avgAdh = totalScheduledAll > 0 ? (totalCompletedAll / totalScheduledAll) * 100 : 0
       setOverallAdherencePct(Math.round(avgAdh))
 
-      // 3. Build Outcome Group Summaries with +15% Synergy Multiplier
+      // 3. Build Outcome Group Summaries with +15% Synergy Multiplier & Sex-Aware Resolution
       const outcomesMap = new Map<string, ExtendedOutcomeSummary>()
       let accumulatedSynergyBonusPoints = 0
 
@@ -286,7 +347,8 @@ export default function TrackingPage() {
         const modalitySynergies = synergyEval.synergiesByModalityId.get(modId) || []
 
         Object.entries(modality.functional_impacts).forEach(([outcomeNameRaw, impactData]) => {
-          const outcomeId = outcomeNameRaw.toLowerCase().replace(/\s+/g, '_')
+          const meta = resolveOutcomeDisplayMeta(outcomeNameRaw, fetchedProfile)
+          const outcomeId = meta.id
           const impactScore = (impactData as any).score || 0
 
           if (impactScore < 3) return // Ignore negligible impacts
@@ -294,7 +356,7 @@ export default function TrackingPage() {
           if (!outcomesMap.has(outcomeId)) {
             outcomesMap.set(outcomeId, {
               id: outcomeId,
-              name: outcomeNameRaw,
+              name: meta.displayName,
               preferenceScore: fetchedProfile?.outcome_preference_scores?.[outcomeId] || 0,
               totalPotential: 0,
               totalRealized: 0,
@@ -425,6 +487,25 @@ export default function TrackingPage() {
       setExpandedOutcomes(new Set())
       setLoading(false)
       window.dispatchEvent(new CustomEvent('levl_sync_end'))
+
+      // Cache insights for instant 0ms subsequent renders
+      try {
+        const cachePayload: CachedInsightsData = {
+          overallAdherencePct: Math.round(avgAdh),
+          totalRealizedRoi: totalRoi,
+          totalPotentialPoints: Math.round(sumPotentialAll),
+          totalRealizedPoints: Math.round(sumRealizedAll),
+          totalSynergyBonusPoints: Math.round(accumulatedSynergyBonusPoints),
+          activeSynergyPairsList: synergyEval.activePairs,
+          outcomeDataList: finalOutcomes,
+          activeModalityIds: Array.from(activeModalitiesMap.keys()),
+          habits: userHabits,
+          cachedAt: Date.now()
+        }
+        localStorage.setItem(`levl_insights_cache_${localUserId}`, JSON.stringify(cachePayload))
+      } catch (e) {
+        console.warn('Failed to save insights cache:', e)
+      }
     }
     load()
 
@@ -488,14 +569,17 @@ export default function TrackingPage() {
     }
   }
 
-  // 12 Hallmarks of Aging Coverage Report & Bio-Gap Analysis with Simulator & Evidence Filter
+  // 12 Hallmarks of Aging Coverage Report & Bio-Gap Analysis with Simulator & Evidence Filter (deferred to tab activation)
   const hallmarkReport = useMemo(() => {
+    if (activeViewSection !== 'hallmarks_radar') {
+      return { overallCoverage: 0, hallmarks: [] } as any
+    }
     return calculateHallmarkCoverage(todaysTasksList, allModalitiesList, profile, {
       evidenceFilter,
       simulatedModalityIds,
       effortFilter: selectedEffortFilter
     })
-  }, [todaysTasksList, allModalitiesList, profile, evidenceFilter, simulatedModalityIds, selectedEffortFilter])
+  }, [activeViewSection, todaysTasksList, allModalitiesList, profile, evidenceFilter, simulatedModalityIds, selectedEffortFilter])
 
   // Load persistent user lab biomarkers on mount
   useEffect(() => {
@@ -510,11 +594,12 @@ export default function TrackingPage() {
   }, [])
 
   const bioGaps = useMemo(() => {
+    if (activeViewSection !== 'hallmarks_radar') return []
     return identifyBioGaps(hallmarkReport, allModalitiesList, activeModalityIds, {
       effortFilter: selectedEffortFilter,
       evidenceFilter
     })
-  }, [hallmarkReport, allModalitiesList, activeModalityIds, selectedEffortFilter, evidenceFilter])
+  }, [activeViewSection, hallmarkReport, allModalitiesList, activeModalityIds, selectedEffortFilter, evidenceFilter])
 
   const biomarkerStatuses = useMemo(() => {
     return evaluateComprehensiveBiomarkers(userBiomarkerReadings)
@@ -523,6 +608,13 @@ export default function TrackingPage() {
   const biomarkerHighRiskCount = useMemo(() => {
     return biomarkerStatuses.filter(s => s.hasRiskFlag).length
   }, [biomarkerStatuses])
+
+  // Only display habits that are active in today's protocol, have an earned streak > 0, or are automated
+  const visibleHabits = useMemo(() => {
+    return habits.filter(h => {
+      return activeModalityIds.has(h.modality_id) || h.streak_days > 0 || h.is_automated
+    })
+  }, [habits, activeModalityIds])
 
   const handleToggleSimulate = (modId: string) => {
     setSimulatedModalityIds(prev => {
@@ -565,8 +657,47 @@ export default function TrackingPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center animate-pulse text-levl-text-secondary">
-        Analyzing protocol execution ROI & multi-system leverage...
+      <div className="p-3 sm:p-6 lg:p-8 max-w-7xl w-full min-w-0 mx-auto pt-4 sm:pt-8 pb-28 space-y-6 sm:space-y-8 animate-pulse">
+        {/* Navigation placeholder */}
+        <div className="flex gap-2">
+          <div className="h-9 w-48 bg-slate-900/80 rounded-2xl border border-slate-800" />
+          <div className="h-9 w-48 bg-slate-900/40 rounded-2xl border border-slate-800/60" />
+        </div>
+        <div className="h-11 max-w-xl bg-slate-900/80 rounded-2xl border border-slate-800" />
+        
+        {/* Header title skeleton */}
+        <div className="space-y-2">
+          <div className="h-8 w-72 bg-slate-900/80 rounded-xl" />
+          <div className="h-4 w-96 max-w-full bg-slate-900/40 rounded-lg" />
+        </div>
+
+        {/* Executive 4-KPI Grid Skeleton */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 h-24 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-slate-800/80 shrink-0" />
+              <div className="space-y-2 flex-1">
+                <div className="h-3 w-20 bg-slate-800/80 rounded" />
+                <div className="h-6 w-16 bg-slate-800/60 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Outcome Cards Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5 sm:gap-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 h-44 space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-slate-800 shrink-0" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 w-32 bg-slate-800 rounded" />
+                  <div className="h-3 w-48 bg-slate-800/60 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -1255,7 +1386,7 @@ export default function TrackingPage() {
       </div>
 
       {/* Habit Automaticity Tracker Hub (Positioned Below Outcome Matrix) */}
-      {habits.length > 0 && selectedFilter !== 'leaks' && !searchQuery && (
+      {visibleHabits.length > 0 && selectedFilter !== 'leaks' && !searchQuery && (
         <div className="glass-card rounded-2xl p-5 sm:p-6 border border-indigo-500/30 bg-indigo-950/20 space-y-4 shadow-xl">
           <div className="flex items-center justify-between border-b border-indigo-500/20 pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2">
@@ -1265,7 +1396,7 @@ export default function TrackingPage() {
               </h2>
             </div>
             <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full font-mono font-bold">
-              {habits.filter(h => h.is_automated).length} Graduated Habits
+              {visibleHabits.filter(h => h.is_automated).length} Graduated Habits
             </span>
           </div>
 
@@ -1274,7 +1405,7 @@ export default function TrackingPage() {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-            {habits.map(h => {
+            {visibleHabits.map(h => {
               const pct = h.is_automated ? 100 : Math.min(100, Math.round((h.streak_days / h.target_streak_days) * 100))
               return (
                 <div key={h.id} className="bg-black/50 p-3.5 rounded-xl border border-white/10 space-y-2">

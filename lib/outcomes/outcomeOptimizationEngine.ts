@@ -1,5 +1,6 @@
 import { Modality, DailyProtocolTask, OutcomeDimension, UserProfile } from '../types'
 import { getModalityLongevityImpact, MASTER_MODALITY_LONGEVITY_PROFILES } from '../data/longevityKnowledgeBase'
+import { resolveOutcomeDisplayMeta } from './outcomeDisplayMeta'
 
 export interface AntagonisticClash {
   id: string
@@ -743,9 +744,11 @@ export function getOutcomeOptimizationSummary(
       }
     })
 
+    const displayMeta = resolveOutcomeDisplayMeta(dim.id || dim.name, userProfile)
+
     return {
       outcomeId: dim.id,
-      outcomeName: dim.name,
+      outcomeName: displayMeta.displayName || dim.name,
       dialedInScore: dialedIn.score,
       percentileRank: dialedIn.percentile,
       effortScore,

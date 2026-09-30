@@ -88,15 +88,15 @@ export const LONGEVITY_VECTOR_METADATA: Record<LongevityVectorId, LongevityVecto
   testosterone: {
     id: 'testosterone',
     vectorNumber: 5,
-    name: 'Endocrine & Anabolic Balance',
-    shortLabel: 'Endocrine Vitality',
+    name: 'Hormone Balance & Vitality',
+    shortLabel: 'Hormone Balance',
     colorHex: '#F97316', // Anabolic Orange
     secondaryColorHex: '#FB923C',
     bgGlow: 'rgba(249, 115, 22, 0.25)',
     borderColor: 'border-orange-500/40',
     textColor: 'text-orange-400',
-    description: 'Leydig cell output, free androgen index, LH/FSH axis & lean mass signaling.',
-    keyBiomarkers: ['Free Testosterone', 'Total Testosterone', 'Morning Cortisol']
+    description: 'Endocrine axis balance, sex steroids (estrogen, progesterone, testosterone), adrenal rhythm & metabolic vitality.',
+    keyBiomarkers: ['Total & Free Testosterone', 'Estradiol & Progesterone', 'DHEA-S', 'Morning Cortisol']
   },
   chronic_inflammation: {
     id: 'chronic_inflammation',
