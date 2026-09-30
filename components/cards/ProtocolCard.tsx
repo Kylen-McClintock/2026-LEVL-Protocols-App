@@ -42,7 +42,7 @@ export const PROTOCOL_SYNERGY_MAP: Record<string, string> = {
   'semax_selank_cognitive_flow_protocol': '🧠 Neurotrophic Flow & Circadian Brain Shield: Semax elevates prefrontal BDNF for rapid learning and focus, Selank calms amygdala performance anxiety via GABA-A modulation, and morning sunlight plus optic flow locks in effortless cognitive productivity.'
 }
 
-export default function ProtocolCard({ protocol, activeStatus, isFocusMode = false, onAddToBench, onAddToToday, onCompare, isPinnedForCompare }: ProtocolCardProps) {
+export default function ProtocolCard({ protocol, activeStatus, isFocusMode = true, onAddToBench, onAddToToday, onCompare, isPinnedForCompare }: ProtocolCardProps) {
   const router = useRouter()
   const [addedToBench, setAddedToBench] = useState(false)
   const [addedToToday, setAddedToToday] = useState(false)

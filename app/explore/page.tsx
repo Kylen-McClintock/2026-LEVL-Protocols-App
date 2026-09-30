@@ -79,13 +79,16 @@ function ExplorePageContent() {
     return tabParam === 'protocols' ? 'protocols' : 'modalities'
   })
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [isFocusMode, setIsFocusMode] = useState(false)
+  const [isFocusMode, setIsFocusMode] = useState(true)
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem('levl_explore_focus_mode')
       if (saved !== null) {
         setIsFocusMode(saved === 'true')
+      } else {
+        setIsFocusMode(true)
+        localStorage.setItem('levl_explore_focus_mode', 'true')
       }
     } catch {
       // Ignore localStorage access errors
@@ -467,11 +470,13 @@ function ExplorePageContent() {
 
 
   const handleAddToBench = async (modalityId: string) => {
+    setBenchModalityIds(prev => new Set([...Array.from(prev), modalityId]))
     const localUserId = getLocalUserId()
     await addToBench(localUserId, modalityId)
   }
 
   const handleAddToToday = async (modalityId: string) => {
+    setTodayModalityIds(prev => new Set([...Array.from(prev), modalityId]))
     const localUserId = getLocalUserId()
     const dateStr = format(new Date(), 'yyyy-MM-dd')
     await createDailyTask(localUserId, dateStr, modalityId)

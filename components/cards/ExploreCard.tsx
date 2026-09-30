@@ -54,7 +54,7 @@ function ExploreCard({
   benchModalities = [],
   stackFitResult,
   marginalImpact,
-  isFocusMode = false,
+  isFocusMode = true,
   onAddToBench, 
   onAddToToday,
   onCompare,

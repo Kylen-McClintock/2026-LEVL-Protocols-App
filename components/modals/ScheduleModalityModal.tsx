@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Modality } from '@/lib/types'
 import { X, Calendar, CalendarPlus, Bookmark, Check } from 'lucide-react'
 import { getLocalUserId } from '@/lib/local-user/getLocalUserId'
@@ -19,10 +20,15 @@ export default function ScheduleModalityModal({ isOpen, onClose, modality, onSuc
   const { theme } = useTheme()
   const isDaylight = theme === 'light'
 
+  const [mounted, setMounted] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [confirmedDestination, setConfirmedDestination] = useState<'today' | 'tomorrow' | 'bench' | null>(null)
 
-  if (!isOpen || !modality) return null
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!isOpen || !modality || !mounted || typeof document === 'undefined') return null
 
   const handleSchedule = (destination: 'today' | 'tomorrow' | 'bench') => {
     // Instant confirmation state and immediate parent notification
@@ -61,18 +67,23 @@ export default function ScheduleModalityModal({ isOpen, onClose, modality, onSuc
     onClose()
   }
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  const modalContent = (
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 pt-[calc(env(safe-area-inset-top,0px)+16px)] pb-safe overflow-y-auto">
+      {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity" 
+        className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity" 
         onClick={handleModalClose} 
       />
       
-      <div className={`relative rounded-2xl w-full max-w-sm shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border ${
-        isDaylight 
-          ? 'bg-white border-slate-200 text-slate-900 shadow-slate-900/10' 
-          : 'bg-[#111111] border-levl-border text-white'
-      }`}>
+      {/* Modal Dialog Box */}
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className={`relative rounded-2xl w-full max-w-sm shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border my-auto ${
+          isDaylight 
+            ? 'bg-white border-slate-200 text-slate-900 shadow-slate-900/10' 
+            : 'bg-[#111111] border-levl-border text-white'
+        }`}
+      >
         <div className={`p-4 border-b flex justify-between items-center ${
           isDaylight ? 'bg-slate-50/90 border-slate-200' : 'bg-levl-surface border-levl-border'
         }`}>
@@ -190,4 +201,6 @@ export default function ScheduleModalityModal({ isOpen, onClose, modality, onSuc
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }
