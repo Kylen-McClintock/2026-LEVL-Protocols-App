@@ -3699,7 +3699,7 @@ export default function DailyWellbeingCheckin({
             )}
           </div>
         ) : (
-          <p className="text-[11px] text-indigo-300/60 italic">Section collapsed / skipped. Tap 'Expand Section' to record last night's sleep ratings.</p>
+          <p className="text-[11px] text-indigo-300/60 italic">Section collapsed / skipped. Tap chevron above to record last night's sleep ratings.</p>
         )}
       </div>
 
@@ -3717,9 +3717,11 @@ export default function DailyWellbeingCheckin({
               <button
                 type="button"
                 onClick={() => setShowMealSection(!showMealSection)}
-                className="text-[10px] font-bold text-indigo-300 hover:text-white bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 px-2 py-0.5 rounded cursor-pointer transition-all"
+                className="p-1 rounded-lg text-indigo-300 hover:text-white hover:bg-indigo-500/20 transition-colors cursor-pointer"
+                title={showMealSection ? 'Collapse Meal Section' : 'Expand Meal Section'}
+                aria-label={showMealSection ? 'Collapse Meal Section' : 'Expand Meal Section'}
               >
-                {showMealSection ? 'Collapse' : 'Expand'}
+                {showMealSection ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
               </button>
             </div>
           </div>
@@ -3827,7 +3829,7 @@ export default function DailyWellbeingCheckin({
             })}
           </div>
           ) : (
-            <p className="text-[11px] text-gray-400 italic">Section collapsed / skipped. Tap 'Expand Section' to record priority custom outcome goals.</p>
+            <p className="text-[11px] text-gray-400 italic">Section collapsed / skipped. Tap chevron above to record priority custom outcome goals.</p>
           )}
         </div>
       )}
