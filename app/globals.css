@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-levl-bg: var(--levl-bg);
   --color-levl-card: var(--levl-card);
@@ -118,6 +120,22 @@ html.light, [data-theme="light"] {
     background: #ffffff !important;
     border-color: #cbd5e1 !important;
     box-shadow: 0 4px 12px rgb(23 42 40 / 6%) !important;
+  }
+
+  /* Protocol Mode High-Contrast Light Styling */
+  html.light [id^="protocol-group-"] {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06) !important;
+  }
+
+  html.light .glass-card h2,
+  html.light .glass-card h2 a,
+  html.light .glass-card h2 span,
+  html.light [id^="protocol-group-"] h2,
+  html.light [id^="protocol-group-"] h2 a,
+  html.light [id^="protocol-group-"] h2 span {
+    color: #0f172a !important;
   }
 
   html.light .desktop-sidebar {

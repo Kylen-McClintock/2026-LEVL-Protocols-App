@@ -182,29 +182,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     timeRange: '8:30 AM – 11:30 AM',
     circadianPhase: 'Fasted AM / Post-Breakfast Bioavailability',
     pulseBadge: {
-      phaseType: 'transition_fasted_to_growth',
-      label: 'Cellular Renewal ➔ Growth',
-      expandedLabel: 'Cellular Renewal (Autophagy) ➔ Growth (mTOR)',
-      dotColor: '#10B981',
-      dotGradientCSS: 'linear-gradient(135deg, #0284C7, #10B981)',
-      badgeBg: 'bg-gradient-to-r from-sky-500/15 via-slate-900/50 to-emerald-500/15',
-      badgeBorder: 'border-emerald-500/30',
-      badgeText: 'text-emerald-300',
-      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(16,185,129,0.18) 100%)',
-      fromPhase: {
-        name: 'Cellular Renewal',
-        mechanism: 'Autophagy',
-        colorHex: '#38BDF8',
-        textClass: 'text-sky-400'
-      },
-      toPhase: {
-        name: 'Growth',
-        mechanism: 'mTOR',
-        colorHex: '#34D399',
-        textClass: 'text-emerald-400'
-      },
-      dividerChar: '➔',
-      arrowGradientCSS: 'linear-gradient(to right, #38BDF8, #34D399)'
+      phaseType: 'autophagy',
+      label: 'Bioavailability Window',
+      expandedLabel: 'Bioavailability Window',
+      mechanism: 'Nutrient Bioavailability',
+      dotColor: '#0EA5E9',
+      badgeBg: 'bg-sky-500/10',
+      badgeBorder: 'border-sky-500/30',
+      badgeText: 'text-sky-300'
     },
     skyColorHex: '#0EA5E9',
     startColorHex: '#F59E0B',
@@ -227,29 +212,14 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     timeRange: '9:00 AM – 11:30 AM',
     circadianPhase: 'Late Morning Sky • Fat-Soluble Nutrient Uptake',
     pulseBadge: {
-      phaseType: 'transition_fasted_to_growth',
-      label: 'Cellular Renewal ➔ Growth',
-      expandedLabel: 'Cellular Renewal (Autophagy) ➔ Growth (mTOR)',
-      dotColor: '#10B981',
-      dotGradientCSS: 'linear-gradient(135deg, #0284C7, #10B981)',
-      badgeBg: 'bg-gradient-to-r from-sky-500/15 via-slate-900/50 to-emerald-500/15',
-      badgeBorder: 'border-emerald-500/30',
-      badgeText: 'text-emerald-300',
-      badgeGradientCSS: 'linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(16,185,129,0.18) 100%)',
-      fromPhase: {
-        name: 'Cellular Renewal',
-        mechanism: 'Autophagy',
-        colorHex: '#38BDF8',
-        textClass: 'text-sky-400'
-      },
-      toPhase: {
-        name: 'Growth',
-        mechanism: 'mTOR',
-        colorHex: '#34D399',
-        textClass: 'text-emerald-400'
-      },
-      dividerChar: '➔',
-      arrowGradientCSS: 'linear-gradient(to right, #38BDF8, #34D399)'
+      phaseType: 'autophagy',
+      label: 'Nutrient Uptake Window',
+      expandedLabel: 'Nutrient Uptake Window',
+      mechanism: 'Digestive Enzymes & Lipids',
+      dotColor: '#0284C7',
+      badgeBg: 'bg-cyan-500/10',
+      badgeBorder: 'border-cyan-500/30',
+      badgeText: 'text-cyan-300'
     },
     skyColorHex: '#0284C7',
     startColorHex: '#0EA5E9',
@@ -273,13 +243,13 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Peak Solar Noon • Maximum High-Lux Brilliance',
     pulseBadge: {
       phaseType: 'growth',
-      label: 'Growth',
-      expandedLabel: 'Growth (mTOR)',
-      mechanism: 'mTOR',
-      dotColor: '#10B981',
-      badgeBg: 'bg-emerald-500/10',
-      badgeBorder: 'border-emerald-500/30',
-      badgeText: 'text-emerald-300'
+      label: 'Peak Solar Noon',
+      expandedLabel: 'Peak Solar Noon',
+      mechanism: 'Peak Lux Sunlight',
+      dotColor: '#0284C7',
+      badgeBg: 'bg-sky-500/10',
+      badgeBorder: 'border-sky-500/30',
+      badgeText: 'text-sky-200'
     },
     skyColorHex: '#0284C7',
     startColorHex: '#0284C7',
@@ -303,13 +273,13 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Mitochondrial Co-factors • Solar Peak Bioavailability',
     pulseBadge: {
       phaseType: 'growth',
-      label: 'Growth',
-      expandedLabel: 'Growth (mTOR)',
-      mechanism: 'mTOR',
-      dotColor: '#10B981',
-      badgeBg: 'bg-emerald-500/10',
-      badgeBorder: 'border-emerald-500/30',
-      badgeText: 'text-emerald-300'
+      label: 'Midday Bioavailability',
+      expandedLabel: 'Midday Bioavailability',
+      mechanism: 'Mitochondrial Co-factors',
+      dotColor: '#2563EB',
+      badgeBg: 'bg-blue-500/10',
+      badgeBorder: 'border-blue-500/30',
+      badgeText: 'text-blue-200'
     },
     skyColorHex: '#2563EB',
     startColorHex: '#2563EB',
@@ -333,13 +303,13 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Deep Daylight Sky',
     pulseBadge: {
       phaseType: 'growth',
-      label: 'Growth',
-      expandedLabel: 'Growth (mTOR)',
-      mechanism: 'mTOR',
-      dotColor: '#10B981',
-      badgeBg: 'bg-emerald-500/10',
-      badgeBorder: 'border-emerald-500/30',
-      badgeText: 'text-emerald-300'
+      label: 'Deep Daylight Sky',
+      expandedLabel: 'Deep Daylight Sky',
+      mechanism: 'Aerobic & Strength Capacity',
+      dotColor: '#2563EB',
+      badgeBg: 'bg-blue-500/10',
+      badgeBorder: 'border-blue-500/30',
+      badgeText: 'text-sky-300'
     },
     skyColorHex: '#2563EB',
     startColorHex: '#0284C7',
@@ -363,13 +333,13 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Late Afternoon Sky',
     pulseBadge: {
       phaseType: 'growth',
-      label: 'Growth',
-      expandedLabel: 'Growth (mTOR)',
-      mechanism: 'mTOR',
-      dotColor: '#10B981',
-      badgeBg: 'bg-emerald-500/10',
-      badgeBorder: 'border-emerald-500/30',
-      badgeText: 'text-emerald-300'
+      label: 'Late Afternoon Sky',
+      expandedLabel: 'Late Afternoon Sky',
+      mechanism: 'Late Afternoon Focus',
+      dotColor: '#1D4ED8',
+      badgeBg: 'bg-blue-600/10',
+      badgeBorder: 'border-blue-500/30',
+      badgeText: 'text-blue-200'
     },
     skyColorHex: '#1D4ED8',
     startColorHex: '#2563EB',
@@ -393,13 +363,13 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Pre-Meal Window • Glycemic Buffer',
     pulseBadge: {
       phaseType: 'growth',
-      label: 'Growth',
-      expandedLabel: 'Growth (mTOR)',
-      mechanism: 'mTOR',
-      dotColor: '#10B981',
-      badgeBg: 'bg-emerald-500/10',
-      badgeBorder: 'border-emerald-500/30',
-      badgeText: 'text-emerald-300'
+      label: 'Pre-Meal Window',
+      expandedLabel: 'Pre-Meal Window',
+      mechanism: 'Glycemic Buffer',
+      dotColor: '#F87E38',
+      badgeBg: 'bg-orange-500/10',
+      badgeBorder: 'border-orange-500/30',
+      badgeText: 'text-orange-200'
     },
     skyColorHex: '#F87E38',
     startColorHex: '#F59E0B',
@@ -423,28 +393,13 @@ export const CIRCADIAN_SLOTS: Record<string, CircadianSlotConfig> = {
     circadianPhase: 'Post-Meal Window',
     pulseBadge: {
       phaseType: 'transition_growth_to_fasted',
-      label: 'Growth ➔ Cellular Renewal',
-      expandedLabel: 'Growth (mTOR) ➔ Cellular Renewal (Autophagy)',
-      dotColor: '#0284C7',
-      dotGradientCSS: 'linear-gradient(135deg, #10B981, #0284C7)',
-      badgeBg: 'bg-gradient-to-r from-emerald-500/15 via-slate-900/50 to-sky-500/15',
-      badgeBorder: 'border-sky-500/30',
-      badgeText: 'text-sky-300',
-      badgeGradientCSS: 'linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(2,132,199,0.18) 100%)',
-      fromPhase: {
-        name: 'Growth',
-        mechanism: 'mTOR',
-        colorHex: '#34D399',
-        textClass: 'text-emerald-400'
-      },
-      toPhase: {
-        name: 'Cellular Renewal',
-        mechanism: 'Autophagy',
-        colorHex: '#38BDF8',
-        textClass: 'text-sky-400'
-      },
-      dividerChar: '➔',
-      arrowGradientCSS: 'linear-gradient(to right, #34D399, #38BDF8)'
+      label: 'Post-Meal Window',
+      expandedLabel: 'Post-Meal Window',
+      mechanism: 'Digestive Absorption',
+      dotColor: '#F87E38',
+      badgeBg: 'bg-orange-500/10',
+      badgeBorder: 'border-orange-500/30',
+      badgeText: 'text-orange-200'
     },
     skyColorHex: '#F87E38',
     startColorHex: '#F87E38',

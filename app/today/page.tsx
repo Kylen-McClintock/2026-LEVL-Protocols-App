@@ -3142,8 +3142,7 @@ function TodayPageContent() {
         : activeGroups.map(([g]) => g)
       return buildDynamicCircadianGradientCSS(keys)
     }
-    const groupKeys = activeGroups.map(([groupName]) => groupName)
-    return buildDynamicCircadianGradientCSS(groupKeys)
+    return buildDynamicCircadianGradientCSS([])
   }, [viewMode, activeTimelineGroups, activeGroups])
 
   const [measuredCircadianGradientCSS, setMeasuredCircadianGradientCSS] = useState<string>('')
@@ -3197,8 +3196,8 @@ function TodayPageContent() {
       // 2. Active and Upcoming chronological time blocks
       if (activeTimelineGroups.length === 0) {
         if (colorStops.length === 0) {
-          colorStops.push({ color: '#10B981', pct: 0 })
-          colorStops.push({ color: '#059669', pct: 100 })
+          colorStops.push({ color: '#F59E0B', pct: 0 })
+          colorStops.push({ color: '#0B132B', pct: 100 })
         } else {
           colorStops.push({ color: '#0B132B', pct: 100 })
         }
@@ -3262,34 +3261,9 @@ function TodayPageContent() {
         })
       }
     } else {
-      // Protocol Mode
-      if (sortedProtocolGroups.length === 0) return
-
-      sortedProtocolGroups.forEach(([groupName, groupTasks], i) => {
-        const el = groupHeaderRefs.current[groupName]
-        const theme = getProtocolVisualTheme(groupName, groupTasks)
-        const primary = theme.primaryColorHex || '#8B5CF6'
-
-        let topPct = (i / sortedProtocolGroups.length) * 100
-        let bottomPct = ((i + 1) / sortedProtocolGroups.length) * 100
-
-        if (el) {
-          const topPx = el.offsetTop
-          const heightPx = el.offsetHeight
-          topPct = Math.max(0, Math.min(100, (topPx / totalHeight) * 100))
-          bottomPct = Math.max(0, Math.min(100, ((topPx + heightPx) / totalHeight) * 100))
-        }
-
-        if (i === 0) {
-          colorStops.push({ color: primary, pct: 0 })
-        }
-        colorStops.push({ color: primary, pct: Math.min(100, Number((topPct + 0.5).toFixed(1))) })
-        colorStops.push({ color: primary, pct: Math.max(0, Number((bottomPct - 0.5).toFixed(1))) })
-
-        if (i === sortedProtocolGroups.length - 1) {
-          colorStops.push({ color: primary, pct: 100 })
-        }
-      })
+      // Protocol Mode: Always preserve the dialed-in dawn-to-midnight circadian sky spectrum with zero green!
+      setMeasuredCircadianGradientCSS(buildDynamicCircadianGradientCSS([]))
+      return
     }
 
     colorStops.sort((a, b) => a.pct - b.pct)
@@ -3361,20 +3335,7 @@ function TodayPageContent() {
       if (groupsToCheck.length > 0) return getCircadianConfig(groupsToCheck[0][0]).skyColorHex
       return '#F59E0B'
     } else {
-      if (ignitedGroupKeys.size === 0) {
-        if (sortedProtocolGroups.length > 0) {
-          const theme = getProtocolVisualTheme(sortedProtocolGroups[0][0], sortedProtocolGroups[0][1])
-          return theme.primaryColorHex || '#8B5CF6'
-        }
-        return '#8B5CF6'
-      }
-      for (let i = sortedProtocolGroups.length - 1; i >= 0; i--) {
-        const gName = sortedProtocolGroups[i][0]
-        if (ignitedGroupKeys.has(gName)) {
-          const theme = getProtocolVisualTheme(gName, sortedProtocolGroups[i][1])
-          return theme.primaryColorHex || '#8B5CF6'
-        }
-      }
+      // Protocol Mode: Signature LEVL protocol royal purple accent for photon spark tip (never green!)
       return '#8B5CF6'
     }
   }, [viewMode, ignitedGroupKeys, activeTimelineGroups, activeGroups, sortedProtocolGroups])
@@ -4300,7 +4261,7 @@ function TodayPageContent() {
                                 className="w-1.5 h-1.5 rounded-full shrink-0" 
                                 style={{ 
                                   background: circadian.pulseBadge.dotGradientCSS || undefined,
-                                  backgroundColor: !circadian.pulseBadge.dotGradientCSS ? (circadian.pulseBadge.dotColor || '#10B981') : undefined 
+                                  backgroundColor: !circadian.pulseBadge.dotGradientCSS ? (circadian.pulseBadge.dotColor || '#0284C7') : undefined 
                                 }} 
                               />
                               <span className="truncate max-w-[100px] sm:max-w-none">{circadian.pulseBadge.label}</span>

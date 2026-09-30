@@ -286,10 +286,12 @@ export default function ProtocolOverviewHeaderCard({
               <Link 
                 href={`/protocols/${encodeURIComponent(protocolInfo?.id || protocolName)}`}
                 onClick={(e) => e.stopPropagation()}
-                className="hover:underline text-slate-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-300 transition-colors inline items-center gap-1.5 max-w-full"
+                className="hover:underline text-slate-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-300 transition-colors inline items-center gap-1.5 max-w-full font-extrabold"
                 title="Click to view full protocol focus page"
               >
-                <span className="line-clamp-3 leading-snug break-words">{protocolName}</span>
+                <span className="line-clamp-3 leading-snug break-words text-slate-900 dark:text-white font-extrabold">
+                  {protocolName || protocolInfo?.name || 'Protocol'}
+                </span>
                 <ExternalLink size={14} className="text-purple-600 dark:text-purple-400 opacity-80 inline-block ml-1.5 align-middle shrink-0" />
               </Link>
             </h2>
