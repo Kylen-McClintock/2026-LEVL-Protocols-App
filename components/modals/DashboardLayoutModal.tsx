@@ -60,7 +60,6 @@ import {
 } from '@/components/blocks/blocksUtils'
 import {
   useHomeWidgets,
-  useFocusRules,
   useCardBadges,
   useLayoutPreset,
   useTimeBlockHorizon,
@@ -69,7 +68,6 @@ import {
   TimeBlockHorizonMode,
   NBAConfig,
   HomeWidgetsConfig,
-  FocusRulesConfig,
   CardBadgesConfig
 } from '@/lib/utils/layoutSettings'
 import { DailyBandwidthMode } from '@/lib/adaptive/dailyBandwidthEngine'
@@ -113,9 +111,8 @@ export default function DashboardLayoutModal({
   )
   const [visualStyle, setVisualStyleState] = useState<BlocksVisualStyle>(() => getStoredVisualStyle())
 
-  // Home Page Widgets, Focus Mode Rules & Universal Card Badges
+  // Home Page Widgets & Universal Card Badges
   const { widgets, toggleWidget } = useHomeWidgets(userProfile)
-  const { rules, toggleRule } = useFocusRules(userProfile)
   const { badges, toggleBadge } = useCardBadges(userProfile)
 
   // Information Density Presets, Time Block Horizon & NBA Config
@@ -180,8 +177,6 @@ export default function DashboardLayoutModal({
     userProfile?.biological_sex?.toLowerCase() === 'female' &&
     Boolean(userProfile?.age && userProfile.age < 52)
 
-  // Configure Focus accordion collapsed by default as requested!
-  const [isFocusSectionOpen, setIsFocusSectionOpen] = useState<boolean>(false)
 
   useEffect(() => {
     setMounted(true)
@@ -582,101 +577,7 @@ export default function DashboardLayoutModal({
             </p>
           </div>
 
-          {/* 4. Next Best Action (NBA) Settings */}
-          <div
-            className={`p-3.5 rounded-2xl border space-y-3 ${
-              isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900/60 border-slate-800/80'
-            }`}
-          >
-            {/* Header with iOS Toggle */}
-            <div className="flex items-center justify-between">
-              <div className="pr-2">
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-                  <Sparkles size={13} />
-                  <span>Next Best Action (NBA)</span>
-                </span>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Adaptive 80/20 recommendations docked at the bottom of your protocol
-                </p>
-              </div>
-
-              {/* Toggle Switch */}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={nbaConfig.enabled}
-                aria-label="Toggle Next Best Action"
-                onClick={() => {
-                  triggerHaptic('selection')
-                  toggleNBAEnabled()
-                }}
-                className={`w-12 h-7 rounded-full p-1 transition-colors cursor-pointer relative flex items-center shadow-inner shrink-0 ${
-                  nbaConfig.enabled ? 'bg-purple-600 hover:bg-purple-500 shadow-[0_0_12px_rgba(147,51,234,0.4)]' : 'bg-slate-700 hover:bg-slate-600'
-                }`}
-              >
-                <span
-                  className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 flex items-center justify-center ${
-                    nbaConfig.enabled ? 'translate-x-5 text-purple-600' : 'translate-x-0 text-slate-400'
-                  }`}
-                >
-                  {nbaConfig.enabled ? <Check size={11} strokeWidth={3} /> : <X size={11} />}
-                </span>
-              </button>
-            </div>
-
-            {/* 4-Stop Appearance Frequency Slider (Visible strictly when ON) */}
-            {nbaConfig.enabled && (
-              <div className="pt-2 border-t border-slate-800/40 space-y-2 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-                    Appearance Threshold
-                  </span>
-                  <span className="text-[10px] text-purple-400 font-mono font-bold">
-                    {nbaConfig.threshold === 0 ? 'Always Visible' : `At ≥${nbaConfig.threshold}% Complete`}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-4 gap-1.5">
-                  {([
-                    { val: 0, label: 'Always' },
-                    { val: 50, label: '50% Done' },
-                    { val: 75, label: '75% Done' },
-                    { val: 100, label: '100% Done' }
-                  ] as const).map(stop => {
-                    const isSelected = nbaConfig.threshold === stop.val
-                    return (
-                      <button
-                        key={stop.val}
-                        type="button"
-                        onClick={() => {
-                          triggerHaptic('selection')
-                          updateNBAConfig({ threshold: stop.val })
-                        }}
-                        className={`py-2 px-1 rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer border ${
-                          isSelected
-                            ? 'bg-purple-600 border-purple-400 text-white shadow-md'
-                            : isLight
-                            ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
-                            : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-400'
-                        }`}
-                      >
-                        <div>{stop.label}</div>
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <p className="text-[10px] text-slate-400">
-                  {nbaConfig.threshold === 0 && 'Docked NBA recommendation banner is always visible at the bottom of the feed.'}
-                  {nbaConfig.threshold === 50 && 'NBA banner unlocks once halfway through today’s protocol stack.'}
-                  {nbaConfig.threshold === 75 && 'Default: NBA banner unlocks once you have completed 75% of your scheduled protocol.'}
-                  {nbaConfig.threshold === 100 && 'NBA banner only appears as a congratulatory wrap-up once all tasks are completed.'}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* 5. Theme & Core Display Mode */}
+          {/* 4. Theme & Core Display Mode */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
@@ -1496,222 +1397,131 @@ export default function DashboardLayoutModal({
                 </div>
               </button>
             </div>
-          </div>
 
-          {/* 5. Focus Mode Rules (COLLAPSED BY DEFAULT AS REQUESTED) */}
-          <div
-            className={`rounded-2xl border transition-all ${
-              isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800/80'
-            }`}
-          >
-            {/* Header Accordion Button */}
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic('selection')
-                setIsFocusSectionOpen(!isFocusSectionOpen)
-              }}
-              className="w-full p-3.5 flex items-center justify-between text-left cursor-pointer"
+            {/* Next Best Action (NBA) Settings */}
+            <div
+              className={`p-3.5 rounded-2xl border space-y-3 transition-all ${
+                nbaConfig.enabled
+                  ? isLight
+                    ? 'bg-purple-50/50 border-purple-200 shadow-sm'
+                    : 'bg-purple-950/20 border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)]'
+                  : isLight
+                  ? 'bg-slate-50 border-slate-200'
+                  : 'bg-slate-900/40 border-slate-800/80'
+              }`}
             >
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
-                  <Zap size={14} />
+              {/* Header with iOS Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 pr-2">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                      nbaConfig.enabled
+                        ? 'bg-purple-500/30 text-purple-300 shadow-inner border border-purple-400/40'
+                        : 'bg-slate-800/60 text-slate-500 border border-slate-700/50'
+                    }`}
+                  >
+                    <Sparkles size={16} />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold flex items-center gap-2">
+                      <span className={isLight ? 'text-slate-800' : 'text-slate-200'}>Next Best Action (NBA)</span>
+                      <span
+                        className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                          nbaConfig.enabled
+                            ? 'bg-purple-500/30 text-purple-200 border border-purple-400/40'
+                            : 'bg-slate-800 text-slate-500'
+                        }`}
+                      >
+                        {nbaConfig.enabled ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Adaptive 80/20 recommendations docked at the bottom of your feed
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-xs font-bold flex items-center gap-2">
-                    <span>Configure Focus Mode</span>
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                      Custom Rules
+
+                {/* Toggle Switch */}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={nbaConfig.enabled}
+                  aria-label="Toggle Next Best Action"
+                  onClick={() => {
+                    triggerHaptic('selection')
+                    toggleNBAEnabled()
+                  }}
+                  className={`w-12 h-7 rounded-full p-1 transition-colors cursor-pointer relative flex items-center shadow-inner shrink-0 ${
+                    nbaConfig.enabled
+                      ? 'bg-purple-600 hover:bg-purple-500 shadow-[0_0_12px_rgba(147,51,234,0.4)]'
+                      : 'bg-slate-700 hover:bg-slate-600'
+                  }`}
+                >
+                  <span
+                    className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 flex items-center justify-center ${
+                      nbaConfig.enabled ? 'translate-x-5 text-purple-600' : 'translate-x-0 text-slate-400'
+                    }`}
+                  >
+                    {nbaConfig.enabled ? <Check size={11} strokeWidth={3} /> : <X size={11} />}
+                  </span>
+                </button>
+              </div>
+
+              {/* 4-Stop Appearance Frequency Slider (Visible strictly when ON) */}
+              {nbaConfig.enabled && (
+                <div
+                  className={`pt-2.5 border-t space-y-2 animate-in fade-in duration-200 ${
+                    isLight ? 'border-purple-200/60' : 'border-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                      Appearance Threshold
+                    </span>
+                    <span className="text-[10px] text-purple-400 font-mono font-bold">
+                      {nbaConfig.threshold === 0 ? 'Always Visible' : `At ≥${nbaConfig.threshold}% Complete`}
                     </span>
                   </div>
+
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {([
+                      { val: 0, label: 'Always' },
+                      { val: 50, label: '50% Done' },
+                      { val: 75, label: '75% Done' },
+                      { val: 100, label: '100% Done' }
+                    ] as const).map(stop => {
+                      const isSelected = nbaConfig.threshold === stop.val
+                      return (
+                        <button
+                          key={stop.val}
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic('selection')
+                            updateNBAConfig({ threshold: stop.val })
+                          }}
+                          className={`py-2 px-1 rounded-xl text-center font-bold text-[11px] transition-all cursor-pointer border ${
+                            isSelected
+                              ? 'bg-purple-600 border-purple-400 text-white shadow-md'
+                              : isLight
+                              ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                              : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700 text-slate-400'
+                          }`}
+                        >
+                          <div>{stop.label}</div>
+                        </button>
+                      )
+                    })}
+                  </div>
+
                   <p className="text-[10px] text-slate-400">
-                    Choose what stays visible when Focus Mode is activated
+                    {nbaConfig.threshold === 0 && 'Docked NBA recommendation banner is always visible at the bottom of your feed.'}
+                    {nbaConfig.threshold === 50 && 'NBA banner unlocks once you have completed 50% of today’s protocol stack.'}
+                    {nbaConfig.threshold === 75 && 'Default: NBA banner unlocks once you have completed 75% of your scheduled protocol.'}
+                    {nbaConfig.threshold === 100 && 'NBA banner only appears as a congratulatory wrap-up once all tasks are completed.'}
                   </p>
                 </div>
-              </div>
-
-              <ChevronDown
-                size={16}
-                className={`text-slate-400 transition-transform duration-200 ${
-                  isFocusSectionOpen ? 'rotate-180 text-emerald-400' : ''
-                }`}
-              />
-            </button>
-
-            {/* Collapsible Content */}
-            {isFocusSectionOpen && (
-              <div className={`px-3.5 pb-3.5 pt-1 space-y-2 border-t ${isLight ? 'border-slate-200' : 'border-slate-800/50'} animate-in fade-in duration-150`}>
-                {/* Rule: Keep Completed Tasks */}
-                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
-                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
-                }`}>
-                  <div className="pr-2">
-                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Completed Tasks Visible</div>
-                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Show finished modalities alongside pending tasks
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={rules.keepCompleted}
-                    onChange={() => {
-                      triggerHaptic('selection')
-                      toggleRule('keepCompleted')
-                    }}
-                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
-                  />
-                </label>
-
-                {/* Rule: Keep Quick-Log Hotkeys */}
-                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
-                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
-                }`}>
-                  <div className="pr-2">
-                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Quick Hotkeys Visible</div>
-                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Allow fast water &amp; supplement logging during focus
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={rules.keepHotkeys}
-                    onChange={() => {
-                      triggerHaptic('selection')
-                      toggleRule('keepHotkeys')
-                    }}
-                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
-                  />
-                </label>
-
-                {/* Rule: Keep AI Protocol Coach */}
-                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
-                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
-                }`}>
-                  <div className="pr-2">
-                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep AI Protocol Coach Visible</div>
-                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Keep coach prompt input accessible for quick questions
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={rules.keepAICoach}
-                    onChange={() => {
-                      triggerHaptic('selection')
-                      toggleRule('keepAICoach')
-                    }}
-                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
-                  />
-                </label>
-
-                {/* Rule: Keep Sleep Triage */}
-                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
-                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
-                }`}>
-                  <div className="pr-2">
-                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Sleep Recovery Visible</div>
-                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Display sleep triage guidance even in focus mode
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={rules.keepSleepTriage}
-                    onChange={() => {
-                      triggerHaptic('selection')
-                      toggleRule('keepSleepTriage')
-                    }}
-                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
-                  />
-                </label>
-
-                {/* Rule: Keep Longevity Tip */}
-                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
-                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
-                }`}>
-                  <div className="pr-2">
-                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Longevity Tip Visible</div>
-                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Show daily spotlight advice during focus mode
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={rules.keepTip}
-                    onChange={() => {
-                      triggerHaptic('selection')
-                      toggleRule('keepTip')
-                    }}
-                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
-                  />
-                </label>
-
-                {/* Rule: Keep Category Filters */}
-                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
-                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
-                }`}>
-                  <div className="pr-2">
-                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Category Filters Visible</div>
-                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Maintain top category &amp; outcome filter bar in focus mode
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={rules.keepCategoryFilters}
-                    onChange={() => {
-                      triggerHaptic('selection')
-                      toggleRule('keepCategoryFilters')
-                    }}
-                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
-                  />
-                </label>
-
-                {/* Rule: Keep Wellbeing Check-in */}
-                <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
-                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
-                }`}>
-                  <div className="pr-2">
-                    <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Wellbeing Check-in Visible</div>
-                    <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Maintain morning &amp; readiness check-in during focus mode
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={rules.keepWellbeing}
-                    onChange={() => {
-                      triggerHaptic('selection')
-                      toggleRule('keepWellbeing')
-                    }}
-                    className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
-                  />
-                </label>
-
-                {/* Rule: Keep Infradian Phasing Visible (Only for Females < 52) */}
-                {isFemaleEligible && (
-                  <label className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer transition-all ${
-                    isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200' : 'bg-slate-800/40 hover:bg-slate-800/60 border-slate-700/50'
-                  }`}>
-                    <div className="pr-2">
-                      <div className={`text-xs font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Keep Infradian Phasing Visible</div>
-                      <div className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                        Maintain hormonal cycle protocol phasing during focus
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={rules.keepInfradian}
-                      onChange={() => {
-                        triggerHaptic('selection')
-                        toggleRule('keepInfradian')
-                      }}
-                      className={`w-4 h-4 rounded text-emerald-500 ${isLight ? 'bg-white border-slate-300' : 'bg-slate-900 border-slate-700'} focus:ring-emerald-500`}
-                    />
-                  </label>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
