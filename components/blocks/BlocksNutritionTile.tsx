@@ -280,6 +280,7 @@ export default function BlocksNutritionTile({
           date={date}
           localUserId={localUserId}
           userProfile={userProfile}
+          initialEditMealId={isSlotLogged && activeSlotMeals[0] ? activeSlotMeals[0].id : undefined}
           onClose={() => setIsModalOpen(false)}
           onLogsChanged={() => {
             fetchMeals()

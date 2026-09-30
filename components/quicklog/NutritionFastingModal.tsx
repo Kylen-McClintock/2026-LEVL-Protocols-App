@@ -46,6 +46,7 @@ interface NutritionFastingModalProps {
   localUserId: string
   userProfile?: UserProfile | null
   initialShowTargets?: boolean
+  initialEditMealId?: string
   onClose: () => void
   onLogsChanged?: () => void
 }
@@ -57,6 +58,7 @@ export default function NutritionFastingModal({
   localUserId,
   userProfile,
   initialShowTargets = false,
+  initialEditMealId,
   onClose,
   onLogsChanged
 }: NutritionFastingModalProps) {
@@ -75,6 +77,7 @@ export default function NutritionFastingModal({
   const [isSaving, setIsSaving] = useState(false)
   const [isRecalculating, setIsRecalculating] = useState(false)
   const [recalculatedSuccess, setRecalculatedSuccess] = useState(false)
+  const [editingMealId, setEditingMealId] = useState<string | null>(null)
 
   // Editable Form Fields
   const [mealName, setMealName] = useState('')
@@ -102,6 +105,7 @@ export default function NutritionFastingModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const manualFileInputRef = useRef<HTMLInputElement>(null)
+  const modalBodyRef = useRef<HTMLDivElement>(null)
 
   // Load Data
   const reloadData = async () => {
@@ -149,6 +153,7 @@ export default function NutritionFastingModal({
 
   // Handle Photo Selected
   const handlePhotoSelected = async (file: File) => {
+    setEditingMealId(null)
     setErrorMsg(null)
     setStep('scanning')
 
@@ -286,6 +291,7 @@ export default function NutritionFastingModal({
 
   // Open Manual Entry Form
   const handleOpenManualEntry = () => {
+    setEditingMealId(null)
     setScanResult(null)
     setCapturedImageBase64(null)
     setMealName('')
@@ -301,6 +307,67 @@ export default function NutritionFastingModal({
     setMealTime(format(new Date(), 'HH:mm'))
     setKeepPhotoInJournal(false)
     setStep('manual')
+  }
+
+  // Open Logged Meal for Editing from Food Journal
+  const handleEditMeal = (meal: DailyMealLogEntry) => {
+    setEditingMealId(meal.id)
+    setMealName(meal.meal_name || '')
+    setCalories(meal.calories || 0)
+    setProtein(meal.protein_g || 0)
+    setCarbs(meal.carbs_g || 0)
+    setFiber(meal.fiber_g || 0)
+    setFat(meal.fat_g || 0)
+    setVeggieServings(meal.veggie_servings || 0)
+    setFruitServings(meal.fruit_servings || 0)
+    setIngredientsList(meal.ingredients || [])
+    setNewIngredientInput('')
+    setCapturedImageBase64(meal.image_url || null)
+    setKeepPhotoInJournal(Boolean(meal.image_url))
+    if (meal.timestamp) {
+      try {
+        setMealTime(format(new Date(meal.timestamp), 'HH:mm'))
+      } catch {
+        setMealTime('12:00')
+      }
+    }
+    setScanResult(null)
+    setPortionMultiplier(1.0)
+    setErrorMsg(null)
+    setStep('review')
+
+    // Smooth scroll to top of modal container
+    if (typeof window !== 'undefined') {
+      modalBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  // Auto-open initialEditMealId if provided
+  useEffect(() => {
+    if (initialEditMealId && meals.length > 0 && !editingMealId) {
+      const targetMeal = meals.find(m => m.id === initialEditMealId)
+      if (targetMeal) {
+        handleEditMeal(targetMeal)
+      }
+    }
+  }, [initialEditMealId, meals, editingMealId])
+
+  const handleCancelEditOrEntry = () => {
+    setEditingMealId(null)
+    setStep('idle')
+    setMealName('')
+    setCalories(0)
+    setProtein(0)
+    setCarbs(0)
+    setFiber(0)
+    setFat(0)
+    setVeggieServings(0)
+    setFruitServings(0)
+    setCapturedImageBase64(null)
+    setScanResult(null)
+    setIngredientsList([])
+    setNewIngredientInput('')
+    setErrorMsg(null)
   }
 
   // Save Meal Log
@@ -328,7 +395,7 @@ export default function NutritionFastingModal({
       }
 
       const entry: DailyMealLogEntry = {
-        id: `meal_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        id: editingMealId || `meal_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         local_user_id: localUserId,
         date,
         timestamp: mealDateObj.toISOString(),
@@ -349,7 +416,16 @@ export default function NutritionFastingModal({
       await saveDailyMealLog(entry)
       await reloadData()
       onLogsChanged?.()
+      setEditingMealId(null)
       setStep('idle')
+      setMealName('')
+      setCalories(0)
+      setProtein(0)
+      setCarbs(0)
+      setFiber(0)
+      setFat(0)
+      setVeggieServings(0)
+      setFruitServings(0)
       setCapturedImageBase64(null)
       setScanResult(null)
       setIngredientsList([])
@@ -364,6 +440,9 @@ export default function NutritionFastingModal({
 
   // Delete Meal
   const handleDeleteMeal = async (mealId: string) => {
+    if (editingMealId === mealId) {
+      handleCancelEditOrEntry()
+    }
     await deleteDailyMealLog(localUserId, mealId)
     await reloadData()
     onLogsChanged?.()
@@ -445,7 +524,7 @@ export default function NutritionFastingModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 text-slate-200">
+        <div ref={modalBodyRef} className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 text-slate-200">
           
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5 animate-in fade-in">
@@ -547,17 +626,47 @@ export default function NutritionFastingModal({
                 <div className="flex items-center gap-2">
                   <Utensils size={16} className="text-emerald-400" />
                   <h3 className="text-sm font-extrabold text-white">
-                    {step === 'review' ? 'Review & Calibrate Scanned Meal' : 'Log Meal Manually with Custom Time'}
+                    {editingMealId 
+                      ? 'Edit Logged Meal Details'
+                      : step === 'review' 
+                      ? 'Review & Calibrate Scanned Meal' 
+                      : 'Log Meal Manually with Custom Time'}
                   </h3>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setStep('idle')}
+                  onClick={handleCancelEditOrEntry}
                   className="text-xs text-slate-400 hover:text-white cursor-pointer"
                 >
                   Cancel
                 </button>
               </div>
+
+              {/* Active Editing Indicator Banner */}
+              {editingMealId && (
+                <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs flex items-center justify-between gap-3 shadow-md">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shrink-0">
+                      <Edit3 size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-extrabold text-white block truncate">
+                        Editing Food Journal Entry: {mealName || 'Untitled Meal'}
+                      </span>
+                      <span className="text-[11px] text-amber-300/80 block truncate">
+                        Update description or ingredients below, then recalculate macros or fine-tune values.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCancelEditOrEntry}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold shrink-0 transition-colors cursor-pointer"
+                  >
+                    Cancel Edit
+                  </button>
+                </div>
+              )}
 
               {/* Portion Multiplier Slider/Buttons (for Scanned Meals) */}
               {step === 'review' && scanResult && (
@@ -586,46 +695,69 @@ export default function NutritionFastingModal({
               )}
 
               {/* Meal Name, Recalculate Button & Time */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 space-y-1.5">
-                  <div className="flex items-center justify-between flex-wrap gap-1">
-                    <label className="text-[10px] uppercase font-bold text-slate-300">Meal / Dish Description</label>
-                    {recalculatedSuccess && (
-                      <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 animate-in fade-in">
-                        <Check size={11} strokeWidth={3} /> Recalculated with updated details
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <div className="flex items-center justify-between flex-wrap gap-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-300">Meal / Dish Description</label>
+                      {recalculatedSuccess && (
+                        <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                          <Check size={11} strokeWidth={3} /> Recalculated with updated details
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={mealName}
                       onChange={(e) => setMealName(e.target.value)}
                       placeholder="e.g. Scrambled Eggs with Avocado & Sourdough"
-                      className="flex-1 bg-black/60 border border-white/10 focus:border-emerald-500/60 rounded-xl p-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none transition-colors"
+                      className="w-full bg-black/60 border border-white/10 focus:border-emerald-500/60 rounded-xl p-2.5 text-xs sm:text-sm text-white font-bold focus:outline-none transition-colors"
                     />
-                    <button
-                      type="button"
-                      onClick={handleRecalculateFromDescription}
-                      disabled={isRecalculating || !mealName.trim()}
-                      className="px-3.5 py-2.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-500/40 hover:to-teal-500/40 text-emerald-300 border border-emerald-500/40 hover:border-emerald-400 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-                      title="Recalculate calories, macros, and nutrients with AI based on your updated description"
-                    >
-                      <Sparkles size={13} className={isRecalculating ? 'animate-spin text-emerald-400' : 'text-emerald-400'} />
-                      <span>{isRecalculating ? 'Recalculating...' : 'Recalculate with AI'}</span>
-                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">
+                      <Clock size={11} /> Time Consumed
+                    </label>
+                    <input
+                      type="time"
+                      value={mealTime}
+                      onChange={(e) => setMealTime(e.target.value)}
+                      className="w-full bg-black/60 border border-emerald-500/40 rounded-xl p-2.5 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
+                    />
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">
-                    <Clock size={11} /> Time Consumed
-                  </label>
-                  <input
-                    type="time"
-                    value={mealTime}
-                    onChange={(e) => setMealTime(e.target.value)}
-                    className="w-full bg-black/60 border border-emerald-500/40 rounded-xl p-2.5 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
-                  />
+
+                {/* BIG PROMINENT RECALCULATE MACROS BUTTON */}
+                <div className="pt-1.5 space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleRecalculateFromDescription}
+                    disabled={isRecalculating || !mealName.trim()}
+                    className="w-full min-h-[58px] sm:min-h-[64px] py-4 px-5 bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400 hover:from-emerald-300 hover:via-teal-200 hover:to-emerald-300 active:scale-[0.99] text-slate-950 rounded-2xl shadow-xl shadow-emerald-950/60 hover:shadow-emerald-500/30 border-2 border-emerald-300/80 flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3 cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed group"
+                    title="Recalculate calories, macros, and nutrients with AI based on your updated description & ingredients"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={22} className={`shrink-0 ${isRecalculating ? 'animate-spin text-slate-950' : 'text-slate-950 group-hover:rotate-12 transition-transform'}`} />
+                      <span className="text-base sm:text-lg font-black tracking-tight">
+                        {isRecalculating ? 'Recalculating All Macros with AI...' : '⚡ Recalculate Macros with AI'}
+                      </span>
+                    </div>
+                    {!isRecalculating && (
+                      <span className="text-[11px] font-bold text-slate-900/80 bg-black/10 px-2.5 py-0.5 rounded-full">
+                        Updates Calories, Protein &amp; Carbs
+                      </span>
+                    )}
+                  </button>
+                  {recalculatedSuccess ? (
+                    <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-center text-xs font-bold text-emerald-300 flex items-center justify-center gap-2 animate-in fade-in">
+                      <Check size={16} strokeWidth={3} className="text-emerald-400 shrink-0" />
+                      <span>Successfully recalculated calories, macros, and plant nutrients with AI!</span>
+                    </div>
+                  ) : (
+                    <p className="text-center text-[11px] text-slate-400">
+                      💡 Tip: After editing your meal description or ingredients, tap above to re-estimate macros.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -703,21 +835,15 @@ export default function NutritionFastingModal({
               </div>
 
               {/* Interactive Constituent Ingredients & Foods Editor (Remove / Add / Recalculate) */}
-              <div className="space-y-2.5 p-3.5 rounded-2xl bg-black/50 border border-white/10 shadow-inner">
+              <div className="space-y-3 p-4 rounded-2xl bg-black/50 border border-white/10 shadow-inner">
                 <div className="flex items-center justify-between flex-wrap gap-1">
                   <label className="text-[10px] uppercase font-bold text-slate-300 flex items-center gap-1.5">
                     <Utensils size={13} className="text-emerald-400" />
                     <span>Constituent Ingredients &amp; Foods ({ingredientsList.length})</span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleRecalculateFromDescription}
-                    disabled={isRecalculating || !mealName.trim()}
-                    className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 hover:underline cursor-pointer disabled:opacity-40"
-                  >
-                    <Sparkles size={11} />
-                    <span>Recalculate Macros</span>
-                  </button>
+                  <span className="text-[10px] text-slate-400">
+                    Add or remove ingredients to fine-tune AI estimates
+                  </span>
                 </div>
 
                 {/* Interactive Ingredient Chips */}
@@ -779,6 +905,17 @@ export default function NutritionFastingModal({
                     <span>Add</span>
                   </button>
                 </div>
+
+                {/* Recalculate from ingredients button */}
+                <button
+                  type="button"
+                  onClick={handleRecalculateFromDescription}
+                  disabled={isRecalculating || (!mealName.trim() && ingredientsList.length === 0)}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500/30 via-teal-500/30 to-emerald-500/30 hover:from-emerald-500/40 hover:via-teal-500/40 hover:to-emerald-500/40 text-emerald-200 border border-emerald-400/50 hover:border-emerald-400 rounded-xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-md"
+                >
+                  <Sparkles size={16} className={isRecalculating ? 'animate-spin text-emerald-300' : 'text-emerald-400'} />
+                  <span>{isRecalculating ? 'Recalculating with AI...' : '⚡ Recalculate Macros from Ingredients'}</span>
+                </button>
               </div>
 
               {/* Photo Attachment & Retention (Standard Client Compression ~120KB) */}
@@ -848,7 +985,7 @@ export default function NutritionFastingModal({
               <div className="flex items-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setStep('idle')}
+                  onClick={handleCancelEditOrEntry}
                   className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs rounded-xl border border-white/10 cursor-pointer"
                 >
                   Cancel
@@ -862,12 +999,12 @@ export default function NutritionFastingModal({
                   {isSaving ? (
                     <>
                       <RefreshCw size={15} className="animate-spin" />
-                      <span>Saving Meal Log...</span>
+                      <span>{editingMealId ? 'Updating Meal...' : 'Saving Meal Log...'}</span>
                     </>
                   ) : (
                     <>
                       <CheckCircle2 size={16} />
-                      <span>Save Meal &amp; Update Fasting Window</span>
+                      <span>{editingMealId ? 'Update Meal & Refresh Fasting Window' : 'Save Meal & Update Fasting Window'}</span>
                     </>
                   )}
                 </button>
@@ -1104,11 +1241,16 @@ export default function NutritionFastingModal({
 
           {/* 4. TODAY'S MEALS TIMELINE JOURNAL */}
           <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-1">
               <span className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Utensils size={14} className="text-emerald-400" />
                 <span>Today&apos;s Meal Journal ({meals.length})</span>
               </span>
+              {meals.length > 0 && (
+                <span className="text-[11px] text-slate-400">
+                  Tap any meal or click Edit to modify &amp; recalculate
+                </span>
+              )}
             </div>
 
             {meals.length === 0 ? (
@@ -1119,81 +1261,104 @@ export default function NutritionFastingModal({
               </div>
             ) : (
               <div className="space-y-2.5">
-                {meals.map((meal) => (
-                  <div
-                    key={meal.id}
-                    className="p-3.5 rounded-2xl bg-black/50 border border-white/10 hover:border-white/20 transition-all flex items-center justify-between gap-3 group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {meal.image_url ? (
-                        <img
-                          src={meal.image_url}
-                          alt={meal.meal_name}
-                          className="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                          <Utensils size={16} />
-                        </div>
-                      )}
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-extrabold text-white truncate block">{meal.meal_name}</span>
-                          <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">
-                            {format(new Date(meal.timestamp), 'h:mm a')}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 text-[11px] font-mono text-slate-400 flex-wrap">
-                          <span className="text-emerald-400 font-bold">{meal.calories} kcal</span>
-                          <span>•</span>
-                          <span>{meal.protein_g}g P</span>
-                          <span>•</span>
-                          <span>{meal.carbs_g}g C</span>
-                          {meal.fiber_g > 0 && (
-                            <>
-                              <span>•</span>
-                              <span className="text-teal-300 font-semibold">{meal.fiber_g}g Fib</span>
-                            </>
-                          )}
-                          <span>•</span>
-                          <span>{meal.fat_g}g F</span>
-                          {meal.veggie_servings > 0 && (
-                            <>
-                              <span>•</span>
-                              <span className="text-emerald-300">🥦 {meal.veggie_servings} serv</span>
-                            </>
-                          )}
-                          {meal.fruit_servings > 0 && (
-                            <>
-                              <span>•</span>
-                              <span className="text-purple-300">🫐 {meal.fruit_servings} serv</span>
-                            </>
-                          )}
-                        </div>
-
-                        {meal.ingredients && meal.ingredients.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {meal.ingredients.map((ing, idx) => (
-                              <span key={idx} className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-slate-300">
-                                {ing}
-                              </span>
-                            ))}
+                {meals.map((meal) => {
+                  const isBeingEdited = editingMealId === meal.id
+                  return (
+                    <div
+                      key={meal.id}
+                      className={`p-3.5 rounded-2xl bg-black/50 border transition-all flex items-center justify-between gap-3 group ${
+                        isBeingEdited ? 'border-amber-500/80 bg-amber-950/20 ring-1 ring-amber-500/50 shadow-md' : 'border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onClick={() => handleEditMeal(meal)}>
+                        {meal.image_url ? (
+                          <img
+                            src={meal.image_url}
+                            alt={meal.meal_name}
+                            className="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                            <Utensils size={16} />
                           </div>
                         )}
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-extrabold text-white truncate block group-hover:text-emerald-300 transition-colors">
+                              {meal.meal_name}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">
+                              {format(new Date(meal.timestamp), 'h:mm a')}
+                            </span>
+                            {isBeingEdited && (
+                              <span className="text-[9px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/40 px-1.5 py-0.2 rounded font-mono">
+                                Editing Now
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] font-mono text-slate-400 flex-wrap">
+                            <span className="text-emerald-400 font-bold">{meal.calories} kcal</span>
+                            <span>•</span>
+                            <span>{meal.protein_g}g P</span>
+                            <span>•</span>
+                            <span>{meal.carbs_g}g C</span>
+                            {meal.fiber_g > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="text-teal-300 font-semibold">{meal.fiber_g}g Fib</span>
+                              </>
+                            )}
+                            <span>•</span>
+                            <span>{meal.fat_g}g F</span>
+                            {meal.veggie_servings > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="text-emerald-300">🥦 {meal.veggie_servings} serv</span>
+                              </>
+                            )}
+                            {meal.fruit_servings > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="text-purple-300">🫐 {meal.fruit_servings} serv</span>
+                              </>
+                            )}
+                          </div>
+
+                          {meal.ingredients && meal.ingredients.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {meal.ingredients.map((ing, idx) => (
+                                <span key={idx} className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-slate-300">
+                                  {ing}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleEditMeal(meal)}
+                          className="text-emerald-300 hover:text-white px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                          title="Edit this meal's description, ingredients, or macros"
+                        >
+                          <Edit3 size={13} />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMeal(meal.id)}
+                          className="text-slate-500 hover:text-rose-400 p-2 rounded-xl hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          title="Delete meal"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMeal(meal.id)}
-                      className="text-slate-500 hover:text-rose-400 p-2 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
-                      title="Delete meal"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

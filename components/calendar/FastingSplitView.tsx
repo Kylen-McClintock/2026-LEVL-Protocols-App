@@ -62,6 +62,7 @@ export default function FastingSplitView({
   const [targets, setTargets] = useState<UserNutritionTargets | null>(null)
   const [selectedDayForModal, setSelectedDayForModal] = useState<string | null>(null)
   const [modalInitialShowTargets, setModalInitialShowTargets] = useState<boolean>(false)
+  const [modalInitialEditMealId, setModalInitialEditMealId] = useState<string | null>(null)
 
   // Load Meals & Nutrition Targets
   const reloadData = async () => {
@@ -172,6 +173,13 @@ export default function FastingSplitView({
   const handleOpenDayModal = (dateStr: string) => {
     setSelectedDayForModal(dateStr)
     setModalInitialShowTargets(false)
+    setModalInitialEditMealId(null)
+  }
+
+  const handleEditMealFromTimeline = (dateStr: string, mealId: string) => {
+    setSelectedDayForModal(dateStr)
+    setModalInitialShowTargets(false)
+    setModalInitialEditMealId(mealId)
   }
 
   return (
@@ -447,13 +455,21 @@ export default function FastingSplitView({
                       {/* Logged Meals List */}
                       <div className="pt-1.5 space-y-1">
                         {dayMeals.slice(0, 2).map(m => (
-                          <div key={m.id} className="text-[10px] text-slate-400 truncate flex items-center justify-between bg-white/[0.03] px-2 py-1 rounded-lg border border-white/5">
-                            <span className="truncate max-w-[110px]">{m.meal_name}</span>
+                          <div
+                            key={m.id}
+                            onClick={() => handleEditMealFromTimeline(dateStr, m.id)}
+                            className="text-[10px] text-slate-400 truncate flex items-center justify-between bg-white/[0.03] hover:bg-emerald-500/10 hover:text-white px-2 py-1 rounded-lg border border-white/5 hover:border-emerald-500/30 transition-all cursor-pointer group"
+                            title="Click to edit this meal in Food Journal"
+                          >
+                            <span className="truncate max-w-[110px] group-hover:text-emerald-300 font-medium">{m.meal_name}</span>
                             <span className="font-mono text-emerald-400 font-bold shrink-0">{m.calories}k</span>
                           </div>
                         ))}
                         {dayMeals.length > 2 && (
-                          <span className="text-[9px] text-slate-500 block text-right font-mono">
+                          <span
+                            onClick={() => handleOpenDayModal(dateStr)}
+                            className="text-[9px] text-slate-500 hover:text-emerald-400 block text-right font-mono cursor-pointer"
+                          >
                             +{dayMeals.length - 2} more meal{dayMeals.length - 2 !== 1 ? 's' : ''}
                           </span>
                         )}
@@ -530,9 +546,11 @@ export default function FastingSplitView({
           localUserId={localUserId}
           userProfile={userProfile}
           initialShowTargets={modalInitialShowTargets}
+          initialEditMealId={modalInitialEditMealId || undefined}
           onClose={() => {
             setSelectedDayForModal(null)
             setModalInitialShowTargets(false)
+            setModalInitialEditMealId(null)
           }}
           onLogsChanged={reloadData}
         />
