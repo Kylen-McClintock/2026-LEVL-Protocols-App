@@ -279,7 +279,7 @@ export default function ProtocolOverviewHeaderCard({
         />
 
         {/* Header Preview Section */}
-        <div className="space-y-2.5 border-b border-white/10 pb-3 pt-0.5">
+        <div className="space-y-2 border-b border-white/10 pb-3 pt-0.5">
           {/* Line 1: Full-width protocol title as clickable link to protocol page */}
           <div className="w-full">
             <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-wide leading-snug break-words w-full">
@@ -297,8 +297,30 @@ export default function ProtocolOverviewHeaderCard({
             </h2>
           </div>
 
-          {/* Line 2: Avatar, Category Gradient Badges & Modalities count (Left), Status Badge & Expand Chevron (Right) */}
-          <div className="flex items-center justify-between gap-3 pt-0.5 flex-wrap">
+          {/* Line 2: Protocol Description (Directly under Title, never separated by buttons) */}
+          {(protocolInfo?.description || preset.synergyText) && (
+            <div>
+              <p className={`text-xs text-slate-600 dark:text-slate-300/90 leading-relaxed ${isDescriptionExpanded ? '' : 'line-clamp-2'}`}>
+                {protocolInfo?.description || preset.synergyText}
+              </p>
+              {(protocolInfo?.description || preset.synergyText).length > 110 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsDescriptionExpanded(!isDescriptionExpanded)
+                  }}
+                  className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
+                >
+                  <span>{isDescriptionExpanded ? 'Less' : 'More'}</span>
+                  {isDescriptionExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Line 3: Avatar, Category Gradient Badges & Modalities count (Left), Status Badge & Expand Chevron (Right) */}
+          <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
             <div className="flex items-center gap-2.5 flex-wrap">
               <ProtocolAvatar 
                 protocolName={protocolName}
@@ -366,43 +388,6 @@ export default function ProtocolOverviewHeaderCard({
               </button>
             </div>
           </div>
-
-          {/* Line 3: Collapsible Protocol Description (Collapsed by default) */}
-          {(protocolInfo?.description || preset.synergyText) && (
-            <div className="pt-1">
-              {isDescriptionExpanded ? (
-                <div className="space-y-1.5">
-                  <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300/90 leading-relaxed">
-                    {protocolInfo?.description || preset.synergyText}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setIsDescriptionExpanded(false)
-                    }}
-                    className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors py-0.5"
-                  >
-                    <span>Hide description</span>
-                    <ChevronUp size={12} />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setIsDescriptionExpanded(true)
-                  }}
-                  className="text-[11px] font-semibold text-slate-400 hover:text-purple-300 flex items-center gap-1.5 cursor-pointer transition-colors py-0.5 group/desc"
-                >
-                  <FileText size={12} className="text-purple-400/80 group-hover/desc:text-purple-300" />
-                  <span>Show description</span>
-                  <ChevronDown size={12} className="group-hover/desc:translate-y-0.5 transition-transform" />
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* EXPANDED VIEW: Visible ONLY when protocol card is opened (expanded) */}

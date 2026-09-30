@@ -2804,9 +2804,11 @@ export default function DailyWellbeingCheckin({
               <button
                 type="button"
                 onClick={() => setShowCoreMetricsSection(!showCoreMetricsSection)}
-                className="text-[10px] font-bold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded cursor-pointer transition-all"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                title={showCoreMetricsSection ? 'Collapse Core Metrics' : 'Expand Core Metrics'}
+                aria-label={showCoreMetricsSection ? 'Collapse Core Metrics' : 'Expand Core Metrics'}
               >
-                {showCoreMetricsSection ? 'Collapse / Skip Section' : 'Expand Section'}
+                {showCoreMetricsSection ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </button>
             </div>
 
@@ -2885,7 +2887,7 @@ export default function DailyWellbeingCheckin({
                     <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 space-y-2">
                       <div className="flex justify-between items-center text-xs">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-white font-bold">{isNightly ? 'Overall Daily Energy' : 'Morning Readiness & Energy (Current)'}</span>
+                          <span className="text-white font-bold">{isNightly ? 'Overall Daily Energy' : 'Morning Energy (Current)'}</span>
                           {snap.isRecent && !isTouched && (
                             <span className="text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
                               Recent ({snap.timeAgoMinutes}m ago)
@@ -3138,9 +3140,11 @@ export default function DailyWellbeingCheckin({
           <button
             type="button"
             onClick={() => setShowSleepSection(!showSleepSection)}
-            className="text-[10px] font-bold text-indigo-300 hover:text-white bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 px-2 py-0.5 rounded cursor-pointer transition-all"
+            className="p-1 rounded-lg text-indigo-300 hover:text-white hover:bg-indigo-500/20 transition-colors cursor-pointer"
+            title={showSleepSection ? 'Collapse Sleep Section' : 'Expand Sleep Section'}
+            aria-label={showSleepSection ? 'Collapse Sleep Section' : 'Expand Sleep Section'}
           >
-            {showSleepSection ? 'Collapse / Skip Section' : 'Expand Section'}
+            {showSleepSection ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
         </div>
 
@@ -3747,9 +3751,11 @@ export default function DailyWellbeingCheckin({
             <button
               type="button"
               onClick={() => setShowOutcomesSection(!showOutcomesSection)}
-              className="text-[10px] font-bold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded cursor-pointer transition-all"
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title={showOutcomesSection ? 'Collapse Outcomes Section' : 'Expand Outcomes Section'}
+              aria-label={showOutcomesSection ? 'Collapse Outcomes Section' : 'Expand Outcomes Section'}
             >
-              {showOutcomesSection ? 'Collapse / Skip Section' : 'Expand Section'}
+              {showOutcomesSection ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
           </div>
 
