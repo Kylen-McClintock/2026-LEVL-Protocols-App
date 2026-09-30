@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import CircadianTimePickerInput from '@/components/ui/CircadianTimePickerInput'
 import GoogleSignInButton from '@/components/ui/GoogleSignInButton'
+import { LayoutPreset, applyLayoutPreset } from '@/lib/utils/layoutSettings'
 
 export interface ModalityOption {
   id: string
@@ -463,6 +464,7 @@ function OnboardingContent() {
 
   // Step 5: Starter Stack Selection & 3-Way Calibration Mode
   const [coverageMode, setCoverageMode] = useState<'simplify' | 'calibrated' | 'coverage'>('calibrated')
+  const [selectedDensityPreset, setSelectedDensityPreset] = useState<LayoutPreset>('daily')
   const [selectedModalities, setSelectedModalities] = useState<Record<string, boolean>>({})
   const [explainingModality, setExplainingModality] = useState<ModalityOption | null>(null)
 
@@ -537,6 +539,11 @@ function OnboardingContent() {
               if (constraints.sideEffectTolerance) setSideEffectTolerance(constraints.sideEffectTolerance)
               if (constraints.coverageMode) setCoverageMode(constraints.coverageMode)
               if (constraints.peptidePreference) setPeptidePreference(constraints.peptidePreference)
+            }
+
+            const cloudLayout = (profile.outcome_preference_scores as any)?._layout_settings
+            if (cloudLayout?.layout_preset) {
+              setSelectedDensityPreset(cloudLayout.layout_preset)
             }
           }
         }
@@ -985,12 +992,15 @@ function OnboardingContent() {
         }
       }
 
-      // 4. Mark onboarding completed in localStorage
+      // 4. Apply selected information density layout preset
+      applyLayoutPreset(selectedDensityPreset)
+
+      // 5. Mark onboarding completed in localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem('levl_onboarding_completed', 'true')
       }
 
-      // 5. Return to destination
+      // 6. Return to destination
       if (isRecalibrateMode) {
         window.location.href = '/settings'
       } else {
@@ -2660,6 +2670,119 @@ function OnboardingContent() {
                   </div>
                 )
               })}
+            </div>
+
+            {/* ---------------------------------------------------- */}
+            {/* INFORMATION DENSITY & DASHBOARD VIEW SELECTOR */}
+            {/* ---------------------------------------------------- */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3.5 shadow-lg">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Sliders size={16} className="text-purple-400" />
+                  <span>Dashboard View &amp; Information Density</span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Choose how much detail and context you want to see on your daily protocol cards.
+                </p>
+              </div>
+
+              {/* 3 Density Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* 1. Focus Mode */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedDensityPreset('focus')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                    selectedDensityPreset === 'focus'
+                      ? 'bg-purple-950/40 border-purple-500/80 shadow-md ring-1 ring-purple-500/50'
+                      : 'bg-black/30 border-white/5 hover:border-white/15 hover:bg-white/5 text-slate-400'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-extrabold ${selectedDensityPreset === 'focus' ? 'text-white' : 'text-slate-300'}`}>
+                        ⚡ Focus Mode
+                      </span>
+                      {selectedDensityPreset === 'focus' && (
+                        <span className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-tight">
+                      Super simple &amp; minimal. Pending modalities only, fast swipe-to-complete.
+                    </p>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[9px] font-mono text-slate-400">
+                    <span className="px-1.5 py-0.5 rounded bg-white/5">Clean</span>
+                    <span className="px-1.5 py-0.5 rounded bg-white/5">Fast 1-Click</span>
+                  </div>
+                </button>
+
+                {/* 2. Daily Mode (Default) */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedDensityPreset('daily')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                    selectedDensityPreset === 'daily'
+                      ? 'bg-emerald-950/40 border-emerald-500/80 shadow-md ring-1 ring-emerald-500/50'
+                      : 'bg-black/30 border-white/5 hover:border-white/15 hover:bg-white/5 text-slate-400'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-extrabold ${selectedDensityPreset === 'daily' ? 'text-white' : 'text-slate-300'}`}>
+                        🎯 Daily Mode
+                      </span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        Default
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-tight">
+                      Balanced view with target doses, circadian timing, and progress stats.
+                    </p>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[9px] font-mono text-slate-400">
+                    <span className="px-1.5 py-0.5 rounded bg-white/5">Target Doses</span>
+                    <span className="px-1.5 py-0.5 rounded bg-white/5">Circadian</span>
+                  </div>
+                </button>
+
+                {/* 3. Biohacker Mode */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedDensityPreset('biohacker')}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                    selectedDensityPreset === 'biohacker'
+                      ? 'bg-indigo-950/40 border-indigo-500/80 shadow-md ring-1 ring-indigo-500/50'
+                      : 'bg-black/30 border-white/5 hover:border-white/15 hover:bg-white/5 text-slate-400'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-extrabold ${selectedDensityPreset === 'biohacker' ? 'text-white' : 'text-slate-300'}`}>
+                        🔬 Biohacker Mode
+                      </span>
+                      {selectedDensityPreset === 'biohacker' && (
+                        <span className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-tight">
+                      Full detail with clinical synergies, protocol lineages, and deep outcome metrics.
+                    </p>
+                  </div>
+                  <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[9px] font-mono text-slate-400">
+                    <span className="px-1.5 py-0.5 rounded bg-white/5">Synergies</span>
+                    <span className="px-1.5 py-0.5 rounded bg-white/5">Lineages</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Informative reassurance micro-copy */}
+              <div className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5 flex items-center gap-2 text-[11px] text-slate-400">
+                <span className="text-amber-400 shrink-0">💡</span>
+                <span>
+                  Pre-set to <strong className="text-emerald-300">Daily Mode</strong>. You can switch between Focus, Daily, and Biohacker modes at any time in your Dashboard Layout Settings (⚙️).
+                </span>
+              </div>
             </div>
 
             {/* ADVANCED PERSONALIZATION PREVIEW (Non-blocking Discovery Card) */}

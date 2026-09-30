@@ -1626,11 +1626,28 @@ export default function ProtocolTaskCard({
     if (dragOffset >= SWIPE_THRESHOLD) {
       // Swiped Right -> Complete
       triggerHaptic('light')
-      onStatusChange(task.id, 'completed')
+      if (isFastMode) {
+        const effectiveDetails = (executionDetails && Object.keys(executionDetails).length > 0) ? executionDetails : task.execution_details
+        let metrics: any = undefined
+        if (effectiveDetails?.duration || effectiveDetails?.distance) {
+          metrics = {}
+          if (effectiveDetails.duration) metrics.duration_mins = parseFloat(effectiveDetails.duration)
+          if (effectiveDetails.distance) metrics.distance = parseFloat(effectiveDetails.distance)
+        }
+        if (isPeptide) {
+          const site = effectiveDetails?.injection_site || peptideSiteData?.recommendedSite?.id || 'abdomen_lower_right'
+          saveInjectionSiteLog(modalityKey, site)
+        }
+        onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails)
+      } else {
+        onStatusChange(task.id, 'completed')
+      }
     } else if (dragOffset <= -SWIPE_THRESHOLD) {
-      // Swiped Left -> Reschedule / Snooze
+      // Swiped Left -> Skip / Reschedule / Snooze
       triggerHaptic('selection')
-      if (onOpenRescheduleModal) {
+      if (isFastMode) {
+        onStatusChange(task.id, 'skipped', 'Skipped (Fast Mode)')
+      } else if (onOpenRescheduleModal) {
         onOpenRescheduleModal(task)
       } else {
         onStatusChange(task.id, 'snoozed')
@@ -1670,16 +1687,16 @@ export default function ProtocolTaskCard({
             <span className="truncate">Complete</span>
           </div>
 
-          {/* Reschedule Underlayer (Left Swipe) */}
+          {/* Reschedule / Skip Underlayer (Left Swipe) */}
           <div 
-            className="h-full bg-amber-600/90 flex items-center justify-end px-4 gap-2 text-white font-black text-xs transition-opacity ml-auto shadow-inner"
+            className={`h-full ${isFastMode ? 'bg-rose-600/90' : 'bg-amber-600/90'} flex items-center justify-end px-4 gap-2 text-white font-black text-xs transition-opacity ml-auto shadow-inner`}
             style={{ 
               opacity: dragOffset < -10 ? Math.min(1, Math.abs(dragOffset) / 40) : 0,
               width: `${Math.max(0, -dragOffset)}px`
             }}
           >
-            <span className="truncate">Reschedule</span>
-            <Clock size={18} className="shrink-0" />
+            <span className="truncate">{isFastMode ? 'Skip' : 'Reschedule'}</span>
+            {isFastMode ? <X size={18} className="shrink-0" /> : <Clock size={18} className="shrink-0" />}
           </div>
         </div>
       )}
@@ -1861,13 +1878,18 @@ export default function ProtocolTaskCard({
                     type="button"
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      if (onOpenRescheduleModal) onOpenRescheduleModal(task);
-                      else setShowSkipReason(true); 
+                      if (isFastMode) {
+                        onStatusChange(task.id, 'skipped', 'Skipped (Fast Mode)');
+                      } else if (onOpenRescheduleModal) {
+                        onOpenRescheduleModal(task);
+                      } else {
+                        setShowSkipReason(true); 
+                      }
                     }}
                     disabled={isFutureTask}
                     className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 active:scale-90 active:opacity-80 transition-all disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer shrink-0 touch-manipulation"
-                    title="Snooze or reschedule modality"
-                    aria-label="Snooze or reschedule"
+                    title={isFastMode ? "Skip modality for today" : "Snooze or reschedule modality"}
+                    aria-label={isFastMode ? "Skip modality" : "Snooze or reschedule"}
                   >
                     <SkipForward size={13} className="ml-0.5" />
                   </button>
@@ -2212,12 +2234,17 @@ export default function ProtocolTaskCard({
                 <button 
                   onClick={(e) => { 
                     e.stopPropagation(); 
-                    if (onOpenRescheduleModal) onOpenRescheduleModal(task);
-                    else setShowSkipReason(true); 
+                    if (isFastMode) {
+                      onStatusChange(task.id, 'skipped', 'Skipped (Fast Mode)');
+                    } else if (onOpenRescheduleModal) {
+                      onOpenRescheduleModal(task);
+                    } else {
+                      setShowSkipReason(true); 
+                    }
                   }}
                   disabled={isFutureTask}
                   className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/10 text-levl-text-secondary hover:text-white hover:bg-white/10 hover:border-white/20 active:scale-90 active:opacity-80 transition-all disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer shrink-0 touch-manipulation"
-                  title="Snooze, reschedule, or skip session"
+                  title={isFastMode ? "Skip modality for today" : "Snooze, reschedule, or skip session"}
                 >
                   <SkipForward size={13} className="ml-0.5" />
                 </button>
@@ -2226,6 +2253,20 @@ export default function ProtocolTaskCard({
                     e.stopPropagation(); 
                     if (task.status === 'completed') {
                       onStatusChange(task.id, 'pending');
+                    } else if (isFastMode) {
+                      // FAST MODE: instant complete with 0 outcome popups or sliders
+                      const effectiveDetails = (executionDetails && Object.keys(executionDetails).length > 0) ? executionDetails : task.execution_details
+                      let metrics: any = undefined
+                      if (effectiveDetails?.duration || effectiveDetails?.distance) {
+                        metrics = {}
+                        if (effectiveDetails.duration) metrics.duration_mins = parseFloat(effectiveDetails.duration)
+                        if (effectiveDetails.distance) metrics.distance = parseFloat(effectiveDetails.distance)
+                      }
+                      if (isPeptide) {
+                        const site = effectiveDetails?.injection_site || peptideSiteData?.recommendedSite?.id || 'abdomen_lower_right'
+                        saveInjectionSiteLog(modalityKey, site)
+                      }
+                      onStatusChange(task.id, 'completed', undefined, new Date().toISOString(), metrics, effectiveDetails);
                     } else {
                       // TRACKED OUTCOME MODE:
                       // If inline outcomes are ALREADY showing or if checkmark is clicked twice, complete immediately independent of how many outcomes have been tracked!

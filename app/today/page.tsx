@@ -129,7 +129,7 @@ interface SupplementCompactRowProps {
   modality?: Modality
   modalityName: string
   benchItem?: UserBenchItem
-  onStatusChange: (taskId: string, status: string) => void
+  onStatusChange: (taskId: string, status: string, reason?: string) => void
   onOpenRescheduleModal?: (task: DedupedTask) => void
   onOpenDetails: () => void
   completionMode: string
@@ -205,11 +205,15 @@ function SupplementCompactRow({
               onClick={(e) => {
                 e.stopPropagation()
                 triggerHaptic('selection')
-                if (onOpenRescheduleModal) onOpenRescheduleModal(task)
+                if (completionMode === 'fast') {
+                  onStatusChange(task.id, 'skipped', 'Skipped (Fast Mode)')
+                } else if (onOpenRescheduleModal) {
+                  onOpenRescheduleModal(task)
+                }
               }}
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 hover:border-white/20 active:scale-90 transition-all cursor-pointer touch-manipulation shrink-0"
-              title="Snooze, reschedule, or skip supplement"
-              aria-label="Skip or push supplement"
+              title={completionMode === 'fast' ? "Skip supplement for today" : "Snooze, reschedule, or skip supplement"}
+              aria-label={completionMode === 'fast' ? "Skip supplement" : "Skip or push supplement"}
             >
               <SkipForward size={12} className="ml-0.5" />
             </button>
@@ -600,6 +604,10 @@ function TodayPageContent() {
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('levl_focus_mode_active', next ? 'true' : 'false')
+          if (next) {
+            safeLocalStorageSet('levl_completion_mode', 'fast')
+            setCompletionMode('fast')
+          }
         } catch (e) {}
       }
       return next
@@ -654,6 +662,8 @@ function TodayPageContent() {
       if (e.detail?.date === dateStr || !e.detail?.date) {
         setIsShieldActive(true)
         setDailyBandwidthMode('survival_80_20')
+        setCompletionMode('fast')
+        safeLocalStorageSet('levl_completion_mode', 'fast')
       }
     }
     const handleShieldDeactivated = (e: any) => {
@@ -667,6 +677,10 @@ function TodayPageContent() {
         const mode = e.detail?.mode || (localStorage.getItem(`levl_bandwidth_mode_${dateStr}`) as DailyBandwidthMode) || 'standard'
         setDailyBandwidthMode(mode)
         setIsShieldActive(mode === 'survival_80_20')
+        if (mode === 'survival_80_20') {
+          setCompletionMode('fast')
+          safeLocalStorageSet('levl_completion_mode', 'fast')
+        }
       }
     }
     window.addEventListener('levl_adherence_shield_activated', handleShieldActivated)
@@ -989,9 +1003,26 @@ function TodayPageContent() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const isFocus = localStorage.getItem('levl_focus_mode_active') === 'true'
+      const isSurvival = localStorage.getItem(`levl_bandwidth_mode_${dateStr}`) === 'survival_80_20' || localStorage.getItem(`levl_8020_protected_${dateStr}`) === 'true'
       const savedMode = safeLocalStorageGet('levl_completion_mode') as 'outcome' | 'fast'
-      if (savedMode) setCompletionMode(savedMode)
+      if (isFocus || isSurvival) {
+        setCompletionMode('fast')
+      } else if (savedMode) {
+        setCompletionMode(savedMode)
+      }
     }
+  }, [dateStr])
+
+  useEffect(() => {
+    const handleCompletionModeEvent = (e: any) => {
+      const mode = e.detail?.mode
+      if (mode === 'outcome' || mode === 'fast') {
+        setCompletionMode(mode)
+      }
+    }
+    window.addEventListener('levl_completion_mode_changed', handleCompletionModeEvent)
+    return () => window.removeEventListener('levl_completion_mode_changed', handleCompletionModeEvent)
   }, [])
 
   const handleCompletionModeChange = (mode: 'outcome' | 'fast') => {

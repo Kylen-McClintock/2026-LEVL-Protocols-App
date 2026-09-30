@@ -474,6 +474,12 @@ export function applyLayoutPreset(preset: LayoutPreset, profile?: UserProfile | 
       categoryFilters: false
     }, profile)
     setStoredNBAConfig({ enabled: false, threshold: 100 }, profile)
+    try {
+      localStorage.setItem('levl_completion_mode', 'fast')
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('levl_completion_mode_changed', { detail: { mode: 'fast' } }))
+      }, 0)
+    } catch (e) {}
   } else if (preset === 'daily') {
     setStoredTimeBlockHorizon('collapse_past', profile)
     setStoredCardBadges({ ...DEFAULT_CARD_BADGES }, profile)
